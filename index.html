@@ -3,7 +3,7 @@
 <head>
   <meta charset='utf-8'>
 
-  <title>Java BitTorrent library and toolsuite</title>
+  <title>Java BitTorrent library and toolsuite, by Turn, Inc.</title>
 
   <style type="text/css">
     html, body { margin: 0; padding: 0; font-family: sans-serif; }
@@ -17,7 +17,7 @@
       border: 1px #aaa solid;
     }
     h1 { font-size: 3.8em; margin-top: 0; color: #f6931e; margin-bottom: 3px;
-      border-bottom: 1px #ccc solid; padding-bottom: 10px; font-family: Georgia, serif; }
+      border-bottom: 1px #aaa solid; padding-bottom: 10px; font-family: Georgia, serif; }
     h1 .small { margin: 0; margin-top: 1em; padding: 0; font-size: 0.4em;
       font-style: italic; float: right; }
     h1 a { text-decoration: none }
@@ -26,6 +26,8 @@
     h3 { text-align: center; color: #f6931e; }
     a { color: #f6931e; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; }
+    #license { width: 50%; padding-right: 2em; }
+    #authors { width: 50%; }
     pre { background: #000; color: #fff; padding: 15px;}
     .footer { text-align:center; padding-top:30px; font-style: italic; }
   </style>
@@ -34,50 +36,59 @@
 <body>
   <a href="http://github.com/mpetazzoni/bittorrent"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
 
-  <h1><a href="http://github.com/mpetazzoni/bittorrent">BitTorrent library</a>
+  <h1><a href="http://github.com/mpetazzoni/bittorrent">Turn's BitTorrent Java library</a>
     <p class="small">by 
     <a href="http://www.turn.com"><img id="logo" src="data:image/gif;base64,R0lGODlhhwA3AMIHAPmdG762of/CDv/44v/67f/9+P7+/v///yH5BAEAAAcALAAAAACHADcAAAP+eLrc/jDKSau9OOvNu/9gKI5kaZ5oqq5s675wLM90bd94ru987//AoFAVKAY4gqRyqVQwn0wOYEoFUKARAhQLOS68mS3TK36CMVXqJMB1aMtLq+NoVJwt8GTRmRfsM2lTEkVtDG99AoINdHYHdxV9dQeRfxeBcg9GhQqHiGoMdH+PV3lGZHCmaIFdmk8NA4hxn41ejGGlqZNlpqMQl5mmhQWxsrOOoBuUubu8Fr+LvG3DxEqrX5InvJWszRTP193cud7WLtq94OMS33baEQbnzuUt8YPu5GnQ4Q7w9/hVMOpFELhuniN//AgWzPdC4RyEEdgd3NegH8WIBlc41KffDiPDdNgSQvQIsOFIjiFJGpvYkYHFlr4yEjkJimYDiRsVvEypUpE5m+0uPsBpc+e2hSV/Cq259KbBnAeMonP6kR5QljyHPi0KlWpSq02DwnRAtKlUeVVZdMV6NGZaqGcrSNR4da2CsmOj2r0rM8XavXiz6tx7YO7MsHyoZYRL2LDfq4ljpRUrWC9kvpMP522geCXItgvi/vOsubIDYqQpgx58uXBfFIQjw/EJzGzj19laL/C0hmtrx7B1785DgfFv3EOSK1/OvLnz59CjS59Ovbr169iza9/Ovbv3788TAAA7" alt="Turn" /></a>
     </p></h1>
 
   <div class="description">
-
     <p>
-      Turn's BitTorrent library is a pure-Java implementation of the
-      BitTorrent protocol, providing an easy-to-embed implementation with a
-      BitTorrent tracker and a downloading/seeding client.
+      <a href="http://www.turn.com">Turn</a>'s BitTorrent library is a
+      pure-Java implementation of the BitTorrent protocol, providing an
+      easy-to-embed implementation with a BitTorrent tracker and a
+      downloading/seeding client. Both the tracker and the clients provide
+      hooks for easy integration in a larger application, allowing for tracker
+      control, or download progression updates, for example.
     </p>
 
     <p>
-      Both the tracker and the clients provide hooks for easy integration in
-      a larger application, allowing for tracker control, or download
-      progression updates, for example.
+      This library and tool suite was developped as part of Turn's release
+      deployment system, and aims at providing a down-to-earth and simple to
+      use BitTorrent-based system for distributing large files to and between
+      any number of clients. Albeit the existence of a few caveats (see the
+      project's <tt><a
+          href="https://github.com/mpetazzoni/bittorrent/blob/master/README">README</a></tt>
+      file), it has been showing very exciting results in terms of global
+      distribution speed and minimal overhead for the initial seeder.
+    </p>
   </div>
 
+  <h2>Download</h2>
+  <ul>
+    <li>You can download the latest <a
+  href="http://github.com/mpetazzoni/bittorrent/raw/master/dits/bittorrent-1.0.2.jar">1.0.2
+  JAR file release</a>;</li>
+    <li>you can grab an archive of the entire project in either <a
+      href="http://github.com/mpetazzoni/bittorrent/zipball/master">zip</a> or
+      <a href="http://github.com/mpetazzoni/bittorrent/tarball/master">tar</a> formats;</li>
+    <li>you can <a href="http://github.com/mpetazzoni/bittorrent/">view the project online</a>;</li>
+    <li>or you can also clone the project with <a href="http://git-scm.com">Git</a> by running:
+      <pre>$ git clone git://github.com/mpetazzoni/bittorrent</pre></li>
+  </ul>
+
+  <table style="border-top: 1px #aaa solid; margin-top: 2em;"><tbody><tr><td id="license">
   <h2>License</h2>
   <p>
     This library is released under the terms of the <a
     href="http://www.apache.org/licenses/LICENSE-2.0.html">Apache License
     2.0</a>, a GPLv3-compatible free software license.
   </p>
-
+  </td><td id="authors">
   <h2>Authors</h2>
   <ul>
-    <li>Maxime Petazzoni <tt>&lt;mpetazzoni@turn.com&gt;</tt></li>
-  </ul>
-
-  <h2>Download</h2>
-  <p>
-  You can download the latest <a
-  href="http://github.com/mpetazzoni/bittorrent/raw/master/dits/bittorrent-1.0.2.jar">1.0.2
-  JAR file release</a>, or the entire is project in either <a
-    href="http://github.com/mpetazzoni/bittorrent/zipball/master">zip</a> or
-    <a href="http://github.com/mpetazzoni/bittorrent/tarball/master">tar</a> formats.
-  </p>
-
-  <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
-    by running:
-    <pre>$ git clone git://github.com/mpetazzoni/bittorrent</pre>
-  </p>
+    <li>Maxime Petazzoni <tt>&lt;mpetazzoni@turn.com&gt;</tt>, Platform
+    Engineer at <a href="http://www.turn.com">Turn, Inc.</a></li> </ul>
+  </td></tr></tbody></table>
 
   <div class="footer">
     get the source code on GitHub : <a href="http://github.com/mpetazzoni/bittorrent">mpetazzoni/bittorrent</a>
