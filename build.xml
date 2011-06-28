@@ -1,0 +1,72 @@
+<!-- Copyright (C) 2011 Turn, Inc.  All Rights Reserved.
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+
+<!-- Ant buildfile for the BitTorrent Java library -->
+<project basedir="." default="dist" name="bittorrent">
+	<property name="build.dir" location="build" />
+	<property name="dist.dir" location="dist" />
+	<property name="doc.dir" location="doc" />
+	<property name="lib.dir" location="lib" />
+	<property name="src.dir" location="src" />
+
+	<path id="project.classpath">
+		<pathelement location="${build.dir}" />
+		<fileset dir="${lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+
+	<target name="init">
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<target name="distclean" depends="clean">
+		<delete dir="${dist.dir}" />
+		<delete dir="${doc.dir}" />
+	</target>
+
+	<target name="build" depends="init">
+		<javac destdir="${build.dir}" includeantruntime="false"
+			debug="off" sourcepath="" srcdir="${src.dir}">
+			<include name="com/turn/**/*.java" />
+			<compilerarg value="-Xlint" />
+			<classpath refid="project.classpath" />
+		</javac>
+	</target>
+
+	<target name="dist" depends="build">
+		<jar destfile="${dist.dir}/bittorrent.jar"
+			basedir="${build.dir}">
+			<zipgroupfileset dir="${lib.dir}" includes="*.jar" />
+		</jar>
+	</target>
+
+	<target name="doc">
+		<mkdir dir="${doc.dir}" />
+		<javadoc destdir="${doc.dir}"
+			access="private"
+			header="Pure-Java BitTorrent suite"
+			windowtitle="BitTorrent library"
+			doctitle="BitTorrent library"
+			noqualifier="java.*:com.turn.*">
+			<fileset dir="${src.dir}" includes="com/turn/bittorrent/**/*.java" />
+			<classpath refid="project.classpath" />
+		</javadoc>
+	</target>
+</project>
