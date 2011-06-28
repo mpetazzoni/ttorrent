@@ -46,7 +46,10 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 
 /** A pure-java BitTorrent client.
  *
@@ -754,6 +757,9 @@ public class Client extends Observable implements Runnable,
 	/** Main client entry point for standalone operation.
 	 */
 	public static void main(String[] args) {
+		BasicConfigurator.configure(new ConsoleAppender(
+					new PatternLayout("%d [%-20t] %-5p: %m%n")));
+
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
 			System.exit(1);

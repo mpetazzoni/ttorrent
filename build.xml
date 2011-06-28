@@ -57,6 +57,14 @@
 		<jar destfile="${dist.dir}/${ant.project.name}-${project.version}.jar"
 			basedir="${build.dir}">
 			<zipgroupfileset dir="${lib.dir}" includes="*.jar" />
+			<manifest>
+				<attribute name="Built-By" value="${user.name}" />
+				<attribute name="Implementation-Vendor" value="Turn, Inc." />
+				<attribute name="Implementation-Title" value="Java BitTorrent library" />
+				<attribute name="Implementation-Version" value="${project.version}" />
+				<attribute name="Main-Class"
+					value="com.turn.bittorrent.client.Client" />
+			</manifest>
 		</jar>
 	</target>
 
