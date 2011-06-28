@@ -7,7 +7,7 @@ creation and parsing capabilities. It is designed to be embedded into a larger
 application, and is thus currently not very well suited for standalone use
 since it doesn't provide standalone executable programs.
 
-This tool suite was implemented as part of Turn (http://www.turn.com) release
+This tool suite was implemented as part of Turn's (http://www.turn.com) release
 distribution and deployment system and is used to distribute new build tarballs
 to a large number of machines inside a datacenter as efficiently as possible.
 At the time this project was started, few Java implementations of the
