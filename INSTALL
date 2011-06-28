@@ -1,0 +1,38 @@
+Howto build and use the BitTorrent library
+==========================================
+
+Dependencies
+------------
+
+This Java implementation of the BitTorrent protocol implements a BitTorrent
+tracker (an HTTP service), and a BitTorrent client. The only dependencies of
+the BitTorrent library are:
+
+* the log4j library
+* the SimpleHTTPFramework
+
+These two libraries are provided in the lib/ directory, and are automatically
+included in the JAR file created by the build process.
+
+
+Building the distribution JAR
+-----------------------------
+
+Simply execute the following command:
+
+  $ ant dist
+
+To build the bittorrent.jar file (in the dist/ directory). You can then import
+this JAR file into your Java project and start using the Java BitTorrent
+library.
+
+
+Building the documentation
+--------------------------
+
+You can build the library's Javadoc with the following command:
+
+  $ ant doc
+
+This will build the Javadoc in the doc/ directory. Make sure Javadoc is
+installed on your system first.
