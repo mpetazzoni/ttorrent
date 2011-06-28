@@ -21,6 +21,9 @@
 	<property name="lib.dir" location="lib" />
 	<property name="src.dir" location="src" />
 
+	<!-- Release version. -->
+	<property name="project.version" value="1.0.2" />
+
 	<path id="project.classpath">
 		<pathelement location="${build.dir}" />
 		<fileset dir="${lib.dir}">
@@ -44,14 +47,14 @@
 	<target name="build" depends="init">
 		<javac destdir="${build.dir}" includeantruntime="false"
 			debug="off" sourcepath="" srcdir="${src.dir}">
-			<include name="com/turn/**/*.java" />
+			<include name="com/turn/bittorrent/**/*.java" />
 			<compilerarg value="-Xlint" />
 			<classpath refid="project.classpath" />
 		</javac>
 	</target>
 
 	<target name="dist" depends="build">
-		<jar destfile="${dist.dir}/bittorrent.jar"
+		<jar destfile="${dist.dir}/${ant.project.name}-${project.version}.jar"
 			basedir="${build.dir}">
 			<zipgroupfileset dir="${lib.dir}" includes="*.jar" />
 		</jar>
