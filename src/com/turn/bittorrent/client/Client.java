@@ -18,6 +18,7 @@ package com.turn.bittorrent.client;
 import com.turn.bittorrent.bcodec.BEValue;
 import com.turn.bittorrent.bcodec.InvalidBEncodingException;
 import com.turn.bittorrent.client.peer.PeerActivityListener;
+import com.turn.bittorrent.common.Peer;
 import com.turn.bittorrent.common.Torrent;
 import com.turn.bittorrent.client.peer.SharingPeer;
 
@@ -377,8 +378,8 @@ public class Client extends Observable implements Runnable,
 	 * port number.
 	 *
 	 * This function tries to retrieve an existing peer object based on the
-	 * provided peer ID, or otherwise instanciates a new one and adds it to our
-	 * peer repository.
+	 * provided peer ID, or IP+Port if no peer ID is known, or otherwise
+	 * instantiates a new one and adds it to our peer repository.
 	 *
 	 * @param peerId The byte-encoded string containing the peer ID. It will be
 	 * converted to its hexadecimal representation to lookup the peer in the
@@ -386,22 +387,35 @@ public class Client extends Observable implements Runnable,
 	 * @param ip The peer IP address.
 	 * @param port The peer listening port number.
 	 */
-	private SharingPeer getOrCreatePeer(byte[] peerId, String ip,
-			int port) {
-		String hexPeerId = Torrent.byteArrayToHexString(peerId);
+	private SharingPeer getOrCreatePeer(byte[] peerId, String ip, int port) {
+		Peer search = new Peer(ip, port,
+				(peerId != null ? ByteBuffer.wrap(peerId) : (ByteBuffer)null));
+		SharingPeer peer = null;
 
 		synchronized (this.peers) {
-			if (this.peers.containsKey(hexPeerId)) {
-				return this.peers.get(hexPeerId);
-			} else {
-				this.peers.putIfAbsent(hexPeerId,
-						new SharingPeer(ByteBuffer.wrap(peerId),
-							hexPeerId, ip, port, this.torrent));
+			peer = this.peers.get(search.hasPeerId()
+						? search.getHexPeerId()
+						: search.getHostIdentifier());
+
+			if (peer != null) {
+				return peer;
 			}
+
+			if (search.hasPeerId()) {
+				peer = this.peers.get(search.getHostIdentifier());
+				if (peer != null) {
+					peer.setPeerId(search.getPeerId());
+
+					this.peers.remove(peer.getHostIdentifier());
+					this.peers.putIfAbsent(peer.getHexPeerId(), peer);
+					return peer;
+				}
+			}
+
+			peer = new SharingPeer(ip, port, search.getPeerId(), this.torrent);
+			this.peers.putIfAbsent(peer.getHostIdentifier(), peer);
 		}
 
-		// Register the torrent as an peer activity listener on this peer
-		SharingPeer peer = this.peers.get(hexPeerId);
 		peer.register(this.torrent);
 		return peer;
 	}
@@ -493,7 +507,7 @@ public class Client extends Observable implements Runnable,
 
 			for (SharingPeer peer : choked) {
 				if (optimistic && peer == randomPeer) {
-					logger.trace("Optimistic unchoke of " + peer);
+					logger.debug("Optimistic unchoke of " + peer);
 					continue;
 				}
 
@@ -523,46 +537,88 @@ public class Client extends Observable implements Runnable,
 				return;
 			}
 
-			List<BEValue> peers = answer.get("peers").getList();
-			logger.trace("Got tracker response with " + peers.size() +
-					" peer(s).");
-			for (BEValue peerInfo : peers) {
-				Map<String, BEValue> info = peerInfo.getMap();
+			try {
+				List<BEValue> peers = answer.get("peers").getList();
+				logger.debug("Got tracker response with " + peers.size() +
+						" peer(s).");
+				for (BEValue peerInfo : peers) {
+					Map<String, BEValue> info = peerInfo.getMap();
 
-				try {
-					byte[] peerId = info.get("peer id").getBytes();
-					String ip = new String(info.get("ip").getBytes(),
-							Torrent.BYTE_ENCODING);
-					int port = info.get("port").getInt();
-
-					SharingPeer peer = this.getOrCreatePeer(peerId, ip, port);
-					synchronized (peer) {
-						// Attempt to connect to the peer if and only if:
-						//   - We're not already connected to it;
-						//   - We're not a seeder (we leave the responsibility
-						//	   of connecting to peers that need to download
-						//     something), or we are a seeder but we're still
-						//     willing to initiate some outbound connections.
-						if (!peer.isBound() &&
-							(!this.isSeed() ||
-							 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
-							if (!this.service.connect(peer)) {
-								logger.debug("Removing peer " + peer + ".");
-								this.peers.remove(peer.getHexPeerId());
-							}
-						}
+					try {
+						byte[] peerId = info.get("peer id").getBytes();
+						String ip = new String(info.get("ip").getBytes(),
+								Torrent.BYTE_ENCODING);
+						int port = info.get("port").getInt();
+						this.processAnnouncedPeer(peerId, ip, port);
+					} catch (NullPointerException npe) {
+						throw new ParseException("Missing field from peer " +
+								"information in tracker response!", 0);
 					}
-				} catch (NullPointerException npe) {
-					throw new ParseException("Missing field from peer " +
-							"information in tracker response!", 0);
+				}
+			} catch (InvalidBEncodingException ibee) {
+				byte[] data = answer.get("peers").getBytes();
+				int nPeers = data.length / 6;
+				if (data.length % 6 != 0) {
+					throw new InvalidBEncodingException("Invalid peers " +
+							"binary information string!");
+				}
+
+				ByteBuffer peers = ByteBuffer.wrap(data);
+				logger.debug("Got compact tracker response with " + nPeers +
+						" peer(s).");
+
+				for (int i=0; i < nPeers ; i++) {
+					byte[] ipBytes = new byte[4];
+					peers.get(ipBytes);
+					String ip = InetAddress.getByAddress(ipBytes)
+						.getHostAddress();
+					int port = (0xFF & (int)peers.get()) << 8
+						| (0xFF & (int)peers.get());
+					this.processAnnouncedPeer(null, ip, port);
 				}
 			}
+		} catch (UnknownHostException uhe) {
+			logger.warn("Invalid compact tracker response!", uhe);
 		} catch (ParseException pe) {
 			logger.warn("Invalid tracker response!", pe);
 		} catch (InvalidBEncodingException ibee) {
 			logger.warn("Invalid tracker response!", ibee);
 		} catch (UnsupportedEncodingException uee) {
 			logger.error(uee);
+		}
+	}
+
+	/** Process a peer's information obtained in an announce reply.
+	 *
+	 * <p>
+	 * Retrieve or create a new peer for the peer information obtained, and
+	 * eventually connect to it.
+	 * </p>
+	 *
+	 * @param peerId An optional peerId byte array.
+	 * @param ip The peer's IP address.
+	 * @param port The peer's port.
+	 */
+	private void processAnnouncedPeer(byte[] peerId, String ip, int port) {
+		SharingPeer peer = this.getOrCreatePeer(peerId, ip, port);
+
+		synchronized (peer) {
+			// Attempt to connect to the peer if and only if:
+			//   - We're not already connected to it;
+			//   - We're not a seeder (we leave the responsibility
+			//	   of connecting to peers that need to download
+			//     something), or we are a seeder but we're still
+			//     willing to initiate some outbound connections.
+			if (!peer.isBound() &&
+				(!this.isSeed() ||
+				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
+				if (!this.service.connect(peer)) {
+					logger.debug("Removing peer " + peer + ".");
+					this.peers.remove(peer.hasPeerId()
+							? peer.getHexPeerId()
+							: peer.getHostIdentifier());
+				}
+			}
 		}
 	}
 
@@ -669,7 +725,9 @@ public class Client extends Observable implements Runnable,
 
 	@Override
 	public void handlePeerDisconnected(SharingPeer peer) {
-		if (this.connected.remove(peer.getHexPeerId()) != null) {
+		if (this.connected.remove(peer.hasPeerId()
+					? peer.getHexPeerId()
+					: peer.getHostIdentifier()) != null) {
 			logger.debug("Peer " + peer + " disconnected, [" +
 					this.connected.size() + "/" +
 					this.peers.size() + "].");

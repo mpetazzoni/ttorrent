@@ -288,7 +288,7 @@ public class ConnectionHandler implements Runnable {
 		try {
 			this.sendHandshake(socket);
 			Handshake hs = this.validateHandshake(socket,
-					peer.getPeerId().array());
+					(peer.hasPeerId() ? peer.getPeerId().array() : null));
 			this.fireNewPeerConnection(socket, hs.getPeerId());
 			return true;
 		} catch (ParseException pe) {

@@ -15,6 +15,8 @@
 
 package com.turn.bittorrent.common;
 
+import com.turn.bittorrent.common.Torrent;
+
 import java.nio.ByteBuffer;
 
 /** A basic BitTorrent peer.
@@ -28,26 +30,41 @@ public class Peer {
 
 	private ByteBuffer peerId;
 	private String hexPeerId;
+
 	private String ip;
 	private int port;
+	private String hostId;
 
 	/** Instanciate a new peer for the given torrent.
 	 *
-	 * @param peerId The byte-encoded peer ID.
-	 * @param hexPeerId The hexadecimal encoded string representation of
-	 * the peer ID.
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
+	 * @param peerId The byte-encoded peer ID.
 	 */
-	public Peer(ByteBuffer peerId, String hexPeerId, String ip, int port) {
-		this.peerId = peerId;
-		this.hexPeerId = hexPeerId;
+	public Peer(String ip, int port, ByteBuffer peerId) {
 		this.ip = ip;
 		this.port = port;
+		this.hostId = String.format("%s:%d", ip, port);
+
+		this.setPeerId(peerId);
+	}
+
+	public boolean hasPeerId() {
+		return this.peerId != null;
 	}
 
 	public ByteBuffer getPeerId() {
 		return this.peerId;
+	}
+
+	public void setPeerId(ByteBuffer peerId) {
+		if (peerId != null) {
+			this.peerId = peerId;
+			this.hexPeerId = Torrent.byteArrayToHexString(peerId.array());
+		} else {
+			this.peerId = null;
+			this.hexPeerId = null;
+		}
 	}
 
 	/** Get the hexadecimal-encoded string representation of this peer's ID.
@@ -64,14 +81,24 @@ public class Peer {
 		return this.port;
 	}
 
+	public String getHostIdentifier() {
+		return this.hostId;
+	}
+
 	/** Return a human-readable representation of this peer.
 	 */
 	public String toString() {
-		return new StringBuilder("peer://")
+		StringBuilder s = new StringBuilder("peer://")
 			.append(this.ip).append(":").append(this.port)
-			.append("/-")
-			.append(this.hexPeerId.substring(this.hexPeerId.length()-6))
-			.toString();
+			.append("/");
+
+		if (this.hasPeerId()) {
+			s.append(this.hexPeerId.substring(this.hexPeerId.length()-6));
+		} else {
+			s.append("?");
+		}
+
+		return s.toString();
 	}
 
 	/** Tells if two peers seem to lookalike, i.e. they have the same IP and

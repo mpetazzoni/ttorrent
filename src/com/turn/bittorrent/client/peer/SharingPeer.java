@@ -90,16 +90,14 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	/** Create a new sharing peer on a given torrent.
 	 *
-	 * @param peerId The byte-encoded peer ID.
-	 * @param hexPeerId The hexadecimal encoded string representation of
-	 * the peer ID.
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
+	 * @param peerId The byte-encoded peer ID.
 	 * @param torrent The torrent this peer exchanges with us on.
 	 */
-	public SharingPeer(ByteBuffer peerId, String hexPeerId,
-			String ip, int port, SharedTorrent torrent) {
-		super(peerId, hexPeerId, ip, port);
+	public SharingPeer(String ip, int port, ByteBuffer peerId,
+			SharedTorrent torrent) {
+		super(ip, port, peerId);
 
 		this.torrent = torrent;
 		this.listeners = new HashSet<PeerActivityListener>();

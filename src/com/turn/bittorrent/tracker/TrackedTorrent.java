@@ -162,7 +162,7 @@ public class TrackedTorrent extends Torrent {
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 
 		if ("started".equals(event)) {
-			peer = new TrackedPeer(this, peerId, hexPeerId, ip, port);
+			peer = new TrackedPeer(this, ip, port, peerId);
 			state = TrackedPeer.PeerState.STARTED;
 			this.addPeer(peer);
 		} else if ("stopped".equals(event)) {

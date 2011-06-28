@@ -76,15 +76,13 @@ public class TrackedPeer extends Peer {
 	/** Instanciate a new tracked peer for the given torrent.
 	 *
 	 * @param torrent The torrent this peer exchanges on.
-	 * @param peerId The byte-encoded peer ID.
-	 * @param hexPeerId The hexadecimal encoded string representation of
-	 * the peer ID.
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
+	 * @param peerId The byte-encoded peer ID.
 	 */
-	public TrackedPeer(Torrent torrent, ByteBuffer peerId, String hexPeerId,
-			String ip, int port) {
-		super(peerId, hexPeerId, ip, port);
+	public TrackedPeer(Torrent torrent, String ip, int port,
+			ByteBuffer peerId) {
+		super(ip, port, peerId);
 		this.torrent = torrent;
 
 		// Instanciated peers start in the UNKNOWN state.
@@ -138,7 +136,9 @@ public class TrackedPeer extends Peer {
 	 */
 	public BEValue toBEValue() throws UnsupportedEncodingException {
 		Map<String, BEValue> peer = new HashMap<String, BEValue>();
-		peer.put("peer id", new BEValue(this.getPeerId().array()));
+		if (this.hasPeerId()) {
+			peer.put("peer id", new BEValue(this.getPeerId().array()));
+		}
 		peer.put("ip", new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
 		peer.put("port", new BEValue(this.getPort()));
 		return new BEValue(peer);

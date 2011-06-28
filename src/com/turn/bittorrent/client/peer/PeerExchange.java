@@ -88,6 +88,11 @@ class PeerExchange {
 		this.listeners = new HashSet<MessageListener>();
 		this.sendQueue = new LinkedBlockingQueue<Message>();
 
+		if (!this.peer.hasPeerId()) {
+			throw new IllegalStateException("Peer does not have a " +
+					"peer ID. Was the handshake made properly?");
+		}
+
 		String peerId = this.peer.getHexPeerId().substring(
 				this.peer.getHexPeerId().length()-6)
 				.toUpperCase();

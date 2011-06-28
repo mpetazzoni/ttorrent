@@ -263,6 +263,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		}
 
 		params.put("ip", this.address.getAddress().getHostAddress());
+		params.put("compact", "1");
 
 		Map<String, BEValue> result = null;
 		try {
@@ -328,7 +329,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 				.append("&");
 		}
 
-		return new URL(url.toString());
+		return new URL(url.toString().substring(0, url.length()-1));
 	}
 
 	/** Handle an announce request answer to set the announce interval.
