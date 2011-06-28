@@ -14,7 +14,7 @@
 -->
 
 <!-- Ant buildfile for the BitTorrent Java library -->
-<project basedir="." default="dist" name="bittorrent">
+<project basedir="." default="dist" name="ttorrent">
 	<property name="build.dir" location="build" />
 	<property name="dist.dir" location="dist" />
 	<property name="doc.dir" location="doc" />
@@ -47,7 +47,7 @@
 	<target name="build" depends="init">
 		<javac destdir="${build.dir}" includeantruntime="false"
 			debug="off" sourcepath="" srcdir="${src.dir}">
-			<include name="com/turn/bittorrent/**/*.java" />
+			<include name="com/turn/ttorrent/**/*.java" />
 			<compilerarg value="-Xlint" />
 			<classpath refid="project.classpath" />
 		</javac>
@@ -63,7 +63,7 @@
 				<attribute name="Implementation-Title" value="Java BitTorrent library" />
 				<attribute name="Implementation-Version" value="${project.version}" />
 				<attribute name="Main-Class"
-					value="com.turn.bittorrent.client.Client" />
+					value="com.turn.ttorrent.client.Client" />
 			</manifest>
 		</jar>
 	</target>
@@ -72,11 +72,11 @@
 		<mkdir dir="${doc.dir}" />
 		<javadoc destdir="${doc.dir}"
 			access="private"
-			header="Pure-Java BitTorrent suite"
-			windowtitle="BitTorrent library"
-			doctitle="BitTorrent library"
+			header="Turn's pure-Java BitTorrent library"
+			windowtitle="Turn's BitTorrent library"
+			doctitle="Turn's BitTorrent library"
 			noqualifier="java.*:com.turn.*">
-			<fileset dir="${src.dir}" includes="com/turn/bittorrent/**/*.java" />
+			<fileset dir="${src.dir}" includes="com/turn/ttorrent/**/*.java" />
 			<classpath refid="project.classpath" />
 		</javadoc>
 	</target>

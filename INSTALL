@@ -22,7 +22,7 @@ Simply execute the following command:
 
   $ ant dist
 
-To build the bittorrent.jar file (in the dist/ directory). You can then import
+To build the library's JAR file (in the dist/ directory). You can then import
 this JAR file into your Java project and start using the Java BitTorrent
 library.
 
