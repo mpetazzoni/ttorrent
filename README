@@ -3,7 +3,7 @@ A Java implementation of the BitTorrent protocol
 
 This is a pure-Java implementation of the BitTorrent protocol, providing a
 BitTorrent tracker, a BitTorrent client and the related Torrent metainfo files
-creation and parsing capabilities. It is designed to be embedded into a larger
+creation and parsing capabilities. It is designed to be embedded into larger
 applications.
 
 This tool suite was implemented as part of Turn's (http://www.turn.com) release
