@@ -28,6 +28,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
@@ -404,6 +405,7 @@ public class Client extends Observable implements Runnable,
 			if (search.hasPeerId()) {
 				peer = this.peers.get(search.getHostIdentifier());
 				if (peer != null) {
+					// Set peer ID for perviously known peer.
 					peer.setPeerId(search.getPeerId());
 
 					this.peers.remove(peer.getHostIdentifier());
@@ -413,10 +415,13 @@ public class Client extends Observable implements Runnable,
 			}
 
 			peer = new SharingPeer(ip, port, search.getPeerId(), this.torrent);
-			this.peers.putIfAbsent(peer.getHostIdentifier(), peer);
+			this.peers.putIfAbsent(peer.hasPeerId()
+					? peer.getHexPeerId()
+					: peer.getHostIdentifier(),
+				peer);
+			logger.trace("Created new peer " + peer + ".");
 		}
 
-		peer.register(this.torrent);
 		return peer;
 	}
 
@@ -644,16 +649,23 @@ public class Client extends Observable implements Runnable,
 	public void handleNewPeerConnection(Socket s, byte[] peerId) {
 		SharingPeer peer = this.getOrCreatePeer(peerId,
 				s.getInetAddress().getHostAddress(), s.getPort());
-		this.connected.put(peer.getHexPeerId(), peer);
 
-		synchronized (peer) {
-			peer.register(this);
-			peer.bind(s);
+		try {
+			synchronized (peer) {
+				peer.register(this);
+				peer.bind(s);
+			}
+
+			this.connected.put(peer.getHexPeerId(), peer);
+			peer.register(this.torrent);
+			logger.info("New peer connection with " + peer +
+					" [" + this.connected.size() + "/" +
+					this.peers.size() + "].");
+		} catch (SocketException se) {
+			this.connected.remove(peer.getHexPeerId());
+			logger.warn("Could not handle new peer connection " +
+					"with " + peer + ": " + se.getMessage());
 		}
-
-		logger.info("New peer connection with " + peer +
-				" [" + this.connected.size() + "/" +
-				this.peers.size() + "].");
 	}
 
 

@@ -22,6 +22,7 @@ import com.turn.ttorrent.client.SharedTorrent;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -235,7 +236,9 @@ public class SharingPeer extends Peer implements MessageListener {
 	 *
 	 * @param socket The connected socket for this peer.
 	 */
-	public synchronized void bind(Socket socket) {
+	public synchronized void bind(Socket socket) throws SocketException {
+		this.unbind(true);
+
 		this.exchange = new PeerExchange(this, this.torrent, socket);
 		this.exchange.register(this);
 
@@ -367,6 +370,10 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @param message The PIECE message received.
 	 */
 	private synchronized void removeBlockRequest(Message.PieceMessage message) {
+		if (this.requests == null) {
+			return;
+		}
+
 		for (Message.RequestMessage request : this.requests) {
 			if (request.getPiece() == message.getPiece() &&
 					request.getOffset() == message.getOffset()) {

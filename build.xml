@@ -22,7 +22,7 @@
 	<property name="src.dir" location="src" />
 
 	<!-- Release version. -->
-	<property name="project.version" value="1.0.2" />
+	<property name="project.version" value="1.0.3" />
 
 	<path id="project.classpath">
 		<pathelement location="${build.dir}" />
@@ -46,7 +46,7 @@
 
 	<target name="build" depends="init">
 		<javac destdir="${build.dir}" includeantruntime="false"
-			debug="off" sourcepath="" srcdir="${src.dir}">
+			debug="on" sourcepath="" srcdir="${src.dir}">
 			<include name="com/turn/ttorrent/**/*.java" />
 			<compilerarg value="-Xlint" />
 			<classpath refid="project.classpath" />

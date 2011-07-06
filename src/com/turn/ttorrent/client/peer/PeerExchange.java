@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.InterruptedException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.BitSet;
@@ -80,10 +81,13 @@ class PeerExchange {
 	 * @param socket The connected socket to the peer.
 	 */
 	public PeerExchange(SharingPeer peer, SharedTorrent torrent,
-			Socket socket) {
+			Socket socket) throws SocketException {
 		this.peer = peer;
 		this.torrent = torrent;
 		this.socket = socket;
+
+		// Set the socket read timeout.
+		this.socket.setSoTimeout(PeerExchange.KEEP_ALIVE_FOR_MINUTES*60*1000);
 
 		this.listeners = new HashSet<MessageListener>();
 		this.sendQueue = new LinkedBlockingQueue<Message>();
@@ -227,7 +231,7 @@ class PeerExchange {
 				}
 			} catch (IOException ioe) {
 				logger.trace("Could not read message from " + peer +
-						": " + ioe.getMessage());
+						": " + ioe.getMessage(), ioe);
 				peer.unbind(true);
 			}
 		}
@@ -244,12 +248,8 @@ class PeerExchange {
 	 */
 	private class OutgoingThread extends Thread {
 
-		private long lastMessageTime;
-
 		@Override
 		public void run() {
-			this.lastMessageTime = 0;
-
 			try {
 				OutputStream os = socket.getOutputStream();
 
@@ -263,20 +263,11 @@ class PeerExchange {
 								TimeUnit.MINUTES);
 
 						if (message == null) {
-							// If we have to send a keep alive, check it hasn't
-							// been more than KEEP_ALIVE_FOR_MINUTES since the
-							// last message, otherwise we can consider this
-							// peer as dead.
-							if (System.currentTimeMillis() -
-									this.lastMessageTime >
-										PeerExchange.KEEP_ALIVE_FOR_MINUTES) {
-								peer.unbind(true);
+							if (stop) {
 								return;
-							} else {
-								message = Message.KeepAliveMessage.craft();
 							}
-						} else {
-							this.lastMessageTime = 0;
+
+							message = Message.KeepAliveMessage.craft();
 						}
 
 						logger.trace("Sending " + message + " to " + peer + ".");
@@ -287,7 +278,7 @@ class PeerExchange {
 				}
 			} catch (IOException ioe) {
 				logger.trace("Could not send message to " + peer +
-						": " + ioe.getMessage());
+						": " + ioe.getMessage(), ioe);
 				peer.unbind(true);
 			}
 		}
