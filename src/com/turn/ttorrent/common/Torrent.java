@@ -115,6 +115,8 @@ public class Torrent {
 		return this.name;
 	}
 
+	/** Return the hash of the B-encoded meta-info structure of this torrent.
+	 */
 	public byte[] getInfoHash() {
 		return this.info_hash;
 	}
@@ -139,6 +141,8 @@ public class Torrent {
 		return this.encoded;
 	}
 
+	/** Return the announce URL used by this torrent.
+	 */
 	public String getAnnounceUrl() {
 		return this.announceUrl;
 	}
@@ -173,6 +177,19 @@ public class Torrent {
 		}
 	}
 
+	/** Create a {@link Torrent} object for a file.
+	 *
+	 * <p>
+	 * Hash the given file (by filename) to create the {@link Torrent} object
+	 * representing the Torrent metainfo about this file, needed for announcing
+	 * and/or sharing said file.
+	 * </p>
+	 *
+	 * @param source The file name.
+	 * @param announce The announce URL that will be used for this torrent.
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
 	public static Torrent create(File source, String announce, String createdBy)
 		throws NoSuchAlgorithmException, IOException {
 		logger.info("Creating torrent for " + source.getName() + "...");
@@ -195,6 +212,20 @@ public class Torrent {
 		return new Torrent(baos.toByteArray());
 	}
 
+	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
+	 *
+	 * <p>
+	 * Hashes the given file piece by piece using the default Torrent piece
+	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
+	 * these hashes, as a string.
+	 * </p>
+	 *
+	 * <p>
+	 * This is used for creating Torrent meta-info structures from a file.
+	 * </p>
+	 *
+	 * @param source The file to hash.
+	 */
 	private static String hashPieces(File source)
 		throws NoSuchAlgorithmException, IOException {
 		MessageDigest md = MessageDigest.getInstance("SHA-1");

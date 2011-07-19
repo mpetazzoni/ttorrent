@@ -55,7 +55,7 @@ public class Tracker {
 	/** The in-memory repository of torrents tracked. */
 	private ConcurrentMap<String, TrackedTorrent> torrents;
 
-	/** Create a new BitTorrent tracket on the default port.
+	/** Create a new BitTorrent tracker on the default port.
 	 *
 	 * @param address The address to bind to.
 	 * @param version A version string served in the HTTP headers
