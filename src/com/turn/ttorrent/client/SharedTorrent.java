@@ -237,6 +237,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.pieces.length + "].");
 	}
 
+	public synchronized void close() {
+		try {
+			this.bucket.close();
+		} catch (IOException ioe) {
+			logger.error("Error closing torrent byte storage: " +
+				ioe.getMessage());
+		}
+	}
+
 	/** Retrieve a piece object by index.
 	 *
 	 * @param index The index of the piece in this torrent.
@@ -504,6 +513,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		} else {
 			// When invalid, remark that piece as non-requested.
 			logger.warn("Downloaded piece " + piece + " was not valid ;-(");
+		}
+
+		if (this.isComplete()) {
+			try {
+				this.bucket.complete();
+			} catch (IOException ioe) {
+				logger.error("Could not move downloaded file(s) to their " +
+					"target location!", ioe);
+			}
 		}
 
 		logger.trace("We now have " + this.completedPieces.cardinality() +

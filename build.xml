@@ -22,7 +22,7 @@
 	<property name="src.dir" location="src" />
 
 	<!-- Release version. -->
-	<property name="project.version" value="1.0.3" />
+	<property name="project.version" value="1.0.4" />
 
 	<path id="project.classpath">
 		<pathelement location="${build.dir}" />

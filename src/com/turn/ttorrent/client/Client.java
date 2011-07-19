@@ -221,11 +221,28 @@ public class Client extends Observable implements Runnable,
 
 	/** Immediately but gracefully stop this client.
 	 */
-	public synchronized void stop() {
+	public void stop() {
+		this.stop(true);
+	}
+
+	/** Immediately but gracefully stop this client.
+	 *
+	 * @param wait Whether to wait for the client execution thread to complete
+	 * or not. This allows for the client's state to be settled down in one of
+	 * the <tt>DONE</tt> or <tt>ERROR</tt> states when this method returns.
+	 */
+	public void stop(boolean wait) {
 		this.stop = true;
 
 		if (this.thread != null && this.thread.isAlive()) {
 			this.thread.interrupt();
+			if (wait) {
+				try {
+					this.thread.join();
+				} catch (InterruptedException ie) {
+					// Ignore
+				}
+			}
 		}
 
 		this.thread = null;
@@ -315,6 +332,8 @@ public class Client extends Observable implements Runnable,
 		for (SharingPeer peer : this.connected.values()) {
 			peer.unbind(true);
 		}
+
+		this.torrent.close();
 
 		// Determine final state
 		if (this.torrent.isComplete()) {
