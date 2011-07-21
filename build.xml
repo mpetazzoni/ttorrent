@@ -24,6 +24,9 @@
 	<!-- Release version. -->
 	<property name="project.version" value="1.0.4" />
 
+	<property name="jar.location"
+	          value="${dist.dir}/${ant.project.name}-${project.version}.jar" />
+
 	<path id="project.classpath">
 		<pathelement location="${build.dir}" />
 		<fileset dir="${lib.dir}">
@@ -40,7 +43,7 @@
 	</target>
 
 	<target name="distclean" depends="clean">
-		<delete dir="${dist.dir}" />
+		<delete file="${jar.location}" />
 		<delete dir="${doc.dir}" />
 	</target>
 
@@ -54,8 +57,7 @@
 	</target>
 
 	<target name="dist" depends="build">
-		<jar destfile="${dist.dir}/${ant.project.name}-${project.version}.jar"
-			basedir="${build.dir}">
+		<jar destfile="${jar.location}" basedir="${build.dir}">
 			<zipgroupfileset dir="${lib.dir}" includes="*.jar" />
 			<manifest>
 				<attribute name="Built-By" value="${user.name}" />
