@@ -306,6 +306,28 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.completedPieces.cardinality() == this.pieces.length;
 	}
 
+	/** Finalize the download of this torrent.
+	 *
+	 * <p>
+	 * This realizes the final, pre-seeding phase actions on this torrent,
+	 * which usually consists in putting the torrent data in their final form
+	 * and at their target location.
+	 * </p>
+	 *
+	 * @see TorrentByteStorage#finish
+	 */
+	public synchronized void finish() throws IOException {
+		if (!this.isComplete()) {
+			throw new IllegalStateException("Torrent download is not complete!");
+		}
+
+		this.bucket.finish();
+	}
+
+	public synchronized boolean isFinished() {
+		return this.isComplete() && this.bucket.isFinished();
+	}
+
 	/** Return the completion percentage of this torrent.
 	 *
 	 * This is computed from the number of completed pieces divided by the
@@ -501,7 +523,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param piece The piece in question.
 	 */
 	@Override
-	public synchronized void handlePieceCompleted(SharingPeer peer, Piece piece) {
+	public synchronized void handlePieceCompleted(SharingPeer peer,
+		Piece piece) throws IOException {
 		// Regardless of validity, record the number of bytes downloaded and
 		// mark the piece as not requseted anymore
 		this.downloaded += piece.size();
@@ -513,15 +536,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		} else {
 			// When invalid, remark that piece as non-requested.
 			logger.warn("Downloaded piece " + piece + " was not valid ;-(");
-		}
-
-		if (this.isComplete()) {
-			try {
-				this.bucket.complete();
-			} catch (IOException ioe) {
-				logger.error("Could not move downloaded file(s) to their " +
-					"target location!", ioe);
-			}
 		}
 
 		logger.trace("We now have " + this.completedPieces.cardinality() +

@@ -105,6 +105,10 @@ public class TorrentByteStorage {
 		this.channel.write(block, offset);
 	}
 
+	public boolean isFinished() {
+		return this.current.equals(this.target);
+	}
+
 	/** Move the partial file to its final location.
 	 *
 	 * <p>
@@ -114,16 +118,22 @@ public class TorrentByteStorage {
 	 * switched to this new file before the partial is removed.
 	 * </p>
 	 */
-	public synchronized void complete() throws IOException {
+	public synchronized void finish() throws IOException {
 		this.channel.force(true);
 
 		// Nothing more to do if we're already on the target file.
-		if (this.current.equals(this.target)) {
+		if (this.isFinished()) {
 			return;
 		}
 
-		FileUtils.deleteQuietly(this.target);
-		FileUtils.copyFile(this.current, this.target);
+		try {
+			FileUtils.deleteQuietly(this.target);
+			FileUtils.copyFile(this.current, this.target);
+		} catch (IOException ioe) {
+			// Don't leave a partially copied file in the destination.
+			FileUtils.deleteQuietly(this.target);
+			throw ioe;
+		}
 
 		logger.debug("Re-opening torrent byte storage at " +
 				this.target.getAbsolutePath() + ".");
@@ -137,6 +147,8 @@ public class TorrentByteStorage {
 		this.current = this.target;
 
 		FileUtils.deleteQuietly(this.partial);
+		logger.info("Moved torrent data from " + this.partial.getName() +
+			" to " + this.target.getName() + ".");
 	}
 
 	public synchronized void close() throws IOException {

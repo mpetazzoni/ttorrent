@@ -90,7 +90,8 @@ public interface PeerActivityListener extends EventListener {
 	 * @param peer The peer we got this piece from.
 	 * @param piece The piece in question.
 	 */
-	public void handlePieceCompleted(SharingPeer peer, Piece piece);
+	public void handlePieceCompleted(SharingPeer peer, Piece piece)
+		throws IOException;
 
 	/** Peer disconnection handler.
 	 *

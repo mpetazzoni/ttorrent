@@ -606,7 +606,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 *
 	 * @param piece The completed piece.
 	 */
-	private void firePieceCompleted(Piece piece) {
+	private void firePieceCompleted(Piece piece) throws IOException {
 		for (PeerActivityListener listener : this.listeners) {
 			listener.handlePieceCompleted(this, piece);
 		}

@@ -336,7 +336,7 @@ public class Client extends Observable implements Runnable,
 		this.torrent.close();
 
 		// Determine final state
-		if (this.torrent.isComplete()) {
+		if (this.torrent.isFinished()) {
 			this.setState(ClientState.DONE);
 		} else {
 			this.setState(ClientState.ERROR);
@@ -721,7 +721,8 @@ public class Client extends Observable implements Runnable,
 	 * @param piece The piece in question.
 	 */
 	@Override
-	public void handlePieceCompleted(SharingPeer peer, Piece piece) {
+	public void handlePieceCompleted(SharingPeer peer, Piece piece)
+		throws IOException {
 		synchronized (this.torrent) {
 			if (piece.isValid()) {
 				// Make sure the piece is marked as completed in the torrent
@@ -749,6 +750,7 @@ public class Client extends Observable implements Runnable,
 			if (this.torrent.isComplete()) {
 				logger.info("Last piece validated and completed, " +
 						"download is complete.");
+				this.torrent.finish();
 				this.seed();
 			}
 		}
