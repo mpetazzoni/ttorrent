@@ -33,7 +33,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Incoming peer connections service.
  *
@@ -69,7 +70,7 @@ import org.apache.log4j.Logger;
  */
 public class ConnectionHandler implements Runnable {
 
-	private static final Logger logger = Logger.getLogger(ConnectionHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ConnectionHandler.class);
 
 	public static final int PORT_RANGE_START = 6881;
 	public static final int PORT_RANGE_END = 6889;
@@ -185,7 +186,7 @@ public class ConnectionHandler implements Runnable {
 		try {
 			this.socket.setSoTimeout(250);
 		} catch (SocketException se) {
-			logger.warn(se);
+			logger.warn("{}", se);
 			this.stop();
 		}
 
@@ -195,7 +196,7 @@ public class ConnectionHandler implements Runnable {
 			} catch (SocketTimeoutException ste) {
 				// Ignore and go back to sleep
 			} catch (IOException ioe) {
-				logger.warn(ioe);
+				logger.warn("{}", ioe);
 				this.stop();
 			}
 

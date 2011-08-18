@@ -48,10 +48,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A pure-java BitTorrent client.
  *
@@ -79,7 +77,7 @@ public class Client extends Observable implements Runnable,
 	   AnnounceResponseListener, IncomingConnectionListener,
 		PeerActivityListener {
 
-	private static final Logger logger = Logger.getLogger(Client.class);
+	private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
@@ -364,7 +362,7 @@ public class Client extends Observable implements Runnable,
 			}
 		}
 
-		logger.info("BitTorrent client " + this.getState().name() + ", " +
+		logger.debug("BitTorrent client " + this.getState().name() + ", " +
 			choked + "/" +
 			this.connected.size() + "/" +
 			this.peers.size() + " peers, " +
@@ -608,7 +606,7 @@ public class Client extends Observable implements Runnable,
 		} catch (InvalidBEncodingException ibee) {
 			logger.warn("Invalid tracker response!", ibee);
 		} catch (UnsupportedEncodingException uee) {
-			logger.error(uee);
+			logger.error("{}", uee);
 		}
 	}
 
@@ -848,8 +846,6 @@ public class Client extends Observable implements Runnable,
 	/** Main client entry point for standalone operation.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-					new PatternLayout("%d [%-20t] %-5p: %m%n")));
 
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
@@ -867,7 +863,7 @@ public class Client extends Observable implements Runnable,
 				System.exit(1);
 			}
 		} catch (Exception e) {
-			logger.fatal(e);
+			logger.error("{}", e);
 			e.printStackTrace();
 			System.exit(2);
 		}

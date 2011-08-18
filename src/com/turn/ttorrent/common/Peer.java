@@ -108,7 +108,6 @@ public class Peer {
 		if (other == null) {
 			return false;
 		}
-
-		return this.ip.equals(other.getIp()) && this.port == other.getPort();
+        return this.toString().equals(other.toString());
 	}
 }

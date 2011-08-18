@@ -22,7 +22,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Torrent data storage.
  *
@@ -49,7 +50,7 @@ import org.apache.log4j.Logger;
 public class TorrentByteStorage {
 
 	private static final Logger logger =
-		Logger.getLogger(TorrentByteStorage.class);
+		LoggerFactory.getLogger(TorrentByteStorage.class);
 
 	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 

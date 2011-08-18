@@ -23,7 +23,8 @@ import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent piece.
  *
@@ -41,7 +42,7 @@ import org.apache.log4j.Logger;
  */
 public class Piece implements Comparable<Piece> {
 
-	private static final Logger logger = Logger.getLogger(Piece.class);
+	private static final Logger logger = LoggerFactory.getLogger(Piece.class);
 
 	public static final int BLOCK_SIZE = 16*1024; // 16kB
 
@@ -123,7 +124,7 @@ public class Piece implements Comparable<Piece> {
 				this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 			}
 		} catch (NoSuchAlgorithmException nsae) {
-			logger.error(nsae);
+			logger.error("{}", nsae);
 		}
 
 		return this.isValid();

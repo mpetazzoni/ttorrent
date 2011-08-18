@@ -19,6 +19,7 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 
+import java.io.FileOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -32,8 +33,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.List;
+import java.util.LinkedList;
+import java.util.Arrays;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent file tracked by the controller's BitTorrent tracker.
  *
@@ -53,7 +58,7 @@ import org.apache.log4j.Logger;
  */
 public class Torrent {
 
-	private static final Logger logger = Logger.getLogger(Torrent.class);
+	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
 	private static final int PIECE_LENGTH = 512 * 1024;
@@ -71,6 +76,7 @@ public class Torrent {
 
 	private String announceUrl;
 	private String name;
+	private List<String> files;
 	private byte[] info_hash;
 	private String hex_info_hash;
 
@@ -147,6 +153,13 @@ public class Torrent {
 		return this.announceUrl;
 	}
 
+    public void save(File output) throws IOException {
+        FileOutputStream fos = new FileOutputStream(output);
+        fos.write(getEncoded());
+        fos.flush();
+        fos.close();
+    }
+
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA-1");
 		md.update(data);
@@ -212,6 +225,73 @@ public class Torrent {
 		return new Torrent(baos.toByteArray());
 	}
 
+	/** Create a {@link Torrent} object for a file.
+	 *
+	 * <p>
+	 * Hash the given file (by filename) to create the {@link Torrent} object
+	 * representing the Torrent metainfo about this file, needed for announcing
+	 * and/or sharing said file.
+	 * </p>
+	 *
+	 * @param source The suggested destination.
+	 * @param A list of files to add to this torrent
+	 * @param announce The announce URL that will be used for this torrent.
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	public static Torrent create(File source, List<File> files, String announce, String createdBy)
+		throws NoSuchAlgorithmException, IOException {
+		logger.info("Creating torrent for " + source.getName() + "...");
+
+		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
+		torrent.put("announce", new BEValue(announce));
+		torrent.put("creation date", new BEValue(new Date().getTime()));
+		torrent.put("created by", new BEValue(createdBy));
+
+		Map<String, BEValue> info = new TreeMap<String, BEValue>();
+		info.put("name", new BEValue(source.getName()));
+
+        long totalLength = 0;
+        List<BEValue> fileDicts = new LinkedList<BEValue>();
+        for (File file : files) {
+            Map<String, BEValue> fileInfo = new TreeMap<String, BEValue>();
+            long fileLength = file.length();
+            totalLength += fileLength;
+
+            fileInfo.put("length", new BEValue(fileLength));
+            fileInfo.put("path", new BEValue(getFilePath(file)));
+            fileDicts.add(new BEValue(fileInfo));
+        }
+        info.put("files", new BEValue(fileDicts));
+		info.put("length", new BEValue(totalLength));
+		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+		info.put("pieces", new BEValue(Torrent.hashPieces(files),
+					Torrent.BYTE_ENCODING));
+		torrent.put("info", new BEValue(info));
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		BEncoder.bencode(new BEValue(torrent), baos);
+		return new Torrent(baos.toByteArray());
+	}
+
+    private static List<BEValue> getFilePath(File file) throws UnsupportedEncodingException {
+        LinkedList<BEValue> path = new LinkedList<BEValue>();
+        File parent = file;
+        while (parent != null) {
+            path.addFirst(new BEValue(parent.getName()));
+            parent = parent.getParentFile();
+        }
+        return path;
+    }
+
+    private static String hashPieces(List<File> files)
+        throws NoSuchAlgorithmException, IOException {
+        StringBuffer pieces = new StringBuffer();
+        // hash all of the files
+        for (File file : files) pieces.append(hashPieces(file));
+        return pieces.toString();
+    }
+
 	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
 	 *
 	 * <p>
@@ -248,4 +328,39 @@ public class Torrent {
 
 		return pieces.toString();
 	}
+
+    /** Main entry point creating a torrent
+     */
+    public static void main(String[] args) {
+
+        if (args.length != 3) {
+            System.err.println("usage: Torrent <torrent> <announce url> <directory|file>");
+            System.exit(1);
+        }
+
+        try {
+            String announce = args[1];
+            File outfile = new File(args[0]);
+            File source = new File(args[2]);
+            if (!source.exists()) {
+                System.err.println("<directory|file> must exist!");
+                System.exit(1);
+            }
+            if (source.isDirectory()) {
+                // multi file torrent
+                List<File> files = Arrays.asList(source.listFiles());
+                Torrent t = Torrent.create(source, files, announce, "ttorrent, Bit Torrent");
+                t.save(outfile);
+            } else {
+                // single file torrent
+                Torrent t = Torrent.create(source, announce, "ttorrent, Bit Torrent");
+                t.save(outfile);
+            }
+            
+        } catch (Exception e) {
+            logger.error("{}", e);
+            e.printStackTrace();
+            System.exit(2);
+        }
+    }
 }

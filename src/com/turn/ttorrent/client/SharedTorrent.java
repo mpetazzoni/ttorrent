@@ -32,7 +32,8 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent shared by the BitTorrent client.
  *
@@ -50,7 +51,7 @@ import org.apache.log4j.Logger;
  */
 public class SharedTorrent extends Torrent implements PeerActivityListener {
 
-	private static final Logger logger = Logger.getLogger(SharedTorrent.class);
+	private static final Logger logger = LoggerFactory.getLogger(SharedTorrent.class);
 
 	/** Randomly select the next piece to download from a peer from the
 	 * RAREST_PIECE_JITTER available from it. */

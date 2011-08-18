@@ -33,7 +33,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Incoming and outgoing peer communication system.
  *
@@ -59,7 +60,7 @@ import org.apache.log4j.Logger;
  */
 class PeerExchange {
 
-	private static final Logger logger = Logger.getLogger(PeerExchange.class);
+	private static final Logger logger = LoggerFactory.getLogger(PeerExchange.class);
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
 	private static final int KEEP_ALIVE_FOR_MINUTES = 3;
 
