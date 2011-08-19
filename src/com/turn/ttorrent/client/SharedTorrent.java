@@ -122,6 +122,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		if (this.isMultiFile()) {
             for (TorrentFile torrentFile : this.getFiles()) {
                 File file = new File(destDir, torrentFile.getPath());
+                if (!file.getParentFile().exists()) file.getParentFile().mkdirs(); // create path
                 storageFiles.add(new TorrentByteStorageFile(file, torrentFile.length));
             }
 		} else {
