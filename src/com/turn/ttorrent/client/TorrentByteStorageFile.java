@@ -155,4 +155,8 @@ public class TorrentByteStorageFile {
 		this.channel.force(true);
 		this.raf.close();
 	}
+
+    public String toString() {
+        return String.format("%s (%s)", target.getName(), size);
+    }
 }

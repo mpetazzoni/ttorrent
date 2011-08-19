@@ -70,15 +70,22 @@ public class TorrentByteStorage {
 	}
 
     // select file, and calculate position into file
-    private FileOffset select(long position) {
-        long off = 0L;
+    private FileOffset select(long position) throws IOException {
+        long total = 0L;
         for (TorrentByteStorageFile file : files) {
-            if (position > (off + file.getSize())) {
-                long offset = position - off;
+            // logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
+            //    new Object[] { file, total, position, position, (total + file.getSize()) });
+            if (total <= position && position < (total + file.getSize())) {
+                long offset = position - total;
+                // logger.debug("found at file {} offset {}", file, offset);
                 return new FileOffset(file, offset);
             }
+            total += file.getSize();
         }
-        return null;
+        throw new IOException(String.format(
+                        "position %s past total length %s of all files",
+                        position, total
+                    ));
     }
 
 	public boolean isFinished() {
