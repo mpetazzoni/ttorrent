@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.Torrent.TorrentFile;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
@@ -26,11 +27,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +67,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private long left;
 
 	private TorrentByteStorage bucket;
-	private File file;
 
 	private int totalLength;
 	private int pieceLength;
@@ -89,12 +91,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	public SharedTorrent(byte[] torrent, File destDir)
 		throws IllegalArgumentException, FileNotFoundException, IOException {
 		super(torrent);
-
-		// Only deal with single-file torrents for now
-		if (this.decoded_info.containsKey("files")) {
-			throw new IllegalArgumentException(
-					"Multiple files torrents not implemented yet!");
-		}
 
 		// Make sure the destination/location directory exists, or try to
 		// create it.
@@ -121,8 +117,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					"Error reading torrent meta-info fields!");
 		}
 
-		this.file = new File(destDir, this.getName());
-		this.bucket = new TorrentByteStorage(this.file, this.totalLength);
+		// Deal with both single-file and multi-file torrents 
+        List<TorrentByteStorageFile> storageFiles = new LinkedList<TorrentByteStorageFile>();
+		if (this.isMultiFile()) {
+            for (TorrentFile torrentFile : this.getFiles()) {
+                File file = new File(destDir, torrentFile.getPath());
+                storageFiles.add(new TorrentByteStorageFile(file, torrentFile.length));
+            }
+		} else {
+            File file = new File(destDir, this.getName());
+            storageFiles.add(new TorrentByteStorageFile(file, this.totalLength));
+        }
+		this.bucket = new TorrentByteStorage(storageFiles);
 
 		this.random = new Random(System.currentTimeMillis());
 		this.uploaded = 0;

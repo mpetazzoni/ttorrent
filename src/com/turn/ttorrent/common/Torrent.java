@@ -76,9 +76,27 @@ public class Torrent {
 
 	private String announceUrl;
 	private String name;
-	private List<String> files;
+	private List<TorrentFile> files;
 	private byte[] info_hash;
 	private String hex_info_hash;
+
+    public static class TorrentFile {
+        public Long length;
+        public List<String> path;
+
+        public TorrentFile() {
+            this.length = 0L;
+            this.path = new LinkedList<String>();
+        }
+
+        public String getPath() {
+            String parent = "";
+            for (String part : this.path) {
+                parent = (new File(parent, part)).getPath();
+            }
+            return parent;
+        }
+    }
 
 	/** Create a new torrent from metainfo binary data.
 	 *
@@ -101,6 +119,24 @@ public class Torrent {
 			this.decoded_info = this.decoded.get("info").getMap();
 			this.name = this.decoded_info.get("name").getString();
 
+            if (this.decoded_info.containsKey("files")) {
+                this.files = new LinkedList<TorrentFile>();
+
+                List<BEValue> fileBEVals = this.decoded_info.get("files").getList();
+                for (BEValue fileBEVal : fileBEVals) {
+                    Map<String, BEValue> fileMap = fileBEVal.getMap();
+
+                    TorrentFile torrentFile = new TorrentFile();
+                    torrentFile.length = fileMap.get("length").getLong();
+
+                    List<BEValue> pathParts = fileMap.get("path").getList();
+                    for (BEValue path : pathParts) {
+                        torrentFile.path.add(path.getString());
+                    }
+                    this.files.add(torrentFile);
+                }
+            }
+
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			BEncoder.bencode(this.decoded_info, baos);
 			this.encoded_info = baos.toByteArray();
@@ -109,6 +145,18 @@ public class Torrent {
 		} catch (Exception e) {
 			throw new IllegalArgumentException("Can't parse torrent information!", e);
 		}
+	}
+
+    public boolean isMultiFile() {
+        return this.decoded_info.containsKey("files");
+    }
+
+	/** Get the list of files.
+	 *
+	 * For a multi-file torrent, path and length of each file. 
+	 */
+	public List<TorrentFile> getFiles() {
+		return this.files;
 	}
 
 	/** Get this torrent's name.
