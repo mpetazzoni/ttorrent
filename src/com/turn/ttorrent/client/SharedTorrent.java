@@ -68,7 +68,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private TorrentByteStorage bucket;
 
-	private int totalLength;
+	private long totalLength;
 	private int pieceLength;
 	private ByteBuffer piecesHashes;
 
@@ -103,15 +103,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		try {
 			this.pieceLength = this.decoded_info.get("piece length").getInt();
-			this.totalLength = this.decoded_info.get("length").getInt();
 			this.piecesHashes = ByteBuffer.wrap(this.decoded_info.get("pieces")
 					.getBytes());
 
-			if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
-					this.pieceLength < this.totalLength) {
-				throw new IllegalArgumentException("Torrent size does not " +
-						"match the number of pieces and the piece size!");
-			}
 		} catch (InvalidBEncodingException ibee) {
 			throw new IllegalArgumentException(
 					"Error reading torrent meta-info fields!");
@@ -120,14 +114,23 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		// Deal with both single-file and multi-file torrents 
         List<TorrentByteStorageFile> storageFiles = new LinkedList<TorrentByteStorageFile>();
 		if (this.isMultiFile()) {
+            long total = 0L;
             for (TorrentFile torrentFile : this.getFiles()) {
                 File file = new File(destDir, torrentFile.getPath());
                 if (!file.getParentFile().exists()) file.getParentFile().mkdirs(); // create path
                 storageFiles.add(new TorrentByteStorageFile(file, torrentFile.length));
+                total += torrentFile.length;
             }
+            this.totalLength = total;
 		} else {
+			this.totalLength = this.decoded_info.get("length").getLong();
             File file = new File(destDir, this.getName());
             storageFiles.add(new TorrentByteStorageFile(file, this.totalLength));
+        }
+        if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
+                this.pieceLength < this.totalLength) {
+            throw new IllegalArgumentException("Torrent size does not " +
+                "match the number of pieces and the piece size!");
         }
 		this.bucket = new TorrentByteStorage(storageFiles);
 
@@ -225,12 +228,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 			// The last piece may be shorter than the torrent's global piece
 			// length.
-			int len = (idx < this.pieces.length - 1) ?
+			Long len = (idx < this.pieces.length - 1) ?
 				 this.pieceLength :
 				 this.totalLength % this.pieceLength;
 			int off = idx * this.pieceLength;
 
-			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash);
+			this.pieces[idx] = new Piece(this.bucket, idx, off, len.intValue(), hash);
 			this.pieces[idx].validate();
 			if (this.pieces[idx].isValid()) {
 				this.completedPieces.set(idx);

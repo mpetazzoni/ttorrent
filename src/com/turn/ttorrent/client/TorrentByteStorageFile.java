@@ -93,12 +93,8 @@ public class TorrentByteStorageFile {
         return this.size;
     }
 
-	public ByteBuffer read(long offset, int length) throws IOException {
-		ByteBuffer data = ByteBuffer.allocate(length);
-		int bytes = this.channel.read(data, offset);
-		data.clear();
-		data.limit(bytes >= 0 ? bytes : 0);
-		return data;
+	public int read(ByteBuffer buffer, long offset) throws IOException {
+        return this.channel.read(buffer, offset);
 	}
 
 	public void write(ByteBuffer block, long offset) throws IOException {

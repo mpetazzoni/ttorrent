@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -307,11 +308,12 @@ public class Torrent {
             totalLength += fileLength;
 
             fileInfo.put("length", new BEValue(fileLength));
-            fileInfo.put("path", new BEValue(getFilePath(file)));
+            fileInfo.put("path", new BEValue(getFilePath(source, file)));
             fileDicts.add(new BEValue(fileInfo));
         }
         info.put("files", new BEValue(fileDicts));
-		info.put("length", new BEValue(totalLength));
+		// no length for multiple files??
+        // info.put("length", new BEValue(totalLength));
 		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
 		info.put("pieces", new BEValue(Torrent.hashPieces(files),
 					Torrent.BYTE_ENCODING));
@@ -322,22 +324,15 @@ public class Torrent {
 		return new Torrent(baos.toByteArray());
 	}
 
-    private static List<BEValue> getFilePath(File file) throws UnsupportedEncodingException {
+    private static List<BEValue> getFilePath(File source, File file) throws UnsupportedEncodingException {
         LinkedList<BEValue> path = new LinkedList<BEValue>();
         File parent = file;
         while (parent != null) {
+            if (parent.equals(source)) break;
             path.addFirst(new BEValue(parent.getName()));
             parent = parent.getParentFile();
         }
         return path;
-    }
-
-    private static String hashPieces(List<File> files)
-        throws NoSuchAlgorithmException, IOException {
-        StringBuffer pieces = new StringBuffer();
-        // hash all of the files
-        for (File file : files) pieces.append(hashPieces(file));
-        return pieces.toString();
     }
 
 	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
@@ -349,33 +344,75 @@ public class Torrent {
 	 * </p>
 	 *
 	 * <p>
+     * pieces maps to a string whose length is a multiple of 20.
+     * It is to be subdivided into strings of length 20, each of
+     * which is the SHA1 hash of the piece at the corresponding index.
+     * </p>
+     *
+	 * <p>
 	 * This is used for creating Torrent meta-info structures from a file.
 	 * </p>
+	 *
+	 * @param source The list of files to hash.
+	 */
+    private static String hashPieces(List<File> files)
+        throws NoSuchAlgorithmException, IOException {
+        StringBuffer pieces = new StringBuffer();
+        StringBuffer fileStr = new StringBuffer();
+        byte[] data = new byte[Torrent.PIECE_LENGTH];
+        ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+
+        // get total length
+        int counter = 0;
+        long total = 0L;
+        int read;
+        for (File file : files) total += file.length();
+
+        // hash each file
+        for (File file : files) {
+            FileInputStream fis = new FileInputStream(file);
+            while ((read = fis.read(data, 0, buffer.remaining())) > 0) {
+                buffer.put(data, 0, read);
+                if (buffer.position() == PIECE_LENGTH) {
+                    counter += 1;
+                    pieces.append(hashPiece(buffer));
+                    buffer.clear();
+                }
+            }
+            fileStr.append(" " + file.getName());
+            fis.close();
+        }
+        // handle left over
+        if (buffer.position() > 0) {
+            pieces.append(hashPiece(buffer));
+            counter += 1;
+        }
+
+		int n_pieces = new Double(Math.ceil((double)total /
+					Torrent.PIECE_LENGTH)).intValue();
+		logger.debug("Hashed" + fileStr + " (" +
+				total + " bytes) in " + n_pieces + " pieces, actual pieces " + counter + ".");
+
+		return pieces.toString();
+    }
+
+	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
 	 *
 	 * @param source The file to hash.
 	 */
 	private static String hashPieces(File source)
 		throws NoSuchAlgorithmException, IOException {
-		MessageDigest md = MessageDigest.getInstance("SHA-1");
-		FileInputStream fis = new FileInputStream(source);
-		StringBuffer pieces = new StringBuffer();
-		byte[] data = new byte[Torrent.PIECE_LENGTH];
-		int read;
-
-		while ((read = fis.read(data)) > 0) {
-			md.reset();
-			md.update(data, 0, read);
-			pieces.append(new String(md.digest(), Torrent.BYTE_ENCODING));
-		}
-		fis.close();
-
-		int n_pieces = new Double(Math.ceil((double)source.length() /
-					Torrent.PIECE_LENGTH)).intValue();
-		logger.debug("Hashed " + source.getName() + " (" +
-				source.length() + " bytes) in " + n_pieces + " pieces.");
-
-		return pieces.toString();
+        return hashPieces(Arrays.<File>asList(new File[] {source}));
 	}
+
+    private static String hashPiece(ByteBuffer buffer)
+        throws UnsupportedEncodingException, NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("SHA-1");
+        md.reset();
+        md.update(buffer.array(), 0, buffer.position());
+        return new String(md.digest(), Torrent.BYTE_ENCODING);
+    }
+
 
     /** Main entry point creating a torrent
      */

@@ -81,7 +81,7 @@ public class Client extends Observable implements Runnable,
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
-	private static final int UNCHOKING_FREQUENCY = 7;
+	private static final int UNCHOKING_FREQUENCY = 1;
 
 	/** Optimistic unchokes are done every 2 loop iterations, i.e. every
 	 * 2*UNCHOKING_FREQUENCY seconds. */
@@ -89,7 +89,7 @@ public class Client extends Observable implements Runnable,
 
 	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 10;
+	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 100;
 
 	public enum ClientState {
 		WAITING,

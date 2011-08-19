@@ -48,10 +48,12 @@ public class TorrentByteStorage {
     private static class FileOffset {
         public long offset;
         public TorrentByteStorageFile file;
+        public boolean last;
 
-        public FileOffset(TorrentByteStorageFile file, long offset) {
+        public FileOffset(TorrentByteStorageFile file, long offset, boolean last) {
             this.file = file;
             this.offset = offset;
+            this.last = last;
         }
     }
 
@@ -60,8 +62,21 @@ public class TorrentByteStorage {
 	}
 
 	public ByteBuffer read(long offset, int length) throws IOException {
+        int total = 0;
+        int read;
+        ByteBuffer buffer = ByteBuffer.allocate(length);
+
         FileOffset fileOffset = select(offset);
-        return fileOffset.file.read(fileOffset.offset, length);
+        total += read = fileOffset.file.read(buffer, fileOffset.offset);
+        // did we get enough data
+        while (read > 0 && buffer.remaining() > 0) {
+            offset += read;
+            fileOffset = select(offset);
+            total += read = fileOffset.file.read(buffer, fileOffset.offset);
+        }
+        buffer.clear();
+        buffer.limit(total >= 0 ? total : 0);
+        return buffer;
 	}
 
 	public void write(ByteBuffer block, long offset) throws IOException {
@@ -72,13 +87,14 @@ public class TorrentByteStorage {
     // select file, and calculate position into file
     private FileOffset select(long position) throws IOException {
         long total = 0L;
+        TorrentByteStorageFile last = files.get(files.size() - 1);
         for (TorrentByteStorageFile file : files) {
             // logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
             //    new Object[] { file, total, position, position, (total + file.getSize()) });
             if (total <= position && position < (total + file.getSize())) {
                 long offset = position - total;
                 // logger.debug("found at file {} offset {}", file, offset);
-                return new FileOffset(file, offset);
+                return new FileOffset(file, offset, last.equals(file));
             }
             total += file.getSize();
         }
