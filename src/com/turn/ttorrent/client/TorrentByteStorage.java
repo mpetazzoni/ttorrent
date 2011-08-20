@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import java.util.List;
+import java.util.LinkedList;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -46,13 +47,17 @@ public class TorrentByteStorage {
     List<TorrentByteStorageFile> files;
 
     private static class FileOffset {
-        public long offset;
+        public long offset;  // position into the file
+        public int position;  // position into the buffer
+        public int length;   // bytes to write / read
+        public boolean last; // last file?
         public TorrentByteStorageFile file;
-        public boolean last;
 
-        public FileOffset(TorrentByteStorageFile file, long offset, boolean last) {
+        public FileOffset(TorrentByteStorageFile file, long offset, int position, int length, boolean last) {
             this.file = file;
             this.offset = offset;
+            this.position = position;
+            this.length = length;
             this.last = last;
         }
     }
@@ -62,46 +67,75 @@ public class TorrentByteStorage {
 	}
 
 	public ByteBuffer read(long offset, int length) throws IOException {
-        int total = 0;
-        int read;
         ByteBuffer buffer = ByteBuffer.allocate(length);
-
-        FileOffset fileOffset = select(offset);
-        total += read = fileOffset.file.read(buffer, fileOffset.offset);
-        // did we get enough data
-        while (read > 0 && buffer.remaining() > 0) {
-            offset += read;
-            fileOffset = select(offset);
-            total += read = fileOffset.file.read(buffer, fileOffset.offset);
+        List<FileOffset> fileOffsets = select(offset, length);
+        int total = 0;
+        for (FileOffset fileOffset : fileOffsets) {
+            total += fileOffset.file.read(buffer, fileOffset.offset);
         }
         buffer.clear();
         buffer.limit(total >= 0 ? total : 0);
         return buffer;
 	}
 
-	public void write(ByteBuffer block, long offset) throws IOException {
-        FileOffset fileOffset = select(offset);
-        fileOffset.file.write(block, fileOffset.offset);
+	public void write(ByteBuffer block, long offset, int length) throws IOException {
+        List<FileOffset> fileOffsets = select(offset, length);
+        if (fileOffsets.size() == 1) {
+            // write the whole thing.
+            FileOffset fileOffset = fileOffsets.get(0);
+            fileOffset.file.write(block, fileOffset.offset);
+            return;
+        }
+        // get all the bytes
+        byte[] bytes = block.array();
+        for (FileOffset fileOffset : fileOffsets) {
+            // create a smaller buffers to write
+            ByteBuffer data = ByteBuffer.allocate(fileOffset.length);
+            // put the only the data for this file
+            data.put(bytes, fileOffset.position, fileOffset.length);
+            data.rewind();
+            fileOffset.file.write(data, fileOffset.offset);
+        }
+
 	}
 
     // select file, and calculate position into file
-    private FileOffset select(long position) throws IOException {
-        long total = 0L;
+    private List<FileOffset> select(long position, int length) throws IOException {
+
+        List<FileOffset> storeFiles = new LinkedList<FileOffset>();
         TorrentByteStorageFile last = files.get(files.size() - 1);
+
+        int nbytes = 0;  // number of bytes / offset into buffer
+        long total = 0L; // total offset into the contigous file 
+        boolean found = false;
+
         for (TorrentByteStorageFile file : files) {
             // logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
             //    new Object[] { file, total, position, position, (total + file.getSize()) });
-            if (total <= position && position < (total + file.getSize())) {
+            if (found || (!found && total <= position && position < (total + file.getSize()))) {
                 long offset = position - total;
-                // logger.debug("found at file {} offset {}", file, offset);
-                return new FileOffset(file, offset, last.equals(file));
+                int len = new Long(file.getSize() - offset).intValue();
+                if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
+
+                storeFiles.add(new FileOffset(file, offset, nbytes, len, last.equals(file)));
+                if (!found)  logger.debug("found at file {} offset {} length {}", new Object[] {file, offset, len});
+                if (found) logger.debug(" another file {} offset {} length {}", new Object[] {file, offset, len});
+
+                // move forward
+                nbytes += len; 
+                position += len;
+                found = true;
             }
+            if (nbytes >= length) break; // got enough files already
             total += file.getSize();
         }
-        throw new IOException(String.format(
+        if (false) {
+            throw new IOException(String.format(
                         "position %s past total length %s of all files",
                         position, total
                     ));
+        }
+        return storeFiles;
     }
 
 	public boolean isFinished() {

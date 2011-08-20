@@ -184,7 +184,7 @@ public class Piece implements Comparable<Piece> {
 		if (block.remaining() + offset == this.length) {
 			this.data.rewind();
 			logger.trace("Recording " + this + "...");
-			this.bucket.write(this.data, this.offset);
+			this.bucket.write(this.data, this.offset, this.length);
 			this.data = null;
 		}
 	}
