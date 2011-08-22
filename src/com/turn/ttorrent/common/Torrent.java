@@ -59,27 +59,27 @@ import org.slf4j.LoggerFactory;
  */
 public class Torrent {
 
-	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
+    private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
-	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int PIECE_LENGTH = 512 * 1024;
+    /** Torrent file piece length (in bytes), we use 512 kB. */
+    private static final int PIECE_LENGTH = 512 * 1024;
 
-	public static final int PIECE_HASH_SIZE = 20;
+    public static final int PIECE_HASH_SIZE = 20;
 
-	/** The query parameters encoding when parsing byte strings. */
-	public static final String BYTE_ENCODING = "ISO-8859-1";
+    /** The query parameters encoding when parsing byte strings. */
+    public static final String BYTE_ENCODING = "ISO-8859-1";
 
-	protected byte[] encoded;
-	protected Map<String, BEValue> decoded;
+    protected byte[] encoded;
+    protected Map<String, BEValue> decoded;
 
-	protected byte[] encoded_info;
-	protected Map<String, BEValue> decoded_info;
+    protected byte[] encoded_info;
+    protected Map<String, BEValue> decoded_info;
 
-	private String announceUrl;
-	private String name;
-	private List<TorrentFile> files;
-	private byte[] info_hash;
-	private String hex_info_hash;
+    private String announceUrl;
+    private String name;
+    private List<TorrentFile> files;
+    private byte[] info_hash;
+    private String hex_info_hash;
 
     public static class TorrentFile {
         public Long length;
@@ -99,26 +99,26 @@ public class Torrent {
         }
     }
 
-	/** Create a new torrent from metainfo binary data.
-	 *
-	 * Parses the metainfo data (which should be B-encoded as described in the
-	 * BitTorrent specification) and create a Torrent object from it.
-	 *
-	 * @param torrent The metainfo byte data.
-	 * @throws IllegalArgumentException When the info dictionnary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
-	 */
-	public Torrent(byte[] torrent) throws IllegalArgumentException {
-		this.encoded = torrent;
+    /** Create a new torrent from metainfo binary data.
+     *
+     * Parses the metainfo data (which should be B-encoded as described in the
+     * BitTorrent specification) and create a Torrent object from it.
+     *
+     * @param torrent The metainfo byte data.
+     * @throws IllegalArgumentException When the info dictionnary can't be
+     * encoded and hashed back to create the torrent's SHA-1 hash.
+     */
+    public Torrent(byte[] torrent) throws IllegalArgumentException {
+        this.encoded = torrent;
 
-		try {
-			this.decoded = BDecoder.bdecode(
-					new ByteArrayInputStream(this.encoded)).getMap();
+        try {
+            this.decoded = BDecoder.bdecode(
+                    new ByteArrayInputStream(this.encoded)).getMap();
 
-			this.announceUrl = this.decoded.get("announce").getString();
+            this.announceUrl = this.decoded.get("announce").getString();
 
-			this.decoded_info = this.decoded.get("info").getMap();
-			this.name = this.decoded_info.get("name").getString();
+            this.decoded_info = this.decoded.get("info").getMap();
+            this.name = this.decoded_info.get("name").getString();
 
             if (this.decoded_info.containsKey("files")) {
                 this.files = new LinkedList<TorrentFile>();
@@ -138,69 +138,69 @@ public class Torrent {
                 }
             }
 
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			BEncoder.bencode(this.decoded_info, baos);
-			this.encoded_info = baos.toByteArray();
-			this.info_hash = Torrent.hash(this.encoded_info);
-			this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Can't parse torrent information!", e);
-		}
-	}
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            BEncoder.bencode(this.decoded_info, baos);
+            this.encoded_info = baos.toByteArray();
+            this.info_hash = Torrent.hash(this.encoded_info);
+            this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Can't parse torrent information!", e);
+        }
+    }
 
     public boolean isMultiFile() {
         return this.decoded_info.containsKey("files");
     }
 
-	/** Get the list of files.
-	 *
-	 * For a multi-file torrent, path and length of each file. 
-	 */
-	public List<TorrentFile> getFiles() {
-		return this.files;
-	}
+    /** Get the list of files.
+     *
+     * For a multi-file torrent, path and length of each file. 
+     */
+    public List<TorrentFile> getFiles() {
+        return this.files;
+    }
 
-	/** Get this torrent's name.
-	 *
-	 * For a single-file torrent, this is usually the name of the file. For a
-	 * multi-file torrent, this is usually the name of a top-level directory
-	 * containing those files.
-	 */
-	public String getName() {
-		return this.name;
-	}
+    /** Get this torrent's name.
+     *
+     * For a single-file torrent, this is usually the name of the file. For a
+     * multi-file torrent, this is usually the name of a top-level directory
+     * containing those files.
+     */
+    public String getName() {
+        return this.name;
+    }
 
-	/** Return the hash of the B-encoded meta-info structure of this torrent.
-	 */
-	public byte[] getInfoHash() {
-		return this.info_hash;
-	}
+    /** Return the hash of the B-encoded meta-info structure of this torrent.
+     */
+    public byte[] getInfoHash() {
+        return this.info_hash;
+    }
 
-	/** Get this torrent's info hash (as an hexadecimal-coded string).
-	 */
-	public String getHexInfoHash() {
-		return this.hex_info_hash;
-	}
+    /** Get this torrent's info hash (as an hexadecimal-coded string).
+     */
+    public String getHexInfoHash() {
+        return this.hex_info_hash;
+    }
 
-	/** Return a human-readable representation of this torrent object.
-	 *
-	 * The torrent's name is used.
-	 */
-	public String toString() {
-		return this.getName();
-	}
+    /** Return a human-readable representation of this torrent object.
+     *
+     * The torrent's name is used.
+     */
+    public String toString() {
+        return this.getName();
+    }
 
-	/** Return the B-encoded meta-info of this torrent.
-	 */
-	public byte[] getEncoded() {
-		return this.encoded;
-	}
+    /** Return the B-encoded meta-info of this torrent.
+     */
+    public byte[] getEncoded() {
+        return this.encoded;
+    }
 
-	/** Return the announce URL used by this torrent.
-	 */
-	public String getAnnounceUrl() {
-		return this.announceUrl;
-	}
+    /** Return the announce URL used by this torrent.
+     */
+    public String getAnnounceUrl() {
+        return this.announceUrl;
+    }
 
     public void save(File output) throws IOException {
         FileOutputStream fos = new FileOutputStream(output);
@@ -209,96 +209,96 @@ public class Torrent {
         fos.close();
     }
 
-	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
-		MessageDigest md = MessageDigest.getInstance("SHA-1");
-		md.update(data);
-		return md.digest();
-	}
+    public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        md.update(data);
+        return md.digest();
+    }
 
-	/** Convert a byte string to a string containing an hexadecimal
-	 * representation of the original data.
-	 *
-	 * @param bytes The byte array to convert.
-	 */
-	public static String byteArrayToHexString(byte[] bytes) {
-		BigInteger bi = new BigInteger(1, bytes);
-		return String.format("%0" + (bytes.length << 1) + "X", bi);
-	}
+    /** Convert a byte string to a string containing an hexadecimal
+     * representation of the original data.
+     *
+     * @param bytes The byte array to convert.
+     */
+    public static String byteArrayToHexString(byte[] bytes) {
+        BigInteger bi = new BigInteger(1, bytes);
+        return String.format("%0" + (bytes.length << 1) + "X", bi);
+    }
 
-	/** Return an hexadecimal representation of the bytes contained in the
-	 * given string, following the default, expected byte encoding.
-	 *
-	 * @param input The input string.
-	 */
-	public static String toHexString(String input) {
-		try {
-			byte[] bytes = input.getBytes(Torrent.BYTE_ENCODING);
-			return Torrent.byteArrayToHexString(bytes);
-		} catch (UnsupportedEncodingException uee) {
-			return null;
-		}
-	}
+    /** Return an hexadecimal representation of the bytes contained in the
+     * given string, following the default, expected byte encoding.
+     *
+     * @param input The input string.
+     */
+    public static String toHexString(String input) {
+        try {
+            byte[] bytes = input.getBytes(Torrent.BYTE_ENCODING);
+            return Torrent.byteArrayToHexString(bytes);
+        } catch (UnsupportedEncodingException uee) {
+            return null;
+        }
+    }
 
-	/** Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file (by filename) to create the {@link Torrent} object
-	 * representing the Torrent metainfo about this file, needed for announcing
-	 * and/or sharing said file.
-	 * </p>
-	 *
-	 * @param source The file name.
-	 * @param announce The announce URL that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, String announce, String createdBy)
-		throws NoSuchAlgorithmException, IOException {
-		logger.info("Creating torrent for " + source.getName() + "...");
+    /** Create a {@link Torrent} object for a file.
+     *
+     * <p>
+     * Hash the given file (by filename) to create the {@link Torrent} object
+     * representing the Torrent metainfo about this file, needed for announcing
+     * and/or sharing said file.
+     * </p>
+     *
+     * @param source The file name.
+     * @param announce The announce URL that will be used for this torrent.
+     * @param createdBy The creator's name, or any string identifying the
+     * torrent's creator.
+     */
+    public static Torrent create(File source, String announce, String createdBy)
+        throws NoSuchAlgorithmException, IOException {
+        logger.info("Creating torrent for " + source.getName() + "...");
 
-		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-		torrent.put("announce", new BEValue(announce));
-		torrent.put("creation date", new BEValue(new Date().getTime()));
-		torrent.put("created by", new BEValue(createdBy));
+        Map<String, BEValue> torrent = new HashMap<String, BEValue>();
+        torrent.put("announce", new BEValue(announce));
+        torrent.put("creation date", new BEValue(new Date().getTime()));
+        torrent.put("created by", new BEValue(createdBy));
 
-		Map<String, BEValue> info = new TreeMap<String, BEValue>();
-		info.put("length", new BEValue(source.length()));
-		info.put("name", new BEValue(source.getName()));
-		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-		info.put("pieces", new BEValue(Torrent.hashPieces(source),
-					Torrent.BYTE_ENCODING));
-		torrent.put("info", new BEValue(info));
+        Map<String, BEValue> info = new TreeMap<String, BEValue>();
+        info.put("length", new BEValue(source.length()));
+        info.put("name", new BEValue(source.getName()));
+        info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+        info.put("pieces", new BEValue(Torrent.hashPieces(source),
+                    Torrent.BYTE_ENCODING));
+        torrent.put("info", new BEValue(info));
 
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray());
-	}
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        BEncoder.bencode(new BEValue(torrent), baos);
+        return new Torrent(baos.toByteArray());
+    }
 
-	/** Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file (by filename) to create the {@link Torrent} object
-	 * representing the Torrent metainfo about this file, needed for announcing
-	 * and/or sharing said file.
-	 * </p>
-	 *
-	 * @param source The suggested destination.
-	 * @param A list of files to add to this torrent
-	 * @param announce The announce URL that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, List<File> files, String announce, String createdBy)
-		throws NoSuchAlgorithmException, IOException {
-		logger.info("Creating torrent for " + source.getName() + "...");
+    /** Create a {@link Torrent} object for a file.
+     *
+     * <p>
+     * Hash the given file (by filename) to create the {@link Torrent} object
+     * representing the Torrent metainfo about this file, needed for announcing
+     * and/or sharing said file.
+     * </p>
+     *
+     * @param source The suggested destination.
+     * @param A list of files to add to this torrent
+     * @param announce The announce URL that will be used for this torrent.
+     * @param createdBy The creator's name, or any string identifying the
+     * torrent's creator.
+     */
+    public static Torrent create(File source, List<File> files, String announce, String createdBy)
+        throws NoSuchAlgorithmException, IOException {
+        logger.info("Creating torrent for " + source.getName() + "...");
 
-		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-		torrent.put("announce", new BEValue(announce));
-		torrent.put("creation date", new BEValue(new Date().getTime()));
-		torrent.put("created by", new BEValue(createdBy));
+        Map<String, BEValue> torrent = new HashMap<String, BEValue>();
+        torrent.put("announce", new BEValue(announce));
+        torrent.put("creation date", new BEValue(new Date().getTime()));
+        torrent.put("created by", new BEValue(createdBy));
 
-		Map<String, BEValue> info = new TreeMap<String, BEValue>();
-		info.put("name", new BEValue(source.getName()));
+        Map<String, BEValue> info = new TreeMap<String, BEValue>();
+        info.put("name", new BEValue(source.getName()));
 
         long totalLength = 0;
         List<BEValue> fileDicts = new LinkedList<BEValue>();
@@ -312,17 +312,17 @@ public class Torrent {
             fileDicts.add(new BEValue(fileInfo));
         }
         info.put("files", new BEValue(fileDicts));
-		// no length for multiple files??
+        // no length for multiple files??
         // info.put("length", new BEValue(totalLength));
-		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-		info.put("pieces", new BEValue(Torrent.hashPieces(files),
-					Torrent.BYTE_ENCODING));
-		torrent.put("info", new BEValue(info));
+        info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+        info.put("pieces", new BEValue(Torrent.hashPieces(files),
+                    Torrent.BYTE_ENCODING));
+        torrent.put("info", new BEValue(info));
 
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray());
-	}
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        BEncoder.bencode(new BEValue(torrent), baos);
+        return new Torrent(baos.toByteArray());
+    }
 
     private static List<BEValue> getFilePath(File source, File file) throws UnsupportedEncodingException {
         LinkedList<BEValue> path = new LinkedList<BEValue>();
@@ -335,26 +335,41 @@ public class Torrent {
         return path;
     }
 
-	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
-	 *
-	 * <p>
-	 * Hashes the given file piece by piece using the default Torrent piece
-	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
-	 * these hashes, as a string.
-	 * </p>
-	 *
-	 * <p>
+    /** Open a torrent from the given torrent file.
+     *
+     * @param source The <code>.torrent</code> file to read the torrent
+     * meta-info from.
+     * @throws IOException When the torrent file cannot be read.
+     */
+    public static Torrent fromFile(File source)
+        throws IOException {
+        FileInputStream fis = new FileInputStream(source);
+        byte[] data = new byte[(int)source.length()];
+        fis.read(data);
+        fis.close();
+        return new Torrent(data);
+    }
+
+    /** Return the concatenation of the SHA-1 hashes of a file's pieces.
+     *
+     * <p>
+     * Hashes the given file piece by piece using the default Torrent piece
+     * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
+     * these hashes, as a string.
+     * </p>
+     *
+     * <p>
      * pieces maps to a string whose length is a multiple of 20.
      * It is to be subdivided into strings of length 20, each of
      * which is the SHA1 hash of the piece at the corresponding index.
      * </p>
      *
-	 * <p>
-	 * This is used for creating Torrent meta-info structures from a file.
-	 * </p>
-	 *
-	 * @param source The list of files to hash.
-	 */
+     * <p>
+     * This is used for creating Torrent meta-info structures from a file.
+     * </p>
+     *
+     * @param source The list of files to hash.
+     */
     private static String hashPieces(List<File> files)
         throws NoSuchAlgorithmException, IOException {
         StringBuffer pieces = new StringBuffer();
@@ -388,26 +403,26 @@ public class Torrent {
             counter += 1;
         }
 
-		int n_pieces = new Double(Math.ceil((double)total /
-					Torrent.PIECE_LENGTH)).intValue();
-		logger.debug("Hashed" + fileStr + " (" +
-				total + " bytes) in " + n_pieces + " pieces, actual pieces " + counter + ".");
+        int n_pieces = new Double(Math.ceil((double)total /
+                    Torrent.PIECE_LENGTH)).intValue();
+        logger.debug("Hashed" + fileStr + " (" +
+                total + " bytes) in " + n_pieces + " pieces, actual pieces " + counter + ".");
 
-		return pieces.toString();
+        return pieces.toString();
     }
 
-	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
-	 *
-	 * @param source The file to hash.
-	 */
-	private static String hashPieces(File source)
-		throws NoSuchAlgorithmException, IOException {
+    /** Return the concatenation of the SHA-1 hashes of a file's pieces.
+     *
+     * @param source The file to hash.
+     */
+    private static String hashPieces(File source)
+        throws NoSuchAlgorithmException, IOException {
         return hashPieces(Arrays.<File>asList(new File[] {source}));
-	}
+    }
 
     private static String hashPiece(ByteBuffer buffer)
         throws UnsupportedEncodingException, NoSuchAlgorithmException {
-		MessageDigest md = MessageDigest.getInstance("SHA-1");
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
         md.reset();
         md.update(buffer.array(), 0, buffer.position());
         return new String(md.digest(), Torrent.BYTE_ENCODING);
