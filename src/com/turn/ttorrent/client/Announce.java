@@ -249,6 +249,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		try {
 			params.put("info_hash", new String(torrent.getInfoHash(),
 						Torrent.BYTE_ENCODING));
+            params.put("info_hash_hex", Torrent
+                        .toHexString(params.get("info_hash")));
 		} catch (UnsupportedEncodingException uee) {
 			logger.warn("{}", uee);
 		}
