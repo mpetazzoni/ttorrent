@@ -73,7 +73,7 @@ public class ConnectionHandler implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(ConnectionHandler.class);
 
 	public static final int PORT_RANGE_START = 6881;
-	public static final int PORT_RANGE_END = 6889;
+	public static final int PORT_RANGE_END = 6999;
 
 	private SharedTorrent torrent;
 	private String id;

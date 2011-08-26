@@ -77,9 +77,11 @@ public class Torrent {
 
     private String announceUrl;
     private String name;
+    private String createdBy;
     private List<TorrentFile> files;
     private byte[] info_hash;
     private String hex_info_hash;
+    private long size = 0L;
 
     public static class TorrentFile {
         public Long length;
@@ -119,6 +121,7 @@ public class Torrent {
 
             this.decoded_info = this.decoded.get("info").getMap();
             this.name = this.decoded_info.get("name").getString();
+            this.createdBy = this.decoded.get("created by").getString();
 
             if (this.decoded_info.containsKey("files")) {
                 this.files = new LinkedList<TorrentFile>();
@@ -128,7 +131,7 @@ public class Torrent {
                     Map<String, BEValue> fileMap = fileBEVal.getMap();
 
                     TorrentFile torrentFile = new TorrentFile();
-                    torrentFile.length = fileMap.get("length").getLong();
+                    this.size += torrentFile.length = fileMap.get("length").getLong();
 
                     List<BEValue> pathParts = fileMap.get("path").getList();
                     for (BEValue path : pathParts) {
@@ -136,6 +139,8 @@ public class Torrent {
                     }
                     this.files.add(torrentFile);
                 }
+            } else {
+                this.size = this.decoded_info.get("length").getLong();
             }
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -150,6 +155,13 @@ public class Torrent {
 
     public boolean isMultiFile() {
         return this.decoded_info.containsKey("files");
+    }
+
+    /**
+     * Get the total size of all files or the single file.
+     */
+    public long getSize() {
+        return this.size;
     }
 
     /** Get the list of files.
@@ -168,6 +180,13 @@ public class Torrent {
      */
     public String getName() {
         return this.name;
+    }
+
+    /** Get this torrent's created by.
+     *
+     */
+    public String getCreatedBy() {
+        return this.createdBy;
     }
 
     /** Return the hash of the B-encoded meta-info structure of this torrent.
@@ -312,8 +331,6 @@ public class Torrent {
             fileDicts.add(new BEValue(fileInfo));
         }
         info.put("files", new BEValue(fileDicts));
-        // no length for multiple files??
-        // info.put("length", new BEValue(totalLength));
         info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
         info.put("pieces", new BEValue(Torrent.hashPieces(files),
                     Torrent.BYTE_ENCODING));
