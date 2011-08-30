@@ -294,6 +294,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		synchronized (this.pieces) {
 			for (Piece piece : this.pieces) {
+                if (piece == null) {
+                    throw new IllegalStateException("Torrent not initialized yet.");
+                }
 				if (piece.available()) {
 					availablePieces.set(piece.getIndex());
 				}

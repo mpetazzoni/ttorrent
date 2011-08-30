@@ -399,7 +399,11 @@ public class Client extends Observable implements Runnable,
         info.put("pieces", this.torrent.getPieceCount());
         info.put("available", this.torrent.getAvailablePieces().cardinality());
         info.put("completed", this.torrent.getCompletedPieces().cardinality());
-        info.put("completion", String.format("%.2f", this.torrent.getCompletion()) + "%");
+        info.put("completion", this.torrent.getCompletion());
+
+        info.put("uploaded", this.torrent.getUploaded());
+        info.put("downloaded", this.torrent.getDownloaded());
+        info.put("left", this.torrent.getLeft());
 
         info.put("up", ul);
         info.put("down", dl);
