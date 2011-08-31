@@ -391,6 +391,7 @@ public class Client extends Observable implements Runnable,
         }
 
         Map<String, Object> info = new HashMap<String, Object>();
+        info.put("peerId", this.id);
         info.put("state", this.getState().name());
         info.put("choked", choked);
         info.put("connected", this.connected.size());
@@ -404,6 +405,7 @@ public class Client extends Observable implements Runnable,
         info.put("uploaded", this.torrent.getUploaded());
         info.put("downloaded", this.torrent.getDownloaded());
         info.put("left", this.torrent.getLeft());
+        info.put("size", this.torrent.getSize());
 
         info.put("up", ul);
         info.put("down", dl);
