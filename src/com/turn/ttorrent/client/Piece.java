@@ -44,8 +44,6 @@ public class Piece implements Comparable<Piece> {
 
 	private static final Logger logger = LoggerFactory.getLogger(Piece.class);
 
-	public static final int BLOCK_SIZE = 16*1024; // 16kB
-
 	private TorrentByteStorage bucket;
 	private int index;
 	private long offset; // support > 2 GB files
