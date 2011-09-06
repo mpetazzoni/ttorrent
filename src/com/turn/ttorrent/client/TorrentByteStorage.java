@@ -115,8 +115,8 @@ public class TorrentByteStorage {
                 if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
 
                 storeFiles.add(new FileOffset(file, offset, nbytes, len));
-                if (!found)  logger.debug("found at file {} offset {} length {}", new Object[] {file, offset, len});
-                if (found) logger.debug(" another file {} offset {} length {}", new Object[] {file, offset, len});
+                if (!found)  logger.trace("found at file {} offset {} length {}", new Object[] {file, offset, len});
+                if (found) logger.trace(" another file {} offset {} length {}", new Object[] {file, offset, len});
 
                 // move forward
                 nbytes += len; 
