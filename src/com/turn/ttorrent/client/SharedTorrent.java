@@ -127,8 +127,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
             File file = new File(destDir, this.getName());
             storageFiles.add(new TorrentByteStorageFile(file, this.totalLength));
         }
-        if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
-                this.pieceLength < this.totalLength) {
+        if (this.getHashedLength() < this.totalLength) {
             throw new IllegalArgumentException("Torrent size does not " +
                 "match the number of pieces and the piece size!");
         }
@@ -144,6 +143,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
 	}
+
+    private long getHashedLength() {
+        long hashBytes = this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE;
+        return hashBytes * this.pieceLength;
+    }
 
 	/** Create a new shared torrent from a base Torrent object.
 	 *
@@ -231,7 +235,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			Long len = (idx < this.pieces.length - 1) ?
 				 this.pieceLength :
 				 this.totalLength % this.pieceLength;
-			int off = idx * this.pieceLength;
+			long off = ((long)idx) * this.pieceLength;
 
 			this.pieces[idx] = new Piece(this.bucket, idx, off, len.intValue(), hash);
 			this.pieces[idx].validate();

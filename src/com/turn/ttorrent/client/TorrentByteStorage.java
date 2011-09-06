@@ -49,10 +49,10 @@ public class TorrentByteStorage {
     private static class FileOffset {
         public long offset;  // position into the file
         public int position; // position into the buffer
-        public int length;   // bytes to write / read
+        public long length;  // bytes to write / read
         public TorrentByteStorageFile file;
 
-        public FileOffset(TorrentByteStorageFile file, long offset, int position, int length) {
+        public FileOffset(TorrentByteStorageFile file, long offset, int position, long length) {
             this.file = file;
             this.offset = offset;
             this.position = position;
@@ -88,9 +88,9 @@ public class TorrentByteStorage {
         byte[] bytes = block.array();
         for (FileOffset fileOffset : fileOffsets) {
             // create a smaller buffers to write
-            ByteBuffer data = ByteBuffer.allocate(fileOffset.length);
+            ByteBuffer data = ByteBuffer.allocate(new Long(fileOffset.length).intValue()); // too short?
             // put the only the data for this file
-            data.put(bytes, fileOffset.position, fileOffset.length);
+            data.put(bytes, fileOffset.position, new Long(fileOffset.length).intValue());
             data.rewind();
             fileOffset.file.write(data, fileOffset.offset);
         }
@@ -111,7 +111,7 @@ public class TorrentByteStorage {
             //    new Object[] { file, total, position, position, (total + file.getSize()) });
             if (found || (!found && total <= position && position < (total + file.getSize()))) {
                 long offset = position - total;
-                int len = new Long(file.getSize() - offset).intValue();
+                long len = file.getSize() - offset;
                 if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
 
                 storeFiles.add(new FileOffset(file, offset, nbytes, len));

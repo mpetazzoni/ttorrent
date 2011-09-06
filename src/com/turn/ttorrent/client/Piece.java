@@ -48,7 +48,7 @@ public class Piece implements Comparable<Piece> {
 
 	private TorrentByteStorage bucket;
 	private int index;
-	private int offset;
+	private long offset; // support > 2 GB files
 	private int length;
 
 	private byte[] hash;
@@ -66,7 +66,7 @@ public class Piece implements Comparable<Piece> {
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
 	 */
-	public Piece(TorrentByteStorage bucket, int index, int offset, int length,
+	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
 			byte[] hash) {
 		this.bucket = bucket;
 		this.index = index;
