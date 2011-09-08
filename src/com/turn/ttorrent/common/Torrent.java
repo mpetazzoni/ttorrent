@@ -22,8 +22,11 @@ import com.turn.ttorrent.bcodec.BEncoder;
 import java.io.FileOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedInputStream;
+import java.io.*;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -389,6 +392,9 @@ public class Torrent {
      */
     private static String hashPieces(List<File> files)
         throws NoSuchAlgorithmException, IOException {
+        long start = System.currentTimeMillis();
+        long hashTime = 0L;
+
         StringBuffer pieces = new StringBuffer();
         StringBuffer fileStr = new StringBuffer();
         byte[] data = new byte[Torrent.PIECE_LENGTH];
@@ -402,17 +408,19 @@ public class Torrent {
 
         // hash each file
         for (File file : files) {
-            FileInputStream fis = new FileInputStream(file);
-            while ((read = fis.read(data, 0, buffer.remaining())) > 0) {
+            InputStream is = new BufferedInputStream(new FileInputStream(file));
+            while ((read = is.read(data, 0, buffer.remaining())) > 0) {
                 buffer.put(data, 0, read);
                 if (buffer.position() == PIECE_LENGTH) {
                     counter += 1;
+                    long hashStart = System.currentTimeMillis();
                     pieces.append(hashPiece(buffer));
+                    hashTime += (System.currentTimeMillis() - hashStart);
                     buffer.clear();
                 }
             }
             fileStr.append(" " + file.getName());
-            fis.close();
+            is.close();
         }
         // handle left over
         if (buffer.position() > 0) {
@@ -422,8 +430,11 @@ public class Torrent {
 
         int n_pieces = new Double(Math.ceil((double)total /
                     Torrent.PIECE_LENGTH)).intValue();
-        logger.debug("Hashed" + fileStr + " (" +
-                total + " bytes) in " + n_pieces + " pieces, actual pieces " + counter + ".");
+        logger.debug("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
+                    fileStr, total, n_pieces, counter,
+                    (System.currentTimeMillis() - start) / 1000L,
+                    hashTime / 1000L
+                    });
 
         return pieces.toString();
     }

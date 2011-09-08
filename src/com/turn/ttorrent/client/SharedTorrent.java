@@ -218,6 +218,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * the pieces array.
 	 */
 	public synchronized void init() throws IOException {
+        long start = System.currentTimeMillis();
 		int nPieces = new Double(Math.ceil((double)this.totalLength /
 					this.pieceLength)).intValue();
 		this.pieces = new Piece[nPieces];
@@ -249,7 +250,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				(this.totalLength - this.left) + "/" +
 				this.totalLength + " bytes [" +
 				this.completedPieces.cardinality() + "/" +
-				this.pieces.length + "].");
+				this.pieces.length + "] in " + (System.currentTimeMillis() - start) / 1000L + " seconds.");
 	}
 
 	public synchronized void close() {
