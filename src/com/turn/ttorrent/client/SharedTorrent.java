@@ -226,7 +226,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		this.piecesHashes.clear();
 
-		logger.debug("Analyzing local data for " + this.getName() + "...");
+		logger.info("Analyzing local data for " + this.getName() + "...");
 		for (int idx=0; idx<this.pieces.length; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);
@@ -246,7 +246,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 		}
 
-		logger.debug(this.getName() + ": " +
+		logger.info(this.getName() + ": " +
 				(this.totalLength - this.left) + "/" +
 				this.totalLength + " bytes [" +
 				this.completedPieces.cardinality() + "/" +

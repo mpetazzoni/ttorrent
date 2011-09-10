@@ -123,8 +123,10 @@ public class TorrentByteStorageFile {
         }
 
         try {
+            // Copying large files takes a long time...
+            // lets move the file into place
             FileUtils.deleteQuietly(this.target);
-            FileUtils.copyFile(this.current, this.target);
+            FileUtils.moveFile(this.current, this.target);
         } catch (IOException ioe) {
             // Don't leave a partially copied file in the destination.
             FileUtils.deleteQuietly(this.target);
