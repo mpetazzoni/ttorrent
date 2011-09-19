@@ -86,6 +86,10 @@ public class Torrent {
     private String hex_info_hash;
     private long size = 0L;
 
+	// are we going to be the seeder for this torrent?
+	// if true, elimiate hashing all of the files twice
+	private boolean seeder = false;
+
     public static class TorrentFile {
         public Long length;
         public List<String> path;
@@ -114,6 +118,21 @@ public class Torrent {
      * encoded and hashed back to create the torrent's SHA-1 hash.
      */
     public Torrent(byte[] torrent) throws IllegalArgumentException {
+        this(torrent, false);
+    }
+
+    /** Create a new torrent from metainfo binary data.
+     *
+     * Parses the metainfo data (which should be B-encoded as described in the
+     * BitTorrent specification) and create a Torrent object from it.
+     *
+     * @param torrent The metainfo byte data.
+     * @param seeder Are we the seeder for this torrent?
+     * @throws IllegalArgumentException When the info dictionnary can't be
+     * encoded and hashed back to create the torrent's SHA-1 hash.
+     */
+    public Torrent(byte[] torrent, boolean seeder) throws IllegalArgumentException {
+        this.seeder = seeder;
         this.encoded = torrent;
 
         try {
@@ -224,6 +243,12 @@ public class Torrent {
         return this.announceUrl;
     }
 
+    /** Return the seeder flag of this torrent.
+     */
+    public boolean isSeeder() {
+        return this.seeder;
+    }
+
     public void save(File output) throws IOException {
         FileOutputStream fos = new FileOutputStream(output);
         fos.write(getEncoded());
@@ -293,7 +318,7 @@ public class Torrent {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         BEncoder.bencode(new BEValue(torrent), baos);
-        return new Torrent(baos.toByteArray());
+        return new Torrent(baos.toByteArray(), true);
     }
 
     /** Create a {@link Torrent} object for a file.
@@ -341,7 +366,7 @@ public class Torrent {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         BEncoder.bencode(new BEValue(torrent), baos);
-        return new Torrent(baos.toByteArray());
+        return new Torrent(baos.toByteArray(), true);
     }
 
     private static List<BEValue> getFilePath(File source, File file) throws UnsupportedEncodingException {

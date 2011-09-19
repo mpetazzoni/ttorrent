@@ -90,7 +90,24 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File destDir)
 		throws IllegalArgumentException, FileNotFoundException, IOException {
-		super(torrent);
+		this(torrent, destDir, false);
+    }
+
+	/** Create a new shared torrent from metainfo binary data.
+	 *
+	 * @param torrent The metainfo byte data.
+	 * @param destDir The destination directory or location of the torrent
+	 * files.
+	 * @param seeder Are we the seeder for this torrent?
+	 * @throws IllegalArgumentException When the info dictionary can't be
+	 * encoded and hashed back to create the torrent's SHA-1 hash.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException If the torrent file cannot be accessed.
+	 */
+	public SharedTorrent(byte[] torrent, File destDir, boolean seeder)
+		throws IllegalArgumentException, FileNotFoundException, IOException {
+		super(torrent, seeder);
 
 		// Make sure the destination/location directory exists, or try to
 		// create it.
@@ -168,6 +185,26 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this(torrent.getEncoded(), destDir);
 	}
 
+	/** Create a new shared torrent from a base Torrent object.
+	 *
+	 * This will recreated a SharedTorrent object from the provided Torrent
+	 * object's encoded meta-info data.
+	 *
+	 * @param torrent The Torrent object.
+	 * @param destDir The destination directory or location of the torrent
+	 * files.
+	 * @param seeder Are we the seeder for this torrent?
+	 * @throws IllegalArgumentException When the info dictionnary can't be
+	 * encoded and hashed back to create the torrent's SHA-1 hash.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException If the torrent file cannot be accessed.
+	 */
+	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
+		throws IllegalArgumentException, FileNotFoundException, IOException {
+		this(torrent.getEncoded(), destDir, seeder);
+	}
+
 	/** Create a new shared torrent from the given torrent file.
 	 *
 	 * @param source The <code>.torrent</code> file to read the torrent
@@ -239,11 +276,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				 this.totalLength % this.pieceLength;
 			long off = ((long)idx) * this.pieceLength;
 
-			this.pieces[idx] = new Piece(this.bucket, idx, off, len.intValue(), hash);
+			this.pieces[idx] = new Piece(this.bucket, idx, off, len.intValue(), hash, this.isSeeder());
 
 			long validateStart = System.currentTimeMillis();
 			this.pieces[idx].validate();
-			validateElapse += System.currentTimeMillis() - validateElapse;
+			validateElapse += System.currentTimeMillis() - validateStart;
 
 			if (this.pieces[idx].isValid()) {
 				this.completedPieces.set(idx);
@@ -251,7 +288,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 		}
 
+        String seedStr = (this.isSeeder()) ? " (seeder) " : " (leacher) ";
 		logger.info(this.getName() + ": " +
+                seedStr + 
 				(this.totalLength - this.left) + "/" +
 				this.totalLength + " bytes [" +
 				this.completedPieces.cardinality() + "/" +

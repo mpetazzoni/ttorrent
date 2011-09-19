@@ -51,6 +51,7 @@ public class Piece implements Comparable<Piece> {
 
 	private byte[] hash;
 	private boolean valid;
+	private boolean seeder;
 
 	private int seen;
 
@@ -65,7 +66,7 @@ public class Piece implements Comparable<Piece> {
 	 * @param hash This piece 20-byte SHA1 hash sum.
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
-			byte[] hash) {
+			byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
@@ -73,12 +74,20 @@ public class Piece implements Comparable<Piece> {
 		this.hash = hash;
 
 		// Piece is considered invalid until first check.
+		// unless we are the seeder
 		this.valid = false;
+
+		// Are we seeder for this piece?
+		this.seeder = seeder;
 
 		// Piece start unseen
 		this.seen = 0;
 
 		this.data = null;
+	}
+
+	public boolean isSeeder() {
+		return this.seeder;
 	}
 
 	public boolean isValid() {
@@ -112,6 +121,12 @@ public class Piece implements Comparable<Piece> {
 	 */
 	public boolean validate() throws IOException {
 		this.valid = false;
+
+        if (this.isSeeder()) {
+            this.valid = true;
+            logger.trace("Validating piece#" + this.index + "... (seeding)");
+            return this.isValid();
+        }
 
 		try {
 			logger.trace("Validating piece#" + this.index + "...");
