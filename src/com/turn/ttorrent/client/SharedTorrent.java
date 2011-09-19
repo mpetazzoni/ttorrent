@@ -218,7 +218,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * the pieces array.
 	 */
 	public synchronized void init() throws IOException {
-        long start = System.currentTimeMillis();
+		long start = System.currentTimeMillis();
+		long validateElapse = 0L;
 		int nPieces = new Double(Math.ceil((double)this.totalLength /
 					this.pieceLength)).intValue();
 		this.pieces = new Piece[nPieces];
@@ -239,7 +240,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			long off = ((long)idx) * this.pieceLength;
 
 			this.pieces[idx] = new Piece(this.bucket, idx, off, len.intValue(), hash);
+
+			long validateStart = System.currentTimeMillis();
 			this.pieces[idx].validate();
+			validateElapse += System.currentTimeMillis() - validateElapse;
+
 			if (this.pieces[idx].isValid()) {
 				this.completedPieces.set(idx);
 				this.left -= len;
@@ -250,7 +255,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				(this.totalLength - this.left) + "/" +
 				this.totalLength + " bytes [" +
 				this.completedPieces.cardinality() + "/" +
-				this.pieces.length + "] in " + (System.currentTimeMillis() - start) / 1000L + " seconds.");
+				this.pieces.length + "] in " +
+				(System.currentTimeMillis() - start) / 1000L +
+				" seconds, validation in " +
+				validateElapse / 1000L + " seconds.");
 	}
 
 	public synchronized void close() {
