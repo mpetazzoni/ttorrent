@@ -108,6 +108,6 @@ public class Peer {
 		if (other == null) {
 			return false;
 		}
-        return this.toString().equals(other.toString());
+		return this.toString().equals(other.toString());
 	}
 }

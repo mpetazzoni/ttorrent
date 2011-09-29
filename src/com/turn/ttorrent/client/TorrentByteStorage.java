@@ -41,125 +41,125 @@ import org.slf4j.LoggerFactory;
  */
 public class TorrentByteStorage {
 
-    private static final Logger logger =
-        LoggerFactory.getLogger(TorrentByteStorage.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TorrentByteStorage.class);
 
-    List<TorrentByteStorageFile> files;
+	List<TorrentByteStorageFile> files;
 
-    private static class FileOffset {
-        public long offset;  // position into the file
-        public int position; // position into the buffer
-        public long length;  // bytes to write / read
-        public TorrentByteStorageFile file;
+	private static class FileOffset {
+		public long offset;  // position into the file
+		public int position; // position into the buffer
+		public long length;  // bytes to write / read
+		public TorrentByteStorageFile file;
 
-        public FileOffset(TorrentByteStorageFile file, long offset, int position, long length) {
-            this.file = file;
-            this.offset = offset;
-            this.position = position;
-            this.length = length;
-        }
-    }
+		public FileOffset(TorrentByteStorageFile file, long offset, int position, long length) {
+			this.file = file;
+			this.offset = offset;
+			this.position = position;
+			this.length = length;
+		}
+	}
 
-    public TorrentByteStorage(List<TorrentByteStorageFile> files) {
-        this.files = files;
-    }
+	public TorrentByteStorage(List<TorrentByteStorageFile> files) {
+		this.files = files;
+	}
 
-    public ByteBuffer read(long offset, int length) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(length);
-        List<FileOffset> fileOffsets = select(offset, length);
-        int total = 0;
-        for (FileOffset fileOffset : fileOffsets) {
-            total += fileOffset.file.read(buffer, fileOffset.offset);
-        }
-        buffer.clear();
-        buffer.limit(total >= 0 ? total : 0);
-        return buffer;
-    }
+	public ByteBuffer read(long offset, int length) throws IOException {
+		ByteBuffer buffer = ByteBuffer.allocate(length);
+		List<FileOffset> fileOffsets = select(offset, length);
+		int total = 0;
+		for (FileOffset fileOffset : fileOffsets) {
+			total += fileOffset.file.read(buffer, fileOffset.offset);
+		}
+		buffer.clear();
+		buffer.limit(total >= 0 ? total : 0);
+		return buffer;
+	}
 
-    public void write(ByteBuffer block, long offset, int length) throws IOException {
-        List<FileOffset> fileOffsets = select(offset, length);
-        if (fileOffsets.size() == 1) {
-            // write the whole thing.
-            FileOffset fileOffset = fileOffsets.get(0);
-            fileOffset.file.write(block, fileOffset.offset);
-            return;
-        }
-        // get all the bytes
-        byte[] bytes = block.array();
-        for (FileOffset fileOffset : fileOffsets) {
-            // create a smaller buffers to write
-            ByteBuffer data = ByteBuffer.allocate(new Long(fileOffset.length).intValue()); // too short?
-            // put the only the data for this file
-            data.put(bytes, fileOffset.position, new Long(fileOffset.length).intValue());
-            data.rewind();
-            fileOffset.file.write(data, fileOffset.offset);
-        }
+	public void write(ByteBuffer block, long offset, int length) throws IOException {
+		List<FileOffset> fileOffsets = select(offset, length);
+		if (fileOffsets.size() == 1) {
+			// write the whole thing.
+			FileOffset fileOffset = fileOffsets.get(0);
+			fileOffset.file.write(block, fileOffset.offset);
+			return;
+		}
+		// get all the bytes
+		byte[] bytes = block.array();
+		for (FileOffset fileOffset : fileOffsets) {
+			// create a smaller buffers to write
+			ByteBuffer data = ByteBuffer.allocate(new Long(fileOffset.length).intValue()); // too short?
+			// put the only the data for this file
+			data.put(bytes, fileOffset.position, new Long(fileOffset.length).intValue());
+			data.rewind();
+			fileOffset.file.write(data, fileOffset.offset);
+		}
 
-    }
+	}
 
-    // select file, and calculate position into file
-    private List<FileOffset> select(long position, int length) throws IOException {
+	// select file, and calculate position into file
+	private List<FileOffset> select(long position, int length) throws IOException {
 
-        List<FileOffset> storeFiles = new LinkedList<FileOffset>();
+		List<FileOffset> storeFiles = new LinkedList<FileOffset>();
 
-        int nbytes = 0;  // number of bytes / offset into buffer
-        long total = 0L; // total offset into the contiguous file 
-        boolean found = false;
+		int nbytes = 0;  // number of bytes / offset into buffer
+		long total = 0L; // total offset into the contiguous file 
+		boolean found = false;
 
-        for (TorrentByteStorageFile file : files) {
-            // logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
-            //    new Object[] { file, total, position, position, (total + file.getSize()) });
-            if (found || (!found && total <= position && position < (total + file.getSize()))) {
-                long offset = position - total;
-                long len = file.getSize() - offset;
-                if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
+		for (TorrentByteStorageFile file : files) {
+			// logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
+			//	new Object[] { file, total, position, position, (total + file.getSize()) });
+			if (found || (!found && total <= position && position < (total + file.getSize()))) {
+				long offset = position - total;
+				long len = file.getSize() - offset;
+				if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
 
-                storeFiles.add(new FileOffset(file, offset, nbytes, len));
-                if (!found)  logger.trace("found at file {} offset {} length {}", new Object[] {file, offset, len});
-                if (found) logger.trace(" another file {} offset {} length {}", new Object[] {file, offset, len});
+				storeFiles.add(new FileOffset(file, offset, nbytes, len));
+				if (!found)  logger.trace("found at file {} offset {} length {}", new Object[] {file, offset, len});
+				if (found) logger.trace(" another file {} offset {} length {}", new Object[] {file, offset, len});
 
-                // move forward
-                nbytes += len; 
-                position += len;
-                found = true;
-            }
-            if (nbytes >= length) break; // got enough files already
-            total += file.getSize();
-        }
-        if (storeFiles.size() == 0) {
-            throw new IOException(String.format(
-                        "position %s past total length %s of all files",
-                        position, total
-                    ));
-        }
-        return storeFiles;
-    }
+				// move forward
+				nbytes += len; 
+				position += len;
+				found = true;
+			}
+			if (nbytes >= length) break; // got enough files already
+			total += file.getSize();
+		}
+		if (storeFiles.size() == 0) {
+			throw new IOException(String.format(
+						"position %s past total length %s of all files",
+						position, total
+					));
+		}
+		return storeFiles;
+	}
 
-    public boolean isFinished() {
-        for (TorrentByteStorageFile file : files) {
-            if (file.isFinished() == false) return false;
-        }
-        return true;
-    }
+	public boolean isFinished() {
+		for (TorrentByteStorageFile file : files) {
+			if (file.isFinished() == false) return false;
+		}
+		return true;
+	}
 
-    /** Move the partial file to its final location.
-     *
-     * <p>
-     * This method needs to make sure reads can still happen seemlessly during
-     * the operation. The partial is first flushed to the storage device before
-     * being copied to its target location. The {@link FileChannel} is then
-     * switched to this new file before the partial is removed.
-     * </p>
-     */
-    public synchronized void finish() throws IOException {
-        for (TorrentByteStorageFile file : files) {
-            file.finish();
-        }
-    }
+	/** Move the partial file to its final location.
+	 *
+	 * <p>
+	 * This method needs to make sure reads can still happen seemlessly during
+	 * the operation. The partial is first flushed to the storage device before
+	 * being copied to its target location. The {@link FileChannel} is then
+	 * switched to this new file before the partial is removed.
+	 * </p>
+	 */
+	public synchronized void finish() throws IOException {
+		for (TorrentByteStorageFile file : files) {
+			file.finish();
+		}
+	}
 
-    public synchronized void close() throws IOException {
-        for (TorrentByteStorageFile file : files) {
-            file.close();
-        }
-    }
+	public synchronized void close() throws IOException {
+		for (TorrentByteStorageFile file : files) {
+			file.close();
+		}
+	}
 }

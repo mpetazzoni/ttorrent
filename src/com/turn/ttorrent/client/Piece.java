@@ -122,11 +122,11 @@ public class Piece implements Comparable<Piece> {
 	public boolean validate() throws IOException {
 		this.valid = false;
 
-        if (this.isSeeder()) {
-            this.valid = true;
-            logger.trace("Validating piece#" + this.index + "... (seeding)");
-            return this.isValid();
-        }
+		if (this.isSeeder()) {
+			this.valid = true;
+			logger.trace("Validating piece#" + this.index + "... (seeding)");
+			return this.isValid();
+		}
 
 		try {
 			logger.trace("Validating piece#" + this.index + "...");

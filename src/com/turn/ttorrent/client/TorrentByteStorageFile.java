@@ -44,117 +44,117 @@ import org.slf4j.LoggerFactory;
  */
 public class TorrentByteStorageFile {
 
-    private static final Logger logger =
-        LoggerFactory.getLogger(TorrentByteStorageFile.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TorrentByteStorageFile.class);
 
-    private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
-    private File target;
-    private File partial;
-    private File current;
+	private File target;
+	private File partial;
+	private File current;
 
-    private RandomAccessFile raf;
-    private FileChannel channel;
-    private long size;
+	private RandomAccessFile raf;
+	private FileChannel channel;
+	private long size;
 
-    public TorrentByteStorageFile(File file, long size) throws IOException {
-        this.target = file;
-        this.size = size;
+	public TorrentByteStorageFile(File file, long size) throws IOException {
+		this.target = file;
+		this.size = size;
 
-        this.partial = new File(this.target.getAbsolutePath() +
-            TorrentByteStorageFile.PARTIAL_FILE_NAME_SUFFIX);
+		this.partial = new File(this.target.getAbsolutePath() +
+			TorrentByteStorageFile.PARTIAL_FILE_NAME_SUFFIX);
 
-        if (this.partial.exists()) {
-            logger.info("Partial download found at " +
-                this.partial.getAbsolutePath() + ". Continuing...");
-            this.current = this.partial;
-        } else if (!this.target.exists()) {
-            logger.info("Downloading new file to " +
-                this.partial.getAbsolutePath() + "...");
-            this.current = this.partial;
-        } else {
-            logger.info("Using existing file " +
-                this.target.getAbsolutePath() + ".");
-            this.current = this.target;
-        }
+		if (this.partial.exists()) {
+			logger.info("Partial download found at " +
+				this.partial.getAbsolutePath() + ". Continuing...");
+			this.current = this.partial;
+		} else if (!this.target.exists()) {
+			logger.info("Downloading new file to " +
+				this.partial.getAbsolutePath() + "...");
+			this.current = this.partial;
+		} else {
+			logger.info("Using existing file " +
+				this.target.getAbsolutePath() + ".");
+			this.current = this.target;
+		}
 
-        this.raf = new RandomAccessFile(this.current, "rw");
+		this.raf = new RandomAccessFile(this.current, "rw");
 
-        // Set the file length to the appropriate size, eventually truncating
-        // or extending the file if it already exists with a different size.
-        this.raf.setLength(this.size);
+		// Set the file length to the appropriate size, eventually truncating
+		// or extending the file if it already exists with a different size.
+		this.raf.setLength(this.size);
 
-        this.channel = raf.getChannel();
-        logger.debug("Initialized torrent byte storage at " +
-            this.current.getAbsolutePath() + ".");
-    }
+		this.channel = raf.getChannel();
+		logger.debug("Initialized torrent byte storage at " +
+			this.current.getAbsolutePath() + ".");
+	}
 
-    public long getSize() {
-        return this.size;
-    }
+	public long getSize() {
+		return this.size;
+	}
 
-    public int read(ByteBuffer buffer, long offset) throws IOException {
-        return this.channel.read(buffer, offset);
-    }
+	public int read(ByteBuffer buffer, long offset) throws IOException {
+		return this.channel.read(buffer, offset);
+	}
 
-    public void write(ByteBuffer block, long offset) throws IOException {
-        this.channel.write(block, offset);
-    }
+	public void write(ByteBuffer block, long offset) throws IOException {
+		this.channel.write(block, offset);
+	}
 
-    public boolean isFinished() {
-        return this.current.equals(this.target);
-    }
+	public boolean isFinished() {
+		return this.current.equals(this.target);
+	}
 
-    /** Move the partial file to its final location.
-     *
-     * <p>
-     * This method needs to make sure reads can still happen seemlessly during
-     * the operation. The partial is first flushed to the storage device before
-     * being copied to its target location. The {@link FileChannel} is then
-     * switched to this new file before the partial is removed.
-     * </p>
-     */
-    public synchronized void finish() throws IOException {
-        this.channel.force(true);
+	/** Move the partial file to its final location.
+	 *
+	 * <p>
+	 * This method needs to make sure reads can still happen seemlessly during
+	 * the operation. The partial is first flushed to the storage device before
+	 * being copied to its target location. The {@link FileChannel} is then
+	 * switched to this new file before the partial is removed.
+	 * </p>
+	 */
+	public synchronized void finish() throws IOException {
+		this.channel.force(true);
 
-        // Nothing more to do if we're already on the target file.
-        if (this.isFinished()) {
-            return;
-        }
+		// Nothing more to do if we're already on the target file.
+		if (this.isFinished()) {
+			return;
+		}
 
-        try {
-            // Copying large files takes a long time...
-            // lets move the file into place
-            FileUtils.deleteQuietly(this.target);
-            FileUtils.moveFile(this.current, this.target);
-        } catch (IOException ioe) {
-            // Don't leave a partially copied file in the destination.
-            FileUtils.deleteQuietly(this.target);
-            throw ioe;
-        }
+		try {
+			// Copying large files takes a long time...
+			// lets move the file into place
+			FileUtils.deleteQuietly(this.target);
+			FileUtils.moveFile(this.current, this.target);
+		} catch (IOException ioe) {
+			// Don't leave a partially copied file in the destination.
+			FileUtils.deleteQuietly(this.target);
+			throw ioe;
+		}
 
-        logger.debug("Re-opening torrent byte storage at " +
-                this.target.getAbsolutePath() + ".");
+		logger.debug("Re-opening torrent byte storage at " +
+				this.target.getAbsolutePath() + ".");
 
-        RandomAccessFile raf = new RandomAccessFile(this.target, "rw");
-        raf.setLength(this.size);
+		RandomAccessFile raf = new RandomAccessFile(this.target, "rw");
+		raf.setLength(this.size);
 
-        this.channel = raf.getChannel();
-        this.raf.close();
-        this.raf = raf;
-        this.current = this.target;
+		this.channel = raf.getChannel();
+		this.raf.close();
+		this.raf = raf;
+		this.current = this.target;
 
-        FileUtils.deleteQuietly(this.partial);
-        logger.info("Moved torrent data from " + this.partial.getName() +
-            " to " + this.target.getName() + ".");
-    }
+		FileUtils.deleteQuietly(this.partial);
+		logger.info("Moved torrent data from " + this.partial.getName() +
+			" to " + this.target.getName() + ".");
+	}
 
-    public synchronized void close() throws IOException {
-        this.channel.force(true);
-        this.raf.close();
-    }
+	public synchronized void close() throws IOException {
+		this.channel.force(true);
+		this.raf.close();
+	}
 
-    public String toString() {
-        return String.format("%s (%s)", target.getName(), size);
-    }
+	public String toString() {
+		return String.format("%s (%s)", target.getName(), size);
+	}
 }

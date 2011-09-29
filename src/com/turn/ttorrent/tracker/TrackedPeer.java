@@ -44,9 +44,9 @@ public class TrackedPeer extends Peer {
 
 	private static final Logger logger = LoggerFactory.getLogger(TrackedPeer.class);
 	private static final int FRESH_TIME_SECONDS = 60 * 4;
-    public long uploaded = 0;
-    public long downloaded = 0;
-    public long left = 0;
+	public long uploaded = 0;
+	public long downloaded = 0;
+	public long left = 0;
 
 	private Torrent torrent;
 
@@ -117,9 +117,9 @@ public class TrackedPeer extends Peer {
 
 		this.state = state;
 		this.lastAnnounce = new Date();
-        this.uploaded = uploaded;
-        this.downloaded = downloaded;
-        this.left = left;
+		this.uploaded = uploaded;
+		this.downloaded = downloaded;
+		this.left = left;
 	}
 
 	/** Tells whether this peer has completed its download and can thus be

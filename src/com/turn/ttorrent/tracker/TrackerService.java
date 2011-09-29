@@ -319,10 +319,10 @@ public class TrackerService implements Container {
 			params.put("event", "started");
 		}
 
-        if (event != null && "stopped".equals(event)) {
+		if (event != null && "stopped".equals(event)) {
 			params.put("event", "stopped");
-            return null;
-        }
+			return null;
+		}
 
 		// If an event other than 'started' is specified and we also haven't
 		// seen the peer on this torrent before, something went wrong. A
@@ -331,7 +331,7 @@ public class TrackerService implements Container {
 		// request refers to.
 		if (event != null && !"started".equals(event) &&
 				torrent.getPeer(peerId) == null) {
-            logger.error("event error: {} {} {}", new Object[] { event, peerId, params });
+			logger.error("event error: {} {} {}", new Object[] { event, peerId, params });
 			return TrackerError.INVALID_EVENT;
 		}
 
