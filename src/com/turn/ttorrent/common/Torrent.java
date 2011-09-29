@@ -455,7 +455,7 @@ public class Torrent {
 
         int n_pieces = new Double(Math.ceil((double)total /
                     Torrent.PIECE_LENGTH)).intValue();
-        logger.debug("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
+        logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
                     fileStr, total, n_pieces, counter,
                     (System.currentTimeMillis() - start) / 1000L,
                     hashTime / 1000L
