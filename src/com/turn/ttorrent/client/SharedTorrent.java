@@ -288,9 +288,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 		}
 
-		String seedStr = (this.isSeeder()) ? " (seeder) " : " (leacher) ";
+		String seedStr = (this.isSeeder()) ? "(seeder)" : "(leacher)";
 		logger.info(this.getName() + ": " +
-				seedStr + 
+				seedStr + " " +
 				(this.totalLength - this.left) + "/" +
 				this.totalLength + " bytes [" +
 				this.completedPieces.cardinality() + "/" +
