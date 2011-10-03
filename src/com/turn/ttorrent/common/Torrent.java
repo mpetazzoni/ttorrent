@@ -72,6 +72,11 @@ public class Torrent {
 	/** The query parameters encoding when parsing byte strings. */
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
+	/** number of threads to use for parallel hashing. */
+	public static int HASHING_THREADS = Runtime.getRuntime().availableProcessors() / 2;
+
+	public static boolean HASHING_PARALLEL = true;
+
 	protected byte[] encoded;
 	protected Map<String, BEValue> decoded;
 
@@ -85,6 +90,7 @@ public class Torrent {
 	private byte[] info_hash;
 	private String hex_info_hash;
 	private long size = 0L;
+
 
 	// are we going to be the seeder for this torrent?
 	// if true, elimiate hashing all of the files twice
@@ -300,7 +306,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	public static Torrent create(File source, String announce, String createdBy)
-		throws NoSuchAlgorithmException, IOException {
+		throws NoSuchAlgorithmException, IOException, Exception {
 		logger.info("Creating torrent for " + source.getName() + "...");
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
@@ -312,8 +318,14 @@ public class Torrent {
 		info.put("length", new BEValue(source.length()));
 		info.put("name", new BEValue(source.getName()));
 		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-		info.put("pieces", new BEValue(Torrent.hashPieces(source),
-					Torrent.BYTE_ENCODING));
+
+		String hashedPieces;
+		if (HASHING_PARALLEL) {
+			hashedPieces = Torrent.hashPiecesParallel(source);
+		} else {
+			hashedPieces = Torrent.hashPieces(source);
+		}
+		info.put("pieces", new BEValue(hashedPieces, Torrent.BYTE_ENCODING));
 		torrent.put("info", new BEValue(info));
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -336,7 +348,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	public static Torrent create(File source, List<File> files, String announce, String createdBy)
-		throws NoSuchAlgorithmException, IOException {
+		throws NoSuchAlgorithmException, IOException, Exception {
 		logger.info("Creating torrent for " + source.getName() + "...");
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
@@ -360,8 +372,13 @@ public class Torrent {
 		}
 		info.put("files", new BEValue(fileDicts));
 		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-		info.put("pieces", new BEValue(Torrent.hashPieces(files),
-					Torrent.BYTE_ENCODING));
+		String hashedPieces;
+		if (HASHING_PARALLEL) {
+			hashedPieces = Torrent.hashPiecesParallel(files);
+		} else {
+			hashedPieces = Torrent.hashPieces(files);
+		}
+		info.put("pieces", new BEValue(hashedPieces, Torrent.BYTE_ENCODING));
 		torrent.put("info", new BEValue(info));
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -393,6 +410,85 @@ public class Torrent {
 		fis.read(data);
 		fis.close();
 		return new Torrent(data);
+	}
+
+	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
+	 *
+	 * <p>
+	 * Hashes the given file piece by piece using the default Torrent piece
+	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
+	 * these hashes, as a string.
+	 * </p>
+	 *
+	 * <p>
+	 * pieces maps to a string whose length is a multiple of 20.
+	 * It is to be subdivided into strings of length 20, each of
+	 * which is the SHA1 hash of the piece at the corresponding index.
+	 * </p>
+	 *
+	 * <p>
+	 * This is used for creating Torrent meta-info structures from a file.
+	 * </p>
+	 *
+	 * @param source The list of files to hash.
+	 */
+	private static String hashPiecesParallel(List<File> files)
+		throws NoSuchAlgorithmException, IOException, Exception {
+		long start = System.currentTimeMillis();
+		long hashTime = 0L;
+
+		int bufferLength = PIECE_LENGTH * HASHING_THREADS;
+		logger.info("Hashing in parallel using {} threads, buffer is {} bytes.", HASHING_THREADS, bufferLength);
+
+		DigestPool pool = new DigestPool(HASHING_THREADS, PIECE_LENGTH);
+		StringBuffer fileStr = new StringBuffer();
+
+		// allocate buffers
+		byte[] data = new byte[bufferLength];
+		ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
+
+		int counter = 0;
+		int position = 0;
+		long total = 0L;
+		int read;
+		for (File file : files) total += file.length();
+
+		// hash each file
+		for (File file : files) {
+			InputStream is = new BufferedInputStream(new FileInputStream(file));
+			while ((read = is.read(data, 0, buffer.remaining())) > 0) {
+				buffer.put(data, 0, read);
+				if (buffer.position() == bufferLength) {
+					pool.submit(position, buffer, bufferLength);
+					buffer.clear();
+
+					position += HASHING_THREADS;
+					counter += HASHING_THREADS;
+				}
+			}
+			fileStr.append(" " + file.getName());
+			is.close();
+		}
+		// handle left over
+		if (buffer.position() > 0) {
+			int len = buffer.position();
+			buffer.position(0).limit(len);
+			pool.submit(position, buffer.slice(), len);
+			counter += (len / PIECE_LENGTH) + 1;
+		}
+
+		// Get the Hashed String
+		String hashes = pool.getHashes();
+
+		int n_pieces = new Double(Math.ceil((double)total /
+					Torrent.PIECE_LENGTH)).intValue();
+		logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
+					fileStr, total, n_pieces, counter,
+					(System.currentTimeMillis() - start) / 1000L,
+					pool.hashing() / 1000L
+					});
+
+		return hashes;
 	}
 
 	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
@@ -468,8 +564,17 @@ public class Torrent {
 	 *
 	 * @param source The file to hash.
 	 */
+	private static String hashPiecesParallel(File source)
+		throws NoSuchAlgorithmException, IOException, Exception {
+		return hashPiecesParallel(Arrays.<File>asList(new File[] {source}));
+	}
+
+	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
+	 *
+	 * @param source The file to hash.
+	 */
 	private static String hashPieces(File source)
-		throws NoSuchAlgorithmException, IOException {
+		throws NoSuchAlgorithmException, IOException, Exception {
 		return hashPieces(Arrays.<File>asList(new File[] {source}));
 	}
 
