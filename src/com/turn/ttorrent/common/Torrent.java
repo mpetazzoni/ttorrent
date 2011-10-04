@@ -73,7 +73,8 @@ public class Torrent {
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
 	/** number of threads to use for parallel hashing. */
-	public static int HASHING_THREADS = Runtime.getRuntime().availableProcessors();
+	public static int PROCESSORS = Runtime.getRuntime().availableProcessors();
+	public static int HASHING_THREADS = ((PROCESSORS / 2) < 2) ? 2 : PROCESSORS / 2;
 
 	public static boolean HASHING_PARALLEL = true;
 
