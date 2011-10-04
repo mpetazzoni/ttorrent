@@ -73,7 +73,7 @@ public class Torrent {
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
 	/** number of threads to use for parallel hashing. */
-	public static int HASHING_THREADS = Runtime.getRuntime().availableProcessors() / 2;
+	public static int HASHING_THREADS = Runtime.getRuntime().availableProcessors();
 
 	public static boolean HASHING_PARALLEL = true;
 
@@ -447,23 +447,45 @@ public class Torrent {
 		byte[] data = new byte[bufferLength];
 		ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
 
-		int counter = 0;
-		int position = 0;
+		boolean buffering = false;
+		int idx = 0;
 		long total = 0L;
 		int read;
+		int remaining = bufferLength;
+
 		for (File file : files) total += file.length();
 
 		// hash each file
 		for (File file : files) {
 			InputStream is = new BufferedInputStream(new FileInputStream(file));
-			while ((read = is.read(data, 0, buffer.remaining())) > 0) {
-				buffer.put(data, 0, read);
-				if (buffer.position() == bufferLength) {
-					pool.submit(position, buffer, bufferLength);
-					buffer.clear();
+			while ((read = is.read(data, 0, remaining)) > 0) {
+				remaining -= read;
 
-					position += HASHING_THREADS;
-					counter += HASHING_THREADS;
+				// didn't get enough data, do buffering
+				if (remaining != 0 || buffering) {
+					logger.trace("buffering read: {} bytes, remaining {}", read, remaining);
+					buffer.put(data, 0, read);
+					buffering = true;
+				}
+				
+				// submit buffer data
+				if (buffering && buffer.remaining() == 0) {
+					logger.trace("submiting buffer");
+					pool.submit(idx, buffer, bufferLength);
+					buffer.clear();
+					buffering = false;
+					idx += HASHING_THREADS;
+					remaining = bufferLength;
+				}
+
+				// submit raw data 
+				if (!buffering && remaining == 0) {
+					logger.trace("submiting bytes");
+					// submit the raw data
+					pool.submit(idx, data, bufferLength);
+					buffering = false;
+					idx += HASHING_THREADS;
+					remaining = bufferLength;
 				}
 			}
 			fileStr.append(" " + file.getName());
@@ -471,10 +493,11 @@ public class Torrent {
 		}
 		// handle left over
 		if (buffer.position() > 0) {
+			logger.trace("submiting buffer");
 			int len = buffer.position();
 			buffer.position(0).limit(len);
-			pool.submit(position, buffer.slice(), len);
-			counter += (len / PIECE_LENGTH) + 1;
+			pool.submit(idx, buffer.slice(), len);
+			idx += (len / PIECE_LENGTH) + 1;
 		}
 
 		// Get the Hashed String
@@ -482,10 +505,10 @@ public class Torrent {
 
 		int n_pieces = new Double(Math.ceil((double)total /
 					Torrent.PIECE_LENGTH)).intValue();
-		logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
-					fileStr, total, n_pieces, counter,
-					(System.currentTimeMillis() - start) / 1000L,
-					pool.hashing() / 1000L
+		logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} millis {} millis hashing.", new Object[] {
+					fileStr, total, n_pieces, idx,
+					(System.currentTimeMillis() - start),
+					pool.hashing()
 					});
 
 		return hashes;
@@ -551,10 +574,10 @@ public class Torrent {
 
 		int n_pieces = new Double(Math.ceil((double)total /
 					Torrent.PIECE_LENGTH)).intValue();
-		logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} seconds {} hashing.", new Object[] {
+		logger.info("Hashed {} ({} bytes) in {} pieces, actual pieces {} in {} millis {} millis hashing.", new Object[] {
 					fileStr, total, n_pieces, counter,
-					(System.currentTimeMillis() - start) / 1000L,
-					hashTime / 1000L
+					(System.currentTimeMillis() - start),
+					hashTime
 					});
 
 		return pieces.toString();
@@ -591,7 +614,7 @@ public class Torrent {
 	 */
 	public static void main(String[] args) {
 
-		if (args.length != 3) {
+		if (args.length < 3) {
 			System.err.println("usage: Torrent <torrent> <announce url> <directory|file>");
 			System.exit(1);
 		}
@@ -600,6 +623,10 @@ public class Torrent {
 			String announce = args[1];
 			File outfile = new File(args[0]);
 			File source = new File(args[2]);
+			boolean parallel = (args.length > 3 && "true".equals(args[3])) ? true : false;
+			logger.info("setting parallel hashing to {}", parallel);
+			if (parallel == false) Torrent.HASHING_PARALLEL = false;
+
 			if (!source.exists()) {
 				System.err.println("<directory|file> must exist!");
 				System.exit(1);

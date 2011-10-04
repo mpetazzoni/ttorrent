@@ -42,8 +42,20 @@ public class DigestPool {
 		public String hash;
 	}
 
+	public static class BufferPiece {
+		public int index;
+		public int offset;
+		public int length;
+
+		public BufferPiece(int index, int offset, int length) {
+			this.index = index; this.offset = offset; this.length = length;
+		}
+	}
+
 	public static class Digester {
 		public ByteBuffer buffer;
+		public byte[] bytes;
+		public boolean buffered;
 		public SHA sha1;
 		public int index;
 		public int offset;
@@ -51,9 +63,13 @@ public class DigestPool {
 
 		public String hash() throws UnsupportedEncodingException, DigestException {
 			sha1.reset();
-			logger.trace(String.format("index %s, offset %s, length %s", index, offset, length));
-			logger.trace(bufferToString(ByteBuffer.wrap(buffer.array(), offset, length)));
-			sha1.update(buffer.array(), offset, length);
+			if (buffered) {
+				logger.trace(String.format("buffer: index %s, offset %s, length %s", index, offset, length));
+				sha1.update(buffer.array(), offset, length);
+			} else {
+				logger.trace(String.format(" bytes: index %s, offset %s, length %s", index, offset, length));
+				sha1.update(bytes, offset, length);
+			}
 			String ret = new String(sha1.digest(), Torrent.BYTE_ENCODING);
 			return ret; 
 		}
@@ -79,19 +95,25 @@ public class DigestPool {
 		return hashing.get();
 	}
 
-	public void submit(final int index, ByteBuffer buffer, int length) throws Exception {
+	public List<BufferPiece> getPieces(final int index, int length) {
 		int offset = 0;
 		int idx = index;
+		List<BufferPiece> pieces = new LinkedList<BufferPiece>();
 		for (int i = 0; i < numThreads; i++) {
-			if (buffer.position() > length || offset > length) break;
+			if (offset > length) break;
 			int end = offset + bufferSize;
 			if (end > length) end = length;
 			int len = end - offset;
 
-			digest(idx, buffer, offset, len);
+			pieces.add(new BufferPiece(idx, offset, len));
+
 			offset += bufferSize;
 			idx += 1;
 		}
+		return pieces;
+	}
+
+	public void process() throws Exception {
 		for (Future<HashedPiece> task : tasks) {
 			HashedPiece hp = task.get();
 			hashes.put(hp.index, hp.hash);
@@ -100,8 +122,7 @@ public class DigestPool {
 		tasks.clear();
 	}
 
-	private void digest(final int index, ByteBuffer buffer, int offset, int length) throws Exception {
-		final Digester digester = pick(index, buffer, offset, length);
+	private void createTask(final Digester digester) throws Exception {
 		Callable<HashedPiece> hasher = new Callable<HashedPiece>() {
 			@Override
 			public HashedPiece call() throws Exception {
@@ -109,7 +130,7 @@ public class DigestPool {
 				long start = System.currentTimeMillis();
 				hp.hash  = digester.hash();
 				hashing.getAndAdd(System.currentTimeMillis() - start);
-				hp.index = index;
+				hp.index = digester.index;
 				free(digester);
 				return hp;
 			}
@@ -123,19 +144,47 @@ public class DigestPool {
 		}
 	}
 
+	public void submit(final int index, byte[] bytes, int length) throws Exception {
+		List<BufferPiece> pieces = getPieces(index, length);
+		for (BufferPiece piece : pieces) {
+			digest(piece.index, piece.offset, piece.length, bytes);
+		}
+		process();
+	}
+
+	public void submit(final int index, ByteBuffer buffer, int length) throws Exception {
+		List<BufferPiece> pieces = getPieces(index, length);
+		for (BufferPiece piece : pieces) {
+			digest(piece.index, piece.offset, piece.length, buffer);
+		}
+		process();
+	}
+
+	private void digest(final int index, int offset, int length, ByteBuffer buffer) throws Exception {
+		final Digester digester = pick(index, offset, length);
+		digester.buffer = buffer;
+		digester.buffered = true;
+		createTask(digester);
+	}
+
+	private void digest(final int index, int offset, int length, byte[] bytes) throws Exception {
+		final Digester digester = pick(index, offset, length);
+		digester.bytes = bytes;
+		digester.buffered = false;
+		createTask(digester);
+	}
+
 	public String getHashes() throws InterruptedException, ExecutionException {
 		this.executor.shutdown();
 		StringBuffer sb = new StringBuffer();
-		int count = 0;
 		for (Map.Entry<Integer,String> hash: hashes.entrySet()) {
 			sb.append(hash.getValue());
-			count += 1;
 		}
-		logger.debug("got hashes: " + count);
+		logger.debug("hashed {} pieces in parallel", hashes.size());
 		return sb.toString();
 	}
 
-	public Digester pick(final int index, final ByteBuffer buffer, final int offset, final int length) throws Exception {
+	public Digester pick(final int index, final int offset, final int length) throws Exception {
 		Digester digester;
 		int idx;
 		synchronized (this.digestSet) {
@@ -143,7 +192,6 @@ public class DigestPool {
 			digestSet.set(idx);
 		}
 		digester = digesters.get(idx);
-		digester.buffer = buffer;
 		digester.index = index;
 		digester.offset = offset;
 		digester.length = length;
