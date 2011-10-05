@@ -338,7 +338,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.pieces[idx].invalid();
 			}
 
-			if ((idx % HASHING_THREADS) == 0) {
+			if ((idx % pool.numThreads()) == 0) {
 				pool.process();
 			}
 		}

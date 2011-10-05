@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
 public class DigestPool {
 	private static final Logger logger = LoggerFactory.getLogger(DigestPool.class);
 
-	int numThreads;
-	int bufferSize;
+	private int numThreads;
+	private int bufferSize;
 	private BlockingQueue<Runnable> queue;
 	private BitSet digestSet;
 	private List<Digester> digesters = new LinkedList<Digester>();
@@ -88,6 +88,10 @@ public class DigestPool {
 			this.digesters.add(digester);
 		}
 		this.executor = new ThreadPoolExecutor(numThreads, numThreads, 2L, TimeUnit.SECONDS, this.queue);
+	}
+
+	public int numThreads() {
+		return this.numThreads;
 	}
 
 	public long hashing() {
