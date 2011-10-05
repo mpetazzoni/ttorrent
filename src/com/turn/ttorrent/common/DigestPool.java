@@ -84,7 +84,6 @@ public class DigestPool {
 		// create our digesters
 		for (int i = 0; i < numThreads; i++) {
 			Digester digester = new Digester();
-			digester.buffer = ByteBuffer.allocate(bufferSize);
 			digester.sha1 = new SHA();
 			this.digesters.add(digester);
 		}
@@ -160,14 +159,14 @@ public class DigestPool {
 		process();
 	}
 
-	private void digest(final int index, int offset, int length, ByteBuffer buffer) throws Exception {
+	public void digest(final int index, int offset, int length, ByteBuffer buffer) throws Exception {
 		final Digester digester = pick(index, offset, length);
 		digester.buffer = buffer;
 		digester.buffered = true;
 		createTask(digester);
 	}
 
-	private void digest(final int index, int offset, int length, byte[] bytes) throws Exception {
+	public void digest(final int index, int offset, int length, byte[] bytes) throws Exception {
 		final Digester digester = pick(index, offset, length);
 		digester.bytes = bytes;
 		digester.buffered = false;
@@ -182,6 +181,12 @@ public class DigestPool {
 		}
 		logger.debug("hashed {} pieces in parallel", hashes.size());
 		return sb.toString();
+	}
+
+	public Map<Integer, String> getHashedPieces() throws InterruptedException, ExecutionException {
+		this.executor.shutdown();
+		logger.debug("hashed {} pieces in parallel", hashes.size());
+		return hashes;
 	}
 
 	public Digester pick(final int index, final int offset, final int length) throws Exception {

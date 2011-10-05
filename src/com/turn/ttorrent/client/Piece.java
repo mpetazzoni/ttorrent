@@ -143,6 +143,16 @@ public class Piece implements Comparable<Piece> {
 		return this.isValid();
 	}
 
+	public boolean validate(String sha1) throws IOException {
+		logger.trace("Validating piece#" + this.index + "...");
+		this.valid = sha1.equals(new String(this.hash, Torrent.BYTE_ENCODING));
+		return this.isValid();
+	}
+
+	public void invalid() {
+		this.valid = false;
+	}
+
 	/** Read a piece block from the underlying byte storage.
 	 *
 	 * This is the public method for reading this piece's data, and it will

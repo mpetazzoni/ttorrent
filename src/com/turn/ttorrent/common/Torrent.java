@@ -65,7 +65,7 @@ public class Torrent {
 	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int PIECE_LENGTH = 512 * 1024;
+	public static final int PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
 
@@ -624,9 +624,13 @@ public class Torrent {
 			String announce = args[1];
 			File outfile = new File(args[0]);
 			File source = new File(args[2]);
-			boolean parallel = (args.length > 3 && "true".equals(args[3])) ? true : false;
-			logger.info("setting parallel hashing to {}", parallel);
+
+			int threads = 1;
+			if (args.length > 3) threads = Integer.parseInt(args[3]);
+			boolean parallel = (threads > 1) ? true : false;
+			logger.info("setting parallel hashing to {} setting threads to {}", parallel, threads);
 			if (parallel == false) Torrent.HASHING_PARALLEL = false;
+			Torrent.HASHING_THREADS = threads;
 
 			if (!source.exists()) {
 				System.err.println("<directory|file> must exist!");

@@ -17,16 +17,19 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.DigestPool;
 import com.turn.ttorrent.common.Torrent.TorrentFile;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
+import java.lang.InterruptedException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.LinkedList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -62,6 +65,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private Random random;
 
+	private	long validateElapse = 0L;
+	private	long analyzeElapse = 0L;
 	private long uploaded;
 	private long downloaded;
 	private long left;
@@ -254,17 +259,35 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * This function should be called soon after the constructor to initialize
 	 * the pieces array.
 	 */
-	public synchronized void init() throws IOException {
+	public synchronized void init() throws IOException, Exception {
 		long start = System.currentTimeMillis();
-		long validateElapse = 0L;
 		int nPieces = new Double(Math.ceil((double)this.totalLength /
 					this.pieceLength)).intValue();
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
-
 		this.piecesHashes.clear();
 
 		logger.info("Analyzing local data for " + this.getName() + "...");
+		if (Torrent.HASHING_PARALLEL && !this.isSeeder()) {
+			analyzeParallel();
+		} else {
+			analyze();
+		}
+		this.analyzeElapse = System.currentTimeMillis() - start;
+
+		String seedStr = (this.isSeeder()) ? "(seeder)" : "(leacher)";
+		logger.info(this.getName() + ": " +
+				seedStr + " " +
+				(this.totalLength - this.left) + "/" +
+				this.totalLength + " bytes [" +
+				this.completedPieces.cardinality() + "/" +
+				this.pieces.length + "] in " +
+				this.analyzeElapse +
+				" millis, validation in " +
+				this.validateElapse + " millis.");
+	}
+
+	private void analyze() throws IOException {
 		for (int idx=0; idx<this.pieces.length; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);
@@ -287,17 +310,53 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.left -= len;
 			}
 		}
+	}
 
-		String seedStr = (this.isSeeder()) ? "(seeder)" : "(leacher)";
-		logger.info(this.getName() + ": " +
-				seedStr + " " +
-				(this.totalLength - this.left) + "/" +
-				this.totalLength + " bytes [" +
-				this.completedPieces.cardinality() + "/" +
-				this.pieces.length + "] in " +
-				(System.currentTimeMillis() - start) / 1000L +
-				" seconds, validation in " +
-				validateElapse / 1000L + " seconds.");
+	private void analyzeParallel() throws IOException, Exception {
+
+		DigestPool pool = new DigestPool(HASHING_THREADS, PIECE_LENGTH);
+
+		for (int idx=0; idx<this.pieces.length; idx++) {
+			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
+			this.piecesHashes.get(hash);
+
+			// The last piece may be shorter than the torrent's global piece
+			// length.
+			Long len = (idx < this.pieces.length - 1) ?
+				 this.pieceLength :
+				 this.totalLength % this.pieceLength;
+			int length = len.intValue();
+			long offset = ((long)idx) * this.pieceLength;
+
+			this.pieces[idx] = new Piece(this.bucket, idx, offset, length, hash, false);
+
+			// read data and digest this piece
+			ByteBuffer buffer = this.bucket.read(offset, length);
+			if (buffer.remaining() == length) {
+				pool.digest(idx, 0, length, buffer);
+			} else {
+				this.pieces[idx].invalid();
+			}
+
+			if ((idx % HASHING_THREADS) == 0) {
+				pool.process();
+			}
+		}
+		// handle left overs
+		pool.process();
+
+		// get and validate hashes
+		Map<Integer, String> hashes = pool.getHashedPieces();
+		for (Map.Entry<Integer,String> hash: hashes.entrySet()) {
+			int idx = hash.getKey();
+			this.pieces[idx].validate(hash.getValue());
+
+			if (this.pieces[idx].isValid()) {
+				this.completedPieces.set(idx);
+				this.left -= this.pieces[idx].size();
+			}
+		}
+		this.validateElapse = pool.hashing();
 	}
 
 	public synchronized void close() {
