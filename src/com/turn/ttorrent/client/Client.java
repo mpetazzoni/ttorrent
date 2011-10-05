@@ -277,6 +277,10 @@ public class Client extends Observable implements Runnable,
 			logger.error("Could not initialize torrent file data!", ioe);
 			this.setState(ClientState.ERROR);
 			return;
+		} catch (Exception e) {
+			logger.error("Could not initialize torrent file data!", e);
+			this.setState(ClientState.ERROR);
+			return;
 		}
 
 		// Initial completion test
@@ -887,6 +891,13 @@ public class Client extends Observable implements Runnable,
 			System.err.println("usage: Client <torrent> [directory]");
 			System.exit(1);
 		}
+
+		int threads = 1;
+		if (args.length > 2) threads = Integer.parseInt(args[2]);
+		boolean parallel = (threads > 1) ? true : false;
+		logger.info("setting parallel hashing to {} setting threads to {}", parallel, threads);
+		if (parallel == false) Torrent.HASHING_PARALLEL = false;
+		Torrent.HASHING_THREADS = threads;
 
 		try {
 			Client c = new Client(
