@@ -65,6 +65,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private Random random;
 
+	private File destDir;
 	private	long validateElapse = 0L;
 	private	long analyzeElapse = 0L;
 	private long uploaded;
@@ -113,6 +114,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	public SharedTorrent(byte[] torrent, File destDir, boolean seeder)
 		throws IllegalArgumentException, FileNotFoundException, IOException {
 		super(torrent, seeder);
+		this.destDir = destDir;
 
 		// Make sure the destination/location directory exists, or try to
 		// create it.
@@ -704,4 +706,26 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	@Override
 	public synchronized void handleIOException(SharingPeer peer,
 			IOException ioe) { /* Do nothing */ }
+
+	public List<String> getFileNames() {
+		List<String> fileNames = new ArrayList<String>();
+		for (File file : getFileList()) {
+			fileNames.add(file.getAbsolutePath());
+		}
+		return fileNames;
+	}
+
+	public List<File> getFileList() {
+		List<File> torrentFiles = new ArrayList<File>();
+		if (this.isMultiFile()) {
+			for (TorrentFile torrentFile : this.getFiles()) {
+				File file = new File(destDir, torrentFile.getPath());
+				torrentFiles.add(file);
+			}
+		} else {
+			File file = new File(destDir, this.getName());
+			torrentFiles.add(file);
+		}
+		return torrentFiles;
+	}
 }
