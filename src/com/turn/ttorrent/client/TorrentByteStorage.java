@@ -162,4 +162,10 @@ public class TorrentByteStorage {
 			file.close();
 		}
 	}
+
+	public synchronized void closeQuietly() {
+		for (TorrentByteStorageFile file : files) {
+			file.closeQuietly();
+		}
+	}
 }

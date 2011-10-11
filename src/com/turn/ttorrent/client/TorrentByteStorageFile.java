@@ -150,8 +150,18 @@ public class TorrentByteStorageFile {
 	}
 
 	public synchronized void close() throws IOException {
-		this.channel.force(true);
-		this.raf.close();
+		if (this.channel != null) this.channel.force(true);
+		this.channel = null;
+		if (this.raf != null) this.raf.close();
+		this.raf = null;
+	}
+
+	public synchronized void closeQuietly() {
+		try {
+			close();
+		} catch (IOException ioe) {
+			logger.error("couldn't close {}", this.target, ioe);
+		}
 	}
 
 	public String toString() {

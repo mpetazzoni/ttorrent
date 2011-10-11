@@ -370,6 +370,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 	}
 
+	public synchronized void closeQuietly() {
+		this.bucket.closeQuietly();
+	}
+
 	/** Retrieve a piece object by index.
 	 *
 	 * @param index The index of the piece in this torrent.
