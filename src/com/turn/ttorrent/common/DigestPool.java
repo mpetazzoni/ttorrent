@@ -177,6 +177,10 @@ public class DigestPool {
 		createTask(digester);
 	}
 
+	public void stop() {
+		this.executor.shutdown();
+	}
+
 	public String getHashes() throws InterruptedException, ExecutionException {
 		this.executor.shutdown();
 		StringBuffer sb = new StringBuffer();

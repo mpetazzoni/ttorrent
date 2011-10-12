@@ -65,6 +65,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private Random random;
 
+	/** allow init() to be canceled */
+	private boolean stop = false;
+	private boolean initialized = false;
+
 	private File destDir;
 	private	long validateElapse = 0L;
 	private	long analyzeElapse = 0L;
@@ -262,6 +266,32 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * the pieces array.
 	 */
 	public synchronized void init() throws IOException, Exception {
+		if (this.initialized) {
+			logger.warn("Torrent already initialized");
+			return;
+		}
+		new Thread() {
+			public void run() {
+				try {
+					initialize();
+				} catch (InterruptedException e) {
+					logger.warn("Torrent was interrupted while analyzing");
+				} catch (Exception e) {
+					logger.error("Exception initializing torrent", e);
+				}
+			}
+		}.start();
+	}
+
+	public void stop() {
+		this.stop = true;
+	}
+
+	public boolean isInitialized() {
+		return this.initialized;
+	}
+
+	private void initialize() throws IOException, Exception {
 		long start = System.currentTimeMillis();
 		int nPieces = new Double(Math.ceil((double)this.totalLength /
 					this.pieceLength)).intValue();
@@ -287,9 +317,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.analyzeElapse +
 				" millis, validation in " +
 				this.validateElapse + " millis.");
+		this.initialized = true;
 	}
 
-	private void analyze() throws IOException {
+	private void analyze() throws IOException, InterruptedException {
 		for (int idx=0; idx<this.pieces.length; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);
@@ -311,10 +342,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.completedPieces.set(idx);
 				this.left -= len;
 			}
+
+			if (this.stop) throw new InterruptedException("validation canceled");
 		}
 	}
 
-	private void analyzeParallel() throws IOException, Exception {
+	private void analyzeParallel() throws IOException, InterruptedException, Exception {
 
 		DigestPool pool = new DigestPool(HASHING_THREADS, PIECE_LENGTH);
 
@@ -342,6 +375,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 			if ((idx % pool.numThreads()) == 0) {
 				pool.process();
+			}
+			if (this.stop) {
+				pool.stop();
+				throw new InterruptedException("validation canceled");
 			}
 		}
 		// handle left overs

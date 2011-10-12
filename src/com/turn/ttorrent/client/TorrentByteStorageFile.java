@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.ClosedByInterruptException;
 
 import java.util.List;
 
@@ -149,19 +150,28 @@ public class TorrentByteStorageFile {
 			" to " + this.target.getName() + ".");
 	}
 
-	public synchronized void close() throws IOException {
+	public synchronized boolean close() throws IOException {
+		boolean closed = false;
 		if (this.channel != null) this.channel.force(true);
 		this.channel = null;
-		if (this.raf != null) this.raf.close();
+		if (this.raf != null) {
+			this.raf.close();
+			closed = true;
+		}
 		this.raf = null;
+		return closed;
 	}
 
-	public synchronized void closeQuietly() {
+	public synchronized boolean closeQuietly() {
 		try {
-			close();
+			return close();
+		} catch (ClosedByInterruptException cbie) {
+			// ignore java closed for us
+			return true;
 		} catch (IOException ioe) {
-			logger.error("couldn't close {}", this.target, ioe);
+			logger.error("couldn't close " + this.target, ioe);
 		}
+		return false;
 	}
 
 	public String toString() {

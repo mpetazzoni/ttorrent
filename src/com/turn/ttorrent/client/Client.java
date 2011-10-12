@@ -94,6 +94,7 @@ public class Client extends Observable implements Runnable,
 
 	public enum ClientState {
 		WAITING,
+		VALIDATING,
 		SHARING,
 		SEEDING,
 		ERROR,
@@ -267,19 +268,36 @@ public class Client extends Observable implements Runnable,
 	public void run() {
 		// First, analyze the torrent's local data.
 		try {
+			this.setState(ClientState.VALIDATING);
 			this.torrent.init();
+			while (!this.torrent.isInitialized()) {
+				if (this.stop) {
+					this.torrent.stop();
+					throw new InterruptedException("stopped during validation");
+				}
+				Thread.yield();
+			}
+		} catch (InterruptedException ie) {
+			logger.warn("Client was interrupted during initialization. " +
+					"Aborting right away.");
+			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
+			return;
 		} catch (ClosedByInterruptException cbie) {
 			logger.warn("Client was interrupted during initialization. " +
 					"Aborting right away.");
 			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
 			return;
 		} catch (IOException ioe) {
 			logger.error("Could not initialize torrent file data!", ioe);
 			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
 			return;
 		} catch (Exception e) {
 			logger.error("Could not initialize torrent file data!", e);
 			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
 			return;
 		}
 

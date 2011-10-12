@@ -158,14 +158,18 @@ public class TorrentByteStorage {
 	}
 
 	public synchronized void close() throws IOException {
+		int closed = 0;
 		for (TorrentByteStorageFile file : files) {
-			file.close();
+			if (file.close()) closed += 1;
 		}
+		logger.debug("closed {} files", closed);
 	}
 
 	public synchronized void closeQuietly() {
+		int closed = 0;
 		for (TorrentByteStorageFile file : files) {
-			file.closeQuietly();
+			if (file.closeQuietly()) closed += 1;
 		}
+		logger.debug("quietly closed {} files", closed);
 	}
 }
