@@ -275,7 +275,7 @@ public class Client extends Observable implements Runnable,
 					this.torrent.stop();
 					throw new InterruptedException("stopped during validation");
 				}
-				Thread.yield();
+				Thread.sleep(10);
 			}
 		} catch (InterruptedException ie) {
 			logger.warn("Client was interrupted during initialization. " +
