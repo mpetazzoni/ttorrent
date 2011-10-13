@@ -15,14 +15,13 @@
 
 package com.turn.ttorrent.client;
 
-import java.io.File;
+import java.util.List;
+import java.util.LinkedList;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Torrent data storage.
  *
@@ -33,80 +32,114 @@ import org.apache.log4j.Logger;
  * </p>
  *
  * <p>
- * Although this BitTorrent client currently only supports single-torrent
- * files, this TorrentByteStorage class provides an abstraction for the Piece
- * class to read and write to the torrent's data without having to care about
+ * TorrentByteStorage class provides an abstraction for the Piece class
+ * to read and write to the torrent's data without having to care about
  * which file(s) a piece is on.
  * </p>
  *
- * <p>
- * The current implementation uses a RandomAccessFile FileChannel to expose
- * thread-safe read/write methods.
- * </p>
- *
- * @author mpetazzoni
+ * @author dgiffin
  */
 public class TorrentByteStorage {
 
 	private static final Logger logger =
-		Logger.getLogger(TorrentByteStorage.class);
+		LoggerFactory.getLogger(TorrentByteStorage.class);
 
-	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+	List<TorrentByteStorageFile> files;
 
-	private File target;
-	private File partial;
-	private File current;
+	private static class FileOffset {
+		public long offset;  // position into the file
+		public int position; // position into the buffer
+		public long length;  // bytes to write / read
+		public TorrentByteStorageFile file;
 
-	private RandomAccessFile raf;
-	private FileChannel channel;
-	private long size;
+		public FileOffset(TorrentByteStorageFile file, long offset, int position, long length) {
+			this.file = file;
+			this.offset = offset;
+			this.position = position;
+			this.length = length;
+		}
+	}
 
-	public TorrentByteStorage(File file, long size) throws IOException {
-		this.target = file;
-		this.size = size;
+	public TorrentByteStorage(List<TorrentByteStorageFile> files) {
+		this.files = files;
+	}
 
-		this.partial = new File(this.target.getAbsolutePath() +
-			TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+	public ByteBuffer read(long offset, int length) throws IOException {
+		ByteBuffer buffer = ByteBuffer.allocate(length);
+		List<FileOffset> fileOffsets = select(offset, length);
+		int total = 0;
+		for (FileOffset fileOffset : fileOffsets) {
+			total += fileOffset.file.read(buffer, fileOffset.offset);
+		}
+		buffer.clear();
+		buffer.limit(total >= 0 ? total : 0);
+		return buffer;
+	}
 
-		if (this.partial.exists()) {
-			logger.info("Partial download found at " +
-				this.partial.getAbsolutePath() + ". Continuing...");
-			this.current = this.partial;
-		} else if (!this.target.exists()) {
-			logger.info("Downloading new file to " +
-				this.partial.getAbsolutePath() + "...");
-			this.current = this.partial;
-		} else {
-			logger.info("Using existing file " +
-				this.target.getAbsolutePath() + ".");
-			this.current = this.target;
+	public void write(ByteBuffer block, long offset, int length) throws IOException {
+		List<FileOffset> fileOffsets = select(offset, length);
+		if (fileOffsets.size() == 1) {
+			// write the whole thing.
+			FileOffset fileOffset = fileOffsets.get(0);
+			fileOffset.file.write(block, fileOffset.offset);
+			return;
+		}
+		// get all the bytes
+		byte[] bytes = block.array();
+		for (FileOffset fileOffset : fileOffsets) {
+			// create a smaller buffers to write
+			ByteBuffer data = ByteBuffer.allocate(new Long(fileOffset.length).intValue()); // too short?
+			// put the only the data for this file
+			data.put(bytes, fileOffset.position, new Long(fileOffset.length).intValue());
+			data.rewind();
+			fileOffset.file.write(data, fileOffset.offset);
 		}
 
-		this.raf = new RandomAccessFile(this.current, "rw");
-
-		// Set the file length to the appropriate size, eventually truncating
-		// or extending the file if it already exists with a different size.
-		this.raf.setLength(this.size);
-
-		this.channel = raf.getChannel();
-		logger.debug("Initialized torrent byte storage at " +
-			this.current.getAbsolutePath() + ".");
 	}
 
-	public ByteBuffer read(int offset, int length) throws IOException {
-		ByteBuffer data = ByteBuffer.allocate(length);
-		int bytes = this.channel.read(data, offset);
-		data.clear();
-		data.limit(bytes >= 0 ? bytes : 0);
-		return data;
-	}
+	// select file, and calculate position into file
+	private List<FileOffset> select(long position, int length) throws IOException {
 
-	public void write(ByteBuffer block, int offset) throws IOException {
-		this.channel.write(block, offset);
+		List<FileOffset> storeFiles = new LinkedList<FileOffset>();
+
+		int nbytes = 0;  // number of bytes / offset into buffer
+		long total = 0L; // total offset into the contiguous file 
+		boolean found = false;
+
+		for (TorrentByteStorageFile file : files) {
+			// logger.debug("checking file {} compare ({} <= {}) && ({} < {})",
+			//	new Object[] { file, total, position, position, (total + file.getSize()) });
+			if (found || (!found && total <= position && position < (total + file.getSize()))) {
+				long offset = position - total;
+				long len = file.getSize() - offset;
+				if (len > (length - nbytes)) len = length - nbytes; // don't overrun the buffer
+
+				storeFiles.add(new FileOffset(file, offset, nbytes, len));
+				if (!found)  logger.trace("found at file {} offset {} length {}", new Object[] {file, offset, len});
+				if (found) logger.trace(" another file {} offset {} length {}", new Object[] {file, offset, len});
+
+				// move forward
+				nbytes += len; 
+				position += len;
+				found = true;
+			}
+			if (nbytes >= length) break; // got enough files already
+			total += file.getSize();
+		}
+		if (storeFiles.size() == 0) {
+			throw new IOException(String.format(
+						"position %s past total length %s of all files",
+						position, total
+					));
+		}
+		return storeFiles;
 	}
 
 	public boolean isFinished() {
-		return this.current.equals(this.target);
+		for (TorrentByteStorageFile file : files) {
+			if (file.isFinished() == false) return false;
+		}
+		return true;
 	}
 
 	/** Move the partial file to its final location.
@@ -119,40 +152,24 @@ public class TorrentByteStorage {
 	 * </p>
 	 */
 	public synchronized void finish() throws IOException {
-		this.channel.force(true);
-
-		// Nothing more to do if we're already on the target file.
-		if (this.isFinished()) {
-			return;
+		for (TorrentByteStorageFile file : files) {
+			file.finish();
 		}
-
-		try {
-			FileUtils.deleteQuietly(this.target);
-			FileUtils.copyFile(this.current, this.target);
-		} catch (IOException ioe) {
-			// Don't leave a partially copied file in the destination.
-			FileUtils.deleteQuietly(this.target);
-			throw ioe;
-		}
-
-		logger.debug("Re-opening torrent byte storage at " +
-				this.target.getAbsolutePath() + ".");
-
-		RandomAccessFile raf = new RandomAccessFile(this.target, "rw");
-		raf.setLength(this.size);
-
-		this.channel = raf.getChannel();
-		this.raf.close();
-		this.raf = raf;
-		this.current = this.target;
-
-		FileUtils.deleteQuietly(this.partial);
-		logger.info("Moved torrent data from " + this.partial.getName() +
-			" to " + this.target.getName() + ".");
 	}
 
 	public synchronized void close() throws IOException {
-		this.channel.force(true);
-		this.raf.close();
+		int closed = 0;
+		for (TorrentByteStorageFile file : files) {
+			if (file.close()) closed += 1;
+		}
+		logger.debug("closed {} files", closed);
+	}
+
+	public synchronized void closeQuietly() {
+		int closed = 0;
+		for (TorrentByteStorageFile file : files) {
+			if (file.closeQuietly()) closed += 1;
+		}
+		logger.debug("quietly closed {} files", closed);
 	}
 }

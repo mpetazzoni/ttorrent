@@ -27,7 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
@@ -51,9 +52,9 @@ import org.simpleframework.http.core.Container;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-class TrackerService implements Container {
+public class TrackerService implements Container {
 
-	private final static Logger logger = Logger.getLogger(TrackerService.class);
+	private final static Logger logger = LoggerFactory.getLogger(TrackerService.class);
 
 	private String version;
 	private ConcurrentMap<String, TrackedTorrent> torrents;
@@ -94,7 +95,7 @@ class TrackerService implements Container {
 	 * @param torrents The torrents this TrackerService should serve requests
 	 * for.
 	 */
-	TrackerService(String version,
+	public TrackerService(String version,
 			ConcurrentMap<String, TrackedTorrent> torrents) {
 		this.version = version;
 		this.torrents = torrents;
@@ -167,7 +168,7 @@ class TrackerService implements Container {
 
 		// Make sure we have the peer IP, fallbacking on the request's source
 		// address if the peer didn't provide it.
-		if (!params.containsKey("ip")) {
+		if (!params.containsKey("ip") || "0.0.0.0".equals(params.get("ip"))) {
 			params.put("ip", request.getClientAddress().getAddress()
 					.getHostAddress());
 		}
@@ -318,6 +319,11 @@ class TrackerService implements Container {
 			params.put("event", "started");
 		}
 
+		if (event != null && "stopped".equals(event)) {
+			params.put("event", "stopped");
+			return null;
+		}
+
 		// If an event other than 'started' is specified and we also haven't
 		// seen the peer on this torrent before, something went wrong. A
 		// previous 'started' announce request should have been made by the
@@ -325,6 +331,7 @@ class TrackerService implements Container {
 		// request refers to.
 		if (event != null && !"started".equals(event) &&
 				torrent.getPeer(peerId) == null) {
+			logger.error("event error: {} {} {}", new Object[] { event, peerId, params });
 			return TrackerError.INVALID_EVENT;
 		}
 

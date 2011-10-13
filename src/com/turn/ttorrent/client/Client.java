@@ -36,6 +36,7 @@ import java.text.ParseException;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
@@ -48,10 +49,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A pure-java BitTorrent client.
  *
@@ -79,11 +78,11 @@ public class Client extends Observable implements Runnable,
 	   AnnounceResponseListener, IncomingConnectionListener,
 		PeerActivityListener {
 
-	private static final Logger logger = Logger.getLogger(Client.class);
+	private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
-	private static final int UNCHOKING_FREQUENCY = 7;
+	private static final int UNCHOKING_FREQUENCY = 1;
 
 	/** Optimistic unchokes are done every 2 loop iterations, i.e. every
 	 * 2*UNCHOKING_FREQUENCY seconds. */
@@ -91,10 +90,11 @@ public class Client extends Observable implements Runnable,
 
 	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 10;
+	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 100;
 
 	public enum ClientState {
 		WAITING,
+		VALIDATING,
 		SHARING,
 		SEEDING,
 		ERROR,
@@ -268,15 +268,36 @@ public class Client extends Observable implements Runnable,
 	public void run() {
 		// First, analyze the torrent's local data.
 		try {
+			this.setState(ClientState.VALIDATING);
 			this.torrent.init();
+			while (!this.torrent.isInitialized()) {
+				if (this.stop) {
+					this.torrent.stop();
+					throw new InterruptedException("stopped during validation");
+				}
+				Thread.sleep(10);
+			}
+		} catch (InterruptedException ie) {
+			logger.warn("Client was interrupted during initialization. " +
+					"Aborting right away.");
+			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
+			return;
 		} catch (ClosedByInterruptException cbie) {
 			logger.warn("Client was interrupted during initialization. " +
 					"Aborting right away.");
 			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
 			return;
 		} catch (IOException ioe) {
 			logger.error("Could not initialize torrent file data!", ioe);
 			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
+			return;
+		} catch (Exception e) {
+			logger.error("Could not initialize torrent file data!", e);
+			this.setState(ClientState.ERROR);
+			this.torrent.closeQuietly();
 			return;
 		}
 
@@ -364,7 +385,7 @@ public class Client extends Observable implements Runnable,
 			}
 		}
 
-		logger.info("BitTorrent client " + this.getState().name() + ", " +
+		logger.debug("BitTorrent client " + this.getState().name() + ", " +
 			choked + "/" +
 			this.connected.size() + "/" +
 			this.peers.size() + " peers, " +
@@ -377,6 +398,41 @@ public class Client extends Observable implements Runnable,
 			String.format("%.2f", dl/1024.0) + "/" +
 			String.format("%.2f", ul/1024.0) + " kB/s."
 		);
+	}
+
+	public synchronized Map<String, Object> getInfo() {
+		float dl = 0;
+		float ul = 0;
+		int choked = 0;
+		for (SharingPeer peer : this.connected.values()) {
+			dl += peer.getDLRate().get();
+			ul += peer.getULRate().get();
+			if (peer.isChoked()) {
+				choked++;
+			}
+		}
+
+		Map<String, Object> info = new HashMap<String, Object>();
+		info.put("peerId", this.id);
+		info.put("state", this.getState().name());
+		info.put("choked", choked);
+		info.put("connected", this.connected.size());
+		info.put("peers", this.peers.size());
+
+		info.put("pieces", this.torrent.getPieceCount());
+		info.put("available", this.torrent.getAvailablePieces().cardinality());
+		info.put("completed", this.torrent.getCompletedPieces().cardinality());
+		info.put("completion", this.torrent.getCompletion());
+
+		info.put("uploaded", this.torrent.getUploaded());
+		info.put("downloaded", this.torrent.getDownloaded());
+		info.put("left", this.torrent.getLeft());
+		info.put("size", this.torrent.getSize());
+
+		info.put("up", ul);
+		info.put("down", dl);
+
+		return info;
 	}
 
 	/** Reset peers download and upload rates.
@@ -608,7 +664,7 @@ public class Client extends Observable implements Runnable,
 		} catch (InvalidBEncodingException ibee) {
 			logger.warn("Invalid tracker response!", ibee);
 		} catch (UnsupportedEncodingException uee) {
-			logger.error(uee);
+			logger.error("{}", uee);
 		}
 	}
 
@@ -630,9 +686,9 @@ public class Client extends Observable implements Runnable,
 			// Attempt to connect to the peer if and only if:
 			//   - We're not already connected to it;
 			//   - We're not a seeder (we leave the responsibility
-			//	   of connecting to peers that need to download
-			//     something), or we are a seeder but we're still
-			//     willing to initiate some outbound connections.
+			//	 of connecting to peers that need to download
+			//	 something), or we are a seeder but we're still
+			//	 willing to initiate some outbound connections.
 			if (!peer.isBound() &&
 				(!this.isSeed() ||
 				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
@@ -848,13 +904,18 @@ public class Client extends Observable implements Runnable,
 	/** Main client entry point for standalone operation.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-					new PatternLayout("%d [%-20t] %-5p: %m%n")));
 
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
 			System.exit(1);
 		}
+
+		int threads = 1;
+		if (args.length > 2) threads = Integer.parseInt(args[2]);
+		boolean parallel = (threads > 1) ? true : false;
+		logger.info("setting parallel hashing to {} setting threads to {}", parallel, threads);
+		if (parallel == false) Torrent.HASHING_PARALLEL = false;
+		Torrent.HASHING_THREADS = threads;
 
 		try {
 			Client c = new Client(
@@ -867,7 +928,7 @@ public class Client extends Observable implements Runnable,
 				System.exit(1);
 			}
 		} catch (Exception e) {
-			logger.fatal(e);
+			logger.error("{}", e);
 			e.printStackTrace();
 			System.exit(2);
 		}

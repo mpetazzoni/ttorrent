@@ -28,17 +28,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TrackedTorrent extends Torrent {
 
-	private static final Logger logger = Logger.getLogger(TrackedTorrent.class);
+	private static final Logger logger = LoggerFactory.getLogger(TrackedTorrent.class);
 
 	/** Default number of peers included in a tracker response. */
 	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
 
 	/** Default announce interval requested from peers, in seconds. */
-	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 300;
+	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 10;
 
 	private int answerPeers;
 	private int announceInterval;
@@ -62,6 +63,10 @@ public class TrackedTorrent extends Torrent {
 
 	public TrackedTorrent(Torrent torrent) throws IllegalArgumentException {
 		this(torrent.getEncoded());
+	}
+
+	public Map<String, TrackedPeer> getPeers() {
+		return this.peers;
 	}
 
 	/** Add a peer exchanging on this torrent.

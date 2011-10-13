@@ -23,7 +23,8 @@ import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent piece.
  *
@@ -41,17 +42,16 @@ import org.apache.log4j.Logger;
  */
 public class Piece implements Comparable<Piece> {
 
-	private static final Logger logger = Logger.getLogger(Piece.class);
-
-	public static final int BLOCK_SIZE = 16*1024; // 16kB
+	private static final Logger logger = LoggerFactory.getLogger(Piece.class);
 
 	private TorrentByteStorage bucket;
 	private int index;
-	private int offset;
+	private long offset; // support > 2 GB files
 	private int length;
 
 	private byte[] hash;
 	private boolean valid;
+	private boolean seeder;
 
 	private int seen;
 
@@ -65,8 +65,8 @@ public class Piece implements Comparable<Piece> {
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
 	 */
-	public Piece(TorrentByteStorage bucket, int index, int offset, int length,
-			byte[] hash) {
+	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
+			byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
@@ -74,12 +74,20 @@ public class Piece implements Comparable<Piece> {
 		this.hash = hash;
 
 		// Piece is considered invalid until first check.
+		// unless we are the seeder
 		this.valid = false;
+
+		// Are we seeder for this piece?
+		this.seeder = seeder;
 
 		// Piece start unseen
 		this.seen = 0;
 
 		this.data = null;
+	}
+
+	public boolean isSeeder() {
+		return this.seeder;
 	}
 
 	public boolean isValid() {
@@ -114,6 +122,12 @@ public class Piece implements Comparable<Piece> {
 	public boolean validate() throws IOException {
 		this.valid = false;
 
+		if (this.isSeeder()) {
+			this.valid = true;
+			logger.trace("Validating piece#" + this.index + "... (seeding)");
+			return this.isValid();
+		}
+
 		try {
 			logger.trace("Validating piece#" + this.index + "...");
 			ByteBuffer buffer = this.bucket.read(this.offset, this.length);
@@ -123,10 +137,20 @@ public class Piece implements Comparable<Piece> {
 				this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 			}
 		} catch (NoSuchAlgorithmException nsae) {
-			logger.error(nsae);
+			logger.error("{}", nsae);
 		}
 
 		return this.isValid();
+	}
+
+	public boolean validate(String sha1) throws IOException {
+		logger.trace("Validating piece#" + this.index + "...");
+		this.valid = sha1.equals(new String(this.hash, Torrent.BYTE_ENCODING));
+		return this.isValid();
+	}
+
+	public void invalid() {
+		this.valid = false;
 	}
 
 	/** Read a piece block from the underlying byte storage.
@@ -183,7 +207,7 @@ public class Piece implements Comparable<Piece> {
 		if (block.remaining() + offset == this.length) {
 			this.data.rewind();
 			logger.trace("Recording " + this + "...");
-			this.bucket.write(this.data, this.offset);
+			this.bucket.write(this.data, this.offset, this.length);
 			this.data = null;
 		}
 	}

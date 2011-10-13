@@ -26,7 +26,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
@@ -41,7 +42,7 @@ import org.simpleframework.transport.connect.SocketConnection;
  */
 public class Tracker {
 
-	private static final Logger logger = Logger.getLogger(Tracker.class);
+	private static final Logger logger = LoggerFactory.getLogger(Tracker.class);
 
 	public static final String ANNOUNCE_URL = "/announce";
 	public static final int DEFAULT_TRACKER_PORT = 6969;

@@ -31,7 +31,8 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A peer exchanging on a torrent with the BitTorrent client.
  *
@@ -65,7 +66,7 @@ import org.apache.log4j.Logger;
  */
 public class SharingPeer extends Peer implements MessageListener {
 
-	private static final Logger logger = Logger.getLogger(SharingPeer.class);
+	private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
 
 	private static final int MAX_PIPELINED_REQUESTS = 5;
 
@@ -321,7 +322,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			IllegalStateException up = new IllegalStateException(
 					"Trying to download a piece while previous " +
 					"download not completed!");
-			logger.warn(up);
+			logger.warn("{}", up);
 			throw up; // ah ah.
 		}
 
