@@ -28,11 +28,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TrackedTorrent extends Torrent {
 
-	private static final Logger logger = Logger.getLogger(TrackedTorrent.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TrackedTorrent.class);
 
 	/** Default number of peers included in a tracker response. */
 	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
@@ -215,7 +217,7 @@ public class TrackedTorrent extends Torrent {
 			// Collect unfresh peers, and obviously don't serve them as well.
 			if (!candidate.isFresh() ||
 					(candidate.looksLike(peer) && !candidate.equals(peer))) {
-				logger.debug("Collecting stale peer " + candidate + "...");
+				logger.debug("Collecting stale peer {}...", candidate);
 				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}
@@ -227,8 +229,8 @@ public class TrackedTorrent extends Torrent {
 
 			// Collect unfresh peers, and obviously don't serve them as well.
 			if (!candidate.isFresh()) {
-				logger.debug("Collecting stale peer " +
-						candidate.getHexPeerId() + "...");
+				logger.debug("Collecting stale peer {}...",
+					candidate.getHexPeerId());
 				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}

@@ -32,7 +32,8 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent shared by the BitTorrent client.
  *
@@ -50,7 +51,8 @@ import org.apache.log4j.Logger;
  */
 public class SharedTorrent extends Torrent implements PeerActivityListener {
 
-	private static final Logger logger = Logger.getLogger(SharedTorrent.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(SharedTorrent.class);
 
 	/** Randomly select the next piece to download from a peer from the
 	 * RAREST_PIECE_JITTER available from it. */
@@ -210,7 +212,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		this.piecesHashes.clear();
 
-		logger.debug("Analyzing local data for " + this.getName() + "...");
+		logger.debug("Analyzing local data for {}...", this.getName());
 		for (int idx=0; idx<this.pieces.length; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);
@@ -230,18 +232,21 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 		}
 
-		logger.debug(this.getName() + ": " +
-				(this.totalLength - this.left) + "/" +
-				this.totalLength + " bytes [" +
-				this.completedPieces.cardinality() + "/" +
-				this.pieces.length + "].");
+		logger.debug("{}: {}/{} bytes [{}/{}].",
+			new Object[] {
+				this.getName(),
+				(this.totalLength - this.left),
+				this.totalLength,
+				this.completedPieces.cardinality(),
+				this.pieces.length
+			});
 	}
 
 	public synchronized void close() {
 		try {
 			this.bucket.close();
 		} catch (IOException ioe) {
-			logger.error("Error closing torrent byte storage: " +
+			logger.error("Error closing torrent byte storage: {}",
 				ioe.getMessage());
 		}
 	}
@@ -370,9 +375,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.requestedPieces.set(piece.getIndex(), false);
 		}
 
-		logger.trace("Peer " + peer + " choked, we now have " +
-				this.requestedPieces.cardinality() +
-				" outstanding request(s): " + this.requestedPieces + ".");
+		logger.trace("Peer {} choked, we now have {} outstanding " +
+				"request(s): {}.",
+			new Object[] {
+				peer,
+				this.requestedPieces.cardinality(),
+				this.requestedPieces
+			});
 	}
 
 	/** Peer ready handler.
@@ -391,12 +400,16 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		interesting.andNot(this.completedPieces);
 		interesting.andNot(this.requestedPieces);
 
-		logger.trace("Peer " + peer + " is ready and has " +
-				interesting.cardinality() + " interesting piece(s).");
-		logger.trace("Peer has " + peer.getAvailablePieces().cardinality() +
-				" piece(s), we have " + this.completedPieces.cardinality() +
-				" piece(s) and " + this.requestedPieces.cardinality() +
-				" outstanding request(s): " + this.requestedPieces + ".");
+		logger.trace("Peer {} is ready and has {} interesting piece(s).",
+			peer, interesting.cardinality());
+		logger.trace("Peer has {} piece(s), we have {} piece(s) and {} " +
+			"outstanding request(s): {}.",
+			new Object[] {
+				peer.getAvailablePieces().cardinality(),
+				this.completedPieces.cardinality(),
+				this.requestedPieces.cardinality(),
+				this.requestedPieces
+			});
 
 		// Bail out immediately if the peer has no interesting pieces
 		if (interesting.cardinality() == 0) {
@@ -418,9 +431,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					Math.min(choice.size(),
 						SharedTorrent.RAREST_PIECE_JITTER)));
 		this.requestedPieces.set(chosen.getIndex());
-		logger.trace("Requesting " + chosen + " from " + peer +
-				", we now have " + this.requestedPieces.cardinality() +
-				" outstanding request(s): " + this.requestedPieces + ".");
+		logger.trace("Requesting {} from {}, we now have {} " +
+				" outstanding request(s): {}.",
+			new Object[] {
+				chosen,
+				peer,
+				this.requestedPieces.cardinality(),
+				this.requestedPieces
+			});
 		peer.downloadPiece(chosen);
 	}
 
@@ -446,11 +464,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.rarest.remove(piece);
 		this.rarest.add(piece);
 
-		logger.trace("Peer " + peer + " contributes " +
-				peer.getAvailablePieces().cardinality() + " piece(s) [" +
-				this.completedPieces.cardinality() + "/" +
-				this.getAvailablePieces().cardinality() + "/" +
-				this.pieces.length + "].");
+		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+			new Object[] {
+				peer,
+				peer.getAvailablePieces().cardinality(),
+				this.completedPieces.cardinality(),
+				this.getAvailablePieces().cardinality(),
+				this.pieces.length
+			});
 
 		if (!peer.isChoked() &&
 			peer.isInteresting() &&
@@ -491,11 +512,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.rarest.add(this.pieces[i]);
 		}
 
-		logger.trace("Peer " + peer + " contributes " +
-				availablePieces.cardinality() + " piece(s) [" +
-				this.completedPieces.cardinality() + "/" +
-				this.getAvailablePieces().cardinality() + "/" +
-				this.pieces.length + "].");
+		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+			new Object[] {
+				peer,
+				availablePieces.cardinality(),
+				this.completedPieces.cardinality(),
+				this.getAvailablePieces().cardinality(),
+				this.pieces.length
+			});
 	}
 
 	/** Piece upload completion handler.
@@ -510,7 +534,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	@Override
 	public synchronized void handlePieceSent(SharingPeer peer, Piece piece) {
-		logger.trace("Completed upload of " + piece + " to " + peer);
+		logger.trace("Completed upload of {} to {}.", piece, peer);
 		this.uploaded += piece.size();
 	}
 
@@ -531,16 +555,19 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.requestedPieces.set(piece.getIndex(), false);
 
 		if (piece.isValid()) {
-			logger.trace("Validated download of " + piece + " from " + peer);
+			logger.trace("Validated download of {} from {}.", piece, peer);
 			this.markCompleted(piece);
 		} else {
 			// When invalid, remark that piece as non-requested.
-			logger.warn("Downloaded piece " + piece + " was not valid ;-(");
+			logger.warn("Downloaded piece {} was nod valid ;-(", piece);
 		}
 
-		logger.trace("We now have " + this.completedPieces.cardinality() +
-				" piece(s) and " + this.requestedPieces.cardinality() +
-				" outstanding request(s): " + this.requestedPieces + ".");
+		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}.",
+			new Object[] {
+				this.completedPieces.cardinality(),
+				this.requestedPieces.cardinality(),
+				this.requestedPieces
+			});
 	}
 
 	/** Peer disconnection handler.
@@ -566,14 +593,20 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.requestedPieces.set(requested.getIndex(), false);
 		}
 
-		logger.debug("Peer " + peer + " went away with " +
-				availablePieces.cardinality() + " piece(s) [" +
-				this.completedPieces.cardinality() + "/" +
-				this.getAvailablePieces().cardinality() + "/" +
-				this.pieces.length + "].");
-		logger.trace("We now have " + this.completedPieces.cardinality() +
-				" piece(s) and " + this.requestedPieces.cardinality() +
-				" outstanding request(s): " + this.requestedPieces + ".");
+		logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
+			new Object[] {
+				peer,
+				availablePieces.cardinality(),
+				this.completedPieces.cardinality(),
+				this.getAvailablePieces().cardinality(),
+				this.pieces.length
+			});
+		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
+			new Object[] {
+				this.completedPieces.cardinality(),
+				this.requestedPieces.cardinality(),
+				this.requestedPieces
+			});
 	}
 
 	@Override

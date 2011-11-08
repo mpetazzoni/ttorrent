@@ -50,8 +50,9 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A pure-java BitTorrent client.
  *
@@ -79,7 +80,8 @@ public class Client extends Observable implements Runnable,
 	   AnnounceResponseListener, IncomingConnectionListener,
 		PeerActivityListener {
 
-	private static final Logger logger = Logger.getLogger(Client.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(Client.class);
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
@@ -146,11 +148,14 @@ public class Client extends Observable implements Runnable,
 		this.announce = new Announce(this.torrent, this.id, this.address);
 		this.announce.register(this);
 
-		logger.info("BitTorrent client [.." +
-				this.hexId.substring(this.hexId.length()-6) +
-				"] for " + this.torrent.getName() + " started and " +
-				"listening at " + this.address.getAddress().getHostName() +
-				":" + this.address.getPort() + "...");
+		logger.info("BitTorrent client [..{}] for {} started and " +
+			"listening at {}:{}...",
+			new Object[] {
+				this.hexId.substring(this.hexId.length()-6),
+				this.torrent.getName(),
+				this.address.getAddress().getHostName(),
+				this.address.getPort()
+			});
 
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
@@ -364,19 +369,20 @@ public class Client extends Observable implements Runnable,
 			}
 		}
 
-		logger.info("BitTorrent client " + this.getState().name() + ", " +
-			choked + "/" +
-			this.connected.size() + "/" +
-			this.peers.size() + " peers, " +
-
-			this.torrent.getCompletedPieces().cardinality() + "/" +
-			this.torrent.getAvailablePieces().cardinality() + "/" +
-			this.torrent.getPieceCount() + " pieces " +
-			"(" + String.format("%.2f", this.torrent.getCompletion()) + "%), " +
-
-			String.format("%.2f", dl/1024.0) + "/" +
-			String.format("%.2f", ul/1024.0) + " kB/s."
-		);
+		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
+			"({}%), {}/{} kB/s.",
+			new Object[] {
+				this.getState().name(),
+				choked,
+				this.connected.size(),
+				this.peers.size(),
+				this.torrent.getCompletedPieces().cardinality(),
+				this.torrent.getAvailablePieces().cardinality(),
+				this.torrent.getPieceCount(),
+				String.format("%.2f", this.torrent.getCompletion()),
+				String.format("%.2f", dl/1024.0),
+				String.format("%.2f", ul/1024.0)
+			});
 	}
 
 	/** Reset peers download and upload rates.
@@ -438,7 +444,7 @@ public class Client extends Observable implements Runnable,
 					? peer.getHexPeerId()
 					: peer.getHostIdentifier(),
 				peer);
-			logger.trace("Created new peer " + peer + ".");
+			logger.trace("Created new peer {}.", peer);
 		}
 
 		return peer;
@@ -498,8 +504,8 @@ public class Client extends Observable implements Runnable,
 			logger.trace("No connected peers, skipping unchoking.");
 			return;
 		} else {
-			logger.trace("Running unchokePeers() on " + bound.size() +
-					" connected peers.");
+			logger.trace("Running unchokePeers() on {} connected peers.",
+				bound.size());
 		}
 
 		int downloaders = 0;
@@ -531,7 +537,7 @@ public class Client extends Observable implements Runnable,
 
 			for (SharingPeer peer : choked) {
 				if (optimistic && peer == randomPeer) {
-					logger.debug("Optimistic unchoke of " + peer);
+					logger.debug("Optimistic unchoke of {}.", peer);
 					continue;
 				}
 
@@ -563,8 +569,8 @@ public class Client extends Observable implements Runnable,
 
 			try {
 				List<BEValue> peers = answer.get("peers").getList();
-				logger.debug("Got tracker response with " + peers.size() +
-						" peer(s).");
+				logger.debug("Got tracker response with {} peer(s).",
+					peers.size());
 				for (BEValue peerInfo : peers) {
 					Map<String, BEValue> info = peerInfo.getMap();
 
@@ -588,8 +594,8 @@ public class Client extends Observable implements Runnable,
 				}
 
 				ByteBuffer peers = ByteBuffer.wrap(data);
-				logger.debug("Got compact tracker response with " + nPeers +
-						" peer(s).");
+				logger.debug("Got compact tracker response with {} peer(s).",
+					nPeers);
 
 				for (int i=0; i < nPeers ; i++) {
 					byte[] ipBytes = new byte[4];
@@ -608,7 +614,7 @@ public class Client extends Observable implements Runnable,
 		} catch (InvalidBEncodingException ibee) {
 			logger.warn("Invalid tracker response!", ibee);
 		} catch (UnsupportedEncodingException uee) {
-			logger.error(uee);
+			logger.error("{}", uee.getMessage(), uee);
 		}
 	}
 
@@ -637,7 +643,7 @@ public class Client extends Observable implements Runnable,
 				(!this.isSeed() ||
 				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
 				if (!this.service.connect(peer)) {
-					logger.debug("Removing peer " + peer + ".");
+					logger.debug("Removing peer {}.", peer);
 					this.peers.remove(peer.hasPeerId()
 							? peer.getHexPeerId()
 							: peer.getHostIdentifier());
@@ -677,13 +683,16 @@ public class Client extends Observable implements Runnable,
 
 			this.connected.put(peer.getHexPeerId(), peer);
 			peer.register(this.torrent);
-			logger.info("New peer connection with " + peer +
-					" [" + this.connected.size() + "/" +
-					this.peers.size() + "].");
+			logger.info("New peer connection with {} [{}/{}].",
+				new Object[] {
+					peer,
+					this.connected.size(),
+					this.peers.size()
+				});
 		} catch (SocketException se) {
 			this.connected.remove(peer.getHexPeerId());
 			logger.warn("Could not handle new peer connection " +
-					"with " + peer + ": " + se.getMessage());
+					"with {}: {}", peer, se.getMessage());
 		}
 	}
 
@@ -731,9 +740,12 @@ public class Client extends Observable implements Runnable,
 				// might be called before the torrent's piece completion
 				// handler is.
 				this.torrent.markCompleted(piece);
-				logger.debug("Completed download of " + piece + ", now has " +
-						this.torrent.getCompletedPieces().cardinality() + "/" +
-						this.torrent.getPieceCount() + " pieces.");
+				logger.debug("Completed download of {}, now has {}/{} pieces.",
+					new Object[] {
+						piece,
+						this.torrent.getCompletedPieces().cardinality(),
+						this.torrent.getPieceCount()
+					});
 
 				// Send a HAVE message to all connected peers
 				Message have = Message.HaveMessage.craft(piece.getIndex());
@@ -761,9 +773,12 @@ public class Client extends Observable implements Runnable,
 		if (this.connected.remove(peer.hasPeerId()
 					? peer.getHexPeerId()
 					: peer.getHostIdentifier()) != null) {
-			logger.debug("Peer " + peer + " disconnected, [" +
-					this.connected.size() + "/" +
-					this.peers.size() + "].");
+			logger.debug("Peer {} disconnected, [{}/{}].",
+				new Object[] {
+					peer,
+					this.connected.size(),
+					this.peers.size()
+				});
 		}
 
 		peer.reset();
@@ -772,7 +787,7 @@ public class Client extends Observable implements Runnable,
 	@Override
 	public void handleIOException(SharingPeer peer, IOException ioe) {
 		logger.error("I/O problem occured when reading or writing piece " +
-				"data for peer " + peer + ": " + ioe.getMessage());
+				"data for peer {}: {}.", peer, ioe.getMessage());
 		this.stop();
 		this.setState(ClientState.ERROR);
 	}
@@ -799,8 +814,8 @@ public class Client extends Observable implements Runnable,
 			return;
 		}
 
-		logger.info("Download of " + this.torrent.getPieceCount() +
-				" pieces completed.");
+		logger.info("Download of {} pieces completed.",
+			this.torrent.getPieceCount());
 
 		if (this.seed == 0) {
 			logger.info("No seeding requested, stopping client...");
@@ -814,7 +829,7 @@ public class Client extends Observable implements Runnable,
 			return;
 		}
 
-		logger.info("Seeding for " + this.seed + " seconds...");
+		logger.info("Seeding for {} seconds...", this.seed);
 		Timer seedTimer = new Timer();
 		seedTimer.schedule(new StopSeedingTask(this), this.seed*1000);
 	}
@@ -849,7 +864,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
-					new PatternLayout("%d [%-20t] %-5p: %m%n")));
+			new PatternLayout("%d [%-20t] %-5p: %m%n")));
 
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
@@ -867,8 +882,7 @@ public class Client extends Observable implements Runnable,
 				System.exit(1);
 			}
 		} catch (Exception e) {
-			logger.fatal(e);
-			e.printStackTrace();
+			logger.error("Fatal error: {}", e.getMessage(), e);
 			System.exit(2);
 		}
 	}

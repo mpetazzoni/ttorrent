@@ -33,7 +33,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent file tracked by the controller's BitTorrent tracker.
  *
@@ -53,7 +54,8 @@ import org.apache.log4j.Logger;
  */
 public class Torrent {
 
-	private static final Logger logger = Logger.getLogger(Torrent.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
 	private static final int PIECE_LENGTH = 512 * 1024;
@@ -192,7 +194,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, String announce, String createdBy)
 		throws NoSuchAlgorithmException, IOException {
-		logger.info("Creating torrent for " + source.getName() + "...");
+		logger.info("Creating torrent for {}...", source.getName());
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 		torrent.put("announce", new BEValue(announce));
@@ -243,8 +245,12 @@ public class Torrent {
 
 		int n_pieces = new Double(Math.ceil((double)source.length() /
 					Torrent.PIECE_LENGTH)).intValue();
-		logger.debug("Hashed " + source.getName() + " (" +
-				source.length() + " bytes) in " + n_pieces + " pieces.");
+		logger.debug("Hashed {} ({} bytes) in {} pieces.",
+			new Object[] {
+				source.getName(),
+				source.length(),
+				n_pieces
+			});
 
 		return pieces.toString();
 	}

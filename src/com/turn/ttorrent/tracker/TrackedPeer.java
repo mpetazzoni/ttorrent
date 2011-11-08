@@ -25,7 +25,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A BitTorrent tracker peer.
  *
@@ -41,7 +42,9 @@ import org.apache.log4j.Logger;
  */
 public class TrackedPeer extends Peer {
 
-	private static final Logger logger = Logger.getLogger(TrackedPeer.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TrackedPeer.class);
+
 	private static final int FRESH_TIME_SECONDS = 30;
 
 	private Torrent torrent;
@@ -107,8 +110,12 @@ public class TrackedPeer extends Peer {
 		}
 
 		if (!state.equals(this.state)) {
-			logger.info("Peer " + this + " " + state.name().toLowerCase() +
-					" download of " + this.torrent + ".");
+			logger.info("Peer {} {} download of {}.",
+				new Object[] {
+					this,
+					state.name().toLowerCase() +
+					this.torrent
+				});
 		}
 
 		this.state = state;

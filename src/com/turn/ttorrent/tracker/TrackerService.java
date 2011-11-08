@@ -27,7 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
@@ -53,7 +54,8 @@ import org.simpleframework.http.core.Container;
  */
 class TrackerService implements Container {
 
-	private final static Logger logger = Logger.getLogger(TrackerService.class);
+	private final static Logger logger =
+		LoggerFactory.getLogger(TrackerService.class);
 
 	private String version;
 	private ConcurrentMap<String, TrackedTorrent> torrents;
@@ -123,7 +125,7 @@ class TrackerService implements Container {
 			this.process(request, response, body);
 			body.flush();
 		} catch (IOException ioe) {
-			logger.warn("Error while writing response: " + ioe.getMessage());
+			logger.warn("Error while writing response: {}!", ioe.getMessage());
 		} finally {
 			if (body != null) {
 				try {
@@ -247,8 +249,8 @@ class TrackerService implements Container {
 			Status status, TrackerError error) throws IOException {
 		response.setCode(status.getCode());
 		response.setText(status.getDescription());
-		logger.warn("Could not process announce request (" +
-				error.getMessage() + ") !");
+		logger.warn("Could not process announce request ({}) !",
+			error.getMessage());
 		BEncoder.bencode(error.toBEValue(), body);
 	}
 
@@ -276,8 +278,8 @@ class TrackerService implements Container {
 				.toHexString(params.get("info_hash")));
 		TrackedTorrent torrent = this.torrents.get(params.get("info_hash_hex"));
 		if (torrent == null) {
-			logger.warn("Requested torrent hash was: " +
-					params.get("info_hash_hex"));
+			logger.warn("Requested torrent hash was: {}",
+				params.get("info_hash_hex"));
 			return TrackerError.UNKNOWN_TORRENT;
 		}
 

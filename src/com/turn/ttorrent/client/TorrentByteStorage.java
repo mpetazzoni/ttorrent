@@ -22,7 +22,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Torrent data storage.
  *
@@ -49,7 +50,7 @@ import org.apache.log4j.Logger;
 public class TorrentByteStorage {
 
 	private static final Logger logger =
-		Logger.getLogger(TorrentByteStorage.class);
+		LoggerFactory.getLogger(TorrentByteStorage.class);
 
 	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
@@ -69,16 +70,16 @@ public class TorrentByteStorage {
 			TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
 		if (this.partial.exists()) {
-			logger.info("Partial download found at " +
-				this.partial.getAbsolutePath() + ". Continuing...");
+			logger.info("Partial download found at {}. Continuing...",
+				this.partial.getAbsolutePath());
 			this.current = this.partial;
 		} else if (!this.target.exists()) {
-			logger.info("Downloading new file to " +
-				this.partial.getAbsolutePath() + "...");
+			logger.info("Downloading new file to {}...",
+				this.partial.getAbsolutePath());
 			this.current = this.partial;
 		} else {
-			logger.info("Using existing file " +
-				this.target.getAbsolutePath() + ".");
+			logger.info("Using existing file {}.",
+				this.target.getAbsolutePath());
 			this.current = this.target;
 		}
 
@@ -89,8 +90,8 @@ public class TorrentByteStorage {
 		this.raf.setLength(this.size);
 
 		this.channel = raf.getChannel();
-		logger.debug("Initialized torrent byte storage at " +
-			this.current.getAbsolutePath() + ".");
+		logger.debug("Initialized torrent byte storage at {}.",
+			this.current.getAbsolutePath());
 	}
 
 	public ByteBuffer read(int offset, int length) throws IOException {
@@ -135,8 +136,8 @@ public class TorrentByteStorage {
 			throw ioe;
 		}
 
-		logger.debug("Re-opening torrent byte storage at " +
-				this.target.getAbsolutePath() + ".");
+		logger.debug("Re-opening torrent byte storage at {}.",
+				this.target.getAbsolutePath());
 
 		RandomAccessFile raf = new RandomAccessFile(this.target, "rw");
 		raf.setLength(this.size);
@@ -147,8 +148,9 @@ public class TorrentByteStorage {
 		this.current = this.target;
 
 		FileUtils.deleteQuietly(this.partial);
-		logger.info("Moved torrent data from " + this.partial.getName() +
-			" to " + this.target.getName() + ".");
+		logger.info("Moved torrent data from {} to {}.",
+			this.partial.getName(),
+			this.target.getName());
 	}
 
 	public synchronized void close() throws IOException {

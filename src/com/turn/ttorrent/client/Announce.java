@@ -33,7 +33,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** BitTorrent client tracker announce thread.
  *
@@ -53,7 +54,8 @@ import org.apache.log4j.Logger;
  */
 public class Announce implements Runnable, AnnounceResponseListener {
 
-	private static final Logger logger = Logger.getLogger(Announce.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(Announce.class);
 
 	/** The torrent announced by this announce thread. */
 	private SharedTorrent torrent;
@@ -249,7 +251,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 			params.put("info_hash", new String(torrent.getInfoHash(),
 						Torrent.BYTE_ENCODING));
 		} catch (UnsupportedEncodingException uee) {
-			logger.warn(uee);
+			logger.warn("{}", uee);
 		}
 
 		params.put("peer_id", this.id);
@@ -286,21 +288,21 @@ public class Announce implements Runnable, AnnounceResponseListener {
 				}
 			}
 		} catch (UnsupportedEncodingException uee) {
-			logger.error(uee);
+			logger.error("{}", uee.getMessage(), uee);
 			this.stop(true);
 		} catch (MalformedURLException mue) {
-			logger.error(mue);
+			logger.error("{}", mue.getMessage(), mue);
 			this.stop(true);
 		} catch (InvalidBEncodingException ibee) {
-			logger.error("Error parsing tracker response: " +
-					ibee.getMessage());
+			logger.error("Error parsing tracker response: {}",
+				ibee.getMessage(), ibee);
 			this.stop(true);
 		} catch (IOException ioe) {
-			logger.warn("Error reading response from tracker: " +
-					ioe.getMessage());
+			logger.warn("Error reading response from tracker: {}",
+				ioe.getMessage(), ioe);
 		} finally {
 			if (result != null && result.containsKey("failure reason")) {
-				logger.warn(result.get("failure reason"));
+				logger.warn("{}", result.get("failure reason"));
 				result = null;
 			}
 		}
