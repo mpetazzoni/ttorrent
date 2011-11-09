@@ -119,7 +119,7 @@ public class ConnectionHandler implements Runnable {
 				break;
 			} catch (IOException ioe) {
 				// Ignore, try next port
-				logger.info("Could not bind to {} !", tryAddress);
+				logger.warn("Could not bind to {} !", tryAddress);
 			}
 		}
 
@@ -245,11 +245,11 @@ public class ConnectionHandler implements Runnable {
 			this.sendHandshake(socket);
 			this.fireNewPeerConnection(socket, hs.getPeerId());
 		} catch (ParseException pe) {
-			logger.info("Invalid handshake from {}: {}",
+			logger.debug("Invalid handshake from {}: {}",
 				this.socketRepr(socket), pe.getMessage());
 			try { socket.close(); } catch (IOException e) { }
 		} catch (IOException ioe) {
-			logger.info("An error occured while reading an incoming " +
+			logger.debug("An error occured while reading an incoming " +
 					"handshake: {}", ioe.getMessage());
 			try {
 				if (!socket.isClosed()) {
@@ -277,7 +277,7 @@ public class ConnectionHandler implements Runnable {
 		InetSocketAddress address = new InetSocketAddress(peer.getIp(),
 				peer.getPort());
 
-		logger.info("Connecting to {}...", peer);
+		logger.debug("Connecting to {}...", peer);
 		try {
 			socket.connect(address, 3*1000);
 		} catch (IOException ioe) {
@@ -293,11 +293,11 @@ public class ConnectionHandler implements Runnable {
 			this.fireNewPeerConnection(socket, hs.getPeerId());
 			return true;
 		} catch (ParseException pe) {
-			logger.info("Invalid handshake from {}: {}",
+			logger.debug("Invalid handshake from {}: {}",
 				this.socketRepr(socket), pe.getMessage());
 			try { socket.close(); } catch (IOException e) { }
 		} catch (IOException ioe) {
-			logger.info("An error occured while reading an incoming " +
+			logger.debug("An error occured while reading an incoming " +
 					"handshake: {}", ioe.getMessage());
 			try {
 				if (!socket.isClosed()) {

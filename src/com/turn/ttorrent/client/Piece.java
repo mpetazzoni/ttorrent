@@ -53,6 +53,7 @@ public class Piece implements Comparable<Piece> {
 	private final long offset;
 	private final int length;
 	private final byte[] hash;
+	private final boolean seeder;
 
 	private boolean valid;
 	private int seen;
@@ -65,14 +66,17 @@ public class Piece implements Comparable<Piece> {
 	 * @param offset This piece offset, in bytes, in the storage.
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
+	 * @param seeder Whether we're seeding this torrent or not (disables piece
+	 * validation).
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
-			byte[] hash) {
+		byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
 		this.length = length;
 		this.hash = hash;
+		this.seeder = seeder;
 
 		// Piece is considered invalid until first check.
 		this.valid = false;
@@ -113,10 +117,16 @@ public class Piece implements Comparable<Piece> {
 	 * valid, i.e. its SHA1 sum matches the one from the torrent meta-info.
 	 */
 	public boolean validate() throws IOException {
+		if (this.seeder) {
+			logger.trace("Skipping validation of {} (seeder mode).", this);
+			this.valid = true;
+			return this.isValid();
+		}
+
+		logger.trace("Validating {}...", this);
 		this.valid = false;
 
 		try {
-			logger.trace("Validating piece#{}...", this.index);
 			ByteBuffer buffer = this.bucket.read(this.offset, this.length);
 			if (buffer.remaining() == this.length) {
 				byte[] data = new byte[this.length];
@@ -192,7 +202,9 @@ public class Piece implements Comparable<Piece> {
 	/** Return a human-readable representation of this piece.
 	 */
 	public String toString() {
-		return "piece" + (this.valid ? "" : "!") + "#" + this.index;
+		return String.format("piece%s#%d",
+			this.valid ? "" : "!",
+			this.index);
 	}
 
 	public int compareTo(Piece other) {

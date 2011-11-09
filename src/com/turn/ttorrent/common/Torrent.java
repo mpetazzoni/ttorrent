@@ -67,7 +67,9 @@ public class Torrent {
 	/** The query parameters encoding when parsing byte strings. */
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
-	protected byte[] encoded;
+	protected final byte[] encoded;
+	private final boolean seeder;
+
 	protected Map<String, BEValue> decoded;
 
 	protected byte[] encoded_info;
@@ -87,18 +89,23 @@ public class Torrent {
 	 * BitTorrent specification) and create a Torrent object from it.
 	 *
 	 * @param torrent The metainfo byte data.
+	 * @param seeder Whether we'll be seeding for this torrent or not.
 	 * @throws IllegalArgumentException When the info dictionnary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 */
-	public Torrent(byte[] torrent) throws IllegalArgumentException {
+	public Torrent(byte[] torrent, boolean seeder)
+		throws IllegalArgumentException {
 		this.encoded = torrent;
+		this.seeder = seeder;
 
 		try {
 			this.decoded = BDecoder.bdecode(
 					new ByteArrayInputStream(this.encoded)).getMap();
 
 			this.announceUrl = this.decoded.get("announce").getString();
-			this.createdBy = this.decoded.get("created by").getString();
+			this.createdBy = this.decoded.containsKey("created by")
+				? this.decoded.get("created by").getString()
+				: null;
 
 			this.decoded_info = this.decoded.get("info").getMap();
 			this.name = this.decoded_info.get("name").getString();
@@ -168,6 +175,12 @@ public class Torrent {
 		return this.announceUrl;
 	}
 
+	/** Tells whether we were an initial seeder for this torrent.
+	 */
+	public boolean isSeeder() {
+		return this.seeder;
+	}
+
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
 		MessageDigest md = MessageDigest.getInstance("SHA-1");
 		md.update(data);
@@ -203,7 +216,8 @@ public class Torrent {
 	 * <p>
 	 * Hash the given file (by filename) to create the {@link Torrent} object
 	 * representing the Torrent metainfo about this file, needed for announcing
-	 * and/or sharing said file.
+	 * and/or sharing said file. Since we created the torrent from a file,
+	 * we're considering we'll be a full initial seeder for this torrent.
 	 * </p>
 	 *
 	 * @param source The file name.
@@ -211,8 +225,8 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, String announce, String createdBy)
-		throws NoSuchAlgorithmException, IOException {
+	public static Torrent create(File source, String announce,
+		String createdBy) throws NoSuchAlgorithmException, IOException {
 		logger.info("Creating torrent for {}...", source.getName());
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
@@ -230,7 +244,7 @@ public class Torrent {
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray());
+		return new Torrent(baos.toByteArray(), true);
 	}
 
 	/** Return the concatenation of the SHA-1 hashes of a file's pieces.

@@ -179,7 +179,7 @@ class PeerExchange {
 			}
 		}
 
-		logger.info("Peer exchange with {} closed.", this.peer);
+		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
 	public void terminate() {

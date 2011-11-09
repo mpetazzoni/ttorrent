@@ -480,7 +480,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				// situation, terminate the connection.
 				if (this.isChoking() ||
 						!this.torrent.getPiece(request.getPiece()).isValid()) {
-					logger.info("Peer {} violated protocol, " +
+					logger.warn("Peer {} violated protocol, " +
 						"terminating exchange.", this);
 					this.unbind(true);
 					break;
@@ -488,7 +488,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				if (request.getLength() >
 						Message.RequestMessage.MAX_REQUEST_SIZE) {
-					logger.info("Peer {} requested a block too big, " +
+					logger.warn("Peer {} requested a block too big, " +
 						"terminating exchange.", this);
 					this.unbind(true);
 					break;

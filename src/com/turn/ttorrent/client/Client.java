@@ -31,7 +31,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
 import java.text.ParseException;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -85,7 +84,7 @@ public class Client extends Observable implements Runnable,
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
-	private static final int UNCHOKING_FREQUENCY = 7;
+	private static final int UNCHOKING_FREQUENCY = 3;
 
 	/** Optimistic unchokes are done every 2 loop iterations, i.e. every
 	 * 2*UNCHOKING_FREQUENCY seconds. */
@@ -93,10 +92,11 @@ public class Client extends Observable implements Runnable,
 
 	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 10;
+	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 20;
 
 	public enum ClientState {
 		WAITING,
+		VALIDATING,
 		SHARING,
 		SEEDING,
 		ERROR,
@@ -273,15 +273,22 @@ public class Client extends Observable implements Runnable,
 	public void run() {
 		// First, analyze the torrent's local data.
 		try {
+			this.setState(ClientState.VALIDATING);
 			this.torrent.init();
-		} catch (ClosedByInterruptException cbie) {
+			while (!this.torrent.isInitialized()) {
+				if (this.stop) {
+					this.torrent.stop();
+					throw new InterruptedException();
+				}
+
+				// Wait a wee bit.
+				Thread.sleep(10);
+			}
+		} catch (InterruptedException ie) {
 			logger.warn("Client was interrupted during initialization. " +
 					"Aborting right away.");
 			this.setState(ClientState.ERROR);
-			return;
-		} catch (IOException ioe) {
-			logger.error("Could not initialize torrent file data!", ioe);
-			this.setState(ClientState.ERROR);
+			this.torrent.close();
 			return;
 		}
 
@@ -683,7 +690,7 @@ public class Client extends Observable implements Runnable,
 
 			this.connected.put(peer.getHexPeerId(), peer);
 			peer.register(this.torrent);
-			logger.info("New peer connection with {} [{}/{}].",
+			logger.debug("New peer connection with {} [{}/{}].",
 				new Object[] {
 					peer,
 					this.connected.size(),
@@ -864,7 +871,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-20t] %-5p: %m%n")));
+			new PatternLayout("%d [%-25t] %-5p: %m%n")));
 
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
