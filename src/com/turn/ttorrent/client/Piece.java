@@ -28,15 +28,18 @@ import org.slf4j.LoggerFactory;
 
 /** A torrent piece.
  *
+ * <p>
  * This class represents a torrent piece. Torrents are made of pieces, which
  * are in turn made of blocks that are exchanged using the peer protocol.
- *
  * The piece length is defined at the torrent level, but the last piece that
  * makes the torrent might be smaller.
+ * </p>
  *
+ * <p>
  * If the torrent has multiple files, pieces can spread across file boundaries.
  * The TorrentByteStorage abstracts this problem to give Piece objects the
  * impression of a contiguous, linear byte storage.
+ * </p>
  *
  * @author mpetazzoni
  */
@@ -45,18 +48,14 @@ public class Piece implements Comparable<Piece> {
 	private static final Logger logger =
 		LoggerFactory.getLogger(Piece.class);
 
-	public static final int BLOCK_SIZE = 16*1024; // 16kB
+	private final TorrentByteStorage bucket;
+	private final int index;
+	private final long offset;
+	private final int length;
+	private final byte[] hash;
 
-	private TorrentByteStorage bucket;
-	private int index;
-	private int offset;
-	private int length;
-
-	private byte[] hash;
 	private boolean valid;
-
 	private int seen;
-
 	private ByteBuffer data;
 
 	/** Initialize a new piece in the byte bucket.
@@ -67,7 +66,7 @@ public class Piece implements Comparable<Piece> {
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
 	 */
-	public Piece(TorrentByteStorage bucket, int index, int offset, int length,
+	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
 			byte[] hash) {
 		this.bucket = bucket;
 		this.index = index;

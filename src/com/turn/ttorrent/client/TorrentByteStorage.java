@@ -54,13 +54,13 @@ public class TorrentByteStorage {
 
 	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
-	private File target;
-	private File partial;
-	private File current;
+	private final File target;
+	private final File partial;
+	private final long size;
 
 	private RandomAccessFile raf;
 	private FileChannel channel;
-	private long size;
+	private File current;
 
 	public TorrentByteStorage(File file, long size) throws IOException {
 		this.target = file;
@@ -94,7 +94,7 @@ public class TorrentByteStorage {
 			this.current.getAbsolutePath());
 	}
 
-	public ByteBuffer read(int offset, int length) throws IOException {
+	public ByteBuffer read(long offset, int length) throws IOException {
 		ByteBuffer data = ByteBuffer.allocate(length);
 		int bytes = this.channel.read(data, offset);
 		data.clear();
@@ -102,7 +102,7 @@ public class TorrentByteStorage {
 		return data;
 	}
 
-	public void write(ByteBuffer block, int offset) throws IOException {
+	public void write(ByteBuffer block, long offset) throws IOException {
 		this.channel.write(block, offset);
 	}
 

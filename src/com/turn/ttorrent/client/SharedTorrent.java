@@ -64,12 +64,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private long downloaded;
 	private long left;
 
-	private TorrentByteStorage bucket;
+	private final TorrentByteStorage bucket;
 	private File file;
 
-	private int totalLength;
-	private int pieceLength;
-	private ByteBuffer piecesHashes;
+	private final int totalLength;
+	private final int pieceLength;
+	private final ByteBuffer piecesHashes;
 
 	private Piece[] pieces;
 	private SortedSet<Piece> rarest;
@@ -219,10 +219,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 			// The last piece may be shorter than the torrent's global piece
 			// length.
-			int len = (idx < this.pieces.length - 1) ?
-				 this.pieceLength :
-				 this.totalLength % this.pieceLength;
-			int off = idx * this.pieceLength;
+			int len = (idx < this.pieces.length - 1)
+				? this.pieceLength
+				: this.totalLength % this.pieceLength;
+			long off = ((long)idx) * this.pieceLength;
 
 			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash);
 			this.pieces[idx].validate();
