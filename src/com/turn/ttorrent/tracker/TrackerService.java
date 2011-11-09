@@ -52,13 +52,15 @@ import org.simpleframework.http.core.Container;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-class TrackerService implements Container {
+public class TrackerService implements Container {
 
-	private final static Logger logger =
+	private static final Logger logger =
 		LoggerFactory.getLogger(TrackerService.class);
 
-	private String version;
-	private ConcurrentMap<String, TrackedTorrent> torrents;
+	private static final String WILDCARD_IPV4_ADDRESS = "0.0.0.0";
+
+	private final String version;
+	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
 	/** The various tracker error states.
 	 *
@@ -169,7 +171,8 @@ class TrackerService implements Container {
 
 		// Make sure we have the peer IP, fallbacking on the request's source
 		// address if the peer didn't provide it.
-		if (!params.containsKey("ip")) {
+		if (!params.containsKey("ip") ||
+			WILDCARD_IPV4_ADDRESS.equals(params.get("ip"))) {
 			params.put("ip", request.getClientAddress().getAddress()
 					.getHostAddress());
 		}
