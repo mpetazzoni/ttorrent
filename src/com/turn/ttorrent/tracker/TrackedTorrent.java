@@ -66,6 +66,12 @@ public class TrackedTorrent extends Torrent {
 		this(torrent.getEncoded());
 	}
 
+	/** Returns the map of all peers currently exchanging on this torrent.
+	 */
+	public Map<String, TrackedPeer> getPeers() {
+		return this.peers;
+	}
+
 	/** Add a peer exchanging on this torrent.
 	 *
 	 * @param peer The new Peer involved with this torrent.
