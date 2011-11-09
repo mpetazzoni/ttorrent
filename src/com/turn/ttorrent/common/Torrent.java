@@ -71,8 +71,11 @@ public class Torrent {
 	protected byte[] encoded_info;
 	protected Map<String, BEValue> decoded_info;
 
-	private String announceUrl;
-	private String name;
+	private final String announceUrl;
+	private final String createdBy;
+	private final String name;
+	private final long size;
+
 	private byte[] info_hash;
 	private String hex_info_hash;
 
@@ -93,9 +96,11 @@ public class Torrent {
 					new ByteArrayInputStream(this.encoded)).getMap();
 
 			this.announceUrl = this.decoded.get("announce").getString();
+			this.createdBy = this.decoded.get("created by").getString();
 
 			this.decoded_info = this.decoded.get("info").getMap();
 			this.name = this.decoded_info.get("name").getString();
+			this.size = this.decoded_info.get("length").getLong();
 
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			BEncoder.bencode(this.decoded_info, baos);
@@ -115,6 +120,18 @@ public class Torrent {
 	 */
 	public String getName() {
 		return this.name;
+	}
+
+	/** Get this torrent's creator (user, software, whatever...).
+	 */
+	public String getCreatedBy() {
+		return this.createdBy;
+	}
+
+	/** Get the total size of this torrent.
+	 */
+	public long getSize() {
+		return this.size;
 	}
 
 	/** Return the hash of the B-encoded meta-info structure of this torrent.
