@@ -248,10 +248,15 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		Map<String, String> params = new HashMap<String, String>();
 
 		try {
-			params.put("info_hash", new String(torrent.getInfoHash(),
-						Torrent.BYTE_ENCODING));
+			params.put("info_hash",
+				new String(torrent.getInfoHash(), Torrent.BYTE_ENCODING));
+
+			// Also throw in there the hex-encoded info-hash for easier
+			// debugging of announce requests.
+			params.put("info_hash_hex",
+				Torrent.toHexString(params.get("info_hash")));
 		} catch (UnsupportedEncodingException uee) {
-			logger.warn("{}", uee);
+			logger.warn("{}", uee.getMessage());
 		}
 
 		params.put("peer_id", this.id);
@@ -302,7 +307,13 @@ public class Announce implements Runnable, AnnounceResponseListener {
 				ioe.getMessage(), ioe);
 		} finally {
 			if (result != null && result.containsKey("failure reason")) {
-				logger.warn("{}", result.get("failure reason"));
+				try {
+					logger.warn("{}", result.get("failure reason").getString());
+				} catch (InvalidBEncodingException ibee) {
+					logger.warn("Announce error, and couldn't parse " +
+						"failure reason!");
+				}
+
 				result = null;
 			}
 		}
