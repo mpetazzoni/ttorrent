@@ -275,21 +275,18 @@ public class Client extends Observable implements Runnable,
 		try {
 			this.setState(ClientState.VALIDATING);
 			this.torrent.init();
-			while (!this.torrent.isInitialized()) {
-				if (this.stop) {
-					this.torrent.stop();
-					throw new InterruptedException();
-				}
-
-				// Wait a wee bit.
-				Thread.sleep(10);
-			}
+		} catch (IOException ioe) {
+			logger.warn("Error while initializing torrent data: {}!",
+				ioe.getMessage(), ioe);
 		} catch (InterruptedException ie) {
 			logger.warn("Client was interrupted during initialization. " +
 					"Aborting right away.");
-			this.setState(ClientState.ERROR);
-			this.torrent.close();
-			return;
+		} finally {
+			if (!this.torrent.isInitialized()) {
+				this.setState(ClientState.ERROR);
+				this.torrent.close();
+				return;
+			}
 		}
 
 		// Initial completion test

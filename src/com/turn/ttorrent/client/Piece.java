@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,6 +217,33 @@ public class Piece implements Comparable<Piece> {
 			return -1;
 		} else {
 			return 1;
+		}
+	}
+
+	/** A {@link Callable} to call the piece validation function.
+	 *
+	 * <p>
+	 * This {@link Callable} implementation allows for the calling of the piece
+	 * validation function in a controlled context like a thread or an
+	 * executor. It returns the piece it was created for. Results of the
+	 * validation can easily be extracted from the {@link Piece} object after
+	 * it is returned.
+	 * </p>
+	 *
+	 * @author mpetazzoni
+	 */
+	public static class CallableHasher implements Callable<Piece> {
+
+		private final Piece piece;
+
+		public CallableHasher(Piece piece) {
+			this.piece = piece;
+		}
+
+		@Override
+		public Piece call() throws IOException {
+			this.piece.validate();
+			return this.piece;
 		}
 	}
 }
