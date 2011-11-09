@@ -40,7 +40,7 @@ public class TrackedTorrent extends Torrent {
 	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
 
 	/** Default announce interval requested from peers, in seconds. */
-	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 300;
+	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 15;
 
 	private int answerPeers;
 	private int announceInterval;
