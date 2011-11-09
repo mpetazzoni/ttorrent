@@ -19,11 +19,13 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -247,26 +249,35 @@ public class Torrent {
 	 */
 	private static String hashPieces(File source)
 		throws NoSuchAlgorithmException, IOException {
+		long start = System.nanoTime();
+		long hashTime = 0L;
+
 		MessageDigest md = MessageDigest.getInstance("SHA-1");
-		FileInputStream fis = new FileInputStream(source);
+		InputStream is = new BufferedInputStream(new FileInputStream(source));
 		StringBuffer pieces = new StringBuffer();
 		byte[] data = new byte[Torrent.PIECE_LENGTH];
 		int read;
 
-		while ((read = fis.read(data)) > 0) {
+		while ((read = is.read(data)) > 0) {
 			md.reset();
 			md.update(data, 0, read);
+
+			long hashStart = System.nanoTime();
 			pieces.append(new String(md.digest(), Torrent.BYTE_ENCODING));
+			hashTime += (System.nanoTime() - hashStart);
 		}
-		fis.close();
+		is.close();
 
 		int n_pieces = new Double(Math.ceil((double)source.length() /
-					Torrent.PIECE_LENGTH)).intValue();
-		logger.debug("Hashed {} ({} bytes) in {} pieces.",
+			Torrent.PIECE_LENGTH)).intValue();
+		logger.info("Hashed {} ({} bytes) in {} pieces (total: {}ms, " +
+			"{}ms hashing).",
 			new Object[] {
 				source.getName(),
 				source.length(),
-				n_pieces
+				n_pieces,
+				String.format("%.1f", (System.nanoTime() - start) / 1024),
+				String.format("%.1f", hashTime / 1024),
 			});
 
 		return pieces.toString();
