@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -128,17 +129,45 @@ public class Piece implements Comparable<Piece> {
 		this.valid = false;
 
 		try {
-			ByteBuffer buffer = this.bucket.read(this.offset, this.length);
-			if (buffer.remaining() == this.length) {
-				byte[] data = new byte[this.length];
-				buffer.get(data);
-				this.valid = Arrays.equals(Torrent.hash(data), this.hash);
-			}
+			ByteBuffer buffer = this._read(0, this.length);
+			byte[] data = new byte[this.length];
+			buffer.get(data);
+			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 		} catch (NoSuchAlgorithmException nsae) {
 			logger.error("{}", nsae);
 		}
 
 		return this.isValid();
+	}
+
+	/** Internal piece data read function.
+	 *
+	 * <p>
+	 * This function will read the piece data without checking if the piece has
+	 * been validated. It is simply meant at factoring-in the common read code
+	 * from the validate and read functions.
+	 * </p>
+	 *
+	 * @param offset Offset inside this piece where to start reading.
+	 * @param length Number of bytes to read from the piece.
+	 * @return A byte buffer containing the piece data.
+	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
+	 * the piece boundary.
+	 * @throws IOException If the read can't be completed (I/O error, or EOF
+	 * reached, which can happen if the piece is not complete).
+	 */
+	private ByteBuffer _read(long offset, int length) throws IOException {
+		if (offset + length > this.length) {
+			throw new IllegalArgumentException("Piece#" + this.index +
+				" overrun (" + offset + " + " + length + " > " +
+				this.length + ") !");
+		}
+
+		ByteBuffer buffer = ByteBuffer.allocate(length);
+		int bytes = this.bucket.read(buffer, this.offset + offset);
+		buffer.clear();
+		buffer.limit(bytes >= 0 ? bytes : 0);
+		return buffer;
 	}
 
 	/** Read a piece block from the underlying byte storage.
@@ -150,8 +179,7 @@ public class Piece implements Comparable<Piece> {
 	 *
 	 * @param offset Offset inside this piece where to start reading.
 	 * @param length Number of bytes to read from the piece.
-	 * @return A byte array containing the piece data if the read was
-	 * successful.
+	 * @return A byte buffer containing the piece data.
 	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
 	 * the piece boundary.
 	 * @throws IllegalStateException If the piece is not valid when attempting
@@ -159,19 +187,14 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	public ByteBuffer read(int offset, int length)
+	public ByteBuffer read(long offset, int length)
 		throws IllegalArgumentException, IllegalStateException, IOException {
 		if (!this.valid) {
 			throw new IllegalStateException("Attempting to read an " +
 					"known-to-be invalid piece!");
 		}
 
-		if (offset + length > this.length) {
-			throw new IllegalArgumentException("Offset + length goes " +
-					"pass the piece size!");
-		}
-
-		return this.bucket.read(this.offset + offset, length);
+		return this._read(offset, length);
 	}
 
 	/** Record the given block at the given offset in this piece.

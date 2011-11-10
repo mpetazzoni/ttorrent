@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package com.turn.ttorrent.client;
+package com.turn.ttorrent.client.storage;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,60 +25,53 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Torrent data storage.
+/** Single-file torrent byte data storage.
  *
  * <p>
- * A torrent, regardless of whether it contains multiple files or not, is
- * considered as one linear, contiguous byte array. As such, pieces can spread
- * across multiple files.
- * </p>
- *
- * <p>
- * Although this BitTorrent client currently only supports single-torrent
- * files, this TorrentByteStorage class provides an abstraction for the Piece
- * class to read and write to the torrent's data without having to care about
- * which file(s) a piece is on.
- * </p>
- *
- * <p>
- * The current implementation uses a RandomAccessFile FileChannel to expose
- * thread-safe read/write methods.
+ * This implementation of TorrentByteStorageFile provides a torrent byte data
+ * storage relying on a single underlying file and uses a RandomAccessFile
+ * FileChannel to expose thread-safe read/write methods.
  * </p>
  *
  * @author mpetazzoni
  */
-public class TorrentByteStorage {
+public class FileStorage implements TorrentByteStorage {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(TorrentByteStorage.class);
-
-	private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+		LoggerFactory.getLogger(FileStorage.class);
 
 	private final File target;
 	private final File partial;
+	private final long offset;
 	private final long size;
 
 	private RandomAccessFile raf;
 	private FileChannel channel;
 	private File current;
 
-	public TorrentByteStorage(File file, long size) throws IOException {
+	public FileStorage(File file, long size) throws IOException {
+		this(file, 0, size);
+	}
+
+	public FileStorage(File file, long offset, long size)
+		throws IOException {
 		this.target = file;
+		this.offset = offset;
 		this.size = size;
 
 		this.partial = new File(this.target.getAbsolutePath() +
 			TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
 		if (this.partial.exists()) {
-			logger.info("Partial download found at {}. Continuing...",
+			logger.debug("Partial download found at {}. Continuing...",
 				this.partial.getAbsolutePath());
 			this.current = this.partial;
 		} else if (!this.target.exists()) {
-			logger.info("Downloading new file to {}...",
+			logger.debug("Downloading new file to {}...",
 				this.partial.getAbsolutePath());
 			this.current = this.partial;
 		} else {
-			logger.info("Using existing file {}.",
+			logger.debug("Using existing file {}.",
 				this.target.getAbsolutePath());
 			this.current = this.target;
 		}
@@ -90,35 +83,60 @@ public class TorrentByteStorage {
 		this.raf.setLength(this.size);
 
 		this.channel = raf.getChannel();
-		logger.debug("Initialized torrent byte storage at {}.",
-			this.current.getAbsolutePath());
+		logger.info("Initialized byte storage file at {} " +
+			"({}+{} byte(s)).",
+			new Object[] {
+				this.current.getAbsolutePath(),
+				this.offset,
+				this.size,
+			});
 	}
 
-	public ByteBuffer read(long offset, int length) throws IOException {
-		ByteBuffer data = ByteBuffer.allocate(length);
-		int bytes = this.channel.read(data, offset);
-		data.clear();
-		data.limit(bytes >= 0 ? bytes : 0);
-		return data;
+	protected long offset() {
+		return this.offset;
 	}
 
-	public void write(ByteBuffer block, long offset) throws IOException {
-		this.channel.write(block, offset);
+	@Override
+	public long size() {
+		return this.size;
 	}
 
-	public boolean isFinished() {
-		return this.current.equals(this.target);
+	@Override
+	public int read(ByteBuffer buffer, long offset) throws IOException {
+		int requested = buffer.remaining();
+
+		if (offset + requested > this.size) {
+			throw new IllegalArgumentException("Invalid storage read request!");
+		}
+
+		int bytes = this.channel.read(buffer, offset);
+		if (bytes < requested) {
+			throw new IOException("Storage underrun!");
+		}
+
+		return bytes;
+	}
+
+	@Override
+	public int write(ByteBuffer buffer, long offset) throws IOException {
+		int requested = buffer.remaining();
+
+		if (offset + requested > this.size) {
+			throw new IllegalArgumentException("Invalid storage write request!");
+		}
+
+		return this.channel.write(buffer, offset);
+	}
+
+	@Override
+	public synchronized void close() throws IOException {
+		this.channel.force(true);
+		this.raf.close();
 	}
 
 	/** Move the partial file to its final location.
-	 *
-	 * <p>
-	 * This method needs to make sure reads can still happen seemlessly during
-	 * the operation. The partial is first flushed to the storage device before
-	 * being copied to its target location. The {@link FileChannel} is then
-	 * switched to this new file before the partial is removed.
-	 * </p>
 	 */
+	@Override
 	public synchronized void finish() throws IOException {
 		this.channel.force(true);
 
@@ -127,24 +145,17 @@ public class TorrentByteStorage {
 			return;
 		}
 
-		try {
-			FileUtils.deleteQuietly(this.target);
-			FileUtils.copyFile(this.current, this.target);
-		} catch (IOException ioe) {
-			// Don't leave a partially copied file in the destination.
-			FileUtils.deleteQuietly(this.target);
-			throw ioe;
-		}
+		FileUtils.deleteQuietly(this.target);
+		FileUtils.moveFile(this.current, this.target);
 
 		logger.debug("Re-opening torrent byte storage at {}.",
 				this.target.getAbsolutePath());
 
-		RandomAccessFile raf = new RandomAccessFile(this.target, "rw");
-		raf.setLength(this.size);
-
-		this.channel = raf.getChannel();
 		this.raf.close();
-		this.raf = raf;
+
+		this.raf = new RandomAccessFile(this.target, "rw");
+		this.raf.setLength(this.size);
+		this.channel = this.raf.getChannel();
 		this.current = this.target;
 
 		FileUtils.deleteQuietly(this.partial);
@@ -153,8 +164,8 @@ public class TorrentByteStorage {
 			this.target.getName());
 	}
 
-	public synchronized void close() throws IOException {
-		this.channel.force(true);
-		this.raf.close();
+	@Override
+	public boolean isFinished() {
+		return this.current.equals(this.target);
 	}
 }

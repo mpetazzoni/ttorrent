@@ -19,6 +19,9 @@ import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.client.storage.FileStorage;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -188,7 +191,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 
 		this.file = new File(destDir, this.getName());
-		this.bucket = new TorrentByteStorage(this.file, this.getSize());
+		List<FileStorage> files = new LinkedList<FileStorage>();
+		files.add(new FileStorage(this.file, this.getSize()));
+		this.bucket = new FileCollectionStorage(files, this.getSize());
 
 		this.random = new Random(System.currentTimeMillis());
 		this.stop = false;
@@ -326,7 +331,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				}
 			}
 		} catch (ExecutionException e) {
-			throw new IOException("Error while hashing a torrent piece!");
+			throw new IOException("Error while hashing a torrent piece!", e);
 		}
 
 		logger.debug("{}: {}/{} bytes [{}/{}].",
