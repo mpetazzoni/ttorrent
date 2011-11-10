@@ -71,8 +71,8 @@ public class Piece implements Comparable<Piece> {
 	 * @param seeder Whether we're seeding this torrent or not (disables piece
 	 * validation).
 	 */
-	public Piece(TorrentByteStorage bucket, int index, long offset, int length,
-		byte[] hash, boolean seeder) {
+	public Piece(TorrentByteStorage bucket, int index, long offset,
+		int length, byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
@@ -89,26 +89,46 @@ public class Piece implements Comparable<Piece> {
 		this.data = null;
 	}
 
+	/** Tells whether this piece's data is valid or not.
+	 */
 	public boolean isValid() {
 		return this.valid;
 	}
 
+	/** Returns the index of this piece in the torrent.
+	 */
 	public int getIndex() {
 		return this.index;
 	}
 
+	/** Returns the size, in bytes, of this piece.
+	 *
+	 * <p>
+	 * All pieces, except the last one, are expected to have the same size.
+	 * </p>
+	 */
 	public int size() {
 		return this.length;
 	}
 
+	/** Tells whether this piece is available in the current connected peer swarm.
+	 */
 	public boolean available() {
 		return this.seen > 0;
 	}
 
+	/** Mark this piece as being seen at the given peer.
+	 *
+	 * @param peer The sharing peer this piece has been seen available at.
+	 */
 	public void seenAt(SharingPeer peer) {
 		this.seen++;
 	}
 
+	/** Mark this piece as no longer being available at the given peer.
+	 *
+	 * @param peer The sharing peer from which the piece is no longer available.
+	 */
 	public void noLongerAt(SharingPeer peer) {
 		this.seen--;
 	}
@@ -231,6 +251,11 @@ public class Piece implements Comparable<Piece> {
 			this.index);
 	}
 
+	/** Piece comparision function for ordering pieces based on their
+	 * availability.
+	 *
+	 * @param other The piece to compare with, should not be <em>null</em>.
+	 */
 	public int compareTo(Piece other) {
 		if (this == other) {
 			return 0;
