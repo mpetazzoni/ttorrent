@@ -256,33 +256,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.stop = true;
 	}
 
-	/** Determine how many threads to use for the piece hashing.
-	 *
-	 * <p>
-	 * If the environment variable TTORRENT_HASHING_THREADS is set to an
-	 * integer value greater than 0, its value will be used. Otherwise, it
-	 * defaults to the number of processors detected by the Java Runtime.
-	 * </p>
-	 *
-	 * @return How many threads to use for concurrent piece hashing.
-	 */
-	private int getHashingThreadsCount() {
-		String threads = System.getenv("TTORRENT_HASHING_THREADS");
-
-		if (threads != null) {
-			try {
-				int count = Integer.parseInt(threads);
-				if (count > 0) {
-					return count;
-				}
-			} catch (NumberFormatException nfe) {
-				// Pass
-			}
-		}
-
-		return Runtime.getRuntime().availableProcessors();
-	}
-
 	/** Build this torrent's pieces array.
 	 *
 	 * <p>
@@ -309,11 +282,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.piecesHashes.clear();
 
 		ExecutorService executor = Executors.newFixedThreadPool(
-			this.getHashingThreadsCount());
+			getHashingThreadsCount());
 		List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
 		logger.debug("Analyzing local data for {} with {} threads...",
-			this.getName(), this.getHashingThreadsCount());
+			this.getName(), getHashingThreadsCount());
 		for (int idx=0; idx<this.pieces.length; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);

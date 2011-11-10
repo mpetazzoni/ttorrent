@@ -24,16 +24,29 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.PatternLayout;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,6 +224,33 @@ public class Torrent {
 		}
 	}
 
+	/** Determine how many threads to use for the piece hashing.
+	 *
+	 * <p>
+	 * If the environment variable TTORRENT_HASHING_THREADS is set to an
+	 * integer value greater than 0, its value will be used. Otherwise, it
+	 * defaults to the number of processors detected by the Java Runtime.
+	 * </p>
+	 *
+	 * @return How many threads to use for concurrent piece hashing.
+	 */
+	protected static int getHashingThreadsCount() {
+		String threads = System.getenv("TTORRENT_HASHING_THREADS");
+
+		if (threads != null) {
+			try {
+				int count = Integer.parseInt(threads);
+				if (count > 0) {
+					return count;
+				}
+			} catch (NumberFormatException nfe) {
+				// Pass
+			}
+		}
+
+		return Runtime.getRuntime().availableProcessors();
+	}
+
 	/** Create a {@link Torrent} object for a file.
 	 *
 	 * <p>
@@ -225,12 +265,13 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, String announce,
-		String createdBy) throws NoSuchAlgorithmException, IOException {
+	public static Torrent create(File source, URL announce,
+		String createdBy)
+		throws NoSuchAlgorithmException, InterruptedException, IOException {
 		logger.info("Creating torrent for {}...", source.getName());
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-		torrent.put("announce", new BEValue(announce));
+		torrent.put("announce", new BEValue(announce.toString()));
 		torrent.put("creation date", new BEValue(new Date().getTime()));
 		torrent.put("created by", new BEValue(createdBy));
 
@@ -245,6 +286,31 @@ public class Torrent {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);
 		return new Torrent(baos.toByteArray(), true);
+	}
+
+	/** A {@link Callable} to hash a data chunk.
+	 *
+	 * @author mpetazzoni
+	 */
+	private static class CallableChunkHasher implements Callable<String> {
+
+		private final MessageDigest md;
+		private final byte[] data;
+		private final int length;
+
+		CallableChunkHasher(byte[] data, int length)
+			throws NoSuchAlgorithmException {
+			this.md = MessageDigest.getInstance("SHA-1");
+			this.data = data;
+			this.length = length;
+		}
+
+		@Override
+		public String call() throws UnsupportedEncodingException {
+			this.md.reset();
+			this.md.update(this.data, 0, this.length);
+			return new String(md.digest(), Torrent.BYTE_ENCODING);
+		}
 	}
 
 	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
@@ -262,38 +328,144 @@ public class Torrent {
 	 * @param source The file to hash.
 	 */
 	private static String hashPieces(File source)
-		throws NoSuchAlgorithmException, IOException {
-		long start = System.nanoTime();
-		long hashTime = 0L;
+		throws NoSuchAlgorithmException, InterruptedException, IOException {
 
-		MessageDigest md = MessageDigest.getInstance("SHA-1");
-		InputStream is = new BufferedInputStream(new FileInputStream(source));
-		StringBuffer pieces = new StringBuffer();
+		ExecutorService executor = Executors.newFixedThreadPool(
+			getHashingThreadsCount());
+		List<Future<String>> results = new LinkedList<Future<String>>();
 		byte[] data = new byte[Torrent.PIECE_LENGTH];
+		int pieces = 0;
 		int read;
 
+		logger.info("Analyzing local data for {} with {} threads...",
+			source.getName(), getHashingThreadsCount());
+		long start = System.nanoTime();
+		InputStream is = new BufferedInputStream(new FileInputStream(source));
 		while ((read = is.read(data)) > 0) {
-			md.reset();
-			md.update(data, 0, read);
-
-			long hashStart = System.nanoTime();
-			pieces.append(new String(md.digest(), Torrent.BYTE_ENCODING));
-			hashTime += (System.nanoTime() - hashStart);
+			results.add(executor.submit(new CallableChunkHasher(data, read)));
+			pieces++;
 		}
 		is.close();
 
-		int n_pieces = new Double(Math.ceil((double)source.length() /
+		// Request orderly executor shutdown and wait for hashing tasks to
+		// complete.
+		executor.shutdown();
+		while (!executor.isTerminated()) {
+			Thread.sleep(10);
+		}
+		long elapsed = System.nanoTime() - start;
+
+		StringBuffer hashes = new StringBuffer();
+		try {
+			for (Future<String> chunk : results) {
+				hashes.append(chunk.get());
+			}
+		} catch (ExecutionException ee) {
+			throw new IOException("Error while hashing the torrent data!", ee);
+		}
+
+		int expectedPieces = new Double(Math.ceil((double)source.length() /
 			Torrent.PIECE_LENGTH)).intValue();
-		logger.info("Hashed {} ({} bytes) in {} pieces (total: {}ms, " +
-			"{}ms hashing).",
+		logger.info("Hashed {} ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				source.getName(),
 				source.length(),
-				n_pieces,
-				String.format("%.1f", (System.nanoTime() - start) / 1024),
-				String.format("%.1f", hashTime / 1024),
+				pieces,
+				expectedPieces,
+				String.format("%.1f", elapsed/1024.0/1024.0),
 			});
 
-		return pieces.toString();
+		return hashes.toString();
+	}
+
+	/** Load a torrent from the given torrent file.
+	 *
+	 * <p>
+	 * This method assumes we are not a seeder and that local data needs to be
+	 * validated.
+	 * </p>
+	 *
+	 * @param torrent The abstract {@link File} object representing the
+	 * <tt>.torrent</tt> file to load.
+	 * @throws IOException When the torrent file cannot be read.
+	 */
+	public static Torrent load(File torrent) throws IOException {
+		return Torrent.load(torrent, false);
+	}
+
+	/** Load a torrent from the given torrent file.
+	 *
+	 * @param torrent The abstract {@link File} object representing the
+	 * <tt>.torrent</tt> file to load.
+	 * @param seeder Whether we are a seeder for this torrent or not (disables
+	 * local data validation).
+	 * @throws IOException When the torrent file cannot be read.
+	 */
+	public static Torrent load(File torrent, boolean seeder)
+		throws IOException {
+		FileInputStream fis = new FileInputStream(torrent);
+		byte[] data = new byte[(int)torrent.length()];
+		fis.read(data);
+		fis.close();
+		return new Torrent(data, false);
+	}
+
+	/** Save this torrent meta-info structure into a .torrent file.
+	 *
+	 * @param output The file to write to.
+	 * @throws IOException If an I/O error occurs while writing the file.
+	 */
+	public void save(File output) throws IOException {
+		FileOutputStream fos = new FileOutputStream(output);
+		fos.write(this.getEncoded());
+		fos.close();
+		logger.info("Wrote torrent file {}.", output.getAbsolutePath());
+	}
+
+	/** Torrent creator.
+	 *
+	 * <p>
+	 * You can use the {@code main()} function of this {@link Torrent} class to
+	 * create torrent files. See usage for details.
+	 * </p>
+	 */
+	public static void main(String[] args) {
+		BasicConfigurator.configure(new ConsoleAppender(
+			new PatternLayout("%d [%-25t] %-5p: %m%n")));
+
+		if (args.length < 3) {
+			System.err.println("usage: Torrent <torrent> <announce url> <file>");
+			System.exit(1);
+		}
+
+		try {
+			File outfile = new File(args[0]);
+			if (!outfile.canWrite()) {
+				throw new IllegalArgumentException(
+					"Cannot write to destination file " +
+					outfile.getName() + " !");
+			}
+
+			URL announce = new URL(args[1]);
+			File source = new File(args[2]);
+			if (!source.exists() || !source.canRead()) {
+				throw new IllegalArgumentException(
+					"Cannot access source file or directory " +
+					source.getName());
+			}
+
+			Torrent torrent = Torrent.create(source, announce,
+				String.format("%s (ttorrent)", System.getProperty("user.name")));
+			torrent.save(outfile);
+
+			if (torrent.getHexInfoHash().equals(
+				Torrent.load(outfile).getHexInfoHash())) {
+				logger.info("Validated created torrent file (hash: {}).",
+					torrent.getHexInfoHash());
+			}
+		} catch (Exception e) {
+			logger.error("{}", e.getMessage(), e);
+			System.exit(2);
+		}
 	}
 }
