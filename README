@@ -51,11 +51,11 @@ Authors
 Caveats
 -------
 
-* This implementation currently only supports single-file torrents.
 * Client write performance is a bit poor, mainly due to a (too?) simple piece
-caching algorithm.
-* Start of transfer can take a few seconds. This is mostly due to the protocol
-itself, but I wonder if something could be done to improve this.
+  caching algorithm.
+* End-game can be slow if the peer selected to retrieve the last piece from
+  doesn't upload fast enough (or at all). An end-game scenario should be
+  implemented.
 
 Contributions are welcome in all areas, even more so for these few points
 above!
