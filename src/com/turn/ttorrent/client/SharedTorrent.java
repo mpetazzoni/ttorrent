@@ -454,8 +454,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * number of pieces in this torrent, times 100.
 	 */
 	public float getCompletion() {
-		return (float)this.completedPieces.cardinality() /
-			(float)this.pieces.length * 100.0f;
+		return this.isInitialized()
+			? (float)this.completedPieces.cardinality() /
+				(float)this.pieces.length * 100.0f
+			: 0.0f;
 	}
 
 	/** Mark a piece as completed, decremeting the piece size in bytes from our
