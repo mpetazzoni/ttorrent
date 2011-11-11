@@ -390,7 +390,7 @@ public class Torrent {
 		byte[] data = new byte[(int)torrent.length()];
 		fis.read(data);
 		fis.close();
-		return new Torrent(data, parent, false);
+		return new Torrent(data, parent, seeder);
 	}
 
 	/** Torrent creation --------------------------------------------------- */
