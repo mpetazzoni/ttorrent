@@ -120,8 +120,8 @@ public class TrackedPeer extends Peer {
 			logger.info("Peer {} {} download of {}.",
 				new Object[] {
 					this,
-					state.name().toLowerCase() +
-					this.torrent
+					state.name().toLowerCase(),
+					this.torrent,
 				});
 		}
 
