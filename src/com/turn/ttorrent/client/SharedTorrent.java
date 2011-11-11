@@ -296,11 +296,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.piecesHashes.get(hash);
 
 			// The last piece may be shorter than the torrent's global piece
-			// length.
-			int len = (idx < this.pieces.length - 1)
-				? this.pieceLength
-				: (int)(this.getSize() % this.pieceLength);
+			// length. Let's make sure we get the right piece length in any
+			// situation.
 			long off = ((long)idx) * this.pieceLength;
+			int len = Math.min(
+				(int)(this.bucket.size() - off),
+				this.pieceLength);
 
 			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
 				this.isSeeder());
