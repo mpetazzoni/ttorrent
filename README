@@ -40,6 +40,12 @@ Authors
 -------
 
 * Maxime Petazzoni <mpetazzoni@turn.com> (Platform Engineer at Turn, Inc)
+  - Original author and maintainer
+* David Giffin <david@etsy.com>
+  - Contributed parallel hashing and multi-file torrent support
+* Thomas Zink <thomas.zink@uni-konstanz.de>
+  - Fixed a piece length computation issue when the total torrent size is an
+    exact multiple of the piece size.
 
 
 Caveats
