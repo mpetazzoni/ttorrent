@@ -20,7 +20,8 @@ import com.turn.ttorrent.common.Torrent;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,13 +89,17 @@ public class Tracker {
 	 *
 	 * This has the form http://host:port/announce.
 	 */
-	public String getAnnounceUrl() {
-		return new StringBuilder("http://")
-			.append(this.address.getAddress().getCanonicalHostName())
-			.append(":")
-			.append(this.address.getPort())
-			.append(Tracker.ANNOUNCE_URL)
-			.toString();
+	public URL getAnnounceUrl() {
+		try {
+			return new URL("http",
+				this.address.getAddress().getCanonicalHostName(),
+				this.address.getPort(),
+				Tracker.ANNOUNCE_URL);
+		} catch (MalformedURLException mue) {
+			logger.error("Could not build tracker URL: {}!", mue, mue);
+		}
+
+		return null;
 	}
 
 	/** Start the tracker thread.
