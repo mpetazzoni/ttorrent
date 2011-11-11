@@ -80,21 +80,38 @@ public class Torrent {
 	/** The query parameters encoding when parsing byte strings. */
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
+	/**
+	 *
+	 * @author dgiffin
+	 * @author mpetazzoni
+	 */
+	public static class TorrentFile {
+
+		public final File file;
+		public final long size;
+
+		public TorrentFile(File file, long size) {
+			this.file = file;
+			this.size = size;
+		}
+	};
+
+
 	protected final byte[] encoded;
-	private final boolean seeder;
+	protected final byte[] encoded_info;
+	protected final Map<String, BEValue> decoded;
+	protected final Map<String, BEValue> decoded_info;
 
-	protected Map<String, BEValue> decoded;
-
-	protected byte[] encoded_info;
-	protected Map<String, BEValue> decoded_info;
+	private final byte[] info_hash;
+	private final String hex_info_hash;
 
 	private final String announceUrl;
 	private final String createdBy;
 	private final String name;
 	private final long size;
+	protected final List<TorrentFile> files;
 
-	private byte[] info_hash;
-	private String hex_info_hash;
+	private final boolean seeder;
 
 	/** Create a new torrent from metainfo binary data.
 	 *
@@ -102,11 +119,12 @@ public class Torrent {
 	 * BitTorrent specification) and create a Torrent object from it.
 	 *
 	 * @param torrent The metainfo byte data.
+	 * @param parent The parent directory or location of the torrent files.
 	 * @param seeder Whether we'll be seeding for this torrent or not.
 	 * @throws IllegalArgumentException When the info dictionnary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 */
-	public Torrent(byte[] torrent, boolean seeder)
+	public Torrent(byte[] torrent, File parent, boolean seeder)
 		throws IllegalArgumentException {
 		this.encoded = torrent;
 		this.seeder = seeder;
@@ -115,22 +133,72 @@ public class Torrent {
 			this.decoded = BDecoder.bdecode(
 					new ByteArrayInputStream(this.encoded)).getMap();
 
-			this.announceUrl = this.decoded.get("announce").getString();
-			this.createdBy = this.decoded.containsKey("created by")
-				? this.decoded.get("created by").getString()
-				: null;
-
 			this.decoded_info = this.decoded.get("info").getMap();
-			this.name = this.decoded_info.get("name").getString();
-			this.size = this.decoded_info.get("length").getLong();
-
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			BEncoder.bencode(this.decoded_info, baos);
 			this.encoded_info = baos.toByteArray();
 			this.info_hash = Torrent.hash(this.encoded_info);
 			this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+
+			this.announceUrl = this.decoded.get("announce").getString();
+			this.createdBy = this.decoded.containsKey("created by")
+				? this.decoded.get("created by").getString()
+				: null;
+			this.name = this.decoded_info.get("name").getString();
+
+			this.files = new LinkedList<TorrentFile>();
+
+			// Parse multi-file torrent file information structure.
+			if (this.decoded_info.containsKey("files")) {
+				// For multi-file torrents, the name of the torrent serves as
+				// the top-level parent directory.
+				parent = new File(parent, this.name);
+
+				for (BEValue file : this.decoded_info.get("files").getList()) {
+					Map<String, BEValue> fileInfo = file.getMap();
+					StringBuffer path = new StringBuffer();
+					for (BEValue pathElement : fileInfo.get("path").getList()) {
+						path.append(File.separator)
+							.append(pathElement.getString());
+					}
+					this.files.add(new TorrentFile(
+						new File(parent, path.toString()),
+						fileInfo.get("length").getLong()));
+				}
+			} else {
+				// For single-file torrents, the name of the torrent is
+				// directly the name of the file.
+				this.files.add(new TorrentFile(
+					new File(parent, this.name),
+					this.decoded_info.get("length").getLong()));
+			}
+
+			// Calculate the total size of this torrent from its files' sizes.
+			long size = 0;
+			for (TorrentFile file : this.files) {
+				size += file.size;
+			}
+			this.size = size;
 		} catch (Exception e) {
 			throw new IllegalArgumentException("Can't parse torrent information!", e);
+		}
+
+		logger.info("Successufully decoded torrent information.");
+		logger.info("Torrent name: {}", this.name);
+		logger.info("Announced at: {}", this.announceUrl);
+		if (this.createdBy != null) {
+			logger.info("Created by: {}", this.createdBy);
+		}
+		logger.info("Found {} file(s) in torrent structure.",
+			String.format("%2d", this.files.size()));
+		int i = 0;
+		for (TorrentFile file : this.files) {
+			logger.debug("{}. {} ({} byte(s))",
+				new Object[] {
+					String.format("%2d", ++i),
+					file.file.getPath(),
+					file.size
+				});
 		}
 	}
 
@@ -260,15 +328,17 @@ public class Torrent {
 	 * we're considering we'll be a full initial seeder for this torrent.
 	 * </p>
 	 *
-	 * @param source The file name.
+	 * @param parent The parent directory for the torrent files.
+	 * @param files The list of files to put in this torrent.
 	 * @param announce The announce URL that will be used for this torrent.
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, URL announce,
+	public static Torrent create(File parent, List<File> files, URL announce,
 		String createdBy)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		logger.info("Creating torrent for {}...", source.getName());
+		logger.info("Creating torrent for {} ({} file(s)...",
+			parent.getName(), files.size());
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 		torrent.put("announce", new BEValue(announce.toString()));
@@ -276,16 +346,38 @@ public class Torrent {
 		torrent.put("created by", new BEValue(createdBy));
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
-		info.put("length", new BEValue(source.length()));
-		info.put("name", new BEValue(source.getName()));
+		if (files.size() == 1) {
+			info.put("name", new BEValue(files.get(0).getName()));
+			info.put("length", new BEValue(files.get(0).length()));
+		} else {
+			List<BEValue> fileInfo = new LinkedList<BEValue>();
+			for (File file : files) {
+				Map<String, BEValue> fileMap = new HashMap<String, BEValue>();
+				fileMap.put("length", new BEValue(file.length()));
+
+				LinkedList<BEValue> filePath = new LinkedList<BEValue>();
+				while (file != null) {
+					if (file.equals(parent)) {
+						break;
+					}
+
+					filePath.addFirst(new BEValue(file.getName()));
+					file = file.getParentFile();
+				}
+
+				fileMap.put("path", new BEValue(filePath));
+				fileInfo.add(new BEValue(fileMap));
+			}
+			info.put("files", new BEValue(fileInfo));
+		}
 		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-		info.put("pieces", new BEValue(Torrent.hashPieces(source),
+		info.put("pieces", new BEValue(Torrent.hashPieces(parent),
 					Torrent.BYTE_ENCODING));
 		torrent.put("info", new BEValue(info));
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray(), true);
+		return new Torrent(baos.toByteArray(), parent, true);
 	}
 
 	/** A {@link Callable} to hash a data chunk.
@@ -387,27 +479,29 @@ public class Torrent {
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
+	 * @param parent
 	 * @throws IOException When the torrent file cannot be read.
 	 */
-	public static Torrent load(File torrent) throws IOException {
-		return Torrent.load(torrent, false);
+	public static Torrent load(File torrent, File parent) throws IOException {
+		return Torrent.load(torrent, parent, false);
 	}
 
 	/** Load a torrent from the given torrent file.
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
+	 * @param parent
 	 * @param seeder Whether we are a seeder for this torrent or not (disables
 	 * local data validation).
 	 * @throws IOException When the torrent file cannot be read.
 	 */
-	public static Torrent load(File torrent, boolean seeder)
+	public static Torrent load(File torrent, File parent, boolean seeder)
 		throws IOException {
 		FileInputStream fis = new FileInputStream(torrent);
 		byte[] data = new byte[(int)torrent.length()];
 		fis.read(data);
 		fis.close();
-		return new Torrent(data, false);
+		return new Torrent(data, parent, false);
 	}
 
 	/** Save this torrent meta-info structure into a .torrent file.
@@ -454,12 +548,16 @@ public class Torrent {
 					source.getName());
 			}
 
-			Torrent torrent = Torrent.create(source, announce,
+			List<File> files = new LinkedList<File>();
+			files.add(source);
+
+			Torrent torrent = Torrent.create(source.getParentFile(), files,
+				announce,
 				String.format("%s (ttorrent)", System.getProperty("user.name")));
 			torrent.save(outfile);
 
 			if (torrent.getHexInfoHash().equals(
-				Torrent.load(outfile).getHexInfoHash())) {
+				Torrent.load(outfile, source.getParentFile()).getHexInfoHash())) {
 				logger.info("Validated created torrent file (hash: {}).",
 					torrent.getHexInfoHash());
 			}

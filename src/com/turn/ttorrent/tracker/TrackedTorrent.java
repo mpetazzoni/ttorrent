@@ -55,7 +55,7 @@ public class TrackedTorrent extends Torrent {
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 */
 	public TrackedTorrent(byte[] torrent) throws IllegalArgumentException {
-		super(torrent, false);
+		super(torrent, null, false);
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;

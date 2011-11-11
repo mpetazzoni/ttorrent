@@ -76,7 +76,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private long left;
 
 	private final TorrentByteStorage bucket;
-	private File file;
 
 	private final int pieceLength;
 	private final ByteBuffer piecesHashes;
@@ -146,8 +145,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	/** Create a new shared torrent from metainfo binary data.
 	 *
 	 * @param torrent The metainfo byte data.
-	 * @param destDir The destination directory or location of the torrent
-	 * files.
+	 * @param parent The parent directory or location the torrent files.
 	 * @param seeder Whether we're a seeder for this torrent or not (disables
 	 * validation).
 	 * @throws IllegalArgumentException When the info dictionary can't be
@@ -156,24 +154,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException If the torrent file cannot be accessed.
 	 */
-	public SharedTorrent(byte[] torrent, File destDir, boolean seeder)
+	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws IllegalArgumentException, FileNotFoundException, IOException {
-		super(torrent, seeder);
+		super(torrent, parent, seeder);
 
-		// Only deal with single-file torrents for now
-		if (this.decoded_info.containsKey("files")) {
-			throw new IllegalArgumentException(
-					"Multiple files torrents not implemented yet!");
+		if (parent == null || !parent.isDirectory()) {
+			throw new IllegalArgumentException("Invalid parent directory!");
 		}
 
-		// Make sure the destination/location directory exists, or try to
-		// create it.
-		if (!destDir.exists()) {
-			if (!destDir.mkdirs()) {
-				throw new FileNotFoundException(
-						"Invalid destination/location directory!");
-			}
-		}
+		String parentPath = parent.getCanonicalPath();
 
 		try {
 			this.pieceLength = this.decoded_info.get("piece length").getInt();
@@ -190,9 +179,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					"Error reading torrent meta-info fields!");
 		}
 
-		this.file = new File(destDir, this.getName());
 		List<FileStorage> files = new LinkedList<FileStorage>();
-		files.add(new FileStorage(this.file, this.getSize()));
+		long offset = 0L;
+		for (Torrent.TorrentFile file : this.files) {
+			if (!file.file.getCanonicalPath().startsWith(parentPath)) {
+				throw new SecurityException("Torrent file path attempted " +
+					"to break directory jail!");
+			}
+
+			file.file.getParentFile().mkdirs();
+			files.add(new FileStorage(file.file, offset, file.size));
+			offset += file.size;
+		}
 		this.bucket = new FileCollectionStorage(files, this.getSize());
 
 		this.random = new Random(System.currentTimeMillis());
@@ -213,19 +211,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 *
 	 * @param source The <code>.torrent</code> file to read the torrent
 	 * meta-info from.
-	 * @param destDir The destination directory or location of the torrent
-	 * files.
+	 * @param parent The parent directory or location of the torrent files.
 	 * @throws IllegalArgumentException When the info dictionnary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws IOException When the torrent file cannot be read.
 	 */
-	public static SharedTorrent fromFile(File source, File destDir)
+	public static SharedTorrent fromFile(File source, File parent)
 		throws IllegalArgumentException, IOException {
 		FileInputStream fis = new FileInputStream(source);
 		byte[] data = new byte[(int)source.length()];
 		fis.read(data);
 		fis.close();
-		return new SharedTorrent(data, destDir);
+		return new SharedTorrent(data, parent);
 	}
 
 	/** Get the number of bytes uploaded for this torrent.
