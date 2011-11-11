@@ -205,6 +205,8 @@ public class Torrent {
 					});
 			}
 		}
+
+		logger.info("  Total size: {} byte(s)", this.size);
 	}
 
 	/** Get this torrent's name.
@@ -494,7 +496,7 @@ public class Torrent {
 			throws NoSuchAlgorithmException {
 			this.md = MessageDigest.getInstance("SHA-1");
 
-			this.data = ByteBuffer.allocate(buffer.capacity());
+			this.data = ByteBuffer.allocate(buffer.remaining());
 			buffer.mark();
 			this.data.put(buffer);
 			this.data.clear();
@@ -504,7 +506,7 @@ public class Torrent {
 		@Override
 		public String call() throws UnsupportedEncodingException {
 			this.md.reset();
-			this.md.update(this.data.array(), 0, this.data.remaining());
+			this.md.update(this.data.array());
 			return new String(md.digest(), Torrent.BYTE_ENCODING);
 		}
 	}
@@ -560,7 +562,8 @@ public class Torrent {
 
 		// Hash the last bit, if any
 		if (buffer.position() > 0) {
-			buffer.clear();
+			buffer.limit(buffer.position());
+			buffer.position(0);
 			results.add(executor.submit(new CallableChunkHasher(buffer)));
 		}
 
