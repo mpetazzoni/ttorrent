@@ -25,7 +25,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A BitTorrent tracker peer.
  *
@@ -41,9 +42,14 @@ import org.apache.log4j.Logger;
  */
 public class TrackedPeer extends Peer {
 
-	private static final Logger logger = Logger.getLogger(TrackedPeer.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TrackedPeer.class);
+
 	private static final int FRESH_TIME_SECONDS = 30;
 
+	private long uploaded;
+	private long downloaded;
+	private long left;
 	private Torrent torrent;
 
 	/** Represents the state of a peer exchanging on this torrent.
@@ -88,6 +94,10 @@ public class TrackedPeer extends Peer {
 		// Instanciated peers start in the UNKNOWN state.
 		this.state = PeerState.UNKNOWN;
 		this.lastAnnounce = null;
+
+		this.uploaded = 0;
+		this.downloaded = 0;
+		this.left = 0;
 	}
 
 	/** Update this peer's state and information.
@@ -107,12 +117,19 @@ public class TrackedPeer extends Peer {
 		}
 
 		if (!state.equals(this.state)) {
-			logger.info("Peer " + this + " " + state.name().toLowerCase() +
-					" download of " + this.torrent + ".");
+			logger.info("Peer {} {} download of {}.",
+				new Object[] {
+					this,
+					state.name().toLowerCase() +
+					this.torrent
+				});
 		}
 
 		this.state = state;
 		this.lastAnnounce = new Date();
+		this.uploaded = uploaded;
+		this.downloaded = downloaded;
+		this.left = left;
 	}
 
 	/** Tells whether this peer has completed its download and can thus be
@@ -122,9 +139,35 @@ public class TrackedPeer extends Peer {
 		return PeerState.COMPLETED.equals(this.state);
 	}
 
+	/** Returns how many bytes the peer reported it has uploaded so far.
+	 */
+	public long getUploaded() {
+		return this.uploaded;
+	}
+
+	/** Returns how many bytes the peer reported it has downloaded so far.
+	 */
+	public long getDownloaded() {
+		return this.downloaded;
+	}
+
+	/** Returns how many bytes the peer reported it needs to retrieve before
+	 * its download is complete.
+	 */
+	public long getLeft() {
+		return this.left;
+	}
+
+	/** Tells whether this peer has checked in with the tracker recently.
+	 *
+	 * <p>
+	 * Non-fresh peers are automatically terminated and collected by the
+	 * Tracker.
+	 * </p>
+	 */
 	public boolean isFresh() {
 		return (this.lastAnnounce != null &&
-				(this.lastAnnounce.getTime() + FRESH_TIME_SECONDS * 1000 >
+				(this.lastAnnounce.getTime() + (FRESH_TIME_SECONDS * 1000) >
 				 new Date().getTime()));
 	}
 

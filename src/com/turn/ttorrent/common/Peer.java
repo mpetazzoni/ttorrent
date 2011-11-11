@@ -28,12 +28,12 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
+	private final String ip;
+	private final int port;
+	private final String hostId;
+
 	private ByteBuffer peerId;
 	private String hexPeerId;
-
-	private String ip;
-	private int port;
-	private String hostId;
 
 	/** Instanciate a new peer for the given torrent.
 	 *
@@ -49,14 +49,22 @@ public class Peer {
 		this.setPeerId(peerId);
 	}
 
+	/** Tells whether this peer has a known peer ID yet or not.
+	 */
 	public boolean hasPeerId() {
 		return this.peerId != null;
 	}
 
+	/** Returns the raw peer ID as a {@link ByteBuffer}.
+	 */
 	public ByteBuffer getPeerId() {
 		return this.peerId;
 	}
 
+	/** Set a peer ID for this peer (usually during handshake).
+	 *
+	 * @param peerId The new peer ID for this peer.
+	 */
 	public void setPeerId(ByteBuffer peerId) {
 		if (peerId != null) {
 			this.peerId = peerId;
@@ -73,19 +81,25 @@ public class Peer {
 		return this.hexPeerId;
 	}
 
+	/** Returns this peer's IP address.
+	 */
 	public String getIp() {
 		return this.ip;
 	}
 
+	/** Returns this peer's port number.
+	 */
 	public int getPort() {
 		return this.port;
 	}
 
+	/** Returns this peer's host identifier ("host:port").
+	 */
 	public String getHostIdentifier() {
 		return this.hostId;
 	}
 
-	/** Return a human-readable representation of this peer.
+	/** Returns a human-readable representation of this peer.
 	 */
 	public String toString() {
 		StringBuilder s = new StringBuilder("peer://")
@@ -101,14 +115,17 @@ public class Peer {
 		return s.toString();
 	}
 
-	/** Tells if two peers seem to lookalike, i.e. they have the same IP and
-	 * same port.
+	/** Tells if two peers seem to lookalike (i.e. they have the same IP, port
+	 * and peer ID if they have one).
 	 */
 	public boolean looksLike(Peer other) {
 		if (other == null) {
 			return false;
 		}
 
-		return this.ip.equals(other.getIp()) && this.port == other.getPort();
+		return this.hostId.equals(other.hostId) &&
+			(this.hasPeerId()
+				 ? this.hexPeerId.equals(other.hexPeerId)
+				 : true);
 	}
 }

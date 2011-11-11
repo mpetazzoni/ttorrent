@@ -26,7 +26,8 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
@@ -41,7 +42,8 @@ import org.simpleframework.transport.connect.SocketConnection;
  */
 public class Tracker {
 
-	private static final Logger logger = Logger.getLogger(Tracker.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(Tracker.class);
 
 	public static final String ANNOUNCE_URL = "/announce";
 	public static final int DEFAULT_TRACKER_PORT = 6969;
@@ -123,8 +125,7 @@ public class Tracker {
 			this.connection.close();
 			logger.info("BitTorrent tracker closed.");
 		} catch (IOException ioe) {
-			logger.error("Could not stop the tracker: " +
-				ioe.getMessage() + "!");
+			logger.error("Could not stop the tracker: {}!", ioe.getMessage());
 		}
 
 		if (this.collector != null && this.collector.isAlive()) {
@@ -149,17 +150,16 @@ public class Tracker {
 		TrackedTorrent torrent = this.torrents.get(newTorrent.getHexInfoHash());
 
 		if (torrent != null) {
-			logger.warn("Tracker already announced torrent for '" +
-					torrent.getName() + "' with hash " +
-					torrent.getHexInfoHash() + ".");
+			logger.warn("Tracker already announced torrent for '{}' " +
+				"with hash {}.", torrent.getName(), torrent.getHexInfoHash());
 			return torrent;
 		} else {
 			torrent = new TrackedTorrent(newTorrent);
 		}
 
 		this.torrents.put(torrent.getHexInfoHash(), torrent);
-		logger.info("Registered new torrent for '" + torrent.getName() + "' " +
-			   "with hash " + torrent.getHexInfoHash());
+		logger.info("Registered new torrent for '{}' with hash {}.",
+			torrent.getName(), torrent.getHexInfoHash());
 		return torrent;
 	}
 
@@ -220,14 +220,13 @@ public class Tracker {
 
 		@Override
 		public void run() {
-			logger.info("Starting BitTorrent tracker on " + getAnnounceUrl() +
-					"...");
+			logger.info("Starting BitTorrent tracker on {}...",
+				getAnnounceUrl());
 
 			try {
 				connection.connect(address);
 			} catch (IOException ioe) {
-				logger.error("Could not start the tracker: " +
-					ioe.getMessage() + "!");
+				logger.error("Could not start the tracker: {}!", ioe.getMessage());
 			}
 		}
 	}
@@ -243,8 +242,8 @@ public class Tracker {
 
 		@Override
 		public void run() {
-			logger.info("Starting tracker peer collection for tracker at " +
-					getAnnounceUrl() + "...");
+			logger.info("Starting tracker peer collection for tracker at {}...",
+				getAnnounceUrl());
 
 			while (!stop) {
 				for (TrackedTorrent torrent : torrents.values()) {

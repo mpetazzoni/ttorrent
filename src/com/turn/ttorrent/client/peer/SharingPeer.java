@@ -31,7 +31,8 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A peer exchanging on a torrent with the BitTorrent client.
  *
@@ -65,7 +66,8 @@ import org.apache.log4j.Logger;
  */
 public class SharingPeer extends Peer implements MessageListener {
 
-	private static final Logger logger = Logger.getLogger(SharingPeer.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(SharingPeer.class);
 
 	private static final int MAX_PIPELINED_REQUESTS = 5;
 
@@ -150,7 +152,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 */
 	public void choke() {
 		if (!this.choking) {
-			logger.trace("Choking " + this);
+			logger.trace("Choking {}", this);
 			this.send(Message.ChokeMessage.craft());
 			this.choking = true;
 		}
@@ -163,7 +165,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 */
 	public void unchoke() {
 		if (this.choking) {
-			logger.trace("Unchoking " + this);
+			logger.trace("Unchoking {}", this);
 			this.send(Message.UnchokeMessage.craft());
 			this.choking = false;
 		}
@@ -176,7 +178,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	public void interesting() {
 		if (!this.interesting) {
-			logger.trace("Telling " + this + " we're interested.");
+			logger.trace("Telling {} we're interested.", this);
 			this.send(Message.InterestedMessage.craft());
 			this.interesting = true;
 		}
@@ -184,7 +186,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	public void notInteresting() {
 		if (this.interesting) {
-			logger.trace("Telling " + this + " we're no longer interested.");
+			logger.trace("Telling {} we're no longer interested.", this);
 			this.send(Message.NotInterestedMessage.craft());
 			this.interesting = false;
 		}
@@ -321,7 +323,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			IllegalStateException up = new IllegalStateException(
 					"Trying to download a piece while previous " +
 					"download not completed!");
-			logger.warn(up);
+			logger.warn("{}", up);
 			throw up; // ah ah.
 		}
 
@@ -423,7 +425,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				break;
 			case UNCHOKE:
 				this.choked = false;
-				logger.trace("Peer " + this + " is now accepting requests.");
+				logger.trace("Peer {} is now accepting requests.", this);
 				this.firePeerReady();
 				break;
 			case INTERESTED:
@@ -439,9 +441,13 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				synchronized (this.availablePieces) {
 					this.availablePieces.set(havePiece.getIndex());
-					logger.trace("Peer " + this + " now has " + havePiece +
-							" [" + this.availablePieces.cardinality() + "/" +
-							this.torrent.getPieceCount() + "].");
+					logger.trace("Peer {} now has {} [{}/{}].",
+						new Object[] {
+							this,
+							havePiece,
+							this.availablePieces.cardinality(),
+							this.torrent.getPieceCount()
+						});
 				}
 
 				this.firePieceAvailabity(havePiece);
@@ -452,10 +458,14 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				synchronized (this.availablePieces) {
 					this.availablePieces = bitfield.getBitfield();
-					logger.trace("Recorded bitfield from " + this + " with " +
-							bitfield.getBitfield().cardinality() + " piece(s) [" +
-							this.availablePieces.cardinality() + "/" +
-							this.torrent.getPieceCount() + "].");
+					logger.trace("Recorded bitfield from {} with {} " +
+						"pieces(s) [{}/{}].",
+						new Object[] {
+							this,
+							bitfield.getBitfield().cardinality(),
+							this.availablePieces.cardinality(),
+							this.torrent.getPieceCount()
+						});
 				}
 
 				this.fireBitfieldAvailabity();
@@ -470,16 +480,16 @@ public class SharingPeer extends Peer implements MessageListener {
 				// situation, terminate the connection.
 				if (this.isChoking() ||
 						!this.torrent.getPiece(request.getPiece()).isValid()) {
-					logger.info("Peer " + this + " violated protocol, " +
-							"terminating exchange.");
+					logger.warn("Peer {} violated protocol, " +
+						"terminating exchange.", this);
 					this.unbind(true);
 					break;
 				}
 
 				if (request.getLength() >
 						Message.RequestMessage.MAX_REQUEST_SIZE) {
-					logger.info("Peer " + this + " requested a block too big, " +
-							"terminating exchange.");
+					logger.warn("Peer {} requested a block too big, " +
+						"terminating exchange.", this);
 					this.unbind(true);
 					break;
 				}

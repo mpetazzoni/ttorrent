@@ -27,7 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
@@ -51,12 +52,15 @@ import org.simpleframework.http.core.Container;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-class TrackerService implements Container {
+public class TrackerService implements Container {
 
-	private final static Logger logger = Logger.getLogger(TrackerService.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TrackerService.class);
 
-	private String version;
-	private ConcurrentMap<String, TrackedTorrent> torrents;
+	private static final String WILDCARD_IPV4_ADDRESS = "0.0.0.0";
+
+	private final String version;
+	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
 	/** The various tracker error states.
 	 *
@@ -123,7 +127,7 @@ class TrackerService implements Container {
 			this.process(request, response, body);
 			body.flush();
 		} catch (IOException ioe) {
-			logger.warn("Error while writing response: " + ioe.getMessage());
+			logger.warn("Error while writing response: {}!", ioe.getMessage());
 		} finally {
 			if (body != null) {
 				try {
@@ -167,7 +171,8 @@ class TrackerService implements Container {
 
 		// Make sure we have the peer IP, fallbacking on the request's source
 		// address if the peer didn't provide it.
-		if (!params.containsKey("ip")) {
+		if (!params.containsKey("ip") ||
+			WILDCARD_IPV4_ADDRESS.equals(params.get("ip"))) {
 			params.put("ip", request.getClientAddress().getAddress()
 					.getHostAddress());
 		}
@@ -247,8 +252,8 @@ class TrackerService implements Container {
 			Status status, TrackerError error) throws IOException {
 		response.setCode(status.getCode());
 		response.setText(status.getDescription());
-		logger.warn("Could not process announce request (" +
-				error.getMessage() + ") !");
+		logger.warn("Could not process announce request ({}) !",
+			error.getMessage());
 		BEncoder.bencode(error.toBEValue(), body);
 	}
 
@@ -276,8 +281,8 @@ class TrackerService implements Container {
 				.toHexString(params.get("info_hash")));
 		TrackedTorrent torrent = this.torrents.get(params.get("info_hash_hex"));
 		if (torrent == null) {
-			logger.warn("Requested torrent hash was: " +
-					params.get("info_hash_hex"));
+			logger.warn("Requested torrent hash was: {}",
+				params.get("info_hash_hex"));
 			return TrackerError.UNKNOWN_TORRENT;
 		}
 

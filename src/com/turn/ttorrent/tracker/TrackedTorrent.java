@@ -28,17 +28,19 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TrackedTorrent extends Torrent {
 
-	private static final Logger logger = Logger.getLogger(TrackedTorrent.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(TrackedTorrent.class);
 
 	/** Default number of peers included in a tracker response. */
 	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
 
 	/** Default announce interval requested from peers, in seconds. */
-	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 300;
+	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 15;
 
 	private int answerPeers;
 	private int announceInterval;
@@ -53,7 +55,7 @@ public class TrackedTorrent extends Torrent {
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 */
 	public TrackedTorrent(byte[] torrent) throws IllegalArgumentException {
-		super(torrent);
+		super(torrent, null, false);
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;
@@ -62,6 +64,12 @@ public class TrackedTorrent extends Torrent {
 
 	public TrackedTorrent(Torrent torrent) throws IllegalArgumentException {
 		this(torrent.getEncoded());
+	}
+
+	/** Returns the map of all peers currently exchanging on this torrent.
+	 */
+	public Map<String, TrackedPeer> getPeers() {
+		return this.peers;
 	}
 
 	/** Add a peer exchanging on this torrent.
@@ -215,7 +223,7 @@ public class TrackedTorrent extends Torrent {
 			// Collect unfresh peers, and obviously don't serve them as well.
 			if (!candidate.isFresh() ||
 					(candidate.looksLike(peer) && !candidate.equals(peer))) {
-				logger.debug("Collecting stale peer " + candidate + "...");
+				logger.debug("Collecting stale peer {}...", candidate);
 				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}
@@ -227,8 +235,8 @@ public class TrackedTorrent extends Torrent {
 
 			// Collect unfresh peers, and obviously don't serve them as well.
 			if (!candidate.isFresh()) {
-				logger.debug("Collecting stale peer " +
-						candidate.getHexPeerId() + "...");
+				logger.debug("Collecting stale peer {}...",
+					candidate.getHexPeerId());
 				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}

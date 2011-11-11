@@ -17,44 +17,48 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** A torrent piece.
  *
+ * <p>
  * This class represents a torrent piece. Torrents are made of pieces, which
  * are in turn made of blocks that are exchanged using the peer protocol.
- *
  * The piece length is defined at the torrent level, but the last piece that
  * makes the torrent might be smaller.
+ * </p>
  *
+ * <p>
  * If the torrent has multiple files, pieces can spread across file boundaries.
  * The TorrentByteStorage abstracts this problem to give Piece objects the
  * impression of a contiguous, linear byte storage.
+ * </p>
  *
  * @author mpetazzoni
  */
 public class Piece implements Comparable<Piece> {
 
-	private static final Logger logger = Logger.getLogger(Piece.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(Piece.class);
 
-	public static final int BLOCK_SIZE = 16*1024; // 16kB
+	private final TorrentByteStorage bucket;
+	private final int index;
+	private final long offset;
+	private final int length;
+	private final byte[] hash;
+	private final boolean seeder;
 
-	private TorrentByteStorage bucket;
-	private int index;
-	private int offset;
-	private int length;
-
-	private byte[] hash;
 	private boolean valid;
-
 	private int seen;
-
 	private ByteBuffer data;
 
 	/** Initialize a new piece in the byte bucket.
@@ -64,14 +68,17 @@ public class Piece implements Comparable<Piece> {
 	 * @param offset This piece offset, in bytes, in the storage.
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
+	 * @param seeder Whether we're seeding this torrent or not (disables piece
+	 * validation).
 	 */
-	public Piece(TorrentByteStorage bucket, int index, int offset, int length,
-			byte[] hash) {
+	public Piece(TorrentByteStorage bucket, int index, long offset,
+		int length, byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
 		this.length = length;
 		this.hash = hash;
+		this.seeder = seeder;
 
 		// Piece is considered invalid until first check.
 		this.valid = false;
@@ -82,26 +89,46 @@ public class Piece implements Comparable<Piece> {
 		this.data = null;
 	}
 
+	/** Tells whether this piece's data is valid or not.
+	 */
 	public boolean isValid() {
 		return this.valid;
 	}
 
+	/** Returns the index of this piece in the torrent.
+	 */
 	public int getIndex() {
 		return this.index;
 	}
 
+	/** Returns the size, in bytes, of this piece.
+	 *
+	 * <p>
+	 * All pieces, except the last one, are expected to have the same size.
+	 * </p>
+	 */
 	public int size() {
 		return this.length;
 	}
 
+	/** Tells whether this piece is available in the current connected peer swarm.
+	 */
 	public boolean available() {
 		return this.seen > 0;
 	}
 
+	/** Mark this piece as being seen at the given peer.
+	 *
+	 * @param peer The sharing peer this piece has been seen available at.
+	 */
 	public void seenAt(SharingPeer peer) {
 		this.seen++;
 	}
 
+	/** Mark this piece as no longer being available at the given peer.
+	 *
+	 * @param peer The sharing peer from which the piece is no longer available.
+	 */
 	public void noLongerAt(SharingPeer peer) {
 		this.seen--;
 	}
@@ -112,21 +139,55 @@ public class Piece implements Comparable<Piece> {
 	 * valid, i.e. its SHA1 sum matches the one from the torrent meta-info.
 	 */
 	public boolean validate() throws IOException {
+		if (this.seeder) {
+			logger.trace("Skipping validation of {} (seeder mode).", this);
+			this.valid = true;
+			return this.isValid();
+		}
+
+		logger.trace("Validating {}...", this);
 		this.valid = false;
 
 		try {
-			logger.trace("Validating piece#" + this.index + "...");
-			ByteBuffer buffer = this.bucket.read(this.offset, this.length);
-			if (buffer.remaining() == this.length) {
-				byte[] data = new byte[this.length];
-				buffer.get(data);
-				this.valid = Arrays.equals(Torrent.hash(data), this.hash);
-			}
+			ByteBuffer buffer = this._read(0, this.length);
+			byte[] data = new byte[this.length];
+			buffer.get(data);
+			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 		} catch (NoSuchAlgorithmException nsae) {
-			logger.error(nsae);
+			logger.error("{}", nsae);
 		}
 
 		return this.isValid();
+	}
+
+	/** Internal piece data read function.
+	 *
+	 * <p>
+	 * This function will read the piece data without checking if the piece has
+	 * been validated. It is simply meant at factoring-in the common read code
+	 * from the validate and read functions.
+	 * </p>
+	 *
+	 * @param offset Offset inside this piece where to start reading.
+	 * @param length Number of bytes to read from the piece.
+	 * @return A byte buffer containing the piece data.
+	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
+	 * the piece boundary.
+	 * @throws IOException If the read can't be completed (I/O error, or EOF
+	 * reached, which can happen if the piece is not complete).
+	 */
+	private ByteBuffer _read(long offset, int length) throws IOException {
+		if (offset + length > this.length) {
+			throw new IllegalArgumentException("Piece#" + this.index +
+				" overrun (" + offset + " + " + length + " > " +
+				this.length + ") !");
+		}
+
+		ByteBuffer buffer = ByteBuffer.allocate(length);
+		int bytes = this.bucket.read(buffer, this.offset + offset);
+		buffer.clear();
+		buffer.limit(bytes >= 0 ? bytes : 0);
+		return buffer;
 	}
 
 	/** Read a piece block from the underlying byte storage.
@@ -138,8 +199,7 @@ public class Piece implements Comparable<Piece> {
 	 *
 	 * @param offset Offset inside this piece where to start reading.
 	 * @param length Number of bytes to read from the piece.
-	 * @return A byte array containing the piece data if the read was
-	 * successful.
+	 * @return A byte buffer containing the piece data.
 	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
 	 * the piece boundary.
 	 * @throws IllegalStateException If the piece is not valid when attempting
@@ -147,19 +207,14 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	public ByteBuffer read(int offset, int length)
+	public ByteBuffer read(long offset, int length)
 		throws IllegalArgumentException, IllegalStateException, IOException {
 		if (!this.valid) {
 			throw new IllegalStateException("Attempting to read an " +
 					"known-to-be invalid piece!");
 		}
 
-		if (offset + length > this.length) {
-			throw new IllegalArgumentException("Offset + length goes " +
-					"pass the piece size!");
-		}
-
-		return this.bucket.read(this.offset + offset, length);
+		return this._read(offset, length);
 	}
 
 	/** Record the given block at the given offset in this piece.
@@ -182,7 +237,7 @@ public class Piece implements Comparable<Piece> {
 
 		if (block.remaining() + offset == this.length) {
 			this.data.rewind();
-			logger.trace("Recording " + this + "...");
+			logger.trace("Recording {}...", this);
 			this.bucket.write(this.data, this.offset);
 			this.data = null;
 		}
@@ -191,9 +246,16 @@ public class Piece implements Comparable<Piece> {
 	/** Return a human-readable representation of this piece.
 	 */
 	public String toString() {
-		return "piece" + (this.valid ? "" : "!") + "#" + this.index;
+		return String.format("piece%s#%d",
+			this.valid ? "" : "!",
+			this.index);
 	}
 
+	/** Piece comparision function for ordering pieces based on their
+	 * availability.
+	 *
+	 * @param other The piece to compare with, should not be <em>null</em>.
+	 */
 	public int compareTo(Piece other) {
 		if (this == other) {
 			return 0;
@@ -203,6 +265,33 @@ public class Piece implements Comparable<Piece> {
 			return -1;
 		} else {
 			return 1;
+		}
+	}
+
+	/** A {@link Callable} to call the piece validation function.
+	 *
+	 * <p>
+	 * This {@link Callable} implementation allows for the calling of the piece
+	 * validation function in a controlled context like a thread or an
+	 * executor. It returns the piece it was created for. Results of the
+	 * validation can easily be extracted from the {@link Piece} object after
+	 * it is returned.
+	 * </p>
+	 *
+	 * @author mpetazzoni
+	 */
+	public static class CallableHasher implements Callable<Piece> {
+
+		private final Piece piece;
+
+		public CallableHasher(Piece piece) {
+			this.piece = piece;
+		}
+
+		@Override
+		public Piece call() throws IOException {
+			this.piece.validate();
+			return this.piece;
 		}
 	}
 }

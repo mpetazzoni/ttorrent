@@ -33,7 +33,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Incoming and outgoing peer communication system.
  *
@@ -59,7 +60,9 @@ import org.apache.log4j.Logger;
  */
 class PeerExchange {
 
-	private static final Logger logger = Logger.getLogger(PeerExchange.class);
+	private static final Logger logger =
+		LoggerFactory.getLogger(PeerExchange.class);
+
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
 	private static final int KEEP_ALIVE_FOR_MINUTES = 3;
 
@@ -111,8 +114,8 @@ class PeerExchange {
 		this.in.start();
 		this.out.start();
 
-		logger.debug("Started peer exchange with " + this.peer + " for " +
-				this.torrent + ".");
+		logger.debug("Started peer exchange with {} for {}.",
+			this.peer, this.torrent);
 
 		// If we have pieces, start by sending a BITFIELD message to the peer.
 		BitSet pieces = this.torrent.getCompletedPieces();
@@ -176,7 +179,7 @@ class PeerExchange {
 			}
 		}
 
-		logger.info("Peer exchange with " + this.peer + " closed.");
+		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
 	public void terminate() {
@@ -190,7 +193,7 @@ class PeerExchange {
 			// Ignore
 		}
 
-		logger.debug("Terminated peer exchange with " + this.peer + "...");
+		logger.debug("Terminated peer exchange with {}.", this.peer);
 	}
 
 	/** Incoming messages thread.
@@ -219,19 +222,18 @@ class PeerExchange {
 
 					try {
 						Message message = Message.parse(buffer, torrent);
-						logger.trace("Received " + message +
-								" from " + peer);
+						logger.trace("Received {} from {}", message, peer);
 
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);
 						}
 					} catch (ParseException pe) {
-						logger.warn(pe.getMessage());
+						logger.warn("{}", pe.getMessage());
 					}
 				}
 			} catch (IOException ioe) {
-				logger.trace("Could not read message from " + peer +
-						": " + ioe.getMessage(), ioe);
+				logger.trace("Could not read message from {}: {}",
+					new Object[] { peer, ioe.getMessage(), ioe });
 				peer.unbind(true);
 			}
 		}
@@ -270,15 +272,15 @@ class PeerExchange {
 							message = Message.KeepAliveMessage.craft();
 						}
 
-						logger.trace("Sending " + message + " to " + peer + ".");
+						logger.trace("Sending {} to {}.", message, peer);
 						os.write(message.getData().array());
 					} catch (InterruptedException ie) {
 						// Ignore and potentially terminate
 					}
 				}
 			} catch (IOException ioe) {
-				logger.trace("Could not send message to " + peer +
-						": " + ioe.getMessage(), ioe);
+				logger.trace("Could not send message to {}: {}",
+					new Object[] { peer, ioe.getMessage(), ioe });
 				peer.unbind(true);
 			}
 		}
