@@ -182,13 +182,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		List<FileStorage> files = new LinkedList<FileStorage>();
 		long offset = 0L;
 		for (Torrent.TorrentFile file : this.files) {
-			if (!file.file.getCanonicalPath().startsWith(parentPath)) {
+			File actual = new File(parent, file.file.getPath());
+
+			if (!actual.getCanonicalPath().startsWith(parentPath)) {
 				throw new SecurityException("Torrent file path attempted " +
 					"to break directory jail!");
 			}
 
-			file.file.getParentFile().mkdirs();
-			files.add(new FileStorage(file.file, offset, file.size));
+			actual.getParentFile().mkdirs();
+			files.add(new FileStorage(actual, offset, file.size));
 			offset += file.size;
 		}
 		this.bucket = new FileCollectionStorage(files, this.getSize());
