@@ -304,7 +304,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 			this.stop(true);
 		} catch (IOException ioe) {
 			logger.warn("Error reading response from tracker: {}",
-				ioe.getMessage(), ioe);
+				ioe.getMessage());
 		} finally {
 			if (result != null && result.containsKey("failure reason")) {
 				try {
