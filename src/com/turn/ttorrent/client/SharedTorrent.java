@@ -404,6 +404,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return availablePieces;
 	}
 
+	/** Return a copy of the completed pieces bitset.
+	 */
 	public BitSet getCompletedPieces() {
 		if (!this.isInitialized()) {
 			throw new IllegalStateException("Torrent not yet initialized!");
@@ -411,6 +413,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		synchronized (this.completedPieces) {
 			return (BitSet)this.completedPieces.clone();
+		}
+	}
+
+	/** Return a copy of the requested pieces bitset.
+	 */
+	public BitSet getRequestedPieces() {
+		if (!this.isInitialized()) {
+			throw new IllegalStateException("Torrent not yet initialized!");
+		}
+
+		synchronized (this.requestedPieces) {
+			return (BitSet)this.requestedPieces.clone();
 		}
 	}
 

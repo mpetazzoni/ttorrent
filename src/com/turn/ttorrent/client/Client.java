@@ -374,7 +374,7 @@ public class Client extends Observable implements Runnable,
 		}
 
 		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
-			"({}%), {}/{} kB/s.",
+			"({}%, {} requested), {}/{} kB/s.",
 			new Object[] {
 				this.getState().name(),
 				choked,
@@ -384,6 +384,7 @@ public class Client extends Observable implements Runnable,
 				this.torrent.getAvailablePieces().cardinality(),
 				this.torrent.getPieceCount(),
 				String.format("%.2f", this.torrent.getCompletion()),
+				this.torrent.getRequestedPieces().cardinality(),
 				String.format("%.2f", dl/1024.0),
 				String.format("%.2f", ul/1024.0)
 			});
