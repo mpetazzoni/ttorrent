@@ -129,7 +129,7 @@ public class TrackedTorrent extends Torrent {
 	public void collectUnfreshPeers() {
 		for (TrackedPeer peer : this.peers.values()) {
 			if (!peer.isFresh()) {
-				this.peers.remove(peer);
+				this.peers.remove(peer.getHexPeerId());
 			}
 		}
 	}
