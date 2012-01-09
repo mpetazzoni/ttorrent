@@ -28,6 +28,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -94,14 +96,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param torrent The Torrent object.
 	 * @param destDir The destination directory or location of the torrent
 	 * files.
-	 * @throws IllegalArgumentException When the info dictionnary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws FileNotFoundException If the torrent file location or
 	 * destination directory does not exist and can't be created.
-	 * @throws IOException If the torrent file cannot be accessed.
+	 * @throws IOException If the torrent file cannot be read or decoded.
+	 * @throws NoSuchAlgorithmException
 	 */
 	public SharedTorrent(Torrent torrent, File destDir)
-		throws IllegalArgumentException, FileNotFoundException, IOException {
+		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		this(torrent, destDir, false);
 	}
 
@@ -115,14 +116,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * files.
 	 * @param seeder Whether we're a seeder for this torrent or not (disables
 	 * validation).
-	 * @throws IllegalArgumentException When the info dictionnary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws FileNotFoundException If the torrent file location or
 	 * destination directory does not exist and can't be created.
-	 * @throws IOException If the torrent file cannot be accessed.
+	 * @throws IOException If the torrent file cannot be read or decoded.
+	 * @throws NoSuchAlgorithmException
 	 */
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
-		throws IllegalArgumentException, FileNotFoundException, IOException {
+		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		this(torrent.getEncoded(), destDir, seeder);
 	}
 
@@ -131,14 +131,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param torrent The metainfo byte data.
 	 * @param destDir The destination directory or location of the torrent
 	 * files.
-	 * @throws IllegalArgumentException When the info dictionary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws FileNotFoundException If the torrent file location or
 	 * destination directory does not exist and can't be created.
-	 * @throws IOException If the torrent file cannot be accessed.
+	 * @throws IOException If the torrent file cannot be read or decoded.
 	 */
 	public SharedTorrent(byte[] torrent, File destDir)
-		throws IllegalArgumentException, FileNotFoundException, IOException {
+		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		this(torrent, destDir, false);
 	}
 
@@ -148,14 +146,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param parent The parent directory or location the torrent files.
 	 * @param seeder Whether we're a seeder for this torrent or not (disables
 	 * validation).
-	 * @throws IllegalArgumentException When the info dictionary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws FileNotFoundException If the torrent file location or
 	 * destination directory does not exist and can't be created.
-	 * @throws IOException If the torrent file cannot be accessed.
+	 * @throws IOException If the torrent file cannot be read or decoded.
+	 * @throws NoSuchAlgorithmException
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
-		throws IllegalArgumentException, FileNotFoundException, IOException {
+		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		super(torrent, parent, seeder);
 
 		if (parent == null || !parent.isDirectory()) {
@@ -214,12 +211,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param source The <code>.torrent</code> file to read the torrent
 	 * meta-info from.
 	 * @param parent The parent directory or location of the torrent files.
-	 * @throws IllegalArgumentException When the info dictionnary can't be
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
-	 * @throws IOException When the torrent file cannot be read.
+	 * @throws IOException When the torrent file cannot be read or decoded.
+	 * @throws NoSuchAlgorithmException
 	 */
 	public static SharedTorrent fromFile(File source, File parent)
-		throws IllegalArgumentException, IOException {
+		throws IOException, NoSuchAlgorithmException {
 		FileInputStream fis = new FileInputStream(source);
 		byte[] data = new byte[(int)source.length()];
 		fis.read(data);
@@ -278,8 +274,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
 
-		int nPieces = new Double(Math.ceil((double)this.getSize() /
-					this.pieceLength)).intValue();
+		int nPieces = (int) (Math.ceil(
+				(double)this.getSize() / this.pieceLength));
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
 
@@ -404,6 +400,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return availablePieces;
 	}
 
+	/** Return a copy of the completed pieces bitset.
+	 */
 	public BitSet getCompletedPieces() {
 		if (!this.isInitialized()) {
 			throw new IllegalStateException("Torrent not yet initialized!");
@@ -411,6 +409,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		synchronized (this.completedPieces) {
 			return (BitSet)this.completedPieces.clone();
+		}
+	}
+
+	/** Return a copy of the requested pieces bitset.
+	 */
+	public BitSet getRequestedPieces() {
+		if (!this.isInitialized()) {
+			throw new IllegalStateException("Torrent not yet initialized!");
+		}
+
+		synchronized (this.requestedPieces) {
+			return (BitSet)this.requestedPieces.clone();
 		}
 	}
 

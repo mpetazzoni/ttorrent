@@ -9,9 +9,10 @@ tracker (an HTTP service), and a BitTorrent client. The only dependencies of
 the BitTorrent library are:
 
 * the log4j library
+* the slf4j logging library
 * the SimpleHTTPFramework
 
-These two libraries are provided in the lib/ directory, and are automatically
+These libraries are provided in the lib/ directory, and are automatically
 included in the JAR file created by the build process.
 
 

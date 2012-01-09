@@ -260,10 +260,10 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		}
 
 		params.put("peer_id", this.id);
-		params.put("port", new Integer(this.address.getPort()).toString());
-		params.put("uploaded", new Long(this.torrent.getUploaded()).toString());
-		params.put("downloaded", new Long(this.torrent.getDownloaded()).toString());
-		params.put("left", new Long(this.torrent.getLeft()).toString());
+		params.put("port", Integer.valueOf(this.address.getPort()).toString());
+		params.put("uploaded", Long.valueOf(this.torrent.getUploaded()).toString());
+		params.put("downloaded", Long.valueOf(this.torrent.getDownloaded()).toString());
+		params.put("left", Long.valueOf(this.torrent.getLeft()).toString());
 
 		if (!AnnounceEvent.NONE.equals(event)) {
 			params.put("event", event.name().toLowerCase());

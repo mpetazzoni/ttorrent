@@ -22,7 +22,7 @@
 	<property name="src.dir" location="src" />
 
 	<!-- Release version. -->
-	<property name="project.version" value="1.1" />
+	<property name="project.version" value="1.1.1" />
 
 	<property name="jar.location"
 	          value="${dist.dir}/${ant.project.name}-${project.version}.jar" />

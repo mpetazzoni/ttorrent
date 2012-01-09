@@ -51,7 +51,7 @@ public class Handshake {
 
 	public static Handshake parse(ByteBuffer buffer)
 		throws ParseException, UnsupportedEncodingException {
-		int pstrlen = new Byte(buffer.get()).intValue();
+		int pstrlen = Byte.valueOf(buffer.get()).intValue();
 		if (pstrlen < 0 ||
 				buffer.remaining() != BASE_HANDSHAKE_LENGTH + pstrlen - 1) {
 			throw new ParseException("Incorrect handshake message length " +
