@@ -437,14 +437,19 @@ public class Client extends Observable implements Runnable,
 					// Set peer ID for perviously known peer.
 					peer.setPeerId(search.getPeerId());
 
+					// Replace the mapping for this peer from its host
+					// identifier to its now known peer ID.
 					this.peers.remove(peer.getHostIdentifier());
-					this.peers.putIfAbsent(peer.getHexPeerId(), peer);
+					this.peers.put(peer.getHexPeerId(), peer);
 					return peer;
 				}
 			}
 
+			// Last case, it really didn't exist already, add it, either from
+			// peer ID or host identifier, whatever we have so that we can find
+			// it later.
 			peer = new SharingPeer(ip, port, search.getPeerId(), this.torrent);
-			this.peers.putIfAbsent(peer.hasPeerId()
+			this.peers.put(peer.hasPeerId()
 					? peer.getHexPeerId()
 					: peer.getHostIdentifier(),
 				peer);
