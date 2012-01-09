@@ -584,8 +584,8 @@ public class Torrent {
 			throw new IOException("Error while hashing the torrent data!", ee);
 		}
 
-		int expectedPieces = new Double(Math.ceil((double)length /
-			Torrent.PIECE_LENGTH)).intValue();
+		int expectedPieces = (int) (Math.ceil(
+				(double)length / Torrent.PIECE_LENGTH));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),

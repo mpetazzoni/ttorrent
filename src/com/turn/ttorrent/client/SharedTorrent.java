@@ -278,8 +278,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
 
-		int nPieces = new Double(Math.ceil((double)this.getSize() /
-					this.pieceLength)).intValue();
+		int nPieces = (int) (Math.ceil(
+				(double)this.getSize() / this.pieceLength));
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
 
