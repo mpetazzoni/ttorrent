@@ -122,67 +122,61 @@ public class Torrent {
 	 * @param torrent The metainfo byte data.
 	 * @param parent The parent directory or location of the torrent files.
 	 * @param seeder Whether we'll be seeding for this torrent or not.
-	 * @throws IllegalArgumentException When the info dictionnary can't be
+	 * @throws IOException When the info dictionnary can't be read or
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
+	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
+	 * available.
 	 */
 	public Torrent(byte[] torrent, File parent, boolean seeder)
-		throws IllegalArgumentException {
+		throws IOException, NoSuchAlgorithmException {
 		this.encoded = torrent;
 		this.seeder = seeder;
 
-		try {
-			this.decoded = BDecoder.bdecode(
-					new ByteArrayInputStream(this.encoded)).getMap();
+		this.decoded = BDecoder.bdecode(
+				new ByteArrayInputStream(this.encoded)).getMap();
 
-			this.decoded_info = this.decoded.get("info").getMap();
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			BEncoder.bencode(this.decoded_info, baos);
-			this.encoded_info = baos.toByteArray();
-			this.info_hash = Torrent.hash(this.encoded_info);
-			this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+		this.decoded_info = this.decoded.get("info").getMap();
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		BEncoder.bencode(this.decoded_info, baos);
+		this.encoded_info = baos.toByteArray();
+		this.info_hash = Torrent.hash(this.encoded_info);
+		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
 
-			this.announceUrl = this.decoded.get("announce").getString();
-			this.createdBy = this.decoded.containsKey("created by")
-				? this.decoded.get("created by").getString()
-				: null;
-			this.name = this.decoded_info.get("name").getString();
+		this.announceUrl = this.decoded.get("announce").getString();
+		this.createdBy = this.decoded.containsKey("created by")
+			? this.decoded.get("created by").getString()
+			: null;
+		this.name = this.decoded_info.get("name").getString();
 
-			this.files = new LinkedList<TorrentFile>();
+		this.files = new LinkedList<TorrentFile>();
 
-			// Parse multi-file torrent file information structure.
-			if (this.decoded_info.containsKey("files")) {
-				// For multi-file torrents, the name of the torrent serves as
-				// the top-level parent directory.
-				parent = new File(parent, this.name);
-
-				for (BEValue file : this.decoded_info.get("files").getList()) {
-					Map<String, BEValue> fileInfo = file.getMap();
-					StringBuffer path = new StringBuffer();
-					for (BEValue pathElement : fileInfo.get("path").getList()) {
-						path.append(File.separator)
-							.append(pathElement.getString());
-					}
-					this.files.add(new TorrentFile(
-						new File(this.name, path.toString()),
-						fileInfo.get("length").getLong()));
+		// Parse multi-file torrent file information structure.
+		if (this.decoded_info.containsKey("files")) {
+			for (BEValue file : this.decoded_info.get("files").getList()) {
+				Map<String, BEValue> fileInfo = file.getMap();
+				StringBuffer path = new StringBuffer();
+				for (BEValue pathElement : fileInfo.get("path").getList()) {
+					path.append(File.separator)
+						.append(pathElement.getString());
 				}
-			} else {
-				// For single-file torrents, the name of the torrent is
-				// directly the name of the file.
 				this.files.add(new TorrentFile(
-					new File(this.name),
-					this.decoded_info.get("length").getLong()));
+					new File(this.name, path.toString()),
+					fileInfo.get("length").getLong()));
 			}
-
-			// Calculate the total size of this torrent from its files' sizes.
-			long size = 0;
-			for (TorrentFile file : this.files) {
-				size += file.size;
-			}
-			this.size = size;
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Can't parse torrent information!", e);
+		} else {
+			// For single-file torrents, the name of the torrent is
+			// directly the name of the file.
+			this.files.add(new TorrentFile(
+				new File(this.name),
+				this.decoded_info.get("length").getLong()));
 		}
+
+		// Calculate the total size of this torrent from its files' sizes.
+		long size = 0;
+		for (TorrentFile file : this.files) {
+			size += file.size;
+		}
+		this.size = size;
 
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
@@ -294,10 +288,16 @@ public class Torrent {
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
 	public void save(File output) throws IOException {
-		FileOutputStream fos = new FileOutputStream(output);
-		fos.write(this.getEncoded());
-		fos.close();
-		logger.info("Wrote torrent file {}.", output.getAbsolutePath());
+		FileOutputStream fos = null;
+		try {
+			fos = new FileOutputStream(output);
+			fos.write(this.getEncoded());
+			logger.info("Wrote torrent file {}.", output.getAbsolutePath());
+		} finally {
+			if (fos != null) {
+				fos.close();
+			}
+		}
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
@@ -370,8 +370,10 @@ public class Torrent {
 	 * <tt>.torrent</tt> file to load.
 	 * @param parent
 	 * @throws IOException When the torrent file cannot be read.
+	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, File parent) throws IOException {
+	public static Torrent load(File torrent, File parent)
+		throws IOException, NoSuchAlgorithmException {
 		return Torrent.load(torrent, parent, false);
 	}
 
@@ -383,14 +385,21 @@ public class Torrent {
 	 * @param seeder Whether we are a seeder for this torrent or not (disables
 	 * local data validation).
 	 * @throws IOException When the torrent file cannot be read.
+	 * @throws NoSuchAlgorithmException
 	 */
 	public static Torrent load(File torrent, File parent, boolean seeder)
-		throws IOException {
-		FileInputStream fis = new FileInputStream(torrent);
-		byte[] data = new byte[(int)torrent.length()];
-		fis.read(data);
-		fis.close();
-		return new Torrent(data, parent, seeder);
+		throws IOException, NoSuchAlgorithmException {
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(torrent);
+			byte[] data = new byte[(int)torrent.length()];
+			fis.read(data);
+			return new Torrent(data, parent, seeder);
+		} finally {
+			if (fis != null) {
+				fis.close();
+			}
+		}
 	}
 
 	/** Torrent creation --------------------------------------------------- */

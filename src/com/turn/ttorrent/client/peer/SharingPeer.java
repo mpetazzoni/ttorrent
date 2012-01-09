@@ -323,7 +323,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			IllegalStateException up = new IllegalStateException(
 					"Trying to download a piece while previous " +
 					"download not completed!");
-			logger.warn("{}", up);
+			logger.warn("What's going on? {}", up.getMessage(), up);
 			throw up; // ah ah.
 		}
 
@@ -403,6 +403,8 @@ public class SharingPeer extends Peer implements MessageListener {
 							request.getOffset(), request.getLength()));
 				requests.add(request);
 			}
+
+			this.requests = null;
 		}
 
 		return requests;

@@ -22,6 +22,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+
+import java.security.NoSuchAlgorithmException;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -158,14 +160,23 @@ public class Tracker {
 			logger.warn("Tracker already announced torrent for '{}' " +
 				"with hash {}.", torrent.getName(), torrent.getHexInfoHash());
 			return torrent;
-		} else {
-			torrent = new TrackedTorrent(newTorrent);
 		}
 
-		this.torrents.put(torrent.getHexInfoHash(), torrent);
-		logger.info("Registered new torrent for '{}' with hash {}.",
-			torrent.getName(), torrent.getHexInfoHash());
-		return torrent;
+		try {
+			torrent = new TrackedTorrent(newTorrent);
+			this.torrents.put(torrent.getHexInfoHash(), torrent);
+			logger.info("Registered new torrent for '{}' with hash {}.",
+				torrent.getName(), torrent.getHexInfoHash());
+			return torrent;
+		} catch (IOException ioe) {
+			logger.warn("Could not announce new torrent: " +
+				ioe.getMessage());
+		} catch (NoSuchAlgorithmException nsae) {
+			logger.error("Could not announce new torrent: " +
+				nsae.getMessage());
+		}
+
+		return null;
 	}
 
 	/** Stop announcing the given torrent.

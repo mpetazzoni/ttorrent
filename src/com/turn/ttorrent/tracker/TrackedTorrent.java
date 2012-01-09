@@ -18,8 +18,11 @@ package com.turn.ttorrent.tracker;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Torrent;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,10 +54,13 @@ public class TrackedTorrent extends Torrent {
 	/** Create a new tracked torrent from metainfo binary data.
 	 *
 	 * @param torrent The metainfo byte data.
-	 * @throws IllegalArgumentException When the info dictionnary can't be
+	 * @throws IOException When the info dictionnary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
+	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
+	 * available.
 	 */
-	public TrackedTorrent(byte[] torrent) throws IllegalArgumentException {
+	public TrackedTorrent(byte[] torrent)
+		throws IOException, NoSuchAlgorithmException {
 		super(torrent, null, false);
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
@@ -62,7 +68,8 @@ public class TrackedTorrent extends Torrent {
 		this.announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
 	}
 
-	public TrackedTorrent(Torrent torrent) throws IllegalArgumentException {
+	public TrackedTorrent(Torrent torrent)
+		throws IOException, NoSuchAlgorithmException {
 		this(torrent.getEncoded());
 	}
 
