@@ -854,7 +854,7 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @author mpetazzoni
 	 */
-	private class StopSeedingTask extends TimerTask {
+	private static class StopSeedingTask extends TimerTask {
 
 		private Client client;
 

@@ -198,7 +198,7 @@ public class Tracker {
 	 * This task can be used to stop announcing a torrent after a certain delay
 	 * through a Timer.
 	 */
-	private class TorrentRemoveTimer extends TimerTask {
+	private static class TorrentRemoveTimer extends TimerTask {
 
 		private Tracker tracker;
 		private Torrent torrent;
