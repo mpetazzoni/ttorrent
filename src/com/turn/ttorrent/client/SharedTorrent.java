@@ -167,7 +167,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					.getBytes());
 
 			if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
-					this.pieceLength < this.getSize()) {
+					(long)this.pieceLength < this.getSize()) {
 				throw new IllegalArgumentException("Torrent size does not " +
 						"match the number of pieces and the piece size!");
 			}
