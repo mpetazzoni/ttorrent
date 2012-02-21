@@ -145,13 +145,12 @@ public class FileStorage implements TorrentByteStorage {
 			return;
 		}
 
+		this.raf.close();
 		FileUtils.deleteQuietly(this.target);
 		FileUtils.moveFile(this.current, this.target);
 
 		logger.debug("Re-opening torrent byte storage at {}.",
 				this.target.getAbsolutePath());
-
-		this.raf.close();
 
 		this.raf = new RandomAccessFile(this.target, "rw");
 		this.raf.setLength(this.size);
