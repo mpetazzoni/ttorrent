@@ -40,14 +40,15 @@ Authors
 -------
 
 * Maxime Petazzoni <mpetazzoni@turn.com> (Platform Engineer at Turn, Inc)
-  - Original author and maintainer
+  - Original author, main developer and maintainer
 * David Giffin <david@etsy.com>
-  - Contributed parallel hashing and multi-file torrent support
+  - Contributed parallel hashing and multi-file torrent support.
 * Thomas Zink <thomas.zink@uni-konstanz.de>
   - Fixed a piece length computation issue when the total torrent size is an
     exact multiple of the piece size.
 * Johan Parent <parent_johan@yahoo.com>
-  - Fixed a bug in unfresh peer collection
+  - Fixed a bug in unfresh peer collection and issues on download completion on
+    Windows platforms.
 
 Caveats
 -------

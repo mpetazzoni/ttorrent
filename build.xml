@@ -14,18 +14,17 @@
 -->
 
 <!-- Ant buildfile for the BitTorrent Java library -->
-<project basedir="." default="dist" name="ttorrent">
+<project basedir="." default="jar" name="ttorrent">
 	<property name="build.dir" location="build" />
-	<property name="dist.dir" location="dist" />
 	<property name="doc.dir" location="doc" />
 	<property name="lib.dir" location="lib" />
 	<property name="src.dir" location="src" />
 
 	<!-- Release version. -->
-	<property name="project.version" value="1.1.1" />
+	<property name="project.version" value="1.1.2" />
 
 	<property name="jar.location"
-	          value="${dist.dir}/${ant.project.name}-${project.version}.jar" />
+	          value="${ant.project.name}-${project.version}.jar" />
 
 	<path id="project.classpath">
 		<pathelement location="${build.dir}" />
@@ -43,8 +42,8 @@
 	</target>
 
 	<target name="distclean" depends="clean">
-		<delete file="${jar.location}" />
 		<delete dir="${doc.dir}" />
+		<delete file="${jar.location}" />
 	</target>
 
 	<target name="build" depends="init">
@@ -56,7 +55,7 @@
 		</javac>
 	</target>
 
-	<target name="dist" depends="build">
+	<target name="jar" depends="build">
 		<jar destfile="${jar.location}" basedir="${build.dir}">
 			<zipgroupfileset dir="${lib.dir}" includes="*.jar" />
 			<manifest>

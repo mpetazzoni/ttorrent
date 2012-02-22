@@ -2,17 +2,19 @@
 # Author: Maxime Petazzoni <mpetazzoni@turn.com>
 
 # Ignore build output
-build/*
+/build/*
+/*.jar
 
 # Ignore Javadoc output
-doc/*
+/doc/*
 
 # Ignore any eventual Eclipse project files, these don't belong in the
 # repository.
-.classpath
-.project
+/.classpath
+/.project
 
 # Ignore common editor swap files
 *.swp
 *.bak
+*~
 *~
