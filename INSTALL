@@ -25,4 +25,4 @@ Simply execute the following command:
 
 To build the library's JAR file (in the target/ directory). You can then import
 this JAR file into your Java project and start using the Java BitTorrent
-library.
+library.  
