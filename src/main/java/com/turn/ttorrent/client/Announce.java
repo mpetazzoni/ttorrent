@@ -270,6 +270,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		}
 
 		params.put("ip", this.address.getAddress().getHostAddress());
+
 		params.put("compact", "1");
 
 		Map<String, BEValue> result = null;
@@ -331,7 +332,11 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		StringBuilder url = new StringBuilder(this.torrent.getAnnounceUrl());
 
 		if (params.size() != 0) {
-			url.append("?");
+            if (url.toString().contains("?")) {
+                url.append("&");
+            } else {
+                url.append("?");
+            }
 		}
 
 		for (Map.Entry<String, String> param : params.entrySet()) {
