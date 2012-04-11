@@ -225,10 +225,9 @@ public class Announce implements Runnable, AnnounceResponseListener {
 	 *
 	 * @param event The announce event type (can be AnnounceEvent.NONE for
 	 * periodic updates).
-	 * @return The decoded tracker response is also returned.
 	 */
-	private Map<String, BEValue> announce(AnnounceEvent event) {
-		return this.announce(event, false);
+	private void announce(AnnounceEvent event) {
+		this.announce(event, false);
 	}
 
 	/** Build, send and process a tracker announce request.
@@ -242,10 +241,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 	 * @param event The announce event type (can be AnnounceEvent.NONE for
 	 * periodic updates).
 	 * @param inhibitEvent Prevent event listeners from being notified.
-	 * @return The decoded tracker response is also returned.
 	 */
-	private Map<String, BEValue> announce(AnnounceEvent event,
-			boolean inhibitEvent) {
+	private void announce(AnnounceEvent event, boolean inhibitEvent) {
 		Map<String, String> params = new HashMap<String, String>();
 
 		try {
@@ -314,12 +311,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 					logger.warn("Announce error, and couldn't parse " +
 						"failure reason!");
 				}
-
-				result = null;
 			}
 		}
-
-		return result;
 	}
 
 	/** Build the announce request URL from the provided parameters.
