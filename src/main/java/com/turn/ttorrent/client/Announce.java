@@ -23,12 +23,17 @@ import com.turn.ttorrent.common.Torrent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.UnknownHostException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -271,6 +276,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		params.put("compact", "1");
 
 		Map<String, BEValue> result = null;
+		List<InetSocketAddress> peers = null;
 		try {
 			logger.debug("Announcing " +
 					(!AnnounceEvent.NONE.equals(event) ? 
@@ -285,10 +291,10 @@ public class Announce implements Runnable, AnnounceResponseListener {
 			result = BDecoder.bdecode(is).getMap();
 			is.close();
 
-			if (!inhibitEvent) {
-				for (AnnounceResponseListener listener : this.listeners) {
-					listener.handleAnnounceResponse(result);
-				}
+			try {
+				peers = this.toPeerList(result.get("peers").getList());
+			} catch (InvalidBEncodingException ibee) {
+				peers = this.toPeerList(result.get("peers").getBytes());
 			}
 		} catch (UnsupportedEncodingException uee) {
 			logger.error("{}", uee.getMessage(), uee);
@@ -304,6 +310,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 			logger.warn("Error reading response from tracker: {}",
 				ioe.getMessage());
 		} finally {
+			// Try to get the error from the announce response and log it, when
+			// it's there.
 			if (result != null && result.containsKey("failure reason")) {
 				try {
 					logger.warn("{}", result.get("failure reason").getString());
@@ -312,6 +320,15 @@ public class Announce implements Runnable, AnnounceResponseListener {
 						"failure reason!");
 				}
 			}
+		}
+
+		if (inhibitEvent || peers == null) {
+			return;
+		}
+
+		for (AnnounceResponseListener listener : this.listeners) {
+			listener.handleAnnounceResponse(-1, -1,
+				result.get("interval").getInt(), peers);
 		}
 	}
 
@@ -346,16 +363,71 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		return new URL(url.toString());
 	}
 
+	/** Build a peer list as a list of {@link InetSocketAddress} from the
+	 * announce response's peer list (in non-compact mode).
+	 *
+	 * @param peers The list of {@link BEValue}s dictionaries describing the
+	 * peers from the announce response.
+	 * @return A {@link List} of {@link InetSocketAddress} representing the
+	 * peers' addresses. Peer IDs are lost, but they are not crucial.
+	 */
+	private List<InetSocketAddress> toPeerList(List<BEValue> peers)
+		throws InvalidBEncodingException, UnsupportedEncodingException {
+		List<InetSocketAddress> result = new LinkedList<InetSocketAddress>();
+
+		for (BEValue peer : peers) {
+			Map<String, BEValue> peerInfo = peer.getMap();
+			result.add(new InetSocketAddress(
+				new String(peerInfo.get("ip").getBytes(),
+					Torrent.BYTE_ENCODING),
+				peerInfo.get("port").getInt()));
+		}
+
+		return result;
+	}
+
+	/** Build a peer list as a list of {@link InetSocketAddress} from the
+	 * announce response's binary compact peer list.
+	 *
+	 * @param data The bytes representing the compact peer list from the
+	 * announce response.
+	 * @return A {@link List} of {@link InetSocketAddress} representing the
+	 * peers' addresses. Peer IDs are lost, but they are not crucial.
+	 */
+	private List<InetSocketAddress> toPeerList(byte[] data)
+		throws InvalidBEncodingException, UnknownHostException {
+		int nPeers = data.length / 6;
+		if (data.length % 6 != 0) {
+			throw new InvalidBEncodingException("Invalid peers " +
+				"binary information string!");
+		}
+
+		List<InetSocketAddress> result = new LinkedList<InetSocketAddress>();
+		ByteBuffer peers = ByteBuffer.wrap(data);
+		logger.debug("Got compact tracker response with {} peer(s).",
+				nPeers);
+
+		for (int i=0; i < nPeers ; i++) {
+			byte[] ipBytes = new byte[4];
+			peers.get(ipBytes);
+			InetAddress ip = InetAddress.getByAddress(ipBytes);
+			int port = (0xFF & (int)peers.get()) << 8
+				| (0xFF & (int)peers.get());
+			result.add(new InetSocketAddress(ip, port));
+		}
+
+		return result;
+	}
+
 	/** Handle an announce request answer to set the announce interval.
 	 */
-	public void handleAnnounceResponse(Map<String, BEValue> answer) {
-		try {
-			if (answer != null && answer.containsKey("interval")) {
-				this.interval = answer.get("interval").getInt();
-				this.initial = false;
-			}
-		} catch (InvalidBEncodingException ibee) {
+	public void handleAnnounceResponse(int leechers, int seeders,
+		int interval, List<InetSocketAddress> peers) {
+		if (interval <= 0) {
 			this.stop(true);
+			return;
 		}
+
+		this.interval = interval;
 	}
 }

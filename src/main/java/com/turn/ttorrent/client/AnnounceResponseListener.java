@@ -15,10 +15,9 @@
 
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.bcodec.BEValue;
-
+import java.net.InetSocketAddress;
 import java.util.EventListener;
-import java.util.Map;
+import java.util.List;
 
 /** EventListener interface for objects that want to receive tracker responses.
  *
@@ -26,5 +25,6 @@ import java.util.Map;
  */
 public interface AnnounceResponseListener extends EventListener {
 
-	public void handleAnnounceResponse(Map<String, BEValue> answer);
+	public void handleAnnounceResponse(int leechers, int seeders,
+		int interval, List<InetSocketAddress> peers);
 }
