@@ -28,6 +28,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.util.Iterator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -328,21 +329,28 @@ public class Announce implements Runnable, AnnounceResponseListener {
 	 */
 	private URL buildAnnounceURL(Map<String, String> params)
 		throws UnsupportedEncodingException, MalformedURLException {
-		StringBuilder url = new StringBuilder(this.torrent.getAnnounceUrl());
+		String announceURL = this.torrent.getAnnounceUrl();
 
-		if (params.size() != 0) {
-			url.append("?");
+		if (params.isEmpty()) {
+			return new URL(announceURL);
 		}
 
-		for (Map.Entry<String, String> param : params.entrySet()) {
+		StringBuilder url = new StringBuilder(announceURL);
+		url.append(announceURL.contains("?") ? "&" : "?");
+
+		for (Iterator<Map.Entry<String, String>> it =
+			   params.entrySet().iterator() ; it.hasNext() ; ) {
+			Map.Entry<String, String> param = it.next();
 			url.append(param.getKey())
 				.append("=")
 				.append(URLEncoder.encode(param.getValue(),
-							Torrent.BYTE_ENCODING))
-				.append("&");
+							Torrent.BYTE_ENCODING));
+			if (it.hasNext()) {
+				url.append("&");
+			}
 		}
 
-		return new URL(url.toString().substring(0, url.length()-1));
+		return new URL(url.toString());
 	}
 
 	/** Handle an announce request answer to set the announce interval.
