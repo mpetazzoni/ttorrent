@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package com.turn.ttorrent.client;
+package com.turn.ttorrent.client.announce;
 
 import java.net.InetSocketAddress;
 import java.util.EventListener;

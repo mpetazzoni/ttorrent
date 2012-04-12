@@ -17,6 +17,9 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.client.announce.Announce;
+import com.turn.ttorrent.client.announce.AnnounceResponseListener;
+import com.turn.ttorrent.client.announce.HTTPAnnounce;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
@@ -145,7 +148,7 @@ public class Client extends Observable implements Runnable,
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
-		this.announce = new Announce(this.torrent, this.id, this.address);
+		this.announce = new HTTPAnnounce(this.torrent, this.id, this.address);
 		this.announce.register(this);
 
 		logger.info("BitTorrent client [..{}] for {} started and " +
