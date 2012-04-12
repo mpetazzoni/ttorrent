@@ -12,6 +12,7 @@
 # repository.
 /.classpath
 /.project
+/.settings
 
 # Ignore common editor swap files
 *.swp
