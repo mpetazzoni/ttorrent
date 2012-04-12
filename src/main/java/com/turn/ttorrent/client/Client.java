@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.announce.Announce;
@@ -51,7 +51,9 @@ import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A pure-java BitTorrent client.
+
+/**
+ * A pure-java BitTorrent client.
  *
  * <p>
  * A BitTorrent client in its bare essence shares a given torrent. If the
@@ -65,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * simple to use. First, initialize a ShareTorrent object from a torrent
  * meta-info source (either a file or a byte array, see
  * com.turn.ttorrent.SharedTorrent for how to create a SharedTorrent object).
- * Then, instanciate your Client object with this SharedTorrent and call one of
+ * Then, instantiate your Client object with this SharedTorrent and call one of
  * {@link #download} to simply download the torrent, or {@link #share} to
  * download and continue seeding for the given amount of time after the
  * download completes.
@@ -121,7 +123,8 @@ public class Client extends Observable implements Runnable,
 
 	private Random random;
 
-	/** Initialize the BitTorrent client.
+	/**
+	 * Initialize the BitTorrent client.
 	 *
 	 * @param address The address to bind to.
 	 * @param torrent The torrent to download and share.
@@ -160,21 +163,26 @@ public class Client extends Observable implements Runnable,
 		this.random = new Random(System.currentTimeMillis());
 	}
 
-	/** Get this client's peer ID.
+	/**
+	 * Get this client's peer ID.
 	 */
 	public String getID() {
 		return this.id;
 	}
 
-	/** Return the torrent this client is exchanging on.
+	/**
+	 * Return the torrent this client is exchanging on.
 	 */
 	public SharedTorrent getTorrent() {
 		return this.torrent;
 	}
 
-	/** Change this client's state and notify its observers.
+	/**
+	 * Change this client's state and notify its observers.
 	 *
+	 * <p>
 	 * If the state has changed, this client's observers will be notified.
+	 * </p>
 	 *
 	 * @param state The new client state.
 	 */
@@ -186,25 +194,29 @@ public class Client extends Observable implements Runnable,
 		this.notifyObservers(this.state);
 	}
 
-	/** Return the current state of this BitTorrent client.
+	/**
+	 * Return the current state of this BitTorrent client.
 	 */
 	public ClientState getState() {
 		return this.state;
 	}
 
-	/** Download the torrent without seeding after completion.
+	/**
+	 * Download the torrent without seeding after completion.
 	 */
 	public void download() {
 		this.share(0);
 	}
 
-	/** Download and share this client's torrent until interrupted.
+	/**
+	 * Download and share this client's torrent until interrupted.
 	 */
 	public void share() {
 		this.share(-1);
 	}
 
-	/** Download and share this client's torrent.
+	/**
+	 * Download and share this client's torrent.
 	 *
 	 * @param seed Seed time in seconds after the download is complete. Pass
 	 * <code>0</code> to immediately stop after downloading.
@@ -222,13 +234,15 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
-	/** Immediately but gracefully stop this client.
+	/**
+	 * Immediately but gracefully stop this client.
 	 */
 	public void stop() {
 		this.stop(true);
 	}
 
-	/** Immediately but gracefully stop this client.
+	/**
+	 * Immediately but gracefully stop this client.
 	 *
 	 * @param wait Whether to wait for the client execution thread to complete
 	 * or not. This allows for the client's state to be settled down in one of
@@ -251,21 +265,27 @@ public class Client extends Observable implements Runnable,
 		this.thread = null;
 	}
 
-	/** Tells whether we are a seed for the torrent we're sharing.
+	/**
+	 * Tells whether we are a seed for the torrent we're sharing.
 	 */
 	public boolean isSeed() {
 		return this.torrent.isComplete();
 	}
 
-	/** This is the main client loop.
+	/**
+	 * Main client loop.
 	 *
+	 * <p>
 	 * The main client download loop is very simple: it starts the announce
 	 * request thread, the incoming connection handler service, and loops
 	 * unchoking peers every UNCHOKING_FREQUENCY seconds until told to stop.
 	 * Every OPTIMISTIC_UNCHOKE_ITERATIONS, an optimistic unchoke will be
 	 * attempted to try out other peers.
+	 * </p>
 	 *
+	 * <p>
 	 * Once done, it stops the announce and connection services, and returns.
+	 * </p>
 	 */
 	@Override
 	public void run() {
@@ -352,12 +372,15 @@ public class Client extends Observable implements Runnable,
 		logger.info("BitTorrent client signing off.");
 	}
 
-	/** Display information about the BitTorrent client state.
+	/**
+	 * Display information about the BitTorrent client state.
 	 *
+	 * <p>
 	 * This emits an information line in the log about this client's state. It
 	 * includes the number of choked peers, number of connected peers, number
 	 * of known peers, information about the torrent availability and
 	 * completion and current transmission rates.
+	 * </p>
 	 */
 	public synchronized void info() {
 		float dl = 0;
@@ -388,13 +411,16 @@ public class Client extends Observable implements Runnable,
 			});
 	}
 
-	/** Reset peers download and upload rates.
+	/**
+	 * Reset peers download and upload rates.
 	 *
+	 * <p>
 	 * This method is called every RATE_COMPUTATION_ITERATIONS to reset the
 	 * download and upload rates of all peers. This contributes to making the
 	 * download and upload rate computations rolling averages every
 	 * UNCHOKING_FREQUENCY * RATE_COMPUTATION_ITERATIONS seconds (usually 20
 	 * seconds).
+	 * </p>
 	 */
 	private synchronized void resetPeerRates() {
 		for (SharingPeer peer : this.connected.values()) {
@@ -407,12 +433,15 @@ public class Client extends Observable implements Runnable,
 		return this.getOrCreatePeer(address, null);
 	}
 
-	/** Retrieve a SharingPeer object from the given peer ID, IP address and
+	/**
+	 * Retrieve a SharingPeer object from the given peer ID, IP address and
 	 * port number.
 	 *
+	 * <p>
 	 * This function tries to retrieve an existing peer object based on the
 	 * provided peer ID, or IP+Port if no peer ID is known or given, or
 	 * otherwise instantiates a new one and adds it to our peer repository.
+	 * </p>
 	 *
 	 * @param InetSocketAddress The peer's address (host + port).
 	 * @param peerId The byte-encoded string containing the peer ID. It will be
@@ -467,12 +496,15 @@ public class Client extends Observable implements Runnable,
 		return peer;
 	}
 
-	/** Retrieve a peer comparator.
+	/**
+	 * Retrieve a peer comparator.
 	 *
+	 * <p>
 	 * Returns a peer comparator based on either the download rate or the
 	 * upload rate of each peer depending on our state. While sharing, we rely
 	 * on the download rate we get from each peer. When our download is
 	 * complete and we're only seeding, we use the upload rate instead.
+	 * </p>
 	 *
 	 * @return A SharingPeer comparator that can be used to sort peers based on
 	 * the download or upload rate we get from them.
@@ -488,25 +520,34 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
-	/** Unchoke connected peers.
+	/**
+	 * Unchoke connected peers.
 	 *
+	 * <p>
 	 * This is one of the "clever" places of the BitTorrent client. Every
 	 * OPTIMISTIC_UNCHOKING_FREQUENCY seconds, we decide which peers should be
 	 * unchocked and authorized to grab pieces from us.
+	 * </p>
 	 *
+	 * <p>
 	 * Reciprocation (tit-for-tat) and upload capping is implemented here by
 	 * carefully choosing which peers we unchoke, and which peers we choke.
+	 * </p>
 	 *
+	 * <p>
 	 * The four peers with the best download rate and are interested in us get
 	 * unchoked. This maximizes our download rate as we'll be able to get data
 	 * from there four "best" peers quickly, while allowing these peers to
 	 * download from us and thus reciprocate their generosity.
+	 * </p>
 	 *
+	 * <p>
 	 * Peers that have a better download rate than these four downloaders but
 	 * are not interested get unchoked too, we want to be able to download from
 	 * them to get more data more quickly. If one becomes interested, it takes
 	 * a downloader's place as one of the four top downloaders (i.e. we choke
 	 * the downloader with the worst upload rate).
+	 * </p>
 	 *
 	 * @param optimistic Whether to perform an optimistic unchoke as well.
 	 */
@@ -566,11 +607,14 @@ public class Client extends Observable implements Runnable,
 
 	/** AnnounceResponseListener handler(s). **********************************/
 
-	/** Handle a tracker announce response.
+	/**
+	 * Handle a tracker announce response.
 	 *
+	 * <p>
 	 * The torrent's tracker answers each announce request by a response
 	 * containing peers exchanging on this torrent. This information is crucial
 	 * as it is the base to building our peer swarm.
+	 * </p>
 	 *
 	 * @param leechers The number of leechers on this torrent.
 	 * @param seeders The number of seeders on this torrent.
@@ -597,15 +641,17 @@ public class Client extends Observable implements Runnable,
 				//	   of connecting to peers that need to download
 				//     something), or we are a seeder but we're still
 				//     willing to initiate some outbound connections.
-				if (!peer.isBound() &&
-						(!this.isSeed() ||
-						 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
-					if (!this.service.connect(peer)) {
-						logger.debug("Removing peer {}.", peer);
-						this.peers.remove(peer.hasPeerId()
-								? peer.getHexPeerId()
-								: peer.getHostIdentifier());
-					}
+				if (peer.isBound() ||
+					(this.isSeed() && this.connected.size() >=
+						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
+					return;
+				}
+
+				if (!this.service.connect(peer)) {
+					logger.debug("Removing peer {}.", peer);
+					this.peers.remove(peer.hasPeerId()
+						? peer.getHexPeerId()
+						: peer.getHostIdentifier());
 				}
 			}
 		}
@@ -614,13 +660,15 @@ public class Client extends Observable implements Runnable,
 
 	/** IncomingConnectionListener handler(s). ********************************/
 
-	/** Handle a new peer connection.
+	/**
+	 * Handle a new peer connection.
 	 *
+	 * <p>
 	 * This handler is called once the connection has been successfully
-	 * established and the handshake exchange made.
-	 *
-	 * This generally simply means binding the peer to the socket, which will
-	 * put in place the communication thread and logic with this peer.
+	 * established and the handshake exchange made. This generally simply means
+	 * binding the peer to the socket, which will put in place the communication
+	 * thread and logic with this peer.
+	 * </p>
 	 *
 	 * @param s The connected socket to the remote peer. Note that if the peer
 	 * somehow rejected our handshake reply, this socket might very soon get
@@ -677,14 +725,19 @@ public class Client extends Observable implements Runnable,
 	public void handlePieceSent(SharingPeer peer,
 			Piece piece) { /* Do nothing */ }
 
-	/** Piece download completion handler.
+	/**
+	 * Piece download completion handler.
 	 *
+	 * <p>
 	 * When a piece is completed, and valid, we announce to all connected peers
 	 * that we now have this piece.
+	 * </p>
 	 *
+	 * <p>
 	 * We use this handler to identify when all of the pieces have been
 	 * downloaded. When that's the case, we can start the seeding period, if
 	 * any.
+	 * </p>
 	 *
 	 * @param peer The peer we got the piece from.
 	 * @param piece The piece in question.
@@ -755,16 +808,21 @@ public class Client extends Observable implements Runnable,
 
 	/** Post download seeding. ************************************************/
 
-	/** Start the seeding period, if any.
+	/**
+	 * Start the seeding period, if any.
 	 *
+	 * <p>
 	 * This method is called when all the pieces of our torrent have been
 	 * retrieved. This may happen immediately after the client starts if the
 	 * torrent was already fully download or we are the initial seeder client.
+	 * </p>
 	 *
+	 * <p>
 	 * When the download is complete, the client switches to seeding mode for
 	 * as long as requested in the <code>share()</code> call, if seeding was
 	 * requested. If not, the StopSeedingTask will execute immediately to stop
 	 * the client's main loop.
+	 * </p>
 	 *
 	 * @see StopSeedingTask
 	 */
@@ -794,14 +852,19 @@ public class Client extends Observable implements Runnable,
 		seedTimer.schedule(new StopSeedingTask(this), this.seed*1000);
 	}
 
-	/** Timer task to stop seeding.
+	/**
+	 * Timer task to stop seeding.
 	 *
+	 * <p>
 	 * This TimerTask will be called by a timer set after the download is
 	 * complete to stop seeding from this client after a certain amount of
 	 * requested seed time (might be 0 for immediate termination).
+	 * </p>
 	 *
+	 * <p>
 	 * This task simply contains a reference to this client instance and calls
 	 * its <code>stop()</code> method to interrupt the client's main loop.
+	 * </p>
 	 *
 	 * @author mpetazzoni
 	 */
@@ -820,7 +883,8 @@ public class Client extends Observable implements Runnable,
 	};
 
 
-	/** Main client entry point for standalone operation.
+	/**
+	 * Main client entry point for stand-alone operation.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(

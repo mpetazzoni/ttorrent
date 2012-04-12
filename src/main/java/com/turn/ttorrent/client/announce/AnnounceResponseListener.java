@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,19 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.announce;
 
 import java.net.InetSocketAddress;
 import java.util.EventListener;
 import java.util.List;
 
-/** EventListener interface for objects that want to receive tracker responses.
+
+/**
+ * EventListener interface for objects that want to receive tracker responses.
  *
  * @author mpetazzoni
  */
 public interface AnnounceResponseListener extends EventListener {
 
+	/**
+	 * Handle an announce response event.
+	 *
+	 * @param leechers The number of leechers on this torrent.
+	 * @param seeders The number of seeders on this torrent.
+	 * @param interval The announce interval requested by the tracker.
+	 * @param peers The list of peers given by the tracker.
+	 */
 	public void handleAnnounceResponse(int leechers, int seeders,
 		int interval, List<InetSocketAddress> peers);
 }

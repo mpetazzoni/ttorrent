@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.Message;
 
 import java.util.EventListener;
 
-/** EventListener interface for objects that want to receive incoming messages
+
+/**
+ * EventListener interface for objects that want to receive incoming messages
  * from peers.
  *
  * @author mpetazzoni

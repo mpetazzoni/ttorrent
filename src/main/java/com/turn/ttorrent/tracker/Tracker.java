@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
@@ -22,7 +22,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-
 import java.security.NoSuchAlgorithmException;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -35,11 +34,15 @@ import org.slf4j.LoggerFactory;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 
-/** BitTorrent tracker.
+
+/**
+ * BitTorrent tracker.
  *
+ * <p>
  * The tracker usually listens on port 6969 (the standard BitTorrent tracker
  * port). Torrents must be registered directly to this tracker with the
  * <code>announced()</code> method.
+ * </p>
  *
  * @author mpetazzoni
  */
@@ -60,7 +63,8 @@ public class Tracker {
 	/** The in-memory repository of torrents tracked. */
 	private ConcurrentMap<String, TrackedTorrent> torrents;
 
-	/** Create a new BitTorrent tracker on the default port.
+	/**
+	 * Create a new BitTorrent tracker on the default port.
 	 *
 	 * @param address The address to bind to.
 	 * @param version A version string served in the HTTP headers
@@ -71,7 +75,8 @@ public class Tracker {
 		this(address, version, Tracker.DEFAULT_TRACKER_PORT);
 	}
 
-	/** Create a new BitTorrent tracker listening on the given port.
+	/**
+	 * Create a new BitTorrent tracker listening on the given port.
 	 *
 	 * @param address The address to bind to.
 	 * @param version A version string served in the HTTP headers
@@ -87,9 +92,12 @@ public class Tracker {
 		this.address = new InetSocketAddress(address, port);
 	}
 
-	/** Returns the full announce URL served by this tracker.
+	/**
+	 * Returns the full announce URL served by this tracker.
 	 *
+	 * <p>
 	 * This has the form http://host:port/announce.
+	 * </p>
 	 */
 	public URL getAnnounceUrl() {
 		try {
@@ -104,7 +112,8 @@ public class Tracker {
 		return null;
 	}
 
-	/** Start the tracker thread.
+	/**
+	 * Start the tracker thread.
 	 */
 	public void start() {
 		if (this.tracker == null || !this.tracker.isAlive()) {
@@ -120,10 +129,13 @@ public class Tracker {
 		}
 	}
 
-	/** Stop the tracker.
+	/**
+	 * Stop the tracker.
 	 *
+	 * <p>
 	 * This effectively closes the listening HTTP connection to terminate
 	 * the service, and interrupts the peer collector thread as well.
+	 * </p>
 	 */
 	public void stop() {
 		this.stop = true;
@@ -141,12 +153,15 @@ public class Tracker {
 		}
 	}
 
-	/** Announce a new torrent on this tracker.
+	/**
+	 * Announce a new torrent on this tracker.
 	 *
+	 * <p>
 	 * The fact that torrents must be announced here first makes this tracker a
 	 * closed BitTorrent tracker: it will only accept clients for torrents it
 	 * knows about, and this list of torrents is managed by the program
 	 * instrumenting this Tracker class.
+	 * </p>
 	 *
 	 * @param newTorrent The Torrent object to start tracking.
 	 * @return The torrent object for this torrent on this tracker. This may be
@@ -179,7 +194,8 @@ public class Tracker {
 		return null;
 	}
 
-	/** Stop announcing the given torrent.
+	/**
+	 * Stop announcing the given torrent.
 	 *
 	 * @param torrent The Torrent object to stop tracking.
 	 */
@@ -191,7 +207,8 @@ public class Tracker {
 		this.torrents.remove(torrent.getHexInfoHash());
 	}
 
-	/** Stop announcing the given torrent after a delay.
+	/**
+	 * Stop announcing the given torrent after a delay.
 	 *
 	 * @param torrent The Torrent object to stop tracking.
 	 * @param delay The delay, in milliseconds, before removing the torrent.
@@ -204,10 +221,13 @@ public class Tracker {
 		new Timer().schedule(new TorrentRemoveTimer(this, torrent), delay);
 	}
 
-	/** Timer task for removing a torrent from a tracker.
+	/**
+	 * Timer task for removing a torrent from a tracker.
 	 *
+	 * <p>
 	 * This task can be used to stop announcing a torrent after a certain delay
 	 * through a Timer.
+	 * </p>
 	 */
 	private static class TorrentRemoveTimer extends TimerTask {
 
@@ -225,12 +245,15 @@ public class Tracker {
 		}
 	}
 
-	/** The main tracker thread.
+	/**
+	 * The main tracker thread.
 	 *
+	 * <p>
 	 * The core of the BitTorrent tracker run by the controller is the
-	 * Simpleframework HTTP service listening on the configured address. It can
+	 * SimpleFramework HTTP service listening on the configured address. It can
 	 * be stopped with the <em>stop()</em> method, which closes the listening
 	 * socket.
+	 * </p>
 	 */
 	private class TrackerThread extends Thread {
 
@@ -247,10 +270,13 @@ public class Tracker {
 		}
 	}
 
-	/** The unfresh peer collector thread.
+	/**
+	 * The unfresh peer collector thread.
 	 *
+	 * <p>
 	 * Every PEER_COLLECTION_FREQUENCY_SECONDS, this thread will collect
 	 * unfresh peers from all announced torrents.
+	 * </p>
 	 */
 	private class PeerCollectorThread extends Thread {
 

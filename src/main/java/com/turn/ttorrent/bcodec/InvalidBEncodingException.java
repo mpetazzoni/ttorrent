@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +18,9 @@ package com.turn.ttorrent.bcodec;
 
 import java.io.IOException;
 
-/** Exception thrown when a B-encoded stream cannot be decoded.
+
+/**
+ * Exception thrown when a B-encoded stream cannot be decoded.
  *
  * @author mpetazzoni
  */

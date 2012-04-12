@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
@@ -34,6 +34,10 @@ import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * @author mpetazzoni
+ */
 public class TrackedTorrent extends Torrent {
 
 	private static final Logger logger =
@@ -51,10 +55,11 @@ public class TrackedTorrent extends Torrent {
 	/** Peers currently exchanging on this torrent. */
 	private ConcurrentMap<String, TrackedPeer> peers;
 
-	/** Create a new tracked torrent from metainfo binary data.
+	/**
+	 * Create a new tracked torrent from meta-info binary data.
 	 *
-	 * @param torrent The metainfo byte data.
-	 * @throws IOException When the info dictionnary can't be
+	 * @param torrent The meta-info byte data.
+	 * @throws IOException When the info dictionary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
@@ -73,13 +78,15 @@ public class TrackedTorrent extends Torrent {
 		this(torrent.getEncoded());
 	}
 
-	/** Returns the map of all peers currently exchanging on this torrent.
+	/**
+	 * Returns the map of all peers currently exchanging on this torrent.
 	 */
 	public Map<String, TrackedPeer> getPeers() {
 		return this.peers;
 	}
 
-	/** Add a peer exchanging on this torrent.
+	/**
+	 * Add a peer exchanging on this torrent.
 	 *
 	 * @param peer The new Peer involved with this torrent.
 	 */
@@ -87,7 +94,8 @@ public class TrackedTorrent extends Torrent {
 		this.peers.put(peer.getHexPeerId(), peer);
 	}
 
-	/** Retrieve a peer exchanging on this torrent.
+	/**
+	 * Retrieve a peer exchanging on this torrent.
 	 *
 	 * @param peerId The hexadecimal representation of the peer's ID.
 	 */
@@ -95,7 +103,8 @@ public class TrackedTorrent extends Torrent {
 		return this.peers.get(peerId);
 	}
 
-	/** Remove a peer from this torrent's swarm.
+	/**
+	 * Remove a peer from this torrent's swarm.
 	 *
 	 * @param peerId The hexadecimal representation of the peer's ID.
 	 */
@@ -103,7 +112,8 @@ public class TrackedTorrent extends Torrent {
 		return this.peers.remove(peerId);
 	}
 
-	/** Count the number of seeders (peers in the COMPLETED state) on this
+	/**
+	 * Count the number of seeders (peers in the COMPLETED state) on this
 	 * torrent.
 	 */
 	private int seeders() {
@@ -116,7 +126,8 @@ public class TrackedTorrent extends Torrent {
 		return count;
 	}
 
-	/** Count the number of leechers (non-COMPLETED peers) on this torrent.
+	/**
+	 * Count the number of leechers (non-COMPLETED peers) on this torrent.
 	 */
 	private int leechers() {
 		int count = 0;
@@ -128,10 +139,13 @@ public class TrackedTorrent extends Torrent {
 		return count;
 	}
 
-	/** Remove unfresh peers from this torrent.
+	/**
+	 * Remove unfresh peers from this torrent.
 	 *
+	 * <p>
 	 * Collect and remove all non-fresh peers from this torrent. This is
 	 * usually called by the periodic peer collector of the BitTorrent tracker.
+	 * </p>
 	 */
 	public void collectUnfreshPeers() {
 		for (TrackedPeer peer : this.peers.values()) {
@@ -141,7 +155,8 @@ public class TrackedTorrent extends Torrent {
 		}
 	}
 
-	/** Set the announce interval for this torrent.
+	/**
+	 * Set the announce interval for this torrent.
 	 *
 	 * @param interval New announce interval, in seconds.
 	 */
@@ -153,10 +168,13 @@ public class TrackedTorrent extends Torrent {
 		this.announceInterval = interval;
 	}
 
-	/** Update this torrent's swarm from an announce event.
+	/**
+	 * Update this torrent's swarm from an announce event.
 	 *
+	 * <p>
 	 * This will automatically create a new peer on a 'started' announce event,
 	 * and remove the peer on a 'stopped' announce event.
+	 * </p>
 	 *
 	 * @param event The reported event. If <em>null</em>, means a regular
 	 * interval announce event, as defined in the BitTorrent specification.
@@ -197,12 +215,15 @@ public class TrackedTorrent extends Torrent {
 		return peer;
 	}
 
-	/** Create an announce request's answer for this torrent.
+	/**
+	 * Create an announce request's answer for this torrent.
 	 *
+	 * <p>
 	 * Crafts a torrent tracker announce reply according to the BitTorrent
-	 * specification. This is a BEValue dictionnary containing, at minima,
+	 * specification. This is a BEValue dictionary containing, at minima,
 	 * the desired announce interval (in seconds), the counts of seeders and
 	 * leechers and a random list of answerPeers peers provided to the client.
+	 * </p>
 	 *
 	 * @param peer The peer making the request, so we can exclude it from the
 	 * list of returned peers.
@@ -259,5 +280,4 @@ public class TrackedTorrent extends Torrent {
 		params.put("peers", new BEValue(responsePeers));
 		return new BEValue(params);
 	}
-
 }

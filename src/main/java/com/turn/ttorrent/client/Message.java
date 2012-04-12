@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.Message;
@@ -22,7 +22,9 @@ import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.BitSet;
 
-/** BitTorrent peer protocol messages representations.
+
+/**
+ * BitTorrent peer protocol messages representations.
  *
  * <p>
  * This class and its <em>*Messages</em> subclasses provide POJO
@@ -36,10 +38,13 @@ import java.util.BitSet;
  */
 public abstract class Message {
 
-	/** Message type.
+	/**
+	 * Message type.
 	 *
+	 * <p>
 	 * Note that the keep-alive messages don't actually have an type ID defined
 	 * in the protocol as they are of length 0.
+	 * </p>
 	 */
 	public enum Type {
 		KEEP_ALIVE(-1),
@@ -76,8 +81,8 @@ public abstract class Message {
 		}
 	};
 
-	private Type type;
-	private ByteBuffer data;
+	private final Type type;
+	private final ByteBuffer data;
 
 	private Message(Type type, ByteBuffer data) {
 		this.type = type;
@@ -93,10 +98,13 @@ public abstract class Message {
 		return this.data;
 	}
 
-	/** Validate that this message makes sense for the torrent it's related to.
+	/**
+	 * Validate that this message makes sense for the torrent it's related to.
 	 *
+	 * <p>
 	 * This method is meant to be overloaded by distinct message types, where
 	 * it makes sense. Otherwise, it defaults to true.
+	 * </p>
 	 *
 	 * @param torrent The torrent this message is about.
 	 */
@@ -109,10 +117,13 @@ public abstract class Message {
 		return this.getType().name();
 	}
 
-	/** Parse the given buffer into a peer protocol Message.
+	/**
+	 * Parse the given buffer into a peer protocol Message.
 	 *
+	 * <p>
 	 * Parses the provided byte array and builds the corresponding Message
 	 * subclass object.
+	 * </p>
 	 *
 	 * @param buffer The byte buffer containing the message data.
 	 * @param torrent The torrent this message is about.
@@ -174,7 +185,8 @@ public abstract class Message {
 	}
 
 
-	/** Keep alive message.
+	/**
+	 * Keep alive message.
 	 *
 	 * <len=0000>
 	 */
@@ -198,7 +210,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Choke message.
+	/**
+	 * Choke message.
 	 *
 	 * <len=0001><id=0>
 	 */
@@ -224,7 +237,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Unchoke message.
+	/**
+	 * Unchoke message.
 	 *
 	 * <len=0001><id=1>
 	 */
@@ -250,7 +264,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Interested message.
+	/**
+	 * Interested message.
 	 *
 	 * <len=0001><id=2>
 	 */
@@ -276,7 +291,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Not interested message.
+	/**
+	 * Not interested message.
 	 *
 	 * <len=0001><id=3>
 	 */
@@ -302,7 +318,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Have message.
+	/**
+	 * Have message.
 	 *
 	 * <len=0005><id=4><piece index=xxxx>
 	 */
@@ -350,7 +367,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Bitfield message.
+	/**
+	 * Bitfield message.
 	 *
 	 * <len=0001+X><id=5><bitfield>
 	 */
@@ -412,7 +430,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Request message.
+	/**
+	 * Request message.
 	 *
 	 * <len=00013><id=6><piece index><block offset><block length>
 	 */
@@ -487,7 +506,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Piece message.
+	/**
+	 * Piece message.
 	 *
 	 * <len=0009+X><id=7><piece index><block offset><block data>
 	 */
@@ -558,7 +578,8 @@ public abstract class Message {
 		}
 	}
 
-	/** Cancel message.
+	/**
+	 * Cancel message.
 	 *
 	 * <len=00013><id=8><piece index><block offset><block length>
 	 */

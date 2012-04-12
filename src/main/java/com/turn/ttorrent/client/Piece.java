@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
@@ -28,7 +28,9 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A torrent piece.
+
+/**
+ * A torrent piece.
  *
  * <p>
  * This class represents a torrent piece. Torrents are made of pieces, which
@@ -61,7 +63,8 @@ public class Piece implements Comparable<Piece> {
 	private int seen;
 	private ByteBuffer data;
 
-	/** Initialize a new piece in the byte bucket.
+	/**
+	 * Initialize a new piece in the byte bucket.
 	 *
 	 * @param bucket The underlying byte storage bucket.
 	 * @param index This piece index in the torrent.
@@ -89,19 +92,22 @@ public class Piece implements Comparable<Piece> {
 		this.data = null;
 	}
 
-	/** Tells whether this piece's data is valid or not.
+	/**
+	 * Tells whether this piece's data is valid or not.
 	 */
 	public boolean isValid() {
 		return this.valid;
 	}
 
-	/** Returns the index of this piece in the torrent.
+	/**
+	 * Returns the index of this piece in the torrent.
 	 */
 	public int getIndex() {
 		return this.index;
 	}
 
-	/** Returns the size, in bytes, of this piece.
+	/**
+	 * Returns the size, in bytes, of this piece.
 	 *
 	 * <p>
 	 * All pieces, except the last one, are expected to have the same size.
@@ -111,13 +117,15 @@ public class Piece implements Comparable<Piece> {
 		return this.length;
 	}
 
-	/** Tells whether this piece is available in the current connected peer swarm.
+	/**
+	 * Tells whether this piece is available in the current connected peer swarm.
 	 */
 	public boolean available() {
 		return this.seen > 0;
 	}
 
-	/** Mark this piece as being seen at the given peer.
+	/**
+	 * Mark this piece as being seen at the given peer.
 	 *
 	 * @param peer The sharing peer this piece has been seen available at.
 	 */
@@ -125,7 +133,8 @@ public class Piece implements Comparable<Piece> {
 		this.seen++;
 	}
 
-	/** Mark this piece as no longer being available at the given peer.
+	/**
+	 * Mark this piece as no longer being available at the given peer.
 	 *
 	 * @param peer The sharing peer from which the piece is no longer available.
 	 */
@@ -133,10 +142,12 @@ public class Piece implements Comparable<Piece> {
 		this.seen--;
 	}
 
-	/** Validates this piece.
+	/**
+	 * Validates this piece.
 	 *
-	 * Tells whether this piece, as stored in the underlying byte storage, is
-	 * valid, i.e. its SHA1 sum matches the one from the torrent meta-info.
+	 * @return Returns true if this piece, as stored in the underlying byte
+	 * storage, is valid, i.e. its SHA1 sum matches the one from the torrent
+	 * meta-info.
 	 */
 	public boolean validate() throws IOException {
 		if (this.seeder) {
@@ -160,7 +171,8 @@ public class Piece implements Comparable<Piece> {
 		return this.isValid();
 	}
 
-	/** Internal piece data read function.
+	/**
+	 * Internal piece data read function.
 	 *
 	 * <p>
 	 * This function will read the piece data without checking if the piece has
@@ -190,12 +202,15 @@ public class Piece implements Comparable<Piece> {
 		return buffer;
 	}
 
-	/** Read a piece block from the underlying byte storage.
+	/**
+	 * Read a piece block from the underlying byte storage.
 	 *
+	 * <p>
 	 * This is the public method for reading this piece's data, and it will
 	 * only succeed if the piece is complete and valid on disk, thus ensuring
 	 * any data that comes out of this function is valid piece data we can send
 	 * to other peers.
+	 * </p>
 	 *
 	 * @param offset Offset inside this piece where to start reading.
 	 * @param length Number of bytes to read from the piece.
@@ -217,9 +232,12 @@ public class Piece implements Comparable<Piece> {
 		return this._read(offset, length);
 	}
 
-	/** Record the given block at the given offset in this piece.
+	/**
+	 * Record the given block at the given offset in this piece.
 	 *
+	 * <p>
 	 * <b>Note:</b> this has synchronized access to the underlying byte storage.
+	 * </p>
 	 *
 	 * @param block The ByteBuffer containing the block data.
 	 * @param offset The block offset in this piece.
@@ -243,7 +261,8 @@ public class Piece implements Comparable<Piece> {
 		}
 	}
 
-	/** Return a human-readable representation of this piece.
+	/**
+	 * Return a human-readable representation of this piece.
 	 */
 	public String toString() {
 		return String.format("piece%s#%d",
@@ -251,7 +270,8 @@ public class Piece implements Comparable<Piece> {
 			this.index);
 	}
 
-	/** Piece comparision function for ordering pieces based on their
+	/**
+	 * Piece comparison function for ordering pieces based on their
 	 * availability.
 	 *
 	 * @param other The piece to compare with, should not be <em>null</em>.
@@ -268,7 +288,8 @@ public class Piece implements Comparable<Piece> {
 		}
 	}
 
-	/** A {@link Callable} to call the piece validation function.
+	/**
+	 * A {@link Callable} to call the piece validation function.
 	 *
 	 * <p>
 	 * This {@link Callable} implementation allows for the calling of the piece

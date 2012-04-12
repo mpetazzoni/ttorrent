@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.storage;
 
 import java.io.IOException;
@@ -23,7 +23,9 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Multi-file torrent byte storage.
+
+/**
+ * Multi-file torrent byte storage.
  *
  * <p>
  * This implementation of the torrent byte storage provides support for
@@ -44,7 +46,8 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	private final List<FileStorage> files;
 	private final long size;
 
-	/** Initialize a new multi-file torrent byte storage.
+	/**
+	 * Initialize a new multi-file torrent byte storage.
 	 *
 	 * @param files The list of individual {@link FileStorage}
 	 * objects making up the torrent.
@@ -124,7 +127,8 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		return true;
 	}
 
-	/** File operation details holder.
+	/**
+	 * File operation details holder.
 	 *
 	 * <p>
 	 * This simple inner class holds the details for a read or write operation
@@ -147,7 +151,8 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		}
 	};
 
-	/** Select the group of files impacted by an operation.
+	/**
+	 * Select the group of files impacted by an operation.
 	 *
 	 * <p>
 	 * This function selects which files are impacted by a read or write
@@ -163,7 +168,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	 * @throws IllegalArgumentException If the offset and length go over the
 	 * byte storage size.
 	 * @throws IllegalStateException If the files registered with this byte
-	 * storage can't accomodate the request (should not happen, really).
+	 * storage can't accommodate the request (should not happen, really).
 	 */
 	private List<FileOffset> select(long offset, int length) {
 		if (offset + length > this.size) {

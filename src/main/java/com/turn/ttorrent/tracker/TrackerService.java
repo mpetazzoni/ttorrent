@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
@@ -35,7 +35,9 @@ import org.simpleframework.http.Response;
 import org.simpleframework.http.Status;
 import org.simpleframework.http.core.Container;
 
-/** Tracker service to serve the tracker's announce requests.
+
+/**
+ * Tracker service to serve the tracker's announce requests.
  *
  * <p>
  * It only serves announce requests on /announce, and only serves torrents the
@@ -62,11 +64,14 @@ public class TrackerService implements Container {
 	private final String version;
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
-	/** The various tracker error states.
+	/**
+	 * The various tracker error states.
 	 *
+	 * <p>
 	 * These errors are reported by the tracker to a client when expected
 	 * parameters or conditions are not present while processing an announce
 	 * request from a BitTorrent client.
+	 * </p>
 	 */
 	private enum TrackerError {
 		UNKNOWN_TORRENT("The requested torrent does not exist on this tracker"),
@@ -93,7 +98,8 @@ public class TrackerService implements Container {
 		}
 	};
 
-	/** Create a new TrackerService serving the given torrents.
+	/**
+	 * Create a new TrackerService serving the given torrents.
 	 *
 	 * @param torrents The torrents this TrackerService should serve requests
 	 * for.
@@ -104,11 +110,14 @@ public class TrackerService implements Container {
 		this.torrents = torrents;
 	}
 
-	/** Handle the incoming request on the tracker service.
+	/**
+	 * Handle the incoming request on the tracker service.
 	 *
+	 * <p>
 	 * This makes sure the request is made to the tracker's announce URL, and
 	 * delegates handling of the request to the <em>process()</em> method after
 	 * preparing the response object.
+	 * </p>
 	 *
 	 * @param request The incoming HTTP request.
 	 * @param response The response object.
@@ -139,7 +148,8 @@ public class TrackerService implements Container {
 		}
 	}
 
-	/** Process the announce request.
+	/**
+	 * Process the announce request.
 	 *
 	 * @param request The incoming announce request.
 	 * @param response The response object.
@@ -201,18 +211,23 @@ public class TrackerService implements Container {
 		BEncoder.bencode(torrent.peerAnswerAsBEValue(peer), body);
 	}
 
-	/** Parse the query parameters using our defined BYTE_ENCODING.
+	/**
+	 * Parse the query parameters using our defined BYTE_ENCODING.
 	 *
+	 * <p>
 	 * Because we're expecting byte-encoded strings as query parameters, we
 	 * can't rely on SimpleHTTP's QueryParser which uses the wrong encoding for
 	 * the job and returns us unparsable byte data. We thus have to implement
 	 * our own little parsing method that uses BYTE_ENCODING to decode
 	 * parameters from the URI.
+	 * </p>
 	 *
+	 * <p>
 	 * <b>Note:</b> array parameters are not supported. If a key is present
 	 * multiple times in the URI, the latest value prevails. We don't really
 	 * need to implement this functionality as this never happens in the
 	 * Tracker HTTP protocol.
+	 * </p>
 	 *
 	 * @param uri The request's full URI, including query parameters.
 	 * @return A map of key/value pairs representing the query parameters.
@@ -241,7 +256,8 @@ public class TrackerService implements Container {
 		return params;
 	}
 
-	/** Write a TrackerError to the response with the given HTTP status code.
+	/**
+	 * Write a TrackerError to the response with the given HTTP status code.
 	 *
 	 * @param response The HTTP response object.
 	 * @param body The response output stream to write to.
@@ -258,12 +274,15 @@ public class TrackerService implements Container {
 	}
 
 
-	/** Validates the incoming announce request.
+	/**
+	 * Validates the incoming announce request.
 	 *
+	 * <p>
 	 * The announce request must follow the BitTorrent protocol and contain a
 	 * certain number of query parameters needed for processing the request.
 	 * This method makes sure everything is present, and otherwise returns the
 	 * appropriate error code as a <em>TrackerError</em> value.
+	 * </p>
 	 *
 	 * @param params The parsed query string.
 	 * @return A <em>TrackerError</em> representing the error, or null if no

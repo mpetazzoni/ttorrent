@@ -1,4 +1,5 @@
-/** Copyright (C) 2012 Turn, Inc.
+/**
+ * Copyright (C) 2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.bcodec.BDecoder;
@@ -38,7 +38,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-/** Announcer for HTTP trackers.
+
+/**
+ * Announcer for HTTP trackers.
  *
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Tracker_Request_Parameters">BitTorrent tracker request specification</a>
@@ -47,7 +49,8 @@ public class HTTPAnnounce extends Announce {
 
 	private static final String THREAD_NAME = "bt-http-announce";
 
-	/** Create a new HTTP announcer for the given torrent.
+	/**
+	 * Create a new HTTP announcer for the given torrent.
 	 *
 	 * @param torrent The torrent we're announcing about.
 	 * @param id Our client peer ID.
@@ -59,15 +62,20 @@ public class HTTPAnnounce extends Announce {
 		super(torrent, peerId, address);
 	}
 
-	/** Main announce loop.
+	/**
+	 * Main announce loop.
 	 *
+	 * <p>
 	 * The announce thread starts by making the initial 'started' announce
 	 * request to register on the tracker and get the announce interval value.
 	 * Subsequent announce requests are ordinary, event-less, periodic requests
 	 * for peers.
+	 * </p>
 	 *
+	 * <p>
 	 * Unless forcefully stopped, the announce thread will terminate by sending
 	 * a 'stopped' announce request before stopping.
+	 * </p>
 	 */
 	@Override
 	public void run() {
@@ -109,7 +117,8 @@ public class HTTPAnnounce extends Announce {
 		}
 	}
 
-	/** Build, send and process a tracker announce request.
+	/**
+	 * Build, send and process a tracker announce request.
 	 *
 	 * <p>
 	 * This function first builds an announce request for the specified event
@@ -129,7 +138,8 @@ public class HTTPAnnounce extends Announce {
 		this.announce(event, false);
 	}
 
-	/** Build, send and process a tracker announce request.
+	/**
+	 * Build, send and process a tracker announce request.
 	 *
 	 * <p>
 	 * Gives the ability to perform an announce request without notifying the
@@ -219,7 +229,8 @@ public class HTTPAnnounce extends Announce {
 			// it's there.
 			if (result != null && result.containsKey("failure reason")) {
 				try {
-					logger.warn("{}", result.get("failure reason").getString());
+					logger.warn("{}",
+						result.get("failure reason").getString());
 				} catch (InvalidBEncodingException ibee) {
 					logger.warn("Announce error, and couldn't parse " +
 						"failure reason!");
@@ -228,7 +239,8 @@ public class HTTPAnnounce extends Announce {
 		}
 	}
 
-	/** Build the announce request URL from the provided parameters.
+	/**
+	 * Build the announce request URL from the provided parameters.
 	 *
 	 * @param params The key/value parameters pairs in a map.
 	 * @return The URL object representing the announce request URL.
@@ -259,7 +271,8 @@ public class HTTPAnnounce extends Announce {
 		return new URL(url.toString());
 	}
 
-	/** Build a peer list as a list of {@link InetSocketAddress} from the
+	/**
+	 * Build a peer list as a list of {@link InetSocketAddress} from the
 	 * announce response's peer list (in non-compact mode).
 	 *
 	 * @param peers The list of {@link BEValue}s dictionaries describing the
@@ -274,15 +287,15 @@ public class HTTPAnnounce extends Announce {
 		for (BEValue peer : peers) {
 			Map<String, BEValue> peerInfo = peer.getMap();
 			result.add(new InetSocketAddress(
-				new String(peerInfo.get("ip").getBytes(),
-					Torrent.BYTE_ENCODING),
+				peerInfo.get("ip").getString(Torrent.BYTE_ENCODING),
 				peerInfo.get("port").getInt()));
 		}
 
 		return result;
 	}
 
-	/** Build a peer list as a list of {@link InetSocketAddress} from the
+	/**
+	 * Build a peer list as a list of {@link InetSocketAddress} from the
 	 * announce response's binary compact peer list.
 	 *
 	 * @param data The bytes representing the compact peer list from the

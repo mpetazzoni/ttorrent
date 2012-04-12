@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.bcodec;
 
 import java.io.UnsupportedEncodingException;
@@ -21,14 +21,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** A type-agnostic container for B-encoded values.
+
+/**
+ * A type-agnostic container for B-encoded values.
  *
  * @author mpetazzoni
  */
 public class BEValue {
 
-	/* The B-encoded value can be a byte array, a Number, a List or a Map.
-	 *
+	/**
+	 * The B-encoded value can be a byte array, a Number, a List or a Map.
 	 * Lists and Maps contains BEValues too.
 	 */
 	private final Object value;
@@ -70,15 +72,25 @@ public class BEValue {
 		return this.value;
 	}
 
-	/** Returns this BEValue as a String.
-	 *
-	 * This operation only succeeds when the BEValue is a byte[], otherwise it
-	 * will throw a InvalidBEncodingException. The byte[] will be interpreted
-	 * as UTF-8 encoded characters.
+	/**
+	 * Returns this BEValue as a String, interpreted as UTF-8.
+	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
 	public String getString() throws InvalidBEncodingException {
+		return this.getString("UTF-8");
+	}
+
+	/**
+	 * Returns this BEValue as a String, interpreted with the specified
+	 * encoding.
+	 *
+	 * @param encoding The encoding to interpret the bytes as when converting
+	 * them into a {@link String}.
+	 * @throws InvalidBEncodingException If the value is not a byte[].
+	 */
+	public String getString(String encoding) throws InvalidBEncodingException {
 		try {
-			return new String(this.getBytes(), "UTF-8");
+			return new String(this.getBytes(), encoding);
 		} catch (ClassCastException cce) {
 			throw new InvalidBEncodingException(cce.toString());
 		} catch (UnsupportedEncodingException uee) {
@@ -86,10 +98,10 @@ public class BEValue {
 		}
 	}
 
-	/** Returns this BEValue as a byte[].
+	/**
+	 * Returns this BEValue as a byte[].
 	 *
-	 * This operation only succeeds when the BEValue is actually a byte[],
-	 * otherwise it will throw a InvalidBEncodingException.
+	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
 	public byte[] getBytes() throws InvalidBEncodingException {
 		try {
@@ -99,10 +111,10 @@ public class BEValue {
 		}
 	}
 
-	/** Returns this BEValue as a Number.
+	/**
+	 * Returns this BEValue as a Number.
 	 *
-	 * This operation only succeeds when the BEValue is actually a Number,
-	 * otherwise it will throw a InvalidBEncodingException.
+	 * @throws InvalidBEncodingException  If the value is not a {@link Number}.
 	 */
 	public Number getNumber() throws InvalidBEncodingException {
 		try {
@@ -112,30 +124,29 @@ public class BEValue {
 		}
 	}
 
-	/** Returns this BEValue as int.
+	/**
+	 * Returns this BEValue as int.
 	 *
-	 * This operation only succeeds when the BEValue is actually a Number,
-	 * otherwise it will throw a InvalidBEncodingException. The returned int is
-	 * the result of <code>Number.intValue()</code>.
+	 * @throws InvalidBEncodingException If the value is not a {@link Number}.
 	 */
 	public int getInt() throws InvalidBEncodingException {
 		return this.getNumber().intValue();
 	}
 
-	/** Returns this BEValue as long.
+	/**
+	 * Returns this BEValue as long.
 	 *
-	 * This operation only succeeds when the BEValue is actually a Number,
-	 * otherwise it will throw a InvalidBEncodingException. The returned long
-	 * is the result of <code>Number.longValue()</code>.
+	 * @throws InvalidBEncodingException If the value is not a {@link Number}.
 	 */
 	public long getLong() throws InvalidBEncodingException {
 		return this.getNumber().longValue();
 	}
 
-	/** Returns this BEValue as a List of BEValues.
+	/**
+	 * Returns this BEValue as a List of BEValues.
 	 *
-	 * This operation only succeeds when the BEValue is actually a List,
-	 * otherwise it will throw a InvalidBEncodingException.
+	 * @throws InvalidBEncodingException If the value is not an
+	 * {@link ArrayList}.
 	 */
 	@SuppressWarnings("unchecked")
 	public List<BEValue> getList() throws InvalidBEncodingException {
@@ -146,10 +157,10 @@ public class BEValue {
 		}
 	}
 
-	/** Returns this BEValue as a Map of String keys and BEValue values.
+	/**
+	 * Returns this BEValue as a Map of String keys and BEValue values.
 	 *
-	 * This operation only succeeds when the BEValue is actually a Map,
-	 * otherwise it will throw a InvalidBEncodingException.
+	 * @throws InvalidBEncodingException If the value is not a {@link HashMap}.
 	 */
 	@SuppressWarnings("unchecked")
 	public Map<String, BEValue> getMap() throws InvalidBEncodingException {

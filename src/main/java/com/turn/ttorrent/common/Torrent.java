@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.bcodec.BDecoder;
@@ -52,7 +52,9 @@ import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A torrent file tracked by the controller's BitTorrent tracker.
+
+/**
+ * A torrent file tracked by the controller's BitTorrent tracker.
  *
  * <p>
  * This class represents an active torrent on the tracker. The torrent
@@ -114,15 +116,16 @@ public class Torrent {
 
 	private final boolean seeder;
 
-	/** Create a new torrent from metainfo binary data.
+	/**
+	 * Create a new torrent from meta-info binary data.
 	 *
-	 * Parses the metainfo data (which should be B-encoded as described in the
+	 * Parses the meta-info data (which should be B-encoded as described in the
 	 * BitTorrent specification) and create a Torrent object from it.
 	 *
-	 * @param torrent The metainfo byte data.
+	 * @param torrent The meta-info byte data.
 	 * @param parent The parent directory or location of the torrent files.
 	 * @param seeder Whether we'll be seeding for this torrent or not.
-	 * @throws IOException When the info dictionnary can't be read or
+	 * @throws IOException When the info dictionary can't be read or
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
@@ -203,29 +206,35 @@ public class Torrent {
 		logger.info("  Total size: {} byte(s)", this.size);
 	}
 
-	/** Get this torrent's name.
+	/**
+	 * Get this torrent's name.
 	 *
+	 * <p>
 	 * For a single-file torrent, this is usually the name of the file. For a
 	 * multi-file torrent, this is usually the name of a top-level directory
 	 * containing those files.
+	 * </p>
 	 */
 	public String getName() {
 		return this.name;
 	}
 
-	/** Get this torrent's creator (user, software, whatever...).
+	/**
+	 * Get this torrent's creator (user, software, whatever...).
 	 */
 	public String getCreatedBy() {
 		return this.createdBy;
 	}
 
-	/** Get the total size of this torrent.
+	/**
+	 * Get the total size of this torrent.
 	 */
 	public long getSize() {
 		return this.size;
 	}
 
-	/** Get the file names from this torrent.
+	/**
+	 * Get the file names from this torrent.
 	 *
 	 * @return The list of relative filenames of all the files described in
 	 * this torrent.
@@ -238,51 +247,61 @@ public class Torrent {
 		return filenames;
 	}
 
-	/** Tells whether this torrent is multi-file or not.
+	/**
+	 * Tells whether this torrent is multi-file or not.
 	 */
 	public boolean isMultifile() {
 		return this.files.size() > 1;
 	}
 
-	/** Return the hash of the B-encoded meta-info structure of this torrent.
+	/**
+	 * Return the hash of the B-encoded meta-info structure of this torrent.
 	 */
 	public byte[] getInfoHash() {
 		return this.info_hash;
 	}
 
-	/** Get this torrent's info hash (as an hexadecimal-coded string).
+	/**
+	 * Get this torrent's info hash (as an hexadecimal-coded string).
 	 */
 	public String getHexInfoHash() {
 		return this.hex_info_hash;
 	}
 
-	/** Return a human-readable representation of this torrent object.
+	/**
+	 * Return a human-readable representation of this torrent object.
 	 *
+	 * <p>
 	 * The torrent's name is used.
+	 * </p>
 	 */
 	public String toString() {
 		return this.getName();
 	}
 
-	/** Return the B-encoded meta-info of this torrent.
+	/**
+	 * Return the B-encoded meta-info of this torrent.
 	 */
 	public byte[] getEncoded() {
 		return this.encoded;
 	}
 
-	/** Return the announce URL used by this torrent.
+	/**
+	 * Return the announce URL used by this torrent.
 	 */
 	public String getAnnounceUrl() {
 		return this.announceUrl;
 	}
 
-	/** Tells whether we were an initial seeder for this torrent.
+	/**
+	 * Tells whether we were an initial seeder for this torrent.
 	 */
 	public boolean isSeeder() {
 		return this.seeder;
 	}
 
-	/** Save this torrent meta-info structure into a .torrent file.
+	/**
+	 * Save this torrent meta-info structure into a .torrent file.
 	 *
 	 * @param output The file to write to.
 	 * @throws IOException If an I/O error occurs while writing the file.
@@ -306,7 +325,8 @@ public class Torrent {
 		return md.digest();
 	}
 
-	/** Convert a byte string to a string containing an hexadecimal
+	/**
+	 * Convert a byte string to a string containing an hexadecimal
 	 * representation of the original data.
 	 *
 	 * @param bytes The byte array to convert.
@@ -316,7 +336,8 @@ public class Torrent {
 		return String.format("%0" + (bytes.length << 1) + "X", bi);
 	}
 
-	/** Return an hexadecimal representation of the bytes contained in the
+	/**
+	 * Return an hexadecimal representation of the bytes contained in the
 	 * given string, following the default, expected byte encoding.
 	 *
 	 * @param input The input string.
@@ -330,7 +351,8 @@ public class Torrent {
 		}
 	}
 
-	/** Determine how many threads to use for the piece hashing.
+	/**
+	 * Determine how many threads to use for the piece hashing.
 	 *
 	 * <p>
 	 * If the environment variable TTORRENT_HASHING_THREADS is set to an
@@ -359,7 +381,8 @@ public class Torrent {
 
 	/** Torrent loading ---------------------------------------------------- */
 
-	/** Load a torrent from the given torrent file.
+	/**
+	 * Load a torrent from the given torrent file.
 	 *
 	 * <p>
 	 * This method assumes we are not a seeder and that local data needs to be
@@ -377,7 +400,8 @@ public class Torrent {
 		return Torrent.load(torrent, parent, false);
 	}
 
-	/** Load a torrent from the given torrent file.
+	/**
+	 * Load a torrent from the given torrent file.
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
@@ -404,7 +428,8 @@ public class Torrent {
 
 	/** Torrent creation --------------------------------------------------- */
 
-	/** Create a {@link Torrent} object for a file.
+	/**
+	 * Create a {@link Torrent} object for a file.
 	 *
 	 * <p>
 	 * Hash the given file to create the {@link Torrent} object representing
@@ -422,11 +447,12 @@ public class Torrent {
 		return Torrent.create(source, null, announce, createdBy);
 	}
 
-	/** Create a {@link Torrent} object for a set of files.
+	/**
+	 * Create a {@link Torrent} object for a set of files.
 	 *
 	 * <p>
 	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent metainfo about them, needed for announcing
+	 * representing the Torrent meta-info about them, needed for announcing
 	 * and/or sharing these files. Since we created the torrent, we're
 	 * considering we'll be a full initial seeder for it.
 	 * </p>
@@ -492,7 +518,8 @@ public class Torrent {
 		return new Torrent(baos.toByteArray(), null, true);
 	}
 
-	/** A {@link Callable} to hash a data chunk.
+	/**
+	 * A {@link Callable} to hash a data chunk.
 	 *
 	 * @author mpetazzoni
 	 */
@@ -520,7 +547,8 @@ public class Torrent {
 		}
 	}
 
-	/** Return the concatenation of the SHA-1 hashes of a file's pieces.
+	/**
+	 * Return the concatenation of the SHA-1 hashes of a file's pieces.
 	 *
 	 * <p>
 	 * Hashes the given file piece by piece using the default Torrent piece
@@ -607,7 +635,8 @@ public class Torrent {
 		return hashes.toString();
 	}
 
-	/** Torrent reader and creator.
+	/**
+	 * Torrent reader and creator.
 	 *
 	 * <p>
 	 * You can use the {@code main()} function of this {@link Torrent} class to

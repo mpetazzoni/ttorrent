@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,17 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.common.Torrent;
 
 import java.nio.ByteBuffer;
 
-/** A basic BitTorrent peer.
+
+/**
+ * A basic BitTorrent peer.
  *
+ * <p>
  * This class is meant to be a common base for the tracker and client, which
- * would presumably subclass it to extend its functionnality and fields.
+ * would presumably subclass it to extend its functionality and fields.
+ * </p>
  *
  * @author mpetazzoni
  */
@@ -35,7 +39,8 @@ public class Peer {
 	private ByteBuffer peerId;
 	private String hexPeerId;
 
-	/** Instanciate a new peer for the given torrent.
+	/**
+	 * Instantiate a new peer for the given torrent.
 	 *
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
@@ -49,19 +54,22 @@ public class Peer {
 		this.setPeerId(peerId);
 	}
 
-	/** Tells whether this peer has a known peer ID yet or not.
+	/**
+	 * Tells whether this peer has a known peer ID yet or not.
 	 */
 	public boolean hasPeerId() {
 		return this.peerId != null;
 	}
 
-	/** Returns the raw peer ID as a {@link ByteBuffer}.
+	/**
+	 * Returns the raw peer ID as a {@link ByteBuffer}.
 	 */
 	public ByteBuffer getPeerId() {
 		return this.peerId;
 	}
 
-	/** Set a peer ID for this peer (usually during handshake).
+	/**
+	 * Set a peer ID for this peer (usually during handshake).
 	 *
 	 * @param peerId The new peer ID for this peer.
 	 */
@@ -75,31 +83,36 @@ public class Peer {
 		}
 	}
 
-	/** Get the hexadecimal-encoded string representation of this peer's ID.
+	/**
+	 * Get the hexadecimal-encoded string representation of this peer's ID.
 	 */
 	public String getHexPeerId() {
 		return this.hexPeerId;
 	}
 
-	/** Returns this peer's IP address.
+	/**
+	 * Returns this peer's IP address.
 	 */
 	public String getIp() {
 		return this.ip;
 	}
 
-	/** Returns this peer's port number.
+	/**
+	 * Returns this peer's port number.
 	 */
 	public int getPort() {
 		return this.port;
 	}
 
-	/** Returns this peer's host identifier ("host:port").
+	/**
+	 * Returns this peer's host identifier ("host:port").
 	 */
 	public String getHostIdentifier() {
 		return this.hostId;
 	}
 
-	/** Returns a human-readable representation of this peer.
+	/**
+	 * Returns a human-readable representation of this peer.
 	 */
 	public String toString() {
 		StringBuilder s = new StringBuilder("peer://")
@@ -115,7 +128,8 @@ public class Peer {
 		return s.toString();
 	}
 
-	/** Tells if two peers seem to lookalike (i.e. they have the same IP, port
+	/**
+	 * Tells if two peers seem to look alike (i.e. they have the same IP, port
 	 * and peer ID if they have one).
 	 */
 	public boolean looksLike(Peer other) {

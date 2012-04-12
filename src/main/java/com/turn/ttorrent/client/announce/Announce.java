@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
@@ -25,11 +25,13 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** BitTorrent client tracker announce thread.
+
+/**
+ * Base class for BitTorrent tracker announce threads.
  *
  * <p>
- * A BitTorrent client must check-in to the torrent's tracker every now and
- * then, and when particular events happen.
+ * A BitTorrent client must check-in to the torrent's tracker to get peers and
+ * to report certain events.
  * </p>
  *
  * <p>
@@ -66,18 +68,23 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	protected int interval;
 	protected boolean initial;
 
-	/** Announce request event types.
+	/**
+	 * Announce request event types.
 	 *
+	 * <p>
 	 * When the client starts exchanging on a torrent, it must contact the
 	 * torrent's tracker with a 'started' announce request, which notifies the
 	 * tracker this client now exchanges on this torrent (and thus allows the
 	 * tracker to report the existence of this peer to other clients).
+	 * </p>
 	 *
+	 * <p>
 	 * When the client stops exchanging, or when its download completes, it must
 	 * also send a specific announce request. Otherwise, the client must send an
 	 * eventless (NONE), periodic announce request to the tracker at an
 	 * interval specified by the tracker itself, allowing the tracker to
 	 * refresh this peer's status and acknowledge that it is still there.
+	 * </p>
 	 */
 	protected enum AnnounceEvent {
 		NONE,
@@ -86,7 +93,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		COMPLETED;
 	};
 
-	/** Create a new announcer for the given torrent.
+	/**
+	 * Create a new announcer for the given torrent.
 	 *
 	 * @param torrent The torrent we're announcing about.
 	 * @param id Our client peer ID.
@@ -103,7 +111,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		this.register(this);
 	}
 
-	/** Register a new announce response listener.
+	/**
+	 * Register a new announce response listener.
 	 *
 	 * @param listener The listener to register on this announcer events.
 	 */
@@ -111,7 +120,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		this.listeners.add(listener);
 	}
 
-	/** Start the announce request thread.
+	/**
+	 * Start the announce request thread.
 	 */
 	public void start() {
 		this.stop = false;
@@ -124,10 +134,13 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		}
 	}
 
-	/** Stop the announce thread.
+	/**
+	 * Stop the announce thread.
 	 *
-	 * One last 'stopped' announce event will be sent to the tracker to
-	 * announce we're going away.
+	 * <p>
+	 * One last 'stopped' announce event might be sent to the tracker to
+	 * announce we're going away, depending on the implementation.
+	 * </p>
 	 */
 	public void stop() {
 		this.stop = true;
@@ -139,7 +152,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		this.thread = null;
 	}
 
-	/** Stop the announce thread.
+	/**
+	 * Stop the announce thread.
 	 *
 	 * @param hard Whether to force stop the announce thread or not, i.e. not
 	 * send the final 'stopped' announce request or not.
@@ -149,9 +163,25 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		this.stop();
 	}
 
+	/**
+	 * Main announce function that will be executed by the announce thread.
+	 * 
+	 * <p>
+	 * Subclasses of {@link Announce} should implement this method to provide
+	 * the actual announce mechanism.
+	 * </p>
+	 */
 	@Override
 	public abstract void run();
 
+	/**
+	 * Fire the announce response event to all listeners.
+	 *
+	 * @param leechers The number of leechers on this torrent.
+	 * @param seeders The number of seeders on this torrent.
+	 * @param interval The announce interval requested by the tracker.
+	 * @param peers The list of peers given by the tracker.
+	 */
 	protected void fireAnnounceResponseEvent(int leechers, int seeders,
 		int interval, List<InetSocketAddress> peers) {
 		for (AnnounceResponseListener listener : this.listeners) {
@@ -160,6 +190,11 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	}
 
 	/** Handle an announce request answer to set the announce interval.
+	 *
+	 * @param leechers The number of leechers on this torrent.
+	 * @param seeders The number of seeders on this torrent.
+	 * @param interval The announce interval requested by the tracker.
+	 * @param peers The list of peers given by the tracker.
 	 */
 	public void handleAnnounceResponse(int leechers, int seeders,
 		int interval, List<InetSocketAddress> peers) {

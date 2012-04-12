@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
@@ -21,6 +21,12 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 
+
+/**
+ * Peer handshake handler.
+ *
+ * @author mpetazzoni
+ */
 public class Handshake {
 
 	public static final String BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol";

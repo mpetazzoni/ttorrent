@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
@@ -36,7 +36,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Incoming peer connections service.
+
+/**
+ * Incoming peer connections service.
  *
  * <p>
  * Every BitTorrent client, BitTorrent being a peer-to-peer protocol, listens
@@ -54,7 +56,7 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Outgoing connections to other peers are also made through this service,
  * which handles the handshake procedure with the remote peer. Regardless of
- * the direction of the connection, once this handshake is successfull, all
+ * the direction of the connection, once this handshake is successful, all
  * {@link IncomingConnectionListener}s are notified and passed the connected
  * socket and the remote peer ID.
  * </p>
@@ -86,11 +88,14 @@ public class ConnectionHandler implements Runnable {
 	private Thread thread;
 	private boolean stop;
 
-	/** Create and start a new listening service for out torrent, reporting
+	/**
+	 * Create and start a new listening service for out torrent, reporting
 	 * with our peer ID on the given address.
 	 *
+	 * <p>
 	 * This binds to the first available port in the client port range
 	 * PORT_RANGE_START to PORT_RANGE_END.
+	 * </p>
 	 *
 	 * @param torrent The torrent shared by this client.
 	 * @param id This client's peer ID.
@@ -131,13 +136,15 @@ public class ConnectionHandler implements Runnable {
 		this.thread = null;
 	}
 
-	/** Return the full socket address this service is bound to.
+	/**
+	 * Return the full socket address this service is bound to.
 	 */
 	public InetSocketAddress getSocketAddress() {
 		return this.address;
 	}
 
-	/** Register a new incoming connection listener.
+	/**
+	 * Register a new incoming connection listener.
 	 *
 	 * @param listener The listener who wants to receive connection
 	 * notifications.
@@ -146,7 +153,8 @@ public class ConnectionHandler implements Runnable {
 		this.listeners.add(listener);
 	}
 
-	/** Start accepting new connections in a background thread.
+	/**
+	 * Start accepting new connections in a background thread.
 	 */
 	public void start() {
 		if (!this.socket.isBound()) {
@@ -163,9 +171,12 @@ public class ConnectionHandler implements Runnable {
 		}
 	}
 
-	/** Stop accepting connections.
+	/**
+	 * Stop accepting connections.
 	 *
+	 * <p>
 	 * <b>Note:</b> the underlying socket remains open and bound.
+	 * </p>
 	 */
 	public void stop() {
 		this.stop = true;
@@ -177,10 +188,13 @@ public class ConnectionHandler implements Runnable {
 		this.thread = null;
 	}
 
-	/** The main service loop.
+	/**
+	 * The main service loop.
 	 *
+	 * <p>
 	 * The service waits for new connections for 250ms, then waits 750ms so it
 	 * can be interrupted.
+	 * </p>
 	 */
 	@Override
 	public void run() {
@@ -215,26 +229,32 @@ public class ConnectionHandler implements Runnable {
 		}
 	}
 
-	/** Return a human-readable representation of a connected socket.
-	 *
-	 * This returns a <em>host:port</em> string representing the given socket.
+	/**
+	 * Return a human-readable representation of a connected socket.
 	 *
 	 * @param s The socket to represent.
+	 * @return A textual representation (<em>host:port</em>) of the given
+	 * socket.
 	 */
 	private String socketRepr(Socket s) {
 		return new StringBuilder(s.getInetAddress().getHostName())
 			.append(":").append(s.getPort()).toString();
 	}
 
-	/** Accept the next incoming connection.
+	/**
+	 * Accept the next incoming connection.
 	 *
+	 * <p>
 	 * When a new peer connects to this service, wait for it to send its
 	 * handshake. We then parse and check that the handshake advertises the
 	 * torrent hash we expect, then reply with our own handshake.
+	 * </p>
 	 *
+	 * <p>
 	 * If everything goes according to plan, notify the
 	 * <code>IncomingConnectionListener</code>s with the connected socket and
 	 * the parsed peer ID.
+	 * </p>
 	 */
 	private void accept() throws IOException, SocketTimeoutException {
 		Socket socket = this.socket.accept();
@@ -261,14 +281,19 @@ public class ConnectionHandler implements Runnable {
 		}
 	}
 
-	/** Connect to the given peer and perform the BitTorrent handshake.
+	/**
+	 * Connect to the given peer and perform the BitTorrent handshake.
 	 *
+	 * <p>
 	 * Connect to the peer using its defined IP address and port, then execute
 	 * the handshake process to validate the remote peer Id.
+	 * </p>
 	 *
+	 * <p>
 	 * If everything goes according to plan, notify the
 	 * <code>IncomingConnectionListener</code>s with the connected socket and
 	 * the parsed peer ID.
+	 * </p>
 	 *
 	 * @param peer The peer to connect to.
 	 */
@@ -311,12 +336,15 @@ public class ConnectionHandler implements Runnable {
 		return false;
 	}
 
-	/** Validate an expected handshake on a connection.
+	/**
+	 * Validate an expected handshake on a connection.
 	 *
+	 * <p>
 	 * Reads an expected handshake message from the given connected socket,
 	 * parses it and validates that the torrent hash_info corresponds to the
 	 * torrent we're sharing, and that the peerId matches the peer ID we expect
 	 * to see coming from the remote peer.
+	 * </p>
 	 *
 	 * @param socket The connected socket to the remote peer.
 	 * @param peerId The peer ID we expect in the handshake. If <em>null</em>,
@@ -351,7 +379,8 @@ public class ConnectionHandler implements Runnable {
 		return hs;
 	}
 
-	/** Send our handshake message to the socket.
+	/**
+	 * Send our handshake message to the socket.
 	 *
 	 * @param socket The socket to the remote peer.
 	 */
@@ -361,7 +390,8 @@ public class ConnectionHandler implements Runnable {
 					this.id.getBytes(Torrent.BYTE_ENCODING)).getBytes());
 	}
 
-	/** Trigger the new peer connection event on all registered listeners.
+	/**
+	 * Trigger the new peer connection event on all registered listeners.
 	 *
 	 * @param socket The socket to the newly connected peer.
 	 * @param peerId The peer ID of the connected peer.
