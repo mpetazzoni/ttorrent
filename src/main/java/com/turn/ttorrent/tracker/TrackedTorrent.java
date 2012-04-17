@@ -15,25 +15,22 @@
 
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.tracker.impl.InMemoryTorrentPeers;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.tracker.impl.InMemoryTorrentPeers;
 
 public class TrackedTorrent extends Torrent {
 
