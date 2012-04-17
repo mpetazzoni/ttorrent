@@ -16,6 +16,7 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.tracker.impl.InMemoryTorrentsRepository;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -58,7 +59,7 @@ public class Tracker {
 	private boolean stop;
 
 	/** The in-memory repository of torrents tracked. */
-	private ConcurrentMap<String, TrackedTorrent> torrents;
+	private final TorrentsRepository torrents;
 
 	/** Create a new BitTorrent tracker on the default port.
 	 *
@@ -81,7 +82,7 @@ public class Tracker {
 	 */
 	public Tracker(InetAddress address, String version, int port)
 		throws IOException {
-		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
+		this.torrents = new InMemoryTorrentsRepository();
 		this.connection = new SocketConnection(
 				new TrackerService(version, this.torrents));
 		this.address = new InetSocketAddress(address, port);
@@ -262,7 +263,7 @@ public class Tracker {
 				getAnnounceUrl());
 
 			while (!stop) {
-				for (TrackedTorrent torrent : torrents.values()) {
+				for (TrackedTorrent torrent : torrents.getTorrents()) {
 					torrent.collectUnfreshPeers();
 				}
 

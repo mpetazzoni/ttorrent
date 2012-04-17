@@ -60,7 +60,7 @@ public class TrackerService implements Container {
 	private static final String WILDCARD_IPV4_ADDRESS = "0.0.0.0";
 
 	private final String version;
-	private final ConcurrentMap<String, TrackedTorrent> torrents;
+	private final TorrentsRepository torrents;
 
 	/** The various tracker error states.
 	 *
@@ -99,7 +99,7 @@ public class TrackerService implements Container {
 	 * for.
 	 */
 	TrackerService(String version,
-			ConcurrentMap<String, TrackedTorrent> torrents) {
+			TorrentsRepository torrents) {
 		this.version = version;
 		this.torrents = torrents;
 	}
