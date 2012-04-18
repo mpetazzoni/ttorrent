@@ -27,7 +27,10 @@ import static org.jboss.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -80,10 +83,7 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 	private final String version;
 	private final TorrentsRepository torrents;
 
-	private HttpRequest request;
 	private boolean readingChunks;
-	/** Buffer that stores the response content */
-	private final StringBuilder buf = new StringBuilder();
 
 	/**
 	 * The various tracker error states.
@@ -144,10 +144,9 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 			throws Exception {
 
 		if (!readingChunks) {
-			HttpRequest request = this.request = (HttpRequest) event.getMessage();
+			HttpRequest request = (HttpRequest) event.getMessage();
 			// Reject non-announce requests
-			//TODO assurer que le renonce marche
-			if (!Tracker.ANNOUNCE_URL.equals(request.getUri().toString())) {
+			if (!Tracker.ANNOUNCE_URL.equals(URI.create(request.getUri()).getPath())) {
 				HttpResponse response = new DefaultHttpResponse(HTTP_1_1, NOT_FOUND);
 				event.getChannel().write(response);
 				response.setContent(ChannelBuffers.copiedBuffer("Not Found", CharsetUtil.UTF_8));
@@ -172,6 +171,8 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 			response.setHeader("Server", this.version);
 			response.setHeader("Date", System.currentTimeMillis());
 			
+			ByteArrayOutputStream buf = new ByteArrayOutputStream();
+			
 			process(request,response, event, buf);
 			
 			response.setContent(ChannelBuffers.copiedBuffer(buf.toString(), CharsetUtil.UTF_8));
@@ -195,10 +196,10 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 	 * @param response 
 	 * @param response
 	 *            The response object.
-	 * @param body
+	 * @param buf
 	 *            The validated response body output stream.
 	 */
-	private void process(HttpRequest request, HttpResponse response, MessageEvent event, StringBuilder body)
+	private void process(HttpRequest request, HttpResponse response, MessageEvent event, OutputStream outputStream)
 			throws IOException {
 
 		Map<String, String> params = this.parseQuery(request.getUri());
@@ -206,7 +207,7 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 		// Validate the announce request coming from the client.
 		TrackerError error = this.validateAnnounceRequest(params);
 		if (error != null) {
-			this.serveError(response, body, BAD_REQUEST, error);
+			this.serveError(response, outputStream, BAD_REQUEST, error);
 			return;
 		}
 
@@ -214,15 +215,14 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 		// address if the peer didn't provide it.
 		if (!params.containsKey("ip")
 				|| WILDCARD_IPV4_ADDRESS.equals(params.get("ip"))) {
-			//TODO valider que ça marche
-			params.put("ip", event.getRemoteAddress().toString());
+			params.put("ip", ((InetSocketAddress)event.getRemoteAddress()).getAddress().getHostAddress());
 		}
 
 		// Grab the corresponding torrent (validateAnnounceRequest already made
 		// sure we knew about this Torrent)
 		TrackedTorrent torrent = this.torrents.get(params.get("info_hash_hex"));
 		if (torrent == null) {
-			this.serveError(response, body, INTERNAL_SERVER_ERROR,
+			this.serveError(response, outputStream, INTERNAL_SERVER_ERROR,
 					TrackerError.UNKNOWN_TORRENT);
 			return;
 		}
@@ -238,9 +238,7 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 				Long.parseLong(params.get("left")));
 
 		// Craft and output the answer
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		BEncoder.bencode(torrent.peerAnswerAsBEValue(peer), outputStream);
-		body.append(outputStream.toByteArray());
 	}
 
 	/**
@@ -290,21 +288,19 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 	 * 
 	 * @param response
 	 *            The HTTP response object.
-	 * @param body
+	 * @param buf
 	 *            The response output stream to write to.
 	 * @param status
 	 *            The HTTP status code to return.
 	 * @param error
 	 *            The error reported by the tracker.
 	 */
-	private void serveError(HttpResponse response, StringBuilder body,
+	private void serveError(HttpResponse response, OutputStream outputStream,
 			HttpResponseStatus status, TrackerError error) throws IOException {
 		response.setStatus(status);
 		logger.warn("Could not process announce request ({}) !",
 				error.getMessage());
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		BEncoder.bencode(error.toBEValue(), outputStream);
-		body.append(outputStream.toByteArray());
 	}
 
 	/**
