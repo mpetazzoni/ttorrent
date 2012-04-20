@@ -17,6 +17,8 @@ package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.common.Torrent;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 
@@ -40,7 +42,17 @@ public class Peer {
 	private String hexPeerId;
 
 	/**
-	 * Instantiate a new peer for the given torrent.
+	 * Instantiate a new peer.
+	 *
+	 * @param ip The peer's IP address.
+	 * @param port The peer's port.
+	 */
+	public Peer(String ip, int port) {
+		this(ip, port, null);
+	}
+
+	/**
+	 * Instantiate a new peer.
 	 *
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
@@ -91,6 +103,14 @@ public class Peer {
 	}
 
 	/**
+	 * Get the shortened hexadecimal-encoded peer ID.
+	 */
+	public String getShortHexPeerId() {
+		return String.format("..%s",
+			this.hexPeerId.substring(this.hexPeerId.length()-6).toUpperCase());
+	}
+
+	/**
 	 * Returns this peer's IP address.
 	 */
 	public String getIp() {
@@ -109,6 +129,17 @@ public class Peer {
 	 */
 	public String getHostIdentifier() {
 		return this.hostId;
+	}
+
+	/**
+	 * Returns a binary representation of the peer's IP.
+	 */
+	public byte[] getRawIp() {
+		try {
+			return InetAddress.getByName(this.ip).getAddress();
+		} catch (UnknownHostException uhe) {
+			return null;
+		}
 	}
 
 	/**

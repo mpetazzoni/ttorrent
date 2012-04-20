@@ -111,14 +111,13 @@ class PeerExchange {
 					"peer ID. Was the handshake made properly?");
 		}
 
-		String peerId = this.peer.getHexPeerId().substring(
-				this.peer.getHexPeerId().length()-6)
-				.toUpperCase();
 		this.in = new IncomingThread();
-		this.in.setName("bt-peer(.." + peerId + ")-recv");
+		this.in.setName("bt-peer(" +
+			this.peer.getShortHexPeerId() + ")-recv");
 
 		this.out = new OutgoingThread();
-		this.out.setName("bt-peer(.." + peerId + ")-send");
+		this.out.setName("bt-peer(" +
+			this.peer.getShortHexPeerId() + ")-send");
 
 		// Automatically start the exchange activity loops
 		this.stop = false;
