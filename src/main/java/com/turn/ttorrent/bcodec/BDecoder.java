@@ -15,14 +15,18 @@
  */
 package com.turn.ttorrent.bcodec;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.EOFException;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.commons.io.input.AutoCloseInputStream;
 
 
 /**
@@ -82,6 +86,21 @@ public class BDecoder {
 	 */
 	public static BEValue bdecode(InputStream in) throws IOException {
 		return new BDecoder(in).bdecode();
+	}
+
+	/**
+	 * Decode a B-encoded byte buffer.
+	 *
+	 * <p>
+	 * Automatically instantiates a new BDecoder for the provided buffer and
+	 * decodes its root member.
+	 * </p>
+	 *
+	 * @param data The {@link ByteBuffer} to read from.
+	 */
+	public static BEValue bdecode(ByteBuffer data) throws IOException {
+		return BDecoder.bdecode(new AutoCloseInputStream(
+			new ByteArrayInputStream(data.array())));
 	}
 
 	/**

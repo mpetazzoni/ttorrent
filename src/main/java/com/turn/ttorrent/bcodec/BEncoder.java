@@ -15,14 +15,16 @@
  */
 package com.turn.ttorrent.bcodec;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 
 /**
  * B-encoding encoder.
@@ -108,5 +110,13 @@ public class BEncoder {
 		}
 
 		out.write('e');
+	}
+
+	public static ByteBuffer bencode(Map<String, BEValue> m)
+		throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		BEncoder.bencode(m, baos);
+		baos.close();
+		return ByteBuffer.wrap(baos.toByteArray());
 	}
 }

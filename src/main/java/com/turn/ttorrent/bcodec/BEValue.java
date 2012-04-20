@@ -125,6 +125,15 @@ public class BEValue {
 	}
 
 	/**
+	 * Returns this BEValue as short.
+	 *
+	 * @throws InvalidBEncodingException If the value is not a {@link Number}.
+	 */
+	public short getShort() throws InvalidBEncodingException {
+		return this.getNumber().shortValue();
+	}
+
+	/**
 	 * Returns this BEValue as int.
 	 *
 	 * @throws InvalidBEncodingException If the value is not a {@link Number}.
