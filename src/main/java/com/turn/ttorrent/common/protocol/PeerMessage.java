@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.ttorrent.client;
+package com.turn.ttorrent.common.protocol;
 
-import com.turn.ttorrent.client.Message;
-import com.turn.ttorrent.client.Message;
+import com.turn.ttorrent.client.SharedTorrent;
 
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.BitSet;
-
 
 /**
  * BitTorrent peer protocol messages representations.
@@ -36,7 +34,7 @@ import java.util.BitSet;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Peer_wire_protocol_.28TCP.29">BitTorrent peer wire protocol</a>
  */
-public abstract class Message {
+public abstract class PeerMessage {
 
 	/**
 	 * Message type.
@@ -84,7 +82,7 @@ public abstract class Message {
 	private final Type type;
 	private final ByteBuffer data;
 
-	private Message(Type type, ByteBuffer data) {
+	private PeerMessage(Type type, ByteBuffer data) {
 		this.type = type;
 		this.data = data;
 		this.data.rewind();
@@ -108,7 +106,7 @@ public abstract class Message {
 	 *
 	 * @param torrent The torrent this message is about.
 	 */
-	public Message validate(SharedTorrent torrent)
+	public PeerMessage validate(SharedTorrent torrent)
 		throws MessageValidationException {
 		return this;
 	}
@@ -118,20 +116,20 @@ public abstract class Message {
 	}
 
 	/**
-	 * Parse the given buffer into a peer protocol Message.
+	 * Parse the given buffer into a peer protocol message.
 	 *
 	 * <p>
-	 * Parses the provided byte array and builds the corresponding Message
+	 * Parses the provided byte array and builds the corresponding PeerMessage
 	 * subclass object.
 	 * </p>
 	 *
 	 * @param buffer The byte buffer containing the message data.
 	 * @param torrent The torrent this message is about.
-	 * @return A Message subclass instance.
+	 * @return A PeerMessage subclass instance.
 	 * @throws ParseException When the message is invalid, can't be parsed or
 	 * does not match the protocol requirements.
 	 */
-	public static Message parse(ByteBuffer buffer, SharedTorrent torrent)
+	public static PeerMessage parse(ByteBuffer buffer, SharedTorrent torrent)
 		throws ParseException {
 		buffer.rewind();
 
@@ -178,7 +176,7 @@ public abstract class Message {
 
 		static final long serialVersionUID = -1;
 
-		public MessageValidationException(Message m) {
+		public MessageValidationException(PeerMessage m) {
 			super("Message " + m + " is not valid!", 0);
 		}
 
@@ -190,7 +188,7 @@ public abstract class Message {
 	 *
 	 * <len=0000>
 	 */
-	public static class KeepAliveMessage extends Message {
+	public static class KeepAliveMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 0;
 
@@ -215,7 +213,7 @@ public abstract class Message {
 	 *
 	 * <len=0001><id=0>
 	 */
-	public static class ChokeMessage extends Message {
+	public static class ChokeMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 1;
 
@@ -232,7 +230,7 @@ public abstract class Message {
 		public static ChokeMessage craft() {
 			ByteBuffer buffer = ByteBuffer.allocate(ChokeMessage.BASE_SIZE + 4);
 			buffer.putInt(ChokeMessage.BASE_SIZE);
-			buffer.put(Message.Type.CHOKE.getTypeByte());
+			buffer.put(PeerMessage.Type.CHOKE.getTypeByte());
 			return new ChokeMessage(buffer);
 		}
 	}
@@ -242,7 +240,7 @@ public abstract class Message {
 	 *
 	 * <len=0001><id=1>
 	 */
-	public static class UnchokeMessage extends Message {
+	public static class UnchokeMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 1;
 
@@ -259,7 +257,7 @@ public abstract class Message {
 		public static UnchokeMessage craft() {
 			ByteBuffer buffer = ByteBuffer.allocate(UnchokeMessage.BASE_SIZE + 4);
 			buffer.putInt(UnchokeMessage.BASE_SIZE);
-			buffer.put(Message.Type.UNCHOKE.getTypeByte());
+			buffer.put(PeerMessage.Type.UNCHOKE.getTypeByte());
 			return new UnchokeMessage(buffer);
 		}
 	}
@@ -269,7 +267,7 @@ public abstract class Message {
 	 *
 	 * <len=0001><id=2>
 	 */
-	public static class InterestedMessage extends Message {
+	public static class InterestedMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 1;
 
@@ -286,7 +284,7 @@ public abstract class Message {
 		public static InterestedMessage craft() {
 			ByteBuffer buffer = ByteBuffer.allocate(InterestedMessage.BASE_SIZE + 4);
 			buffer.putInt(InterestedMessage.BASE_SIZE);
-			buffer.put(Message.Type.INTERESTED.getTypeByte());
+			buffer.put(PeerMessage.Type.INTERESTED.getTypeByte());
 			return new InterestedMessage(buffer);
 		}
 	}
@@ -296,7 +294,7 @@ public abstract class Message {
 	 *
 	 * <len=0001><id=3>
 	 */
-	public static class NotInterestedMessage extends Message {
+	public static class NotInterestedMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 1;
 
@@ -313,7 +311,7 @@ public abstract class Message {
 		public static NotInterestedMessage craft() {
 			ByteBuffer buffer = ByteBuffer.allocate(NotInterestedMessage.BASE_SIZE + 4);
 			buffer.putInt(NotInterestedMessage.BASE_SIZE);
-			buffer.put(Message.Type.NOT_INTERESTED.getTypeByte());
+			buffer.put(PeerMessage.Type.NOT_INTERESTED.getTypeByte());
 			return new NotInterestedMessage(buffer);
 		}
 	}
@@ -323,7 +321,7 @@ public abstract class Message {
 	 *
 	 * <len=0005><id=4><piece index=xxxx>
 	 */
-	public static class HaveMessage extends Message {
+	public static class HaveMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 5;
 
@@ -357,7 +355,7 @@ public abstract class Message {
 		public static HaveMessage craft(int piece) {
 			ByteBuffer buffer = ByteBuffer.allocate(HaveMessage.BASE_SIZE + 4);
 			buffer.putInt(HaveMessage.BASE_SIZE);
-			buffer.put(Message.Type.HAVE.getTypeByte());
+			buffer.put(PeerMessage.Type.HAVE.getTypeByte());
 			buffer.putInt(piece);
 			return new HaveMessage(buffer, piece);
 		}
@@ -372,7 +370,7 @@ public abstract class Message {
 	 *
 	 * <len=0001+X><id=5><bitfield>
 	 */
-	public static class BitfieldMessage extends Message {
+	public static class BitfieldMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 1;
 
@@ -420,7 +418,7 @@ public abstract class Message {
 			ByteBuffer buffer = ByteBuffer.allocate(BitfieldMessage.BASE_SIZE +
 					4 + bitfield.length);
 			buffer.putInt(BitfieldMessage.BASE_SIZE + bitfield.length);
-			buffer.put(Message.Type.BITFIELD.getTypeByte());
+			buffer.put(PeerMessage.Type.BITFIELD.getTypeByte());
 			buffer.put(ByteBuffer.wrap(bitfield));
 			return new BitfieldMessage(buffer, availablePieces);
 		}
@@ -435,7 +433,7 @@ public abstract class Message {
 	 *
 	 * <len=00013><id=6><piece index><block offset><block length>
 	 */
-	public static class RequestMessage extends Message {
+	public static class RequestMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 13;
 
@@ -493,7 +491,7 @@ public abstract class Message {
 		public static RequestMessage craft(int piece, int offset, int length) {
 			ByteBuffer buffer = ByteBuffer.allocate(RequestMessage.BASE_SIZE + 4);
 			buffer.putInt(RequestMessage.BASE_SIZE);
-			buffer.put(Message.Type.REQUEST.getTypeByte());
+			buffer.put(PeerMessage.Type.REQUEST.getTypeByte());
 			buffer.putInt(piece);
 			buffer.putInt(offset);
 			buffer.putInt(length);
@@ -511,7 +509,7 @@ public abstract class Message {
 	 *
 	 * <len=0009+X><id=7><piece index><block offset><block data>
 	 */
-	public static class PieceMessage extends Message {
+	public static class PieceMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 9;
 
@@ -565,7 +563,7 @@ public abstract class Message {
 			ByteBuffer buffer = ByteBuffer.allocate(PieceMessage.BASE_SIZE +
 					4 + block.capacity());
 			buffer.putInt(PieceMessage.BASE_SIZE + block.capacity());
-			buffer.put(Message.Type.PIECE.getTypeByte());
+			buffer.put(PeerMessage.Type.PIECE.getTypeByte());
 			buffer.putInt(piece);
 			buffer.putInt(offset);
 			buffer.put(block);
@@ -583,7 +581,7 @@ public abstract class Message {
 	 *
 	 * <len=00013><id=8><piece index><block offset><block length>
 	 */
-	public static class CancelMessage extends Message {
+	public static class CancelMessage extends PeerMessage {
 
 		private static final int BASE_SIZE = 13;
 
@@ -635,7 +633,7 @@ public abstract class Message {
 		public static CancelMessage craft(int piece, int offset, int length) {
 			ByteBuffer buffer = ByteBuffer.allocate(CancelMessage.BASE_SIZE+4);
 			buffer.putInt(CancelMessage.BASE_SIZE);
-			buffer.put(Message.Type.CANCEL.getTypeByte());
+			buffer.put(PeerMessage.Type.CANCEL.getTypeByte());
 			buffer.putInt(piece);
 			buffer.putInt(offset);
 			buffer.putInt(length);

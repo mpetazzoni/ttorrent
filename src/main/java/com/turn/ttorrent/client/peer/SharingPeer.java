@@ -16,7 +16,7 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.client.Message;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 
@@ -84,7 +84,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	private Piece requestedPiece;
 	private int lastRequestedOffset;
-	private BlockingQueue<Message.RequestMessage> requests;
+	private BlockingQueue<PeerMessage.RequestMessage> requests;
 
 	private PeerExchange exchange;
 	private Object exchangeLock;
@@ -163,7 +163,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void choke() {
 		if (!this.choking) {
 			logger.trace("Choking {}", this);
-			this.send(Message.ChokeMessage.craft());
+			this.send(PeerMessage.ChokeMessage.craft());
 			this.choking = true;
 		}
 	}
@@ -179,7 +179,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void unchoke() {
 		if (this.choking) {
 			logger.trace("Unchoking {}", this);
-			this.send(Message.UnchokeMessage.craft());
+			this.send(PeerMessage.UnchokeMessage.craft());
 			this.choking = false;
 		}
 	}
@@ -192,7 +192,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void interesting() {
 		if (!this.interesting) {
 			logger.trace("Telling {} we're interested.", this);
-			this.send(Message.InterestedMessage.craft());
+			this.send(PeerMessage.InterestedMessage.craft());
 			this.interesting = true;
 		}
 	}
@@ -200,7 +200,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void notInteresting() {
 		if (this.interesting) {
 			logger.trace("Telling {} we're no longer interested.", this);
-			this.send(Message.NotInterestedMessage.craft());
+			this.send(PeerMessage.NotInterestedMessage.craft());
 			this.interesting = false;
 		}
 	}
@@ -296,7 +296,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			// Cancel all outgoing requests, and send a NOT_INTERESTED message to
 			// the peer.
 			this.cancelPendingRequests();
-			this.send(Message.NotInterestedMessage.craft());
+			this.send(PeerMessage.NotInterestedMessage.craft());
 		}
 
 		synchronized (this.exchangeLock) {
@@ -325,7 +325,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @param message The message to send to the remote peer through our peer
 	 * exchange.
 	 */
-	public void send(Message message) throws IllegalStateException {
+	public void send(PeerMessage message) throws IllegalStateException {
 		synchronized (this.exchangeLock) {
 			if (this.isBound()) {
 				this.exchange.send(message);
@@ -358,7 +358,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			throw up; // ah ah.
 		}
 
-		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(
+		this.requests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(
 				SharingPeer.MAX_PIPELINED_REQUESTS);
 		this.requestedPiece = piece;
 		this.lastRequestedOffset = 0;
@@ -384,12 +384,13 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		while (this.requests.remainingCapacity() > 0 &&
 				this.lastRequestedOffset < this.requestedPiece.size()) {
-			Message.RequestMessage request = Message.RequestMessage.craft(
+			PeerMessage.RequestMessage request = PeerMessage.RequestMessage
+				.craft(
 					this.requestedPiece.getIndex(),
 					this.lastRequestedOffset,
 					Math.min(this.requestedPiece.size() -
 							this.lastRequestedOffset,
-						Message.RequestMessage.DEFAULT_REQUEST_SIZE));
+						PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
 			this.requests.add(request);
 			this.send(request);
 			this.lastRequestedOffset += request.getLength();
@@ -408,12 +409,13 @@ public class SharingPeer extends Peer implements MessageListener {
 	 *
 	 * @param message The PIECE message received.
 	 */
-	private synchronized void removeBlockRequest(Message.PieceMessage message) {
+	private synchronized void removeBlockRequest(
+		PeerMessage.PieceMessage message) {
 		if (this.requests == null) {
 			return;
 		}
 
-		for (Message.RequestMessage request : this.requests) {
+		for (PeerMessage.RequestMessage request : this.requests) {
 			if (request.getPiece() == message.getPiece() &&
 					request.getOffset() == message.getOffset()) {
 				this.requests.remove(request);
@@ -435,13 +437,13 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * messages is returned.
 	 * </p>
 	 */
-	private synchronized Set<Message.RequestMessage> cancelPendingRequests() {
-		Set<Message.RequestMessage> requests =
-			new HashSet<Message.RequestMessage>();
+	private synchronized Set<PeerMessage.RequestMessage> cancelPendingRequests() {
+		Set<PeerMessage.RequestMessage> requests =
+			new HashSet<PeerMessage.RequestMessage>();
 
 		if (this.requests != null) {
-			for (Message.RequestMessage request : this.requests) {
-				this.send(Message.CancelMessage.craft(request.getPiece(),
+			for (PeerMessage.RequestMessage request : this.requests) {
+				this.send(PeerMessage.CancelMessage.craft(request.getPiece(),
 							request.getOffset(), request.getLength()));
 				requests.add(request);
 			}
@@ -458,7 +460,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @param msg The incoming, parsed message.
 	 */
 	@Override
-	public synchronized void handleMessage(Message msg) {
+	public synchronized void handleMessage(PeerMessage msg) {
 		switch (msg.getType()) {
 			case KEEP_ALIVE:
 				// Nothing to do, we're keeping the connection open anyways.
@@ -481,7 +483,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				break;
 			case HAVE:
 				// Record this peer has the given piece
-				Message.HaveMessage have = (Message.HaveMessage)msg;
+				PeerMessage.HaveMessage have = (PeerMessage.HaveMessage)msg;
 				Piece havePiece = this.torrent.getPiece(have.getPieceIndex());
 
 				synchronized (this.availablePieces) {
@@ -499,7 +501,8 @@ public class SharingPeer extends Peer implements MessageListener {
 				break;
 			case BITFIELD:
 				// Augment the hasPiece bit field from this BITFIELD message
-				Message.BitfieldMessage bitfield = (Message.BitfieldMessage)msg;
+				PeerMessage.BitfieldMessage bitfield =
+					(PeerMessage.BitfieldMessage)msg;
 
 				synchronized (this.availablePieces) {
 					this.availablePieces = bitfield.getBitfield();
@@ -516,7 +519,8 @@ public class SharingPeer extends Peer implements MessageListener {
 				this.fireBitfieldAvailabity();
 				break;
 			case REQUEST:
-				Message.RequestMessage request = (Message.RequestMessage)msg;
+				PeerMessage.RequestMessage request =
+					(PeerMessage.RequestMessage)msg;
 
 				// If we are choking from this peer and it still sends us
 				// requests, it is a violation of the BitTorrent protocol.
@@ -532,7 +536,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				}
 
 				if (request.getLength() >
-						Message.RequestMessage.MAX_REQUEST_SIZE) {
+						PeerMessage.RequestMessage.MAX_REQUEST_SIZE) {
 					logger.warn("Peer {} requested a block too big, " +
 						"terminating exchange.", this);
 					this.unbind(true);
@@ -546,7 +550,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 					ByteBuffer block = p.read(request.getOffset(),
 									request.getLength());
-					this.send(Message.PieceMessage.craft(request.getPiece(),
+					this.send(PeerMessage.PieceMessage.craft(request.getPiece(),
 								request.getOffset(), block));
 					this.upload.add(block.capacity());
 
@@ -564,7 +568,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				// Should we keep track of the requested pieces and act when we
 				// get a piece we didn't ask for, or should we just stay
 				// greedy?
-				Message.PieceMessage piece = (Message.PieceMessage)msg;
+				PeerMessage.PieceMessage piece = (PeerMessage.PieceMessage)msg;
 				Piece p = this.torrent.getPiece(piece.getPiece());
 
 				// Remove the corresponding request from the request to make

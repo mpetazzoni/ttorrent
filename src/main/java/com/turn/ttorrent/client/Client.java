@@ -21,6 +21,7 @@ import com.turn.ttorrent.client.announce.HTTPAnnounce;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.File;
@@ -76,8 +77,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  */
 public class Client extends Observable implements Runnable,
-	   AnnounceResponseListener, IncomingConnectionListener,
-		PeerActivityListener {
+	AnnounceResponseListener, IncomingConnectionListener, PeerActivityListener {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(Client.class);

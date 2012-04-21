@@ -15,8 +15,8 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Message;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -84,7 +84,7 @@ class PeerExchange {
 
 	private IncomingThread in;
 	private OutgoingThread out;
-	private BlockingQueue<Message> sendQueue;
+	private BlockingQueue<PeerMessage> sendQueue;
 	private boolean stop;
 
 	/**
@@ -104,7 +104,7 @@ class PeerExchange {
 		this.socket.setSoTimeout(PeerExchange.KEEP_ALIVE_FOR_MINUTES*60*1000);
 
 		this.listeners = new HashSet<MessageListener>();
-		this.sendQueue = new LinkedBlockingQueue<Message>();
+		this.sendQueue = new LinkedBlockingQueue<PeerMessage>();
 
 		if (!this.peer.hasPeerId()) {
 			throw new IllegalStateException("Peer does not have a " +
@@ -130,7 +130,7 @@ class PeerExchange {
 		// If we have pieces, start by sending a BITFIELD message to the peer.
 		BitSet pieces = this.torrent.getCompletedPieces();
 		if (pieces.cardinality() > 0) {
-			this.send(Message.BitfieldMessage.craft(pieces));
+			this.send(PeerMessage.BitfieldMessage.craft(pieces));
 		}
 	}
 
@@ -160,7 +160,7 @@ class PeerExchange {
 	 *
 	 * @param message The message object to send.
 	 */
-	public void send(Message message) {
+	public void send(PeerMessage message) {
 		try {
 			this.sendQueue.put(message);
 		} catch (InterruptedException ie) {
@@ -244,7 +244,7 @@ class PeerExchange {
 					is.readFully(buffer.array(), 4, buffer.remaining());
 
 					try {
-						Message message = Message.parse(buffer, torrent);
+						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
 
 						for (MessageListener listener : listeners) {
@@ -290,7 +290,7 @@ class PeerExchange {
 				while (!stop || (stop && sendQueue.size() > 0)) {
 					try {
 						// Wait for two minutes for a message to send
-						Message message = sendQueue.poll(
+						PeerMessage message = sendQueue.poll(
 								PeerExchange.KEEP_ALIVE_IDLE_MINUTES,
 								TimeUnit.MINUTES);
 
@@ -299,7 +299,7 @@ class PeerExchange {
 								return;
 							}
 
-							message = Message.KeepAliveMessage.craft();
+							message = PeerMessage.KeepAliveMessage.craft();
 						}
 
 						logger.trace("Sending {} to {}.", message, peer);

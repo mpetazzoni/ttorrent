@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Message;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 
 import java.util.EventListener;
 
@@ -28,5 +28,5 @@ import java.util.EventListener;
  */
 public interface MessageListener extends EventListener {
 
-	public void handleMessage(Message msg);
+	public void handleMessage(PeerMessage msg);
 }
