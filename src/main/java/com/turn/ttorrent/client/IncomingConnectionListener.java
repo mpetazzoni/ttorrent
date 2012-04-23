@@ -15,9 +15,10 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.peer.SharingPeer;
+
 import java.net.Socket;
 import java.util.EventListener;
-
 
 /**
  * EventListener interface for objects that want to handle incoming peer
@@ -28,4 +29,6 @@ import java.util.EventListener;
 public interface IncomingConnectionListener extends EventListener {
 
 	public void handleNewPeerConnection(Socket s, byte[] peerId);
+
+	public void handleFailedConnection(SharingPeer peer, Throwable cause);
 }

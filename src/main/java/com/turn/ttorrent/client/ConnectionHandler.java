@@ -32,6 +32,11 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,13 +83,16 @@ public class ConnectionHandler implements Runnable {
 	public static final int PORT_RANGE_START = 6881;
 	public static final int PORT_RANGE_END = 6889;
 
+	private static final int OUTBOUND_CONNECTIONS_POOL_SIZE = 20;
+	private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 10;
+
 	private SharedTorrent torrent;
 	private String id;
 	private ServerSocket socket;
 	private InetSocketAddress address;
 
 	private Set<IncomingConnectionListener> listeners;
-
+	private ExecutorService executor;
 	private Thread thread;
 	private boolean stop;
 
@@ -133,6 +141,7 @@ public class ConnectionHandler implements Runnable {
 		}
 
 		this.listeners = new HashSet<IncomingConnectionListener>();
+		this.executor = null;
 		this.thread = null;
 	}
 
@@ -164,6 +173,16 @@ public class ConnectionHandler implements Runnable {
 
 		this.stop = false;
 
+		if (this.executor == null || this.executor.isShutdown()) {
+			this.executor = new ThreadPoolExecutor(
+				OUTBOUND_CONNECTIONS_POOL_SIZE,
+				OUTBOUND_CONNECTIONS_POOL_SIZE,
+				OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS,
+				TimeUnit.SECONDS,
+				new LinkedBlockingQueue<Runnable>(),
+				new ConnectorThreadFactory());
+		}
+
 		if (this.thread == null || !this.thread.isAlive()) {
 			this.thread = new Thread(this);
 			this.thread.setName("bt-serve");
@@ -185,6 +204,11 @@ public class ConnectionHandler implements Runnable {
 			this.thread.interrupt();
 		}
 
+		if (this.executor != null && !this.executor.isShutdown()) {
+			this.executor.shutdownNow();
+		}
+
+		this.executor = null;
 		this.thread = null;
 	}
 
@@ -192,14 +216,14 @@ public class ConnectionHandler implements Runnable {
 	 * The main service loop.
 	 *
 	 * <p>
-	 * The service waits for new connections for 250ms, then waits 750ms so it
+	 * The service waits for new connections for 500ms, then waits 500ms so it
 	 * can be interrupted.
 	 * </p>
 	 */
 	@Override
 	public void run() {
 		try {
-			this.socket.setSoTimeout(250);
+			this.socket.setSoTimeout(500);
 		} catch (SocketException se) {
 			logger.warn("{}", se);
 			this.stop();
@@ -216,7 +240,7 @@ public class ConnectionHandler implements Runnable {
 			}
 
 			try {
-				Thread.sleep(750);
+				Thread.sleep(500);
 			} catch (InterruptedException ie) {
 				// Ignore
 			}
@@ -285,55 +309,14 @@ public class ConnectionHandler implements Runnable {
 	 * Connect to the given peer and perform the BitTorrent handshake.
 	 *
 	 * <p>
-	 * Connect to the peer using its defined IP address and port, then execute
-	 * the handshake process to validate the remote peer Id.
-	 * </p>
-	 *
-	 * <p>
-	 * If everything goes according to plan, notify the
-	 * <code>IncomingConnectionListener</code>s with the connected socket and
-	 * the parsed peer ID.
+	 * Submits a {@link ConnectorTask} to the outbound connections thread
+	 * executor.
 	 * </p>
 	 *
 	 * @param peer The peer to connect to.
 	 */
-	public boolean connect(SharingPeer peer) {
-		Socket socket = new Socket();
-		InetSocketAddress address = new InetSocketAddress(peer.getIp(),
-				peer.getPort());
-
-		logger.debug("Connecting to {}...", peer);
-		try {
-			socket.connect(address, 3*1000);
-		} catch (IOException ioe) {
-			// Could not connect to peer, abort
-			logger.warn("Could not connect to {}: {}", peer, ioe.getMessage());
-			return false;
-		}
-
-		try {
-			this.sendHandshake(socket);
-			Handshake hs = this.validateHandshake(socket,
-					(peer.hasPeerId() ? peer.getPeerId().array() : null));
-			this.fireNewPeerConnection(socket, hs.getPeerId());
-			return true;
-		} catch (ParseException pe) {
-			logger.debug("Invalid handshake from {}: {}",
-				this.socketRepr(socket), pe.getMessage());
-			try { socket.close(); } catch (IOException e) { }
-		} catch (IOException ioe) {
-			logger.debug("An error occured while reading an incoming " +
-					"handshake: {}", ioe.getMessage());
-			try {
-				if (!socket.isClosed()) {
-					socket.close();
-				}
-			} catch (IOException e) {
-				// Ignore
-			}
-		}
-
-		return false;
+	public void connect(SharingPeer peer) {
+		this.executor.submit(new ConnectorTask(this, peer));
 	}
 
 	/**
@@ -401,4 +384,79 @@ public class ConnectionHandler implements Runnable {
 			listener.handleNewPeerConnection(socket, peerId);
 		}
 	}
+
+	private void fireFailedConnection(SharingPeer peer, Throwable cause) {
+		for (IncomingConnectionListener listener : this.listeners) {
+			listener.handleFailedConnection(peer, cause);
+		}
+	}
+
+
+	/**
+	 * A simple thread factory that returns appropriately named threads for
+	 * outbound connector threads.
+	 *
+	 * @author mpetazzoni
+	 */
+	private static class ConnectorThreadFactory implements ThreadFactory {
+
+		private int number = 0;
+
+		@Override
+		public Thread newThread(Runnable r) {
+			Thread t = new Thread(r);
+			t.setName("bt-connect-" + ++this.number);
+			return t;
+		}
+	};
+
+
+	/**
+	 * An outbound connection task.
+	 *
+	 * <p>
+	 * These tasks are fed to the thread executor in charge of processing
+	 * outbound connection requests. It attempts to connect to the given peer
+	 * and proceeds with the BitTorrent handshake. If the handshake is
+	 * successful, the new peer connection event is fired to all incoming
+	 * connection listeners. Otherwise, the failed connection event is fired.
+	 * </p>
+	 *
+	 * @author mpetazzoni
+	 */
+	private static class ConnectorTask implements Runnable {
+
+		private final ConnectionHandler handler;
+		private final SharingPeer peer;
+
+		private ConnectorTask(ConnectionHandler handler, SharingPeer peer) {
+			this.handler = handler;
+			this.peer = peer;
+		}
+
+		@Override
+		public void run() {
+			Socket socket = new Socket();
+			InetSocketAddress address =
+				new InetSocketAddress(this.peer.getIp(), this.peer.getPort());
+
+			try {
+				logger.info("Connecting to {}...", this.peer);
+				socket.connect(address, 3*1000);
+
+				this.handler.sendHandshake(socket);
+				Handshake hs = this.handler.validateHandshake(socket,
+					(this.peer.hasPeerId()
+						 ? this.peer.getPeerId().array()
+						 : null));
+				this.handler.fireNewPeerConnection(socket, hs.getPeerId());
+			} catch (IOException ioe) {
+				try { socket.close(); } catch (IOException e) { }
+				this.handler.fireFailedConnection(this.peer, ioe);
+			} catch (ParseException pe) {
+				try { socket.close(); } catch (IOException e) { }
+				this.handler.fireFailedConnection(this.peer, pe);
+			}
+		}
+	};
 }

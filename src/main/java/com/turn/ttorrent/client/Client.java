@@ -640,19 +640,14 @@ public class Client extends Observable implements Runnable,
 				//   - We're not a seeder (we leave the responsibility
 				//	   of connecting to peers that need to download
 				//     something), or we are a seeder but we're still
-				//     willing to initiate some outbound connections.
+				//     willing to initiate some out bound connections.
 				if (peer.isBound() ||
 					(this.isSeed() && this.connected.size() >=
 						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
 					return;
 				}
 
-				if (!this.service.connect(peer)) {
-					logger.debug("Removing peer {}.", peer);
-					this.peers.remove(peer.hasPeerId()
-						? peer.getHexPeerId()
-						: peer.getHostIdentifier());
-				}
+				this.service.connect(peer);
 			}
 		}
 	}
@@ -704,6 +699,24 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
+	/**
+	 * Handle a failed peer connection.
+	 *
+	 * <p>
+	 * If an outbound connection failed (could not connect, invalid handshake,
+	 * etc.), remove the peer from our known peers.
+	 * </p>
+	 *
+	 * @param peer The peer we were trying to connect with.
+	 * @param cause The exception encountered when connecting with the peer.
+	 */
+	@Override
+	public void handleFailedConnection(SharingPeer peer, Throwable cause) {
+		logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
+		this.peers.remove(peer.hasPeerId()
+			? peer.getHexPeerId()
+			: peer.getHostIdentifier());
+	}
 
 	/** PeerActivityListener handler(s). **************************************/
 
@@ -849,7 +862,7 @@ public class Client extends Observable implements Runnable,
 
 		logger.info("Seeding for {} seconds...", this.seed);
 		Timer seedTimer = new Timer();
-		seedTimer.schedule(new StopSeedingTask(this), this.seed*1000);
+		seedTimer.schedule(new ClientShutdown(this), this.seed*1000);
 	}
 
 	/**
@@ -868,11 +881,11 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @author mpetazzoni
 	 */
-	private static class StopSeedingTask extends TimerTask {
+	private static class ClientShutdown extends TimerTask {
 
 		private Client client;
 
-		StopSeedingTask(Client client) {
+		ClientShutdown(Client client) {
 			this.client = client;
 		}
 
@@ -901,6 +914,12 @@ public class Client extends Observable implements Runnable,
 					SharedTorrent.fromFile(
 					new File(args[0]),
 					new File(args.length > 1 ? args[1] : "/tmp")));
+
+			// Set a shutdown hook that will stop the sharing/seeding and send
+			// a STOPPED announce request.
+			Runtime.getRuntime()
+				.addShutdownHook(new Thread(new ClientShutdown(c)));
+
 			c.share();
 			if (ClientState.ERROR.equals(c.getState())) {
 				System.exit(1);
