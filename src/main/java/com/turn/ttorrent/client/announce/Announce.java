@@ -19,6 +19,9 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
+import java.net.UnknownHostException;
+import java.net.UnknownServiceException;
+
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -64,15 +67,36 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	private int interval;
 	private boolean initial;
 
+
 	/**
-	 * Create a new announcer for the given torrent.
+	 * Return the appropriate announcer for the given torrent.
 	 *
 	 * @param torrent The torrent we're announcing about.
-	 * @param id Our client peer ID.
-	 * @param address Our client network address, used to extract our external
-	 * IP and listening port.
+	 * @param peer Our peer specification.
 	 */
-	Announce(SharedTorrent torrent, Peer peer, String type) {
+	public static Announce getAnnounce(SharedTorrent torrent, Peer peer)
+		throws UnknownHostException, UnknownServiceException {
+		String protocol = torrent.getAnnounceUrl().getProtocol();
+
+		if ("http".equals(protocol) || "https".equals(protocol)) {
+			return new HTTPAnnounce(torrent, peer);
+		} /* else if ("udp".equals(protocol)) {
+			return new UDPAnnounce(torrent, peer);
+		} */
+
+		throw new UnknownServiceException(
+			"Unsupported announce protocol: " + protocol + "!");
+	}
+
+	/**
+	 * Initialize the base announce class members for the announcer.
+	 *
+	 * @param torrent The torrent we're announcing about.
+	 * @param peer Our peer specification.
+	 * @param type A string representing the announce type (used in the thread
+	 * name).
+	 */
+	protected Announce(SharedTorrent torrent, Peer peer, String type) {
 		this.torrent = torrent;
 		this.peer = peer;
 		this.type = type;
@@ -80,6 +104,9 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		this.listeners = new HashSet<AnnounceResponseListener>();
 		this.thread = null;
 		this.register(this);
+
+		logger.info("Initialized {} announcer for {} on {}.",
+			new Object[] { this.type, this.peer, this.torrent });
 	}
 
 	/**

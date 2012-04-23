@@ -45,7 +45,7 @@ public class HTTPAnnounce extends Announce {
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our own peer specification.
 	 */
-	public HTTPAnnounce(SharedTorrent torrent, Peer peer) {
+	protected HTTPAnnounce(SharedTorrent torrent, Peer peer) {
 		super(torrent, peer, "http");
 	}
 
