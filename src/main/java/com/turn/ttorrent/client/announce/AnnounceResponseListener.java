@@ -15,7 +15,8 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import java.net.InetSocketAddress;
+import com.turn.ttorrent.common.Peer;
+
 import java.util.EventListener;
 import java.util.List;
 
@@ -30,11 +31,18 @@ public interface AnnounceResponseListener extends EventListener {
 	/**
 	 * Handle an announce response event.
 	 *
-	 * @param leechers The number of leechers on this torrent.
-	 * @param seeders The number of seeders on this torrent.
 	 * @param interval The announce interval requested by the tracker.
-	 * @param peers The list of peers given by the tracker.
+	 * @param complete The number of seeders on this torrent.
+	 * @param incomplete The number of leechers on this torrent.
 	 */
-	public void handleAnnounceResponse(int leechers, int seeders,
-		int interval, List<InetSocketAddress> peers);
+	public void handleAnnounceResponse(int interval, int complete,
+		int incomplete);
+
+	/**
+	 * Handle the discovery of new peers.
+	 *
+	 * @param peers The list of peers discovered (from the announce response or
+	 * any other means like DHT/PEX, etc.).
+	 */
+	public void handleDiscoveredPeers(List<Peer> peers);
 }

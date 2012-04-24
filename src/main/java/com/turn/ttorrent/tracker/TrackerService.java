@@ -17,12 +17,15 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -59,44 +62,12 @@ public class TrackerService implements Container {
 	private static final Logger logger =
 		LoggerFactory.getLogger(TrackerService.class);
 
-	private static final String WILDCARD_IPV4_ADDRESS = "0.0.0.0";
+	private static final String[] NUMERIC_REQUEST_FIELDS = new String[] {
+		"port", "uploaded", "downloaded", "left", "compact", "no_peer_id" };
 
 	private final String version;
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
-	/**
-	 * The various tracker error states.
-	 *
-	 * <p>
-	 * These errors are reported by the tracker to a client when expected
-	 * parameters or conditions are not present while processing an announce
-	 * request from a BitTorrent client.
-	 * </p>
-	 */
-	private enum TrackerError {
-		UNKNOWN_TORRENT("The requested torrent does not exist on this tracker"),
-		MISSING_HASH("Missing info hash"),
-		MISSING_PEER_ID("Missing peer ID"),
-		MISSING_PORT("Missing port"),
-		INVALID_EVENT("Unexpected event for peer state"),
-		NOT_IMPLEMENTED("Feature not implemented");
-
-		private String message;
-
-		TrackerError(String message) {
-			this.message = message;
-		}
-
-		String getMessage() {
-			return this.message;
-		}
-
-		BEValue toBEValue() throws UnsupportedEncodingException {
-			Map<String, BEValue> result = new HashMap<String, BEValue>();
-			result.put("failure reason", new BEValue(this.message, "UTF-8"));
-			return new BEValue(result);
-		}
-	};
 
 	/**
 	 * Create a new TrackerService serving the given torrents.
@@ -151,64 +122,108 @@ public class TrackerService implements Container {
 	/**
 	 * Process the announce request.
 	 *
+	 * <p>
+	 * This method attemps to read and parse the incoming announce request into
+	 * an announce request message, then creates the appropriate announce
+	 * response message and sends it back to the client.
+	 * </p>
+	 *
 	 * @param request The incoming announce request.
 	 * @param response The response object.
 	 * @param body The validated response body output stream.
 	 */
 	private void process(Request request, Response response,
 			OutputStream body) throws IOException {
-		/* Parse the query parameters.
-		 *
-		 * Unfortunately we need to rely on our own parsing function here
-		 * because SimpleHTTP's Query map will contain UTF-8 decoded
-		 * parameters, which doesn't work well for the byte-encoded strings we
-		 * expect.
-		 */
-		Map<String, String> params = this.parseQuery(
-				request.getAddress().toString());
-
 		// Prepare the response headers.
 		response.set("Content-Type", "text/plain");
 		response.set("Server", this.version);
 		response.setDate("Date", System.currentTimeMillis());
 
-		// Validate the announce request coming from the client.
-		TrackerError error = this.validateAnnounceRequest(params);
-		if (error != null) {
-			this.serveError(response, body, Status.BAD_REQUEST, error);
+		/**
+		 * Parse the query parameters into an announce request message.
+		 *
+		 * We need to rely on our own query parsing function because
+		 * SimpleHTTP's Query map will contain UTF-8 decoded parameters, which
+		 * doesn't work well for the byte-encoded strings we expect.
+		 */
+		HTTPAnnounceRequestMessage announceRequest = null;
+		try {
+			announceRequest = this.parseQuery(request);
+		} catch (MessageValidationException mve) {
+			this.serveError(response, body, Status.BAD_REQUEST,
+				mve.getMessage());
 			return;
 		}
 
-		// Make sure we have the peer IP, fallbacking on the request's source
-		// address if the peer didn't provide it.
-		if (!params.containsKey("ip") ||
-			WILDCARD_IPV4_ADDRESS.equals(params.get("ip"))) {
-			params.put("ip", request.getClientAddress().getAddress()
-					.getHostAddress());
-		}
-
-		// Grab the corresponding torrent (validateAnnounceRequest already made
-		// sure we knew about this Torrent)
-		TrackedTorrent torrent = this.torrents.get(params.get("info_hash_hex"));
+		// The requested torrent must be announced by the tracker.
+		TrackedTorrent torrent = this.torrents.get(
+			announceRequest.getHexInfoHash());
 		if (torrent == null) {
-			this.serveError(response, body, Status.INTERNAL_SERVER_ERROR,
-					TrackerError.UNKNOWN_TORRENT);
+			logger.warn("Requested torrent hash was: {}",
+				announceRequest.getHexInfoHash());
+			this.serveError(response, body, Status.BAD_REQUEST,
+				ErrorMessage.FailureReason.UNKNOWN_TORRENT);
 			return;
 		}
 
-		ByteBuffer peerId = ByteBuffer.wrap(params.get("peer_id")
-				.getBytes(TrackedTorrent.BYTE_ENCODING));
+		AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
+		String peerId = announceRequest.getHexPeerId();
+
+		// When no event is specified, it's a periodic update while the client
+		// is operating. If we don't have a peer for this announce, it means
+		// the tracker restarted while the client was running. Consider this
+		// announce request as a 'started' event.
+		if ((event == null ||
+				AnnounceRequestMessage.RequestEvent.NONE.equals(event)) &&
+			torrent.getPeer(peerId) == null) {
+			event = AnnounceRequestMessage.RequestEvent.STARTED;
+		}
+
+		// If an event other than 'started' is specified and we also haven't
+		// seen the peer on this torrent before, something went wrong. A
+		// previous 'started' announce request should have been made by the
+		// client that would have had us register that peer on the torrent this
+		// request refers to.
+		if (event != null && torrent.getPeer(peerId) == null &&
+			!AnnounceRequestMessage.RequestEvent.STARTED.equals(event)) {
+			this.serveError(response, body, Status.BAD_REQUEST,
+				ErrorMessage.FailureReason.INVALID_EVENT);
+			return;
+		}
+
 		// Update the torrent according to the announce event
-		TrackedPeer peer = torrent.update(params.get("event"),
-				peerId, params.get("peer_id_hex"),
-				params.get("ip"), Integer.parseInt(params.get("port")),
-				Long.parseLong(params.get("uploaded")),
-				Long.parseLong(params.get("downloaded")),
-				Long.parseLong(params.get("left"))
-				);
+		TrackedPeer peer = null;
+		try {
+			peer = torrent.update(event,
+				ByteBuffer.wrap(announceRequest.getPeerId()),
+				announceRequest.getHexPeerId(),
+				announceRequest.getIp(),
+				announceRequest.getPort(),
+				announceRequest.getUploaded(),
+				announceRequest.getDownloaded(),
+				announceRequest.getLeft());
+		} catch (IllegalArgumentException iae) {
+			this.serveError(response, body, Status.BAD_REQUEST,
+				ErrorMessage.FailureReason.INVALID_EVENT);
+			return;
+		}
 
 		// Craft and output the answer
-		BEncoder.bencode(torrent.peerAnswerAsBEValue(peer), body);
+		HTTPAnnounceResponseMessage announceResponse = null;
+		try {
+			announceResponse = HTTPAnnounceResponseMessage.craft(
+				torrent.getAnnounceInterval(),
+				TrackedTorrent.MIN_ANNOUNCE_INTERVAL_SECONDS,
+				this.version,
+				torrent.seeders(),
+				torrent.leechers(),
+				torrent.getSomePeers(peer));
+			WritableByteChannel channel = Channels.newChannel(body);
+			channel.write(announceResponse.getData());
+		} catch (Exception e) {
+			this.serveError(response, body, Status.INTERNAL_SERVER_ERROR,
+				e.getMessage());
+		}
 	}
 
 	/**
@@ -230,34 +245,61 @@ public class TrackerService implements Container {
 	 * </p>
 	 *
 	 * @param uri The request's full URI, including query parameters.
-	 * @return A map of key/value pairs representing the query parameters.
+	 * @return The {@link AnnounceRequestMessage} representing the client's
+	 * announce request.
 	 */
-	private Map<String, String> parseQuery(String uri) {
-		Map<String, String> params = new HashMap<String, String>();
+	private HTTPAnnounceRequestMessage parseQuery(Request request)
+		throws IOException, MessageValidationException {
+		Map<String, BEValue> params = new HashMap<String, BEValue>();
 
 		try {
+			String uri = request.getAddress().toString();
 			for (String pair : uri.split("[?]")[1].split("&")) {
 				String[] keyval = pair.split("[=]", 2);
 				if (keyval.length == 1) {
-					params.put(keyval[0], null);
+					this.recordParam(params, keyval[0], null);
 				} else {
-					try {
-						params.put(keyval[0], URLDecoder.decode(keyval[1],
-								TrackedTorrent.BYTE_ENCODING));
-					} catch (UnsupportedEncodingException uee) {
-						// Ignore, act like parameter was not there
-					}
+					this.recordParam(params, keyval[0], keyval[1]);
 				}
 			}
 		} catch (ArrayIndexOutOfBoundsException e) {
 			params.clear();
 		}
 
-		return params;
+		// Make sure we have the peer IP, fallbacking on the request's source
+		// address if the peer didn't provide it.
+		if (params.get("ip") == null) {
+			params.put("ip", new BEValue(
+				request.getClientAddress().getAddress().getHostAddress(),
+				TrackedTorrent.BYTE_ENCODING));
+		}
+
+
+		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
+	}
+
+	private void recordParam(Map<String, BEValue> params, String key,
+		String value) {
+		try {
+			value = URLDecoder.decode(value, TrackedTorrent.BYTE_ENCODING);
+
+			for (String f : NUMERIC_REQUEST_FIELDS) {
+				if (f.equals(key)) {
+					params.put(key, new BEValue(Long.valueOf(value)));
+					return;
+				}
+			}
+
+			params.put(key, new BEValue(value, TrackedTorrent.BYTE_ENCODING));
+		} catch (UnsupportedEncodingException uee) {
+			// Ignore, act like parameter was not there
+			return;
+		}
 	}
 
 	/**
-	 * Write a TrackerError to the response with the given HTTP status code.
+	 * Write a {@link HTTPTrackerErrorMessage} to the response with the given
+	 * HTTP status code.
 	 *
 	 * @param response The HTTP response object.
 	 * @param body The response output stream to write to.
@@ -265,93 +307,45 @@ public class TrackerService implements Container {
 	 * @param error The error reported by the tracker.
 	 */
 	private void serveError(Response response, OutputStream body,
-			Status status, TrackerError error) throws IOException {
+		Status status, HTTPTrackerErrorMessage error) throws IOException {
 		response.setCode(status.getCode());
 		response.setText(status.getDescription());
 		logger.warn("Could not process announce request ({}) !",
-			error.getMessage());
-		BEncoder.bencode(error.toBEValue(), body);
+			error.getReason());
+
+		WritableByteChannel channel = Channels.newChannel(body);
+		channel.write(error.getData());
 	}
 
+	/**
+	 * Write an error message to the response with the given HTTP status code.
+	 *
+	 * @param response The HTTP response object.
+	 * @param body The response output stream to write to.
+	 * @param status The HTTP status code to return.
+	 * @param error The error message reported by the tracker.
+	 */
+	private void serveError(Response response, OutputStream body,
+		Status status, String error) throws IOException {
+		try {
+			this.serveError(response, body, status,
+				HTTPTrackerErrorMessage.craft(error));
+		} catch (MessageValidationException mve) {
+			logger.warn("Could not craft tracker error message!", mve);
+		}
+	}
 
 	/**
-	 * Validates the incoming announce request.
+	 * Write a tracker failure reason code to the response with the given HTTP
+	 * status code.
 	 *
-	 * <p>
-	 * The announce request must follow the BitTorrent protocol and contain a
-	 * certain number of query parameters needed for processing the request.
-	 * This method makes sure everything is present, and otherwise returns the
-	 * appropriate error code as a <em>TrackerError</em> value.
-	 * </p>
-	 *
-	 * @param params The parsed query string.
-	 * @return A <em>TrackerError</em> representing the error, or null if no
-	 * error was detected.
+	 * @param response The HTTP response object.
+	 * @param body The response output stream to write to.
+	 * @param status The HTTP status code to return.
+	 * @param error The failure reason reported by the tracker.
 	 */
-	private TrackerError validateAnnounceRequest(Map<String, String> params) {
-		// Torrent info hash, peer ID and peer port must all be present, and we
-		// must know about the torrent referenced by the provided torrent info
-		// hash.
-		if (!params.containsKey("info_hash")) {
-			return TrackerError.MISSING_HASH;
-		}
-
-		params.put("info_hash_hex", TrackedTorrent
-				.toHexString(params.get("info_hash")));
-		TrackedTorrent torrent = this.torrents.get(params.get("info_hash_hex"));
-		if (torrent == null) {
-			logger.warn("Requested torrent hash was: {}",
-				params.get("info_hash_hex"));
-			return TrackerError.UNKNOWN_TORRENT;
-		}
-
-		if (!params.containsKey("peer_id")) {
-			return TrackerError.MISSING_PEER_ID;
-		}
-		params.put("peer_id_hex", TrackedTorrent
-				.toHexString(params.get("peer_id")));
-
-		if (!params.containsKey("port")) {
-			return TrackerError.MISSING_PORT;
-		}
-
-		// Default 'uploaded' and 'downloaded' to 0 if the client does not
-		// provide it (although it should, according to the spec).
-		if (!params.containsKey("uploaded")) {
-			params.put("uploaded", "0");
-		}
-
-		if (!params.containsKey("downloaded")) {
-			params.put("downloaded", "0");
-		}
-
-		// Default 'left' to -1 to avoid peers entering the COMPLETED state
-		// when they don't provide the 'left' parameter.
-		if (!params.containsKey("left")) {
-			params.put("left", "-1");
-		}
-
-		String event = params.get("event");
-		String peerId = params.get("peer_id_hex");
-
-		// When no event is specified, it's a periodic update while the client
-		// is operating. If we don't have a peer for this announce, it means
-		// the tracker restarted while the client was running. Consider this
-		// announce request as a 'started' event.
-		if (event == null && torrent.getPeer(peerId) == null) {
-			params.put("event", "started");
-		}
-
-		// If an event other than 'started' is specified and we also haven't
-		// seen the peer on this torrent before, something went wrong. A
-		// previous 'started' announce request should have been made by the
-		// client that would have had us register that peer on the torrent this
-		// request refers to.
-		if (event != null && !"started".equals(event) &&
-				torrent.getPeer(peerId) == null) {
-			return TrackerError.INVALID_EVENT;
-		}
-
-		return null;
+	private void serveError(Response response, OutputStream body,
+		Status status, ErrorMessage.FailureReason reason) throws IOException {
+		this.serveError(response, body, status, reason.getMessage());
 	}
 }

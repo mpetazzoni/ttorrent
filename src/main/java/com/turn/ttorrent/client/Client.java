@@ -27,9 +27,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -107,15 +105,12 @@ public class Client extends Observable implements Runnable,
 
 	private SharedTorrent torrent;
 	private ClientState state;
-
-	private String id;
-	private String hexId;
+	private Peer self;
 
 	private Thread thread;
 	private boolean stop;
 	private long seed;
 
-	private InetSocketAddress address;
 	private ConnectionHandler service;
 	private Announce announce;
 	private ConcurrentMap<String, SharingPeer> peers;
@@ -134,28 +129,32 @@ public class Client extends Observable implements Runnable,
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
-		this.id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
+		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
 			.toString().split("-")[4];
-		this.hexId = Torrent.toHexString(this.id);
 
 		// Initialize the incoming connection handler and register ourselves to
 		// it.
-		this.service = new ConnectionHandler(this.torrent, this.id, address);
+		this.service = new ConnectionHandler(this.torrent, id, address);
 		this.service.register(this);
-		this.address = this.service.getSocketAddress();
+
+		this.self = new Peer(
+			this.service.getSocketAddress()
+				.getAddress().getHostAddress(),
+			(short)this.service.getSocketAddress().getPort(),
+			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
-		this.announce = new HTTPAnnounce(this.torrent, this.id, this.address);
+		this.announce = new HTTPAnnounce(this.torrent, this.self);
 		this.announce.register(this);
 
-		logger.info("BitTorrent client [..{}] for {} started and " +
+		logger.info("BitTorrent client [{}] for {} started and " +
 			"listening at {}:{}...",
 			new Object[] {
-				this.hexId.substring(this.hexId.length()-6),
+				this.self.getShortHexPeerId(),
 				this.torrent.getName(),
-				this.address.getAddress().getHostName(),
-				this.address.getPort()
+				this.self.getIp(),
+				this.self.getPort()
 			});
 
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
@@ -164,10 +163,10 @@ public class Client extends Observable implements Runnable,
 	}
 
 	/**
-	 * Get this client's peer ID.
+	 * Get this client's peer specification.
 	 */
-	public String getID() {
-		return this.id;
+	public Peer getPeerSpec() {
+		return this.self;
 	}
 
 	/**
@@ -227,9 +226,8 @@ public class Client extends Observable implements Runnable,
 
 		if (this.thread == null || !this.thread.isAlive()) {
 			this.thread = new Thread(this);
-			this.thread.setName("bt-client(.." +
-					this.hexId.substring(this.hexId.length()-6)
-					.toUpperCase() + ")");
+			this.thread.setName("bt-client(" +
+				this.self.getShortHexPeerId() + ")");
 			this.thread.start();
 		}
 	}
@@ -385,29 +383,23 @@ public class Client extends Observable implements Runnable,
 	public synchronized void info() {
 		float dl = 0;
 		float ul = 0;
-		int choked = 0;
 		for (SharingPeer peer : this.connected.values()) {
 			dl += peer.getDLRate().get();
 			ul += peer.getULRate().get();
-			if (peer.isChoked()) {
-				choked++;
-			}
 		}
 
-		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
-			"({}%, {} requested), {}/{} kB/s.",
+		logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
 			new Object[] {
 				this.getState().name(),
-				choked,
-				this.connected.size(),
-				this.peers.size(),
 				this.torrent.getCompletedPieces().cardinality(),
-				this.torrent.getAvailablePieces().cardinality(),
 				this.torrent.getPieceCount(),
 				String.format("%.2f", this.torrent.getCompletion()),
+				this.torrent.getAvailablePieces().cardinality(),
 				this.torrent.getRequestedPieces().cardinality(),
+				this.connected.size(),
+				this.peers.size(),
 				String.format("%.2f", dl/1024.0),
-				String.format("%.2f", ul/1024.0)
+				String.format("%.2f", ul/1024.0),
 			});
 	}
 
@@ -429,71 +421,56 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
-	private SharingPeer getOrCreatePeer(InetSocketAddress address) {
-		return this.getOrCreatePeer(address, null);
-	}
-
 	/**
-	 * Retrieve a SharingPeer object from the given peer ID, IP address and
-	 * port number.
+	 * Retrieve a SharingPeer object from the given peer specification.
 	 *
 	 * <p>
 	 * This function tries to retrieve an existing peer object based on the
-	 * provided peer ID, or IP+Port if no peer ID is known or given, or
-	 * otherwise instantiates a new one and adds it to our peer repository.
+	 * provided peer specification or otherwise instantiates a new one and adds
+	 * it to our peer repository.
 	 * </p>
 	 *
-	 * @param InetSocketAddress The peer's address (host + port).
-	 * @param peerId The byte-encoded string containing the peer ID. It will be
-	 * converted to its hexadecimal representation to lookup the peer in the
-	 * repository.
+	 * @param search The {@link Peer} specification.
 	 */
-	private SharingPeer getOrCreatePeer(InetSocketAddress address,
-		byte[] peerId) {
-		String ip = address.getAddress().getHostAddress();
-		int port = address.getPort();
-
-		Peer search = new Peer(ip, port,
-			(peerId != null
-				? ByteBuffer.wrap(peerId)
-				: (ByteBuffer)null));
-		SharingPeer peer = null;
+	private SharingPeer getOrCreatePeer(Peer search) {
+		SharingPeer peer;
 
 		synchronized (this.peers) {
-			peer = this.peers.get(search.hasPeerId()
-						? search.getHexPeerId()
-						: search.getHostIdentifier());
-
-			if (peer != null) {
-				return peer;
-			}
-
+			logger.trace("Searching for {}...", search);
 			if (search.hasPeerId()) {
-				peer = this.peers.get(search.getHostIdentifier());
+				peer = this.peers.get(search.getHexPeerId());
 				if (peer != null) {
-					// Set peer ID for perviously known peer.
-					peer.setPeerId(search.getPeerId());
-
-					// Replace the mapping for this peer from its host
-					// identifier to its now known peer ID.
-					this.peers.remove(peer.getHostIdentifier());
-					this.peers.put(peer.getHexPeerId(), peer);
+					logger.trace("Found peer (by peer ID): {}.", peer);
+					this.peers.put(peer.getHostIdentifier(), peer);
+					this.peers.put(search.getHostIdentifier(), peer);
 					return peer;
 				}
 			}
 
-			// Last case, it really didn't exist already, add it, either from
-			// peer ID or host identifier, whatever we have so that we can find
-			// it later.
-			peer = new SharingPeer(ip, port, search.getPeerId(), this.torrent);
-			this.peers.put(peer.hasPeerId()
-					? peer.getHexPeerId()
-					: peer.getHostIdentifier(),
-				peer);
-			logger.trace("Created new peer {}.", peer);
-		}
+			peer = this.peers.get(search.getHostIdentifier());
+			if (peer != null) {
+				if (search.hasPeerId()) {
+					logger.trace("Recording peer ID {} for {}.",
+						search.getHexPeerId(), peer);
+					peer.setPeerId(search.getPeerId());
+					this.peers.put(search.getHexPeerId(), peer);
+				}
 
-		return peer;
+				logger.debug("Found peer (by host ID): {}.", peer);
+				return peer;
+			}
+
+			peer = new SharingPeer(search.getIp(), search.getPort(),
+				search.getPeerId(), this.torrent);
+			logger.trace("Created new peer: {}.", peer);
+
+			this.peers.put(peer.getHostIdentifier(), peer);
+			if (peer.hasPeerId()) {
+				this.peers.put(peer.getHexPeerId(), peer);
+			}
+
+			return peer;
+		}
 	}
 
 	/**
@@ -608,46 +585,51 @@ public class Client extends Observable implements Runnable,
 	/** AnnounceResponseListener handler(s). **********************************/
 
 	/**
-	 * Handle a tracker announce response.
+	 * Handle an announce response event.
 	 *
-	 * <p>
-	 * The torrent's tracker answers each announce request by a response
-	 * containing peers exchanging on this torrent. This information is crucial
-	 * as it is the base to building our peer swarm.
-	 * </p>
-	 *
-	 * @param leechers The number of leechers on this torrent.
-	 * @param seeders The number of seeders on this torrent.
-	 * @param interval The requested announce interval by the tracker.
-	 * @param peers The list of peers received from the tracker.
+	 * @param interval The announce interval requested by the tracker.
+	 * @param complete The number of seeders on this torrent.
+	 * @param incomplete The number of leechers on this torrent.
 	 */
 	@Override
-	public void handleAnnounceResponse(int leechers, int seeders, int interval,
-		List<InetSocketAddress> peers) {
+	public void handleAnnounceResponse(int interval, int complete,
+		int incomplete) {
+		// We're not really interested in all this here.
+	}
+
+	/**
+	 * Handle the discovery of new peers.
+	 *
+	 * @param peers The list of peers discovered (from the announce response or
+	 * any other means like DHT/PEX, etc.).
+	 */
+	@Override
+	public void handleDiscoveredPeers(List<Peer> peers) {
 		if (peers == null || peers.isEmpty()) {
 			// No peers returned by the tracker. Apparently we're alone on
 			// this one for now.
 			return;
 		}
 
-		logger.debug("Got tracker response with {} peer(s).", peers.size());
-		for (InetSocketAddress peerAddress : peers) {
-			SharingPeer peer = this.getOrCreatePeer(peerAddress);
+		logger.info("Got {} peer(s) in tracker response, initiating " +
+			"connections...", peers.size());
+		for (Peer peer : peers) {
+			SharingPeer match = this.getOrCreatePeer(peer);
 
-			synchronized (peer) {
+			synchronized (match) {
 				// Attempt to connect to the peer if and only if:
 				//   - We're not already connected to it;
 				//   - We're not a seeder (we leave the responsibility
 				//	   of connecting to peers that need to download
 				//     something), or we are a seeder but we're still
 				//     willing to initiate some out bound connections.
-				if (peer.isBound() ||
+				if (match.isBound() ||
 					(this.isSeed() && this.connected.size() >=
 						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
 					return;
 				}
 
-				this.service.connect(peer);
+				this.service.connect(match);
 			}
 		}
 	}
@@ -674,12 +656,25 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleNewPeerConnection(Socket s, byte[] peerId) {
-		SharingPeer peer = this.getOrCreatePeer(
-			new InetSocketAddress(s.getInetAddress(), s.getPort()),
-			peerId);
+		Peer search = new Peer(
+			s.getInetAddress().getHostAddress(),
+			s.getPort(),
+			(peerId != null
+				? ByteBuffer.wrap(peerId)
+				: (ByteBuffer)null));
+
+		logger.info("Handling new peer connection with {}...", search);
+		SharingPeer peer = this.getOrCreatePeer(search);
 
 		try {
 			synchronized (peer) {
+				if (peer.isBound()) {
+					logger.info("Already connected with {}, closing link.",
+						peer);
+					s.close();
+					return;
+				}
+
 				peer.register(this);
 				peer.bind(s);
 			}
@@ -692,10 +687,10 @@ public class Client extends Observable implements Runnable,
 					this.connected.size(),
 					this.peers.size()
 				});
-		} catch (SocketException se) {
+		} catch (Exception e) {
 			this.connected.remove(peer.getHexPeerId());
 			logger.warn("Could not handle new peer connection " +
-					"with {}: {}", peer, se.getMessage());
+					"with {}: {}", peer, e.getMessage());
 		}
 	}
 
@@ -713,9 +708,10 @@ public class Client extends Observable implements Runnable,
 	@Override
 	public void handleFailedConnection(SharingPeer peer, Throwable cause) {
 		logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
-		this.peers.remove(peer.hasPeerId()
-			? peer.getHexPeerId()
-			: peer.getHostIdentifier());
+		this.peers.remove(peer.getHostIdentifier());
+		if (peer.hasPeerId()) {
+			this.peers.remove(peer.getHexPeerId());
+		}
 	}
 
 	/** PeerActivityListener handler(s). **************************************/
@@ -774,7 +770,7 @@ public class Client extends Observable implements Runnable,
 					});
 
 				// Send a HAVE message to all connected peers
-				Message have = Message.HaveMessage.craft(piece.getIndex());
+				PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
 				for (SharingPeer remote : this.connected.values()) {
 					remote.send(have);
 				}

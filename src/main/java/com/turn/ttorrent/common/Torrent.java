@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -108,7 +109,7 @@ public class Torrent {
 	private final byte[] info_hash;
 	private final String hex_info_hash;
 
-	private final String announceUrl;
+	private final URL announceUrl;
 	private final String createdBy;
 	private final String name;
 	private final long size;
@@ -131,7 +132,7 @@ public class Torrent {
 	 * available.
 	 */
 	public Torrent(byte[] torrent, File parent, boolean seeder)
-		throws IOException, NoSuchAlgorithmException {
+		throws IOException, MalformedURLException, NoSuchAlgorithmException {
 		this.encoded = torrent;
 		this.seeder = seeder;
 
@@ -145,7 +146,7 @@ public class Torrent {
 		this.info_hash = Torrent.hash(this.encoded_info);
 		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
 
-		this.announceUrl = this.decoded.get("announce").getString();
+		this.announceUrl = new URL(this.decoded.get("announce").getString());
 		this.createdBy = this.decoded.containsKey("created by")
 			? this.decoded.get("created by").getString()
 			: null;
@@ -289,7 +290,7 @@ public class Torrent {
 	/**
 	 * Return the announce URL used by this torrent.
 	 */
-	public String getAnnounceUrl() {
+	public URL getAnnounceUrl() {
 		return this.announceUrl;
 	}
 

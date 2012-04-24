@@ -16,8 +16,9 @@
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,51 +48,21 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	protected static final Logger logger =
 		LoggerFactory.getLogger(Announce.class);
 
-	/** The torrent announced by this announce thread. */
 	protected SharedTorrent torrent;
-
-	/** The peer ID we report to the tracker. */
-	protected String id;
-
-	/** Our client address, to report our IP address and port to the tracker. */
-	protected InetSocketAddress address;
+	protected Peer peer;
+	private String type;
 
 	/** The set of listeners to announce request answers. */
 	private Set<AnnounceResponseListener> listeners;
 
 	/** Announce thread and control. */
-	protected Thread thread;
-	protected boolean stop;
-	protected boolean forceStop;
+	private Thread thread;
+	private boolean stop;
+	private boolean forceStop;
 
 	/** Announce interval, initial 'started' event control. */
-	protected int interval;
-	protected boolean initial;
-
-	/**
-	 * Announce request event types.
-	 *
-	 * <p>
-	 * When the client starts exchanging on a torrent, it must contact the
-	 * torrent's tracker with a 'started' announce request, which notifies the
-	 * tracker this client now exchanges on this torrent (and thus allows the
-	 * tracker to report the existence of this peer to other clients).
-	 * </p>
-	 *
-	 * <p>
-	 * When the client stops exchanging, or when its download completes, it must
-	 * also send a specific announce request. Otherwise, the client must send an
-	 * eventless (NONE), periodic announce request to the tracker at an
-	 * interval specified by the tracker itself, allowing the tracker to
-	 * refresh this peer's status and acknowledge that it is still there.
-	 * </p>
-	 */
-	protected enum AnnounceEvent {
-		NONE,
-		STARTED,
-		STOPPED,
-		COMPLETED;
-	};
+	private int interval;
+	private boolean initial;
 
 	/**
 	 * Create a new announcer for the given torrent.
@@ -101,10 +72,10 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param address Our client network address, used to extract our external
 	 * IP and listening port.
 	 */
-	Announce(SharedTorrent torrent, String id, InetSocketAddress address) {
+	Announce(SharedTorrent torrent, Peer peer, String type) {
 		this.torrent = torrent;
-		this.id = id;
-		this.address = address;
+		this.peer = peer;
+		this.type = type;
 
 		this.listeners = new HashSet<AnnounceResponseListener>();
 		this.thread = null;
@@ -129,7 +100,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 
 		if (this.thread == null || !this.thread.isAlive()) {
 			this.thread = new Thread(this);
-			this.thread.setName("bt-announce");
+			this.thread.setName(String.format("bt-%s-announce", this.type));
 			this.thread.start();
 		}
 	}
@@ -147,6 +118,11 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 
 		if (this.thread != null && this.thread.isAlive()) {
 			this.thread.interrupt();
+			 try {
+				this.thread.join();
+			 } catch (InterruptedException ie) {
+				// Ignore
+			 }
 		}
 
 		this.thread = null;
@@ -158,51 +134,147 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param hard Whether to force stop the announce thread or not, i.e. not
 	 * send the final 'stopped' announce request or not.
 	 */
-	public void stop(boolean hard) {
+	protected void stop(boolean hard) {
 		this.forceStop = hard;
 		this.stop();
 	}
 
 	/**
-	 * Main announce function that will be executed by the announce thread.
-	 * 
+	 * Main announce loop.
+	 *
 	 * <p>
-	 * Subclasses of {@link Announce} should implement this method to provide
-	 * the actual announce mechanism.
+	 * The announce thread starts by making the initial 'started' announce
+	 * request to register on the tracker and get the announce interval value.
+	 * Subsequent announce requests are ordinary, event-less, periodic requests
+	 * for peers.
+	 * </p>
+	 *
+	 * <p>
+	 * Unless forcefully stopped, the announce thread will terminate by sending
+	 * a 'stopped' announce request before stopping.
 	 * </p>
 	 */
 	@Override
-	public abstract void run();
+	public void run() {
+		logger.info("Starting announce loop for " +
+				this.torrent.getName() + " to " +
+				this.torrent.getAnnounceUrl() + "...");
+
+		// Set an initial announce interval to 5 seconds. This will be updated
+		// in real-time by the tracker's responses to our announce requests.
+		this.interval = 5;
+		this.initial = true;
+
+		while (!this.stop) {
+			this.announce(this.initial
+				? TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED
+				: TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE,
+				false);
+			this.initial = false;
+
+			try {
+				logger.trace("Sending next announce in " + this.interval +
+					" seconds.");
+				Thread.sleep(this.interval * 1000);
+			} catch (InterruptedException ie) {
+				// Ignore
+			}
+		}
+
+		if (!this.forceStop) {
+			// Send the final 'stopped' event to the tracker after a little
+			// while.
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException ie) {
+				// Ignore
+			}
+
+			this.announce(
+				TrackerMessage.AnnounceRequestMessage.RequestEvent.STOPPED,
+				true);
+		}
+	}
+
+	/**
+	 * Build, send and process a tracker announce request.
+	 *
+	 * <p>
+	 * This function first builds an announce request for the specified event
+	 * with all the required parameters. Then, the request is made to the
+	 * tracker and the response analyzed.
+	 * </p>
+	 *
+	 * <p>
+	 * All registered {@link AnnounceResponseListener} objects are then fired
+	 * with the decoded payload.
+	 * </p>
+	 *
+	 * @see #announce(AnnounceEvent event)
+	 * @param event The announce event type (can be AnnounceEvent.NONE for
+	 * periodic updates).
+	 * @param inhibitEvent Prevent event listeners from being notified.
+	 */
+	public abstract void announce(
+		TrackerMessage.AnnounceRequestMessage.RequestEvent event,
+		boolean inhibitEvent);
 
 	/**
 	 * Fire the announce response event to all listeners.
 	 *
-	 * @param leechers The number of leechers on this torrent.
-	 * @param seeders The number of seeders on this torrent.
+	 * @param complete The number of seeders on this torrent.
+	 * @param incomplete The number of leechers on this torrent.
 	 * @param interval The announce interval requested by the tracker.
-	 * @param peers The list of peers given by the tracker.
 	 */
-	protected void fireAnnounceResponseEvent(int leechers, int seeders,
-		int interval, List<InetSocketAddress> peers) {
+	protected void fireAnnounceResponseEvent(int complete, int incomplete,
+		int interval) {
 		for (AnnounceResponseListener listener : this.listeners) {
-			listener.handleAnnounceResponse(-1, -1, interval, peers);
+			listener.handleAnnounceResponse(complete, incomplete, interval);
+		}
+	}
+
+	/**
+	 * Fire the new peer discovery event to all listeners.
+	 *
+	 * @param peers The list of peers discovered.
+	 */
+	protected void fireDiscoveredPeersEvent(List<Peer> peers) {
+		for (AnnounceResponseListener listener : this.listeners) {
+			listener.handleDiscoveredPeers(peers);
 		}
 	}
 
 	/** Handle an announce request answer to set the announce interval.
 	 *
-	 * @param leechers The number of leechers on this torrent.
-	 * @param seeders The number of seeders on this torrent.
+	 * @param complete The number of seeders on this torrent.
+	 * @param incomplete The number of leechers on this torrent.
 	 * @param interval The announce interval requested by the tracker.
-	 * @param peers The list of peers given by the tracker.
 	 */
-	public void handleAnnounceResponse(int leechers, int seeders,
-		int interval, List<InetSocketAddress> peers) {
+	@Override
+	public synchronized void handleAnnounceResponse(int complete,
+		int incomplete, int interval) {
 		if (interval <= 0) {
 			this.stop(true);
 			return;
 		}
 
+		if (this.interval == interval) {
+			return;
+		}
+
+		logger.info("Setting announce interval to {}s per tracker request.",
+			this.interval);
 		this.interval = interval;
+	}
+
+	/**
+	 * Handle the discovery of new peers.
+	 *
+	 * @param peers The list of peers discovered (from the announce response or
+	 * any other means like DHT/PEX, etc.).
+	 */
+	@Override
+	public void handleDiscoveredPeers(List<Peer> peers) {
+		// We don't need to do anything with this here.
 	}
 }
