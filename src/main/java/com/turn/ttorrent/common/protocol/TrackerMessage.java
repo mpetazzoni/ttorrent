@@ -303,7 +303,13 @@ public abstract class TrackerMessage {
 
 		public static HTTPTrackerMessage parse(ByteBuffer data)
 			throws IOException, MessageValidationException {
-			Map<String, BEValue> params = BDecoder.bdecode(data).getMap();
+			BEValue decoded = BDecoder.bdecode(data);
+			if (decoded == null) {
+				throw new MessageValidationException(
+					"Could not decode tracker message (not B-encoded?)!");
+			}
+
+			Map<String, BEValue> params = decoded.getMap();
 
 			if (params.containsKey("info_hash")) {
 				return HTTPAnnounceRequestMessage.parse(data);
@@ -486,7 +492,13 @@ public abstract class TrackerMessage {
 
 		public static HTTPAnnounceRequestMessage parse(ByteBuffer data)
 			throws IOException, MessageValidationException {
-			Map<String, BEValue> params = BDecoder.bdecode(data).getMap();
+			BEValue decoded = BDecoder.bdecode(data);
+			if (decoded == null) {
+				throw new MessageValidationException(
+					"Could not decode tracker message (not B-encoded?)!");
+			}
+
+			Map<String, BEValue> params = decoded.getMap();
 
 			if (!params.containsKey("info_hash")) {
 				throw new MessageValidationException(
@@ -682,7 +694,14 @@ public abstract class TrackerMessage {
 
 		public static HTTPAnnounceResponseMessage parse(ByteBuffer data)
 			throws IOException, MessageValidationException {
-			Map<String, BEValue> params = BDecoder.bdecode(data).getMap();
+			BEValue decoded = BDecoder.bdecode(data);
+			if (decoded == null) {
+				throw new MessageValidationException(
+					"Could not decode tracker message (not B-encoded?)!");
+			}
+
+			Map<String, BEValue> params = decoded.getMap();
+
 			try {
 				List<Peer> peers;
 
@@ -835,7 +854,14 @@ public abstract class TrackerMessage {
 
 		public static HTTPTrackerErrorMessage parse(ByteBuffer data)
 			throws IOException, MessageValidationException {
-			Map<String, BEValue> params = BDecoder.bdecode(data).getMap();
+			BEValue decoded = BDecoder.bdecode(data);
+			if (decoded == null) {
+				throw new MessageValidationException(
+					"Could not decode tracker message (not B-encoded?)!");
+			}
+
+			Map<String, BEValue> params = decoded.getMap();
+
 			try {
 				return new HTTPTrackerErrorMessage(
 					data,
