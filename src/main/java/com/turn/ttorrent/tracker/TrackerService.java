@@ -18,6 +18,7 @@ package com.turn.ttorrent.tracker;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.http.*;
 
 import java.io.IOException;
 import java.io.OutputStream;

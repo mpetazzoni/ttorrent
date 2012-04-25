@@ -17,7 +17,8 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.http.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,11 +70,10 @@ public class HTTPAnnounce extends Announce {
 	 * @param inhibitEvents Prevent event listeners from being notified.
 	 */
 	@Override
-	public void announce(TrackerMessage.AnnounceRequestMessage
-		.RequestEvent event, boolean inhibitEvents) {
+	public void announce(AnnounceRequestMessage .RequestEvent event,
+		boolean inhibitEvents) {
 		logger.debug("Announcing " +
-			(!TrackerMessage.AnnounceRequestMessage
-				.RequestEvent.NONE.equals(event)
+			(!AnnounceRequestMessage.RequestEvent.NONE.equals(event)
 				? event.name() + " "
 				: "") +
 			"to tracker with " +
@@ -82,7 +82,7 @@ public class HTTPAnnounce extends Announce {
 			this.torrent.getLeft() + "L bytes..." );
 
 		try {
-			TrackerMessage.HTTPAnnounceRequestMessage request =
+			HTTPAnnounceRequestMessage request =
 				this.buildAnnounceRequest(event);
 
 			// Send announce request (HTTP GET)
@@ -94,14 +94,13 @@ public class HTTPAnnounce extends Announce {
 			baos.write(is);
 
 			// Parse and handle the response
-			TrackerMessage.HTTPTrackerMessage message =
-				TrackerMessage.HTTPTrackerMessage
-					.parse(ByteBuffer.wrap(baos.toByteArray()));
+			HTTPTrackerMessage message =
+				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
 			this.handleTrackerResponse(message, inhibitEvents);
 		} catch (MalformedURLException mue) {
 			logger.error("Invalid tracker announce URL: {}!",
 				mue.getMessage(), mue);
-		} catch (TrackerMessage.MessageValidationException mve) {
+		} catch (MessageValidationException mve) {
 			logger.error("Tracker message violates expected protocol: {}!",
 				mve.getMessage(), mve);
 		} catch (IOException ioe) {
@@ -120,12 +119,12 @@ public class HTTPAnnounce extends Announce {
 	 * @throws IOException
 	 * @throws MessageValidationException
 	 */
-	private TrackerMessage.HTTPAnnounceRequestMessage buildAnnounceRequest(
-		TrackerMessage.AnnounceRequestMessage.RequestEvent event)
+	private HTTPAnnounceRequestMessage buildAnnounceRequest(
+		AnnounceRequestMessage.RequestEvent event)
 		throws UnsupportedEncodingException, IOException,
-			TrackerMessage.MessageValidationException {
+			MessageValidationException {
 		// Build announce request message
-		return TrackerMessage.HTTPAnnounceRequestMessage.craft(
+		return HTTPAnnounceRequestMessage.craft(
 				this.torrent.getInfoHash(),
 				this.peer.getPeerId().array(),
 				this.peer.getPort(),
@@ -134,7 +133,7 @@ public class HTTPAnnounce extends Announce {
 				this.torrent.getLeft(),
 				true, false, event,
 				this.peer.getIp(),
-				TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
+				AnnounceRequestMessage.DEFAULT_NUM_WANT,
 				null, null);
 	}
 
@@ -151,14 +150,14 @@ public class HTTPAnnounce extends Announce {
 	 * @param message The incoming {@link HTTPTrackerMessage}.
 	 * @param inhibitEvents Whether or not to prevent events from being fired.
 	 */
-	private void handleTrackerResponse(
-		TrackerMessage.HTTPTrackerMessage message, boolean inhibitEvents) {
-		if (message instanceof TrackerMessage.ErrorMessage) {
+	private void handleTrackerResponse(HTTPTrackerMessage message,
+		boolean inhibitEvents) {
+		if (message instanceof ErrorMessage) {
 			logger.warn("Error reported by tracker: {}",
-				((TrackerMessage.ErrorMessage)message).getReason());
-		} else if (message instanceof TrackerMessage.AnnounceResponseMessage) {
-			TrackerMessage.AnnounceResponseMessage response =
-				(TrackerMessage.AnnounceResponseMessage)message;
+				((ErrorMessage)message).getReason());
+		} else if (message instanceof AnnounceResponseMessage) {
+			AnnounceResponseMessage response =
+				(AnnounceResponseMessage)message;
 
 			if (inhibitEvents) {
 				return;
