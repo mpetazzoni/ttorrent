@@ -70,7 +70,7 @@ public class HTTPAnnounce extends Announce {
 	 * @param inhibitEvents Prevent event listeners from being notified.
 	 */
 	@Override
-	public void announce(AnnounceRequestMessage .RequestEvent event,
+	public void announce(AnnounceRequestMessage.RequestEvent event,
 		boolean inhibitEvents) {
 		logger.debug("Announcing " +
 			(!AnnounceRequestMessage.RequestEvent.NONE.equals(event)
@@ -135,43 +135,5 @@ public class HTTPAnnounce extends Announce {
 				this.peer.getIp(),
 				AnnounceRequestMessage.DEFAULT_NUM_WANT,
 				null, null);
-	}
-
-	/**
-	 * Handle the response from the tracker.
-	 *
-	 * <p>
-	 * Analyzes the response from the tracker and acts on it. If the response
-	 * is an error, it is logged. Otherwise, the announce response is used
-	 * to fire the corresponding announce and peer events to all announce
-	 * listeners.
-	 * </p>
-	 *
-	 * @param message The incoming {@link HTTPTrackerMessage}.
-	 * @param inhibitEvents Whether or not to prevent events from being fired.
-	 */
-	private void handleTrackerResponse(HTTPTrackerMessage message,
-		boolean inhibitEvents) {
-		if (message instanceof ErrorMessage) {
-			logger.warn("Error reported by tracker: {}",
-				((ErrorMessage)message).getReason());
-		} else if (message instanceof AnnounceResponseMessage) {
-			AnnounceResponseMessage response =
-				(AnnounceResponseMessage)message;
-
-			if (inhibitEvents) {
-				return;
-			}
-
-			this.fireAnnounceResponseEvent(
-				response.getComplete(),
-				response.getIncomplete(),
-				response.getInterval());
-			this.fireDiscoveredPeersEvent(
-				response.getPeers());
-		} else {
-			logger.error("Unexpected tracker message type ({})!",
-				message.getType().name());
-		}
 	}
 }

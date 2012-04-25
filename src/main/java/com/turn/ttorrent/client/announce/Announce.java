@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
 import java.net.UnknownHostException;
 import java.net.UnknownServiceException;
@@ -194,8 +195,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 
 		while (!this.stop) {
 			this.announce(this.initial
-				? TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED
-				: TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE,
+				? AnnounceRequestMessage.RequestEvent.STARTED
+				: AnnounceRequestMessage.RequestEvent.NONE,
 				false);
 			this.initial = false;
 
@@ -217,9 +218,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 				// Ignore
 			}
 
-			this.announce(
-				TrackerMessage.AnnounceRequestMessage.RequestEvent.STOPPED,
-				true);
+			this.announce(AnnounceRequestMessage.RequestEvent.STOPPED, true);
 		}
 	}
 
@@ -243,8 +242,48 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param inhibitEvent Prevent event listeners from being notified.
 	 */
 	public abstract void announce(
-		TrackerMessage.AnnounceRequestMessage.RequestEvent event,
+		AnnounceRequestMessage.RequestEvent event,
 		boolean inhibitEvent);
+
+	/**
+	 * Handle the response from the tracker.
+	 *
+	 * <p>
+	 * Analyzes the response from the tracker and acts on it. If the response
+	 * is an error, it is logged. Otherwise, the announce response is used
+	 * to fire the corresponding announce and peer events to all announce
+	 * listeners.
+	 * </p>
+	 *
+	 * @param message The incoming {@link HTTPTrackerMessage}.
+	 * @param inhibitEvents Whether or not to prevent events from being fired.
+	 */
+	protected void handleTrackerResponse(TrackerMessage message,
+		boolean inhibitEvents) {
+		if (message instanceof ErrorMessage) {
+			ErrorMessage error = (ErrorMessage)message;
+			logger.warn("Error reported by tracker: {}", error.getReason());
+			return;
+		}
+
+		if (! (message instanceof AnnounceResponseMessage)) {
+			logger.error("Unexpected tracker message type ({})!",
+				message.getType().name());
+			return;
+		}
+
+		if (inhibitEvents) {
+			return;
+		}
+
+		AnnounceResponseMessage response = (AnnounceResponseMessage)message;
+		this.fireAnnounceResponseEvent(
+			response.getComplete(),
+			response.getIncomplete(),
+			response.getInterval());
+		this.fireDiscoveredPeersEvent(
+			response.getPeers());
+	}
 
 	/**
 	 * Fire the announce response event to all listeners.

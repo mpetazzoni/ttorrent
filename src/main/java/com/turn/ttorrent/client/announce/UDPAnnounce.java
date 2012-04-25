@@ -18,26 +18,53 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.udp.*;
 
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.channels.UnsupportedAddressTypeException;
+import java.util.Random;
 
 
 /**
  * Announcer for UDP trackers.
  *
+ * <p>
+ * The UDP tracker protocol requires a two-step announce request/response
+ * exchange where the peer is first required to establish a "connection"
+ * with the tracker by sending a connection request message and retreiving
+ * a connection ID from the tracker to use in the following announce
+ * request messages (valid for 2 minutes).
+ * </p>
+ *
+ * <p>
+ * It also contains a backing-off retry mechanism (on a 15*2^n seconds
+ * scheme), in which if the announce request times-out for more than the
+ * connection ID validity period, another connection request/response
+ * exchange must be made before attempting to retransmit the announce
+ * request.
+ * </p>
+ *
  * @author mpetazzoni
  */
 public class UDPAnnounce extends Announce {
+
+	private final DatagramSocket socket;
+	private final Random random;
 
 	/**
 	 * 
 	 * @param torrent
 	 */
 	protected UDPAnnounce(SharedTorrent torrent, Peer peer)
-		throws UnknownHostException {
+		throws SocketException, UnknownHostException {
 		super(torrent, peer, "udp");
 
 		/**
@@ -48,11 +75,35 @@ public class UDPAnnounce extends Announce {
 		if (! (InetAddress.getByName(peer.getIp()) instanceof Inet4Address)) {
 			throw new UnsupportedAddressTypeException();
 		}
+
+		URL announceURL = this.torrent.getAnnounceUrl();
+		this.socket = new DatagramSocket();
+		this.socket.connect(new InetSocketAddress(
+			announceURL.getHost(),
+			announceURL.getPort()));
+		this.random = new Random();
 	}
 
 	@Override
-	public void announce(TrackerMessage.AnnounceRequestMessage
-		.RequestEvent event, boolean inhibitEvents) {
+	public void announce(AnnounceRequestMessage.RequestEvent event,
+		boolean inhibitEvents) {
+		logger.debug("Announcing " +
+			(!AnnounceRequestMessage.RequestEvent.NONE.equals(event)
+				? event.name() + " "
+				: "") +
+			"to tracker with " +
+			this.torrent.getUploaded() + "U/" +
+			this.torrent.getDownloaded() + "D/" +
+			this.torrent.getLeft() + "L bytes..." );
 
+		try {
+			ByteBuffer data = null;
+			UDPTrackerMessage.UDPTrackerResponseMessage message =
+				UDPTrackerMessage.UDPTrackerResponseMessage.parse(data);
+			this.handleTrackerResponse(message, inhibitEvents);
+		} catch (MessageValidationException mve) {
+			logger.error("Tracker message violates expected protocol: {}!",
+				mve.getMessage(), mve);
+		}
 	}
 }
