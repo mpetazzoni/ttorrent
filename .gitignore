@@ -3,7 +3,6 @@
 
 # Ignore build output
 /build/*
-/target/*
 
 # Ignore Javadoc output
 /doc/*
