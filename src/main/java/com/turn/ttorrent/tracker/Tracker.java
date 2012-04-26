@@ -45,7 +45,7 @@ import org.simpleframework.transport.connect.SocketConnection;
  * <p>
  * The tracker usually listens on port 6969 (the standard BitTorrent tracker
  * port). Torrents must be registered directly to this tracker with the
- * <code>announced()</code> method.
+ * {@link #announce(TrackedTorrent torrent)}</code> method.
  * </p>
  *
  * @author mpetazzoni
@@ -187,7 +187,7 @@ public class Tracker {
 	 * instrumenting this Tracker class.
 	 * </p>
 	 *
-	 * @param newTorrent The Torrent object to start tracking.
+	 * @param torrent The Torrent object to start tracking.
 	 * @return The torrent object for this torrent on this tracker. This may be
 	 * different from the supplied Torrent object if the tracker already
 	 * contained a torrent with the same hash.

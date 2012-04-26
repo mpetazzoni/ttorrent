@@ -64,7 +64,6 @@ public class HTTPAnnounce extends Announce {
 	 * with the decoded payload.
 	 * </p>
 	 *
-	 * @see #announce(AnnounceEvent event)
 	 * @param event The announce event type (can be AnnounceEvent.NONE for
 	 * periodic updates).
 	 * @param inhibitEvents Prevent event listeners from being notified.

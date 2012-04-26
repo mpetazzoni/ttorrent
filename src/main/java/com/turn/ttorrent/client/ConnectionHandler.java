@@ -309,8 +309,8 @@ public class ConnectionHandler implements Runnable {
 	 * Connect to the given peer and perform the BitTorrent handshake.
 	 *
 	 * <p>
-	 * Submits a {@link ConnectorTask} to the outbound connections thread
-	 * executor.
+	 * Submits an asynchronous connection task to the outbound connections
+	 * executor to connect to the given peer.
 	 * </p>
 	 *
 	 * @param peer The peer to connect to.

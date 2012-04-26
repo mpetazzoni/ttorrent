@@ -45,14 +45,14 @@ import org.simpleframework.http.core.Container;
  *
  * <p>
  * It only serves announce requests on /announce, and only serves torrents the
- * Tracker knows about.
+ * {@link Tracker} it serves knows about.
  * </p>
  *
  * <p>
- * The list torrents of torrents is a map of torrent hashes to their
- * corresponding Torrent objects, and is maintained by the Tracker this service
- * is part of. The TrackerService only has a reference to this map, and does
- * not modify it.
+ * The list of torrents {@link #torrents} is a map of torrent hashes to their
+ * corresponding Torrent objects, and is maintained by the {@link Tracker} this
+ * service is part of. The TrackerService only has a reference to this map, and
+ * does not modify it.
  * </p>
  *
  * @author mpetazzoni

@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * @author mpetazzoni
- * @see com.turn.ttorrent.client.announce.Announce.AnnounceEvent
+ * @see com.turn.ttorrent.common.protocol.TrackerMessage
  */
 public abstract class Announce implements Runnable, AnnounceResponseListener {
 
@@ -236,7 +236,6 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * with the decoded payload.
 	 * </p>
 	 *
-	 * @see #announce(AnnounceEvent event)
 	 * @param event The announce event type (can be AnnounceEvent.NONE for
 	 * periodic updates).
 	 * @param inhibitEvent Prevent event listeners from being notified.
@@ -255,7 +254,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * listeners.
 	 * </p>
 	 *
-	 * @param message The incoming {@link HTTPTrackerMessage}.
+	 * @param message The incoming {@link TrackerMessage}.
 	 * @param inhibitEvents Whether or not to prevent events from being fired.
 	 */
 	protected void handleTrackerResponse(TrackerMessage message,
