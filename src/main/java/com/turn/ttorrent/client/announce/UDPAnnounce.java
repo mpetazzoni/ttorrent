@@ -86,15 +86,14 @@ public class UDPAnnounce extends Announce {
 
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvents) {
-		logger.debug("Announcing " +
-			(!AnnounceRequestMessage.RequestEvent.NONE.equals(event)
-				? event.name() + " "
-				: "") +
-			"to tracker with " +
-			this.torrent.getUploaded() + "U/" +
-			this.torrent.getDownloaded() + "D/" +
-			this.torrent.getLeft() + "L bytes..." );
+		boolean inhibitEvents) throws AnnounceException {
+		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
+			new Object[] {
+				this.formatAnnounceEvent(event),
+				this.torrent.getUploaded(),
+				this.torrent.getDownloaded(),
+				this.torrent.getLeft()
+			});
 
 		try {
 			ByteBuffer data = null;

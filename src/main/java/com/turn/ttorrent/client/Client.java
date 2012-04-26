@@ -16,11 +16,13 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.announce.Announce;
+import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.File;
@@ -784,6 +786,15 @@ public class Client extends Observable implements Runnable,
 				logger.info("Last piece validated and completed, " +
 						"download is complete.");
 				this.torrent.finish();
+
+				try {
+					this.announce.announce(
+						AnnounceRequestMessage.RequestEvent.COMPLETED, true);
+				} catch (AnnounceException ae) {
+					logger.warn("Error announcing completion event to " +
+						"tracker: {}", ae.getMessage());
+				}
+
 				this.seed();
 			}
 		}

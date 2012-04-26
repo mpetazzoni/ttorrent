@@ -52,9 +52,9 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	protected static final Logger logger =
 		LoggerFactory.getLogger(Announce.class);
 
-	protected SharedTorrent torrent;
-	protected Peer peer;
-	private String type;
+	protected final SharedTorrent torrent;
+	protected final Peer peer;
+	private final String type;
 
 	/** The set of listeners to announce request answers. */
 	private Set<AnnounceResponseListener> listeners;
@@ -64,9 +64,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	private boolean stop;
 	private boolean forceStop;
 
-	/** Announce interval, initial 'started' event control. */
+	/** Announce interval. */
 	private int interval;
-	private boolean initial;
 
 
 	/**
@@ -168,6 +167,39 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	}
 
 	/**
+	 * Build, send and process a tracker announce request.
+	 *
+	 * <p>
+	 * This function first builds an announce request for the specified event
+	 * with all the required parameters. Then, the request is made to the
+	 * tracker and the response analyzed.
+	 * </p>
+	 *
+	 * <p>
+	 * All registered {@link AnnounceResponseListener} objects are then fired
+	 * with the decoded payload.
+	 * </p>
+	 *
+	 * @param event The announce event type (can be AnnounceEvent.NONE for
+	 * periodic updates).
+	 * @param inhibitEvent Prevent event listeners from being notified.
+	 */
+	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
+		boolean inhibitEvent) throws AnnounceException;
+
+	/**
+	 * Formats an announce event into a usable string.
+	 */
+	protected String formatAnnounceEvent(
+		AnnounceRequestMessage.RequestEvent event) {
+		if (!AnnounceRequestMessage.RequestEvent.NONE.equals(event)) {
+			return String.format(" %s", event.name());
+		}
+
+		return "";
+	}
+
+	/**
 	 * Main announce loop.
 	 *
 	 * <p>
@@ -191,58 +223,51 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		// Set an initial announce interval to 5 seconds. This will be updated
 		// in real-time by the tracker's responses to our announce requests.
 		this.interval = 5;
-		this.initial = true;
+
+		AnnounceRequestMessage.RequestEvent event =
+			AnnounceRequestMessage.RequestEvent.STARTED;
 
 		while (!this.stop) {
-			this.announce(this.initial
-				? AnnounceRequestMessage.RequestEvent.STARTED
-				: AnnounceRequestMessage.RequestEvent.NONE,
-				false);
-			this.initial = false;
+			try {
+				this.announce(event, false);
+				event = AnnounceRequestMessage.RequestEvent.NONE;
+			} catch (AnnounceException ae) {
+				logger.warn("Error announcing{}: {}!",
+					this.formatAnnounceEvent(event),
+					ae.getMessage());
+			}
 
 			try {
-				logger.trace("Sending next announce in " + this.interval +
-					" seconds.");
+				logger.trace("Sending next{} announce in {}s...",
+					this.formatAnnounceEvent(event),
+					this.interval);
 				Thread.sleep(this.interval * 1000);
 			} catch (InterruptedException ie) {
 				// Ignore
 			}
 		}
 
+		logger.info("Exited announce loop.");
+
 		if (!this.forceStop) {
 			// Send the final 'stopped' event to the tracker after a little
 			// while.
+			event = AnnounceRequestMessage.RequestEvent.STOPPED;
 			try {
 				Thread.sleep(500);
 			} catch (InterruptedException ie) {
 				// Ignore
 			}
 
-			this.announce(AnnounceRequestMessage.RequestEvent.STOPPED, true);
+			try {
+				this.announce(event, true);
+			} catch (AnnounceException ae) {
+				logger.warn("Error announcing{}: {}!",
+					this.formatAnnounceEvent(event),
+					ae.getMessage());
+			}
 		}
 	}
-
-	/**
-	 * Build, send and process a tracker announce request.
-	 *
-	 * <p>
-	 * This function first builds an announce request for the specified event
-	 * with all the required parameters. Then, the request is made to the
-	 * tracker and the response analyzed.
-	 * </p>
-	 *
-	 * <p>
-	 * All registered {@link AnnounceResponseListener} objects are then fired
-	 * with the decoded payload.
-	 * </p>
-	 *
-	 * @param event The announce event type (can be AnnounceEvent.NONE for
-	 * periodic updates).
-	 * @param inhibitEvent Prevent event listeners from being notified.
-	 */
-	public abstract void announce(
-		AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvent);
 
 	/**
 	 * Handle the response from the tracker.
@@ -258,24 +283,23 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param inhibitEvents Whether or not to prevent events from being fired.
 	 */
 	protected void handleTrackerResponse(TrackerMessage message,
-		boolean inhibitEvents) {
+		boolean inhibitEvents) throws AnnounceException {
 		if (message instanceof ErrorMessage) {
 			ErrorMessage error = (ErrorMessage)message;
-			logger.warn("Error reported by tracker: {}", error.getReason());
-			return;
+			throw new AnnounceException(error.getReason());
 		}
 
 		if (! (message instanceof AnnounceResponseMessage)) {
-			logger.error("Unexpected tracker message type ({})!",
-				message.getType().name());
-			return;
+			throw new AnnounceException("Unexpected tracker message type " +
+				message.getType().name() + "!");
 		}
 
 		if (inhibitEvents) {
 			return;
 		}
 
-		AnnounceResponseMessage response = (AnnounceResponseMessage)message;
+		AnnounceResponseMessage response =
+			(AnnounceResponseMessage)message;
 		this.fireAnnounceResponseEvent(
 			response.getComplete(),
 			response.getIncomplete(),
@@ -309,6 +333,8 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		}
 	}
 
+	/** AnnounceResponseListener handler(s). **********************************/
+
 	/** Handle an announce request answer to set the announce interval.
 	 *
 	 * @param complete The number of seeders on this torrent.
@@ -328,7 +354,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 		}
 
 		logger.info("Setting announce interval to {}s per tracker request.",
-			this.interval);
+			interval);
 		this.interval = interval;
 	}
 

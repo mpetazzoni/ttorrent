@@ -70,15 +70,14 @@ public class HTTPAnnounce extends Announce {
 	 */
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvents) {
-		logger.debug("Announcing " +
-			(!AnnounceRequestMessage.RequestEvent.NONE.equals(event)
-				? event.name() + " "
-				: "") +
-			"to tracker with " +
-			this.torrent.getUploaded() + "U/" +
-			this.torrent.getDownloaded() + "D/" +
-			this.torrent.getLeft() + "L bytes..." );
+		boolean inhibitEvents) throws AnnounceException {
+		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
+			new Object[] {
+				this.formatAnnounceEvent(event),
+				this.torrent.getUploaded(),
+				this.torrent.getDownloaded(),
+				this.torrent.getLeft()
+			});
 
 		try {
 			HTTPAnnounceRequestMessage request =
@@ -97,13 +96,13 @@ public class HTTPAnnounce extends Announce {
 				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
 			this.handleTrackerResponse(message, inhibitEvents);
 		} catch (MalformedURLException mue) {
-			logger.error("Invalid tracker announce URL: {}!",
-				mue.getMessage(), mue);
+			throw new AnnounceException("Invalid announce URL (" +
+				mue.getMessage() + ")", mue);
 		} catch (MessageValidationException mve) {
-			logger.error("Tracker message violates expected protocol: {}!",
-				mve.getMessage(), mve);
+			throw new AnnounceException("Tracker message violates expected " +
+				"protocol (" + mve.getMessage() + ")", mve);
 		} catch (IOException ioe) {
-			logger.error("Error reading from tracker: {}!", ioe.getMessage());
+			throw new AnnounceException(ioe.getMessage(), ioe);
 		}
 	}
 
