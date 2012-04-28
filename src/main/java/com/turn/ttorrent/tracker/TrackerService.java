@@ -370,12 +370,12 @@ public class TrackerService extends SimpleChannelUpstreamHandler {
 			params.put("event", "started");
 		}
 
-		// If an event other than 'started' and 'completed' is specified and we also haven't
+		// If an event other than 'started' is specified and we also haven't
 		// seen the peer on this torrent before, something went wrong. A
 		// previous 'started' announce request should have been made by the
 		// client that would have had us register that peer on the torrent this
 		// request refers to.
-		if (event != null && !"started".equals(event) && !"completed".equals(event)
+		if (event != null && !"started".equals(event)
 				&& torrent.getPeer(peerId) == null) {
 			return TrackerError.INVALID_EVENT;
 		}
