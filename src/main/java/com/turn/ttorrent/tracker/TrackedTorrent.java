@@ -15,24 +15,22 @@
 
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.common.Torrent;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.tracker.impl.InMemoryTorrentPeers;
 
 public class TrackedTorrent extends Torrent {
 
@@ -49,7 +47,7 @@ public class TrackedTorrent extends Torrent {
 	private int announceInterval;
 
 	/** Peers currently exchanging on this torrent. */
-	private ConcurrentMap<String, TrackedPeer> peers;
+	private TorrentPeers peers;
 
 	/** Create a new tracked torrent from metainfo binary data.
 	 *
@@ -63,7 +61,7 @@ public class TrackedTorrent extends Torrent {
 		throws IOException, NoSuchAlgorithmException {
 		super(torrent, null, false);
 
-		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
+		this.peers = new InMemoryTorrentPeers();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;
 		this.announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
 	}
@@ -75,7 +73,7 @@ public class TrackedTorrent extends Torrent {
 
 	/** Returns the map of all peers currently exchanging on this torrent.
 	 */
-	public Map<String, TrackedPeer> getPeers() {
+	public TorrentPeers getPeers() {
 		return this.peers;
 	}
 
@@ -108,7 +106,7 @@ public class TrackedTorrent extends Torrent {
 	 */
 	private int seeders() {
 		int count = 0;
-		for (TrackedPeer peer : this.peers.values()) {
+		for (TrackedPeer peer : this.peers.getPeers()) {
 			if (peer.isCompleted()) {
 				count++;
 			}
@@ -120,7 +118,7 @@ public class TrackedTorrent extends Torrent {
 	 */
 	private int leechers() {
 		int count = 0;
-		for (TrackedPeer peer : this.peers.values()) {
+		for (TrackedPeer peer : this.peers.getPeers()) {
 			if (!peer.isCompleted()) {
 				count++;
 			}
@@ -134,7 +132,7 @@ public class TrackedTorrent extends Torrent {
 	 * usually called by the periodic peer collector of the BitTorrent tracker.
 	 */
 	public void collectUnfreshPeers() {
-		for (TrackedPeer peer : this.peers.values()) {
+		for (TrackedPeer peer : this.peers.getPeers()) {
 			if (!peer.isFresh()) {
 				this.peers.remove(peer.getHexPeerId());
 			}
@@ -222,7 +220,7 @@ public class TrackedTorrent extends Torrent {
 
 		// Extract answerPeers random peers
 		List<TrackedPeer> peers =
-			new ArrayList<TrackedPeer>(this.peers.values());
+			new ArrayList<TrackedPeer>(this.peers.getPeers());
 		Collections.shuffle(peers);
 
 		int count = 0;

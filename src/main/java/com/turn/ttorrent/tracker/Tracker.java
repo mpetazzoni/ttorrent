@@ -15,25 +15,25 @@
 
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.common.Torrent;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
 
+import org.jboss.netty.bootstrap.ServerBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.simpleframework.transport.connect.Connection;
-import org.simpleframework.transport.connect.SocketConnection;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.tracker.impl.InMemoryTorrentsRepository;
 
 /** BitTorrent tracker.
  *
@@ -53,12 +53,15 @@ public class Tracker {
 
 	private Connection connection;
 	private InetSocketAddress address;
-	private Thread tracker;
 	private Thread collector;
 	private boolean stop;
 
 	/** The in-memory repository of torrents tracked. */
-	private ConcurrentMap<String, TrackedTorrent> torrents;
+	private final TorrentsRepository torrents;
+
+	private ServerBootstrap bootstrap;
+
+	private Channel channel;
 
 	/** Create a new BitTorrent tracker on the default port.
 	 *
@@ -81,9 +84,13 @@ public class Tracker {
 	 */
 	public Tracker(InetAddress address, String version, int port)
 		throws IOException {
-		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
-		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
+		this.torrents = new InMemoryTorrentsRepository();
+		bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(
+						Executors.newCachedThreadPool(),
+						Executors.newCachedThreadPool()));
+
+		// Set up the event pipeline factory.
+		bootstrap.setPipelineFactory(new TrackerServerPipelineFactory(new TrackerService(version, torrents)));
 		this.address = new InetSocketAddress(address, port);
 	}
 
@@ -107,10 +114,9 @@ public class Tracker {
 	/** Start the tracker thread.
 	 */
 	public void start() {
-		if (this.tracker == null || !this.tracker.isAlive()) {
-			this.tracker = new TrackerThread();
-			this.tracker.setName("tracker:" + this.address.getPort());
-			this.tracker.start();
+		// Bind and start to accept incoming connections.
+		if(channel == null) {
+			channel = bootstrap.bind(address);
 		}
 
 		if (this.collector == null || !this.collector.isAlive()) {
@@ -127,13 +133,10 @@ public class Tracker {
 	 */
 	public void stop() {
 		this.stop = true;
-
-		try {
-			this.connection.close();
-			logger.info("BitTorrent tracker closed.");
-		} catch (IOException ioe) {
-			logger.error("Could not stop the tracker: {}!", ioe.getMessage());
-		}
+		
+		
+		channel.close();
+		logger.info("BitTorrent tracker closed.");
 
 		if (this.collector != null && this.collector.isAlive()) {
 			this.collector.interrupt();
@@ -225,27 +228,6 @@ public class Tracker {
 		}
 	}
 
-	/** The main tracker thread.
-	 *
-	 * The core of the BitTorrent tracker run by the controller is the
-	 * Simpleframework HTTP service listening on the configured address. It can
-	 * be stopped with the <em>stop()</em> method, which closes the listening
-	 * socket.
-	 */
-	private class TrackerThread extends Thread {
-
-		@Override
-		public void run() {
-			logger.info("Starting BitTorrent tracker on {}...",
-				getAnnounceUrl());
-
-			try {
-				connection.connect(address);
-			} catch (IOException ioe) {
-				logger.error("Could not start the tracker: {}!", ioe.getMessage());
-			}
-		}
-	}
 
 	/** The unfresh peer collector thread.
 	 *
@@ -262,7 +244,7 @@ public class Tracker {
 				getAnnounceUrl());
 
 			while (!stop) {
-				for (TrackedTorrent torrent : torrents.values()) {
+				for (TrackedTorrent torrent : torrents.getTorrents()) {
 					torrent.collectUnfreshPeers();
 				}
 
