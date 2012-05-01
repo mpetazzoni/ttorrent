@@ -21,6 +21,9 @@ import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.udp.*;
 
+import java.io.IOException;
+
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -30,8 +33,8 @@ import java.net.UnknownHostException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.UnsupportedAddressTypeException;
+import java.util.Date;
 import java.util.Random;
-
 
 /**
  * Announcer for UDP trackers.
@@ -56,8 +59,30 @@ import java.util.Random;
  */
 public class UDPAnnounce extends Announce {
 
+	/**
+	 * Back-off timeout uses 15 * 2 ^ n formula.
+	 */
+	private static final int UDP_BASE_TIMEOUT_SECONDS = 15;
+
+	/**
+	 * We don't try more than 8 times (3840 seconds, as per the formula defined
+	 * for the backing-off timeout.
+	 *
+	 * @see #UDP_BASE_TIMEOUT_SECONDS
+	 */
+	private static final int UDP_MAX_TRIES = 8;
+
+	private final InetSocketAddress address;
 	private final DatagramSocket socket;
 	private final Random random;
+
+	private Date lastConnectionTime;
+	private long connectionId;
+
+	private enum State {
+		CONNECT_REQUEST,
+		ANNOUNCE_REQUEST;
+	};
 
 	/**
 	 * 
@@ -77,11 +102,15 @@ public class UDPAnnounce extends Announce {
 		}
 
 		URL announceURL = this.torrent.getAnnounceUrl();
-		this.socket = new DatagramSocket();
-		this.socket.connect(new InetSocketAddress(
+		this.address = new InetSocketAddress(
 			announceURL.getHost(),
-			announceURL.getPort()));
+			announceURL.getPort());
+
+		this.socket = new DatagramSocket();
+		this.socket.connect(this.address);
+
 		this.random = new Random();
+		this.lastConnectionTime = null;
 	}
 
 	@Override
@@ -96,6 +125,20 @@ public class UDPAnnounce extends Announce {
 			});
 
 		try {
+			State state = State.CONNECT_REQUEST;
+			int tries = 0;
+
+			while (tries <= UDP_MAX_TRIES) {
+				if (this.lastConnectionTime != null &&
+					new Date().before(this.lastConnectionTime)) {
+					state = State.ANNOUNCE_REQUEST;
+				}
+
+				tries++;
+			}
+
+
+
 			ByteBuffer data = null;
 			UDPTrackerMessage.UDPTrackerResponseMessage message =
 				UDPTrackerMessage.UDPTrackerResponseMessage.parse(data);
@@ -105,4 +148,11 @@ public class UDPAnnounce extends Announce {
 				mve.getMessage(), mve);
 		}
 	}
+
+	private void send(TrackerMessage message)
+		throws IOException, SocketException {
+		byte[] data = message.getData().array();
+		this.socket.send(new DatagramPacket(data, data.length, this.address));
+	}
+
 }
