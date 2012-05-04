@@ -32,19 +32,15 @@ public class UDPConnectRequestMessage
 	private static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
 	private static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;
 
-	private final long connectionId;
-	private final int actionId;
+	private final long connectionId = UDP_CONNECT_REQUEST_MAGIC;
+	private final int actionId = Type.CONNECT_REQUEST.getId();
 	private final int transactionId;
 
-	private UDPConnectRequestMessage(ByteBuffer data, long connectionId,
-		int actionId, int transactionId) {
+	private UDPConnectRequestMessage(ByteBuffer data, int transactionId) {
 		super(Type.CONNECT_REQUEST, data);
-		this.connectionId = connectionId;
-		this.actionId = actionId;
 		this.transactionId = transactionId;
 	}
 
-	@Override
 	public long getConnectionId() {
 		return this.connectionId;
 	}
@@ -66,34 +62,28 @@ public class UDPConnectRequestMessage
 				"Invalid connect request message size!");
 		}
 
-		long connectionId = data.getLong();
-		if (connectionId != UDP_CONNECT_REQUEST_MAGIC) {
+		if (data.getLong() != UDP_CONNECT_REQUEST_MAGIC) {
 			throw new MessageValidationException(
 				"Invalid connection ID in connection request!");
 		}
 
-		int actionId = data.getInt();
-		if (actionId != Type.CONNECT_REQUEST.getId()) {
+		if (data.getInt() != Type.CONNECT_REQUEST.getId()) {
 			throw new MessageValidationException(
 				"Invalid action code for connection request!");
 		}
 
-		int transactionId = data.getInt();
-
 		return new UDPConnectRequestMessage(data,
-			connectionId,
-			actionId,
-			transactionId);
+			data.getInt() // transactionId
+		);
 	}
 
 	public static UDPConnectRequestMessage craft(int transactionId) {
-		ByteBuffer data = ByteBuffer.allocate(UDP_CONNECT_REQUEST_MESSAGE_SIZE);
+		ByteBuffer data = ByteBuffer
+			.allocate(UDP_CONNECT_REQUEST_MESSAGE_SIZE);
 		data.putLong(UDP_CONNECT_REQUEST_MAGIC);
 		data.putInt(Type.CONNECT_REQUEST.getId());
 		data.putInt(transactionId);
 		return new UDPConnectRequestMessage(data,
-			UDP_CONNECT_REQUEST_MAGIC,
-			Type.CONNECT_REQUEST.getId(),
 			transactionId);
 	}
 }

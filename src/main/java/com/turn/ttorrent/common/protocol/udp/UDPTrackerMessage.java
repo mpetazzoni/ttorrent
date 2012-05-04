@@ -30,6 +30,9 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
 		super(type, data);
 	}
 
+	public abstract int getActionId();
+	public abstract int getTransactionId();
+
 	public static abstract class UDPTrackerRequestMessage
 		extends UDPTrackerMessage {
 
@@ -57,9 +60,9 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
 
 			if (action == Type.CONNECT_REQUEST.getId()) {
 				return UDPConnectRequestMessage.parse(data);
-			} /* else if (action == Type.ANNOUNCE_REQUEST.getId()) {
+			} else if (action == Type.ANNOUNCE_REQUEST.getId()) {
 				return UDPAnnounceRequestMessage.parse(data);
-			} */
+			}
 
 			throw new MessageValidationException("Unknown UDP tracker " +
 				"request message!");
@@ -89,7 +92,6 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
 			int action = data.getInt();
 			data.reset();
 
-			/*
 			if (action == Type.CONNECT_RESPONSE.getId()) {
 				return UDPConnectResponseMessage.parse(data);
 			} else if (action == Type.ANNOUNCE_RESPONSE.getId()) {
@@ -97,7 +99,6 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
 			} else if (action == Type.ERROR.getId()) {
 				return UDPTrackerErrorMessage.parse(data);
 			}
-			*/
 
 			throw new MessageValidationException("Unknown UDP tracker " +
 				"response message!");
