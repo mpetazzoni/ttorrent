@@ -80,9 +80,9 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 
 		if ("http".equals(scheme) || "https".equals(scheme)) {
 			return new HTTPAnnounce(torrent, peer);
-		} /* else if ("udp".equals(protocol)) {
+		} else if ("udp".equals(scheme)) {
 			return new UDPAnnounce(torrent, peer);
-		} */
+		}
 
 		throw new UnknownServiceException(
 			"Unsupported announce scheme: " + scheme + "!");
@@ -145,6 +145,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 
 		if (this.thread != null && this.thread.isAlive()) {
 			this.thread.interrupt();
+			this.close();
 			 try {
 				this.thread.join();
 			 } catch (InterruptedException ie) {
@@ -186,6 +187,18 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 */
 	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
 		boolean inhibitEvent) throws AnnounceException;
+
+	/**
+	 * Close any opened announce connection.
+	 *
+	 * <p>
+	 * This method is called by {@link #stop()} to make sure all connections
+	 * are correctly closed when the announce thread is asked to stop.
+	 * </p>
+	 */
+	protected void close() {
+		// Do nothing by default, but can be overloaded.
+	}
 
 	/**
 	 * Formats an announce event into a usable string.
