@@ -160,6 +160,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException If the torrent file cannot be read or decoded.
 	 * @throws NoSuchAlgorithmException
+	 * @throws URISyntaxException When one of the defined tracker addresses is
+	 * invalid.
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {

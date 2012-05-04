@@ -18,6 +18,7 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,12 +28,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -109,7 +111,9 @@ public class Torrent {
 	private final byte[] info_hash;
 	private final String hex_info_hash;
 
-	private final URL announceUrl;
+	private final List<List<URI>> announce;
+	private final Date creationDate;
+	private final String comment;
 	private final String createdBy;
 	private final String name;
 	private final long size;
@@ -132,7 +136,7 @@ public class Torrent {
 	 * available.
 	 */
 	public Torrent(byte[] torrent, File parent, boolean seeder)
-		throws IOException, MalformedURLException, NoSuchAlgorithmException {
+		throws IOException, NoSuchAlgorithmException {
 		this.encoded = torrent;
 		this.seeder = seeder;
 
@@ -146,7 +150,19 @@ public class Torrent {
 		this.info_hash = Torrent.hash(this.encoded_info);
 		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
 
-		this.announceUrl = new URL(this.decoded.get("announce").getString());
+		// Parse announce information
+		try {
+			this.announce = this.parseAnnounceInformation();
+		} catch (URISyntaxException use) {
+			throw new IOException(use);
+		}
+
+		this.creationDate = this.decoded.containsKey("creation date")
+			? new Date(this.decoded.get("creation date").getLong() * 1000)
+			: null;
+		this.comment = this.decoded.containsKey("comment")
+			? this.decoded.get("comment").getString()
+			: null;
 		this.createdBy = this.decoded.containsKey("created by")
 			? this.decoded.get("created by").getString()
 			: null;
@@ -185,7 +201,22 @@ public class Torrent {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
-		logger.info("  Announced at: {}", this.announceUrl);
+		logger.info("  Announced at:");
+		for (int i=0; i < this.announce.size(); i++) {
+			List<URI> tier = this.announce.get(i);
+			for (int j=0; j < tier.size(); j++) {
+				logger.info("    {}{}",
+					(j == 0 ? String.format("%2d. ", i+1) : "    "),
+					tier.get(j));
+			}
+		}
+
+		if (this.creationDate != null) {
+			logger.info("  Created on..: {}", this.creationDate);
+		}
+		if (this.comment != null) {
+			logger.info("  Comment.....: {}", this.comment);
+		}
 		if (this.createdBy != null) {
 			logger.info("  Created by..: {}", this.createdBy);
 		}
@@ -195,16 +226,57 @@ public class Torrent {
 				this.files.size());
 			int i = 0;
 			for (TorrentFile file : this.files) {
-				logger.debug("  {}. {} ({} byte(s))",
+				logger.debug("    {}. {} ({} byte(s))",
 					new Object[] {
 						String.format("%2d", ++i),
 						file.file.getPath(),
-						file.size
+						String.format("%,d", file.size)
 					});
 			}
 		}
 
-		logger.info("  Total size: {} byte(s)", this.size);
+		logger.info("  Total size..: {} byte(s)",
+			String.format("%,d", this.size));
+	}
+
+	/**
+	 * Parses the announce information from the decoded meta-info structure.
+	 *
+	 * <p>
+	 * If the torrent doesn't define an announce-list, use the mandatory
+	 * announce field value as the single tracker in a single announce tier.
+	 * Otherwise, the announce-list must be parsed and the trackers from each
+	 * tier extracted.
+	 * </p>
+	 *
+	 * @see <a href="http://bittorrent.org/beps/bep_0012.html">BitTorrent BEP#0012 "Multitracker Metadata Extension"</a>
+	 */
+	private List<List<URI>> parseAnnounceInformation()
+		throws InvalidBEncodingException, URISyntaxException {
+		List<List<URI>> list = new ArrayList<List<URI>>();
+
+		if (!this.decoded.containsKey("announce-list")) {
+			List<URI> tier = new ArrayList<URI>();
+			tier.add(new URI(this.decoded.get("announce").getString()));
+			list.add(tier);
+			return list;
+		}
+
+		List<BEValue> tiers = this.decoded.get("announce-list").getList();
+		for (BEValue tv : tiers) {
+			List<BEValue> trackers = tv.getList();
+			if (trackers.isEmpty()) {
+				continue;
+			}
+
+			List<URI> tier = new ArrayList<URI>();
+			for (BEValue tracker : trackers) {
+				tier.add(new URI(tracker.getString()));
+			}
+			list.add(tier);
+		}
+
+		return list;
 	}
 
 	/**
@@ -218,6 +290,13 @@ public class Torrent {
 	 */
 	public String getName() {
 		return this.name;
+	}
+
+	/**
+	 * Get this torrent's comment string.
+	 */
+	public String getComment() {
+		return this.comment;
 	}
 
 	/**
@@ -288,10 +367,12 @@ public class Torrent {
 	}
 
 	/**
-	 * Return the announce URL used by this torrent.
+	 * Return the announce URI used by this torrent.
+	 *
+	 * TODO: complete implementation for BEP#0012 support.
 	 */
-	public URL getAnnounceUrl() {
-		return this.announceUrl;
+	public URI getAnnounceUrl() {
+		return this.announce.get(0).get(0);
 	}
 
 	/**
@@ -439,11 +520,11 @@ public class Torrent {
 	 * </p>
 	 *
 	 * @param source The file to use in the torrent.
-	 * @param announce The announce URL that will be used for this torrent.
+	 * @param announce The announce URI that will be used for this torrent.
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, URL announce, String createdBy)
+	public static Torrent create(File source, URI announce, String createdBy)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
 		return Torrent.create(source, null, announce, createdBy);
 	}
@@ -461,13 +542,13 @@ public class Torrent {
 	 * @param parent The parent directory or location of the torrent files,
 	 * also used as the torrent's name.
 	 * @param files The files to add into this torrent.
-	 * @param announce The announce URL that will be used for this torrent.
+	 * @param announce The announce URI that will be used for this torrent.
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File parent, List<File> files, URL announce,
-		String createdBy)
-		throws NoSuchAlgorithmException, InterruptedException, IOException {
+	public static Torrent create(File parent, List<File> files, URI announce,
+		String createdBy) throws NoSuchAlgorithmException,
+		   InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
 				parent.getName());
@@ -669,7 +750,7 @@ public class Torrent {
 				System.exit(0);
 			}
 
-			URL announce = new URL(args[1]);
+			URI announce = new URI(args[1]);
 			File source = new File(args[2]);
 			if (!source.exists() || !source.canRead()) {
 				throw new IllegalArgumentException(

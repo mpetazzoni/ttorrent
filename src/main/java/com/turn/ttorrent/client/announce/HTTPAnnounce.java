@@ -31,6 +31,9 @@ import java.nio.ByteBuffer;
 import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * Announcer for HTTP trackers.
@@ -39,6 +42,9 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Tracker_Request_Parameters">BitTorrent tracker request specification</a>
  */
 public class HTTPAnnounce extends Announce {
+
+	protected static final Logger logger =
+		LoggerFactory.getLogger(HTTPAnnounce.class);
 
 	/**
 	 * Create a new HTTP announcer for the given torrent.
@@ -84,7 +90,8 @@ public class HTTPAnnounce extends Announce {
 				this.buildAnnounceRequest(event);
 
 			// Send announce request (HTTP GET)
-			URL target = request.buildAnnounceURL(this.torrent.getAnnounceUrl());
+			URL target = request.buildAnnounceURL(
+				this.torrent.getAnnounceUrl().toURL());
 			URLConnection conn = target.openConnection();
 
 			InputStream is = new AutoCloseInputStream(conn.getInputStream());

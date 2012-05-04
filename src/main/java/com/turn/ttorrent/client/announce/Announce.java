@@ -20,6 +20,7 @@ import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.net.UnknownServiceException;
 
@@ -75,17 +76,17 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param peer Our peer specification.
 	 */
 	public static Announce getAnnounce(SharedTorrent torrent, Peer peer)
-		throws UnknownHostException, UnknownServiceException {
-		String protocol = torrent.getAnnounceUrl().getProtocol();
+		throws SocketException, UnknownHostException, UnknownServiceException {
+		String scheme = torrent.getAnnounceUrl().getScheme();
 
-		if ("http".equals(protocol) || "https".equals(protocol)) {
+		if ("http".equals(scheme) || "https".equals(scheme)) {
 			return new HTTPAnnounce(torrent, peer);
 		} /* else if ("udp".equals(protocol)) {
 			return new UDPAnnounce(torrent, peer);
 		} */
 
 		throw new UnknownServiceException(
-			"Unsupported announce protocol: " + protocol + "!");
+			"Unsupported announce scheme: " + scheme + "!");
 	}
 
 	/**

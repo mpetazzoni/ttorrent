@@ -22,7 +22,6 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.udp.*;
 
 import java.io.IOException;
-
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
@@ -30,11 +29,14 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Date;
 import java.util.Random;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Announcer for UDP trackers.
@@ -58,6 +60,9 @@ import java.util.Random;
  * @author mpetazzoni
  */
 public class UDPAnnounce extends Announce {
+
+	protected static final Logger logger =
+		LoggerFactory.getLogger(UDPAnnounce.class);
 
 	/**
 	 * Back-off timeout uses 15 * 2 ^ n formula.
@@ -101,7 +106,7 @@ public class UDPAnnounce extends Announce {
 			throw new UnsupportedAddressTypeException();
 		}
 
-		URL announceURL = this.torrent.getAnnounceUrl();
+		URI announceURL = this.torrent.getAnnounceUrl();
 		this.address = new InetSocketAddress(
 			announceURL.getHost(),
 			announceURL.getPort());
