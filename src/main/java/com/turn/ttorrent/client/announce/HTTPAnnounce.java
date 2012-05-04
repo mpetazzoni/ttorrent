@@ -101,7 +101,7 @@ public class HTTPAnnounce extends Announce {
 			// Parse and handle the response
 			HTTPTrackerMessage message =
 				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
-			this.handleTrackerResponse(message, inhibitEvents);
+			this.handleTrackerAnnounceResponse(message, inhibitEvents);
 		} catch (MalformedURLException mue) {
 			throw new AnnounceException("Invalid announce URL (" +
 				mue.getMessage() + ")", mue);
@@ -138,7 +138,6 @@ public class HTTPAnnounce extends Announce {
 				this.torrent.getLeft(),
 				true, false, event,
 				this.peer.getIp(),
-				AnnounceRequestMessage.DEFAULT_NUM_WANT,
-				null, null);
+				AnnounceRequestMessage.DEFAULT_NUM_WANT);
 	}
 }

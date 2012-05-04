@@ -23,7 +23,6 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.net.UnknownServiceException;
-
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -193,11 +192,9 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 */
 	protected String formatAnnounceEvent(
 		AnnounceRequestMessage.RequestEvent event) {
-		if (!AnnounceRequestMessage.RequestEvent.NONE.equals(event)) {
-			return String.format(" %s", event.name());
-		}
-
-		return "";
+		return AnnounceRequestMessage.RequestEvent.NONE.equals(event)
+			? ""
+			: String.format(" %s", event.name());
 	}
 
 	/**
@@ -271,7 +268,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	}
 
 	/**
-	 * Handle the response from the tracker.
+	 * Handle the announce response from the tracker.
 	 *
 	 * <p>
 	 * Analyzes the response from the tracker and acts on it. If the response
@@ -283,7 +280,7 @@ public abstract class Announce implements Runnable, AnnounceResponseListener {
 	 * @param message The incoming {@link TrackerMessage}.
 	 * @param inhibitEvents Whether or not to prevent events from being fired.
 	 */
-	protected void handleTrackerResponse(TrackerMessage message,
+	protected void handleTrackerAnnounceResponse(TrackerMessage message,
 		boolean inhibitEvents) throws AnnounceException {
 		if (message instanceof ErrorMessage) {
 			ErrorMessage error = (ErrorMessage)message;

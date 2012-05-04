@@ -57,13 +57,11 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 	private final boolean noPeerId;
 	private final RequestEvent event;
 	private final int numWant;
-	private final String key;
-	private final String trackerId;
 
 	private HTTPAnnounceRequestMessage(ByteBuffer data,
 		byte[] infoHash, Peer peer, long uploaded, long downloaded,
 		long left, boolean compact, boolean noPeerId, RequestEvent event,
-		int numWant, String key, String trackerId) {
+		int numWant) {
 		super(Type.ANNOUNCE_REQUEST, data);
 		this.infoHash = infoHash;
 		this.peer = peer;
@@ -74,8 +72,6 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 		this.noPeerId = noPeerId;
 		this.event = event;
 		this.numWant = numWant;
-		this.key = key;
-		this.trackerId = trackerId;
 	}
 
 	@Override
@@ -143,16 +139,6 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 		return this.numWant;
 	}
 
-	@Override
-	public String getKey() {
-		return this.key;
-	}
-
-	@Override
-	public String getTrackerId() {
-		return this.trackerId;
-	}
-
 	/**
 	 * Build the announce request URL for the given tracker announce URL.
 	 *
@@ -186,14 +172,6 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
 		if (this.getIp() != null) {
 			url.append("&ip=").append(this.getIp());
-		}
-
-		if (this.getKey() != null) {
-			url.append("&key=").append(this.getKey());
-		}
-
-		if (this.getTrackerId() != null) {
-			url.append("&trackerid=").append(this.getTrackerId());
 		}
 
 		return new URL(url.toString());
@@ -270,25 +248,14 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
 			RequestEvent event = RequestEvent.NONE;
 			if (params.containsKey("event")) {
-				event = RequestEvent.get(params.get("event")
+				event = RequestEvent.getByName(params.get("event")
 					.getString(Torrent.BYTE_ENCODING));
-			}
-
-			String key = null;
-			if (params.containsKey("key")) {
-				key = params.get("key").getString(Torrent.BYTE_ENCODING);
-			}
-
-			String trackerId = null;
-			if (params.containsKey("trackerid")) {
-				trackerId = params.get("trackerid")
-					.getString(Torrent.BYTE_ENCODING);
 			}
 
 			return new HTTPAnnounceRequestMessage(data, infoHash,
 				new Peer(ip, port, ByteBuffer.wrap(peerId)),
 				downloaded, uploaded, left, compact, noPeerId,
-				event, numWant, key, trackerId);
+				event, numWant);
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException(
 				"Invalid HTTP tracker request!", ibee);
@@ -298,7 +265,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 	public static HTTPAnnounceRequestMessage craft(byte[] infoHash,
 		byte[] peerId, int port, long uploaded, long downloaded, long left,
 		boolean compact, boolean noPeerId, RequestEvent event,
-		String ip, int numWant, String key, String trackerId)
+		String ip, int numWant)
 		throws IOException, MessageValidationException,
 			UnsupportedEncodingException {
 		Map<String, BEValue> params = new HashMap<String, BEValue>();
@@ -325,20 +292,9 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 			params.put("numwant", new BEValue(numWant));
 		}
 
-		if (key != null) {
-			params.put("key",
-				new BEValue(key, Torrent.BYTE_ENCODING));
-		}
-
-		if (trackerId != null) {
-			params.put("trackerid",
-				new BEValue(trackerId, Torrent.BYTE_ENCODING));
-		}
-
 		return new HTTPAnnounceRequestMessage(
 			BEncoder.bencode(params),
 			infoHash, new Peer(ip, port, ByteBuffer.wrap(peerId)),
-			uploaded, downloaded, left, compact, noPeerId, event,
-			numWant, key, trackerId);
+			uploaded, downloaded, left, compact, noPeerId, event, numWant);
 	}
 }

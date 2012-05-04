@@ -121,9 +121,6 @@ public abstract class TrackerMessage {
 	 */
 	public interface ConnectionRequestMessage {
 
-		public long getConnectionId();
-		public int getActionId();
-		public int getTransactionId();
 	};
 
 
@@ -139,9 +136,6 @@ public abstract class TrackerMessage {
 	 */
 	public interface ConnectionResponseMessage {
 
-		public int getActionId();
-		public int getTransactionId();
-		public long getConnectionId();
 	};
 
 
@@ -178,18 +172,36 @@ public abstract class TrackerMessage {
 		 * </p>
 		 */
 		public enum RequestEvent {
-			NONE,
-			STARTED,
-			STOPPED,
-			COMPLETED;
+			NONE(0),
+			COMPLETED(1),
+			STARTED(2),
+			STOPPED(3);
+
+			private final int id;
+			RequestEvent(int id) {
+				this.id = id;
+			}
 
 			public String getEventName() {
 				return this.name().toLowerCase();
 			}
 
-			public static RequestEvent get(String event) {
+			public int getId() {
+				return this.id;
+			}
+
+			public static RequestEvent getByName(String name) {
 				for (RequestEvent type : RequestEvent.values()) {
-					if (type.name().equalsIgnoreCase(event)) {
+					if (type.name().equalsIgnoreCase(name)) {
+						return type;
+					}
+				}
+				return null;
+			}
+
+			public static RequestEvent getById(int id) {
+				for (RequestEvent type : RequestEvent.values()) {
+					if (type.getId() == id) {
 						return type;
 					}
 				}
@@ -211,8 +223,6 @@ public abstract class TrackerMessage {
 
 		public String getIp();
 		public int getNumWant();
-		public String getKey();
-		public String getTrackerId();
 	};
 
 
@@ -229,8 +239,6 @@ public abstract class TrackerMessage {
 	public interface AnnounceResponseMessage {
 
 		public int getInterval();
-		public int getMinInterval();
-		public String getTrackerId();
 		public int getComplete();
 		public int getIncomplete();
 		public List<Peer> getPeers();

@@ -26,6 +26,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -43,19 +44,14 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	implements AnnounceResponseMessage {
 
 	private final int interval;
-	private final int minInterval;
-	private final String trackerId;
 	private final int complete;
 	private final int incomplete;
 	private final List<Peer> peers;
 
 	private HTTPAnnounceResponseMessage(ByteBuffer data,
-		int interval, int minInterval, String trackerId, int complete,
-		int incomplete, List<Peer> peers) {
+		int interval, int complete, int incomplete, List<Peer> peers) {
 		super(Type.ANNOUNCE_RESPONSE, data);
 		this.interval = interval;
-		this.minInterval = minInterval;
-		this.trackerId = trackerId;
 		this.complete = complete;
 		this.incomplete = incomplete;
 		this.peers = peers;
@@ -64,16 +60,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	@Override
 	public int getInterval() {
 		return this.interval;
-	}
-
-	@Override
-	public int getMinInterval() {
-		return this.minInterval;
-	}
-
-	@Override
-	public String getTrackerId() {
-		return this.trackerId;
 	}
 
 	@Override
@@ -116,13 +102,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 
 			return new HTTPAnnounceResponseMessage(data,
 				params.get("interval").getInt(),
-				params.containsKey("min interval")
-					? params.get("min interval").getInt()
-					: -1,
-				params.containsKey("tracker id")
-					? params.get("tracker id")
-						.getString(Torrent.BYTE_ENCODING)
-					: null,
 				params.get("complete").getInt(),
 				params.get("incomplete").getInt(),
 				peers);
@@ -169,7 +148,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 */
 	private static List<Peer> toPeerList(byte[] data)
 		throws InvalidBEncodingException, UnknownHostException {
-		int nPeers = data.length / 6;
 		if (data.length % 6 != 0) {
 			throw new InvalidBEncodingException("Invalid peers " +
 				"binary information string!");
@@ -178,14 +156,14 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 		List<Peer> result = new LinkedList<Peer>();
 		ByteBuffer peers = ByteBuffer.wrap(data);
 
-		for (int i=0; i < nPeers ; i++) {
+		for (int i=0; i < data.length / 6 ; i++) {
 			byte[] ipBytes = new byte[4];
 			peers.get(ipBytes);
 			InetAddress ip = InetAddress.getByAddress(ipBytes);
 			int port =
 				(0xFF & (int)peers.get()) << 8 |
 				(0xFF & (int)peers.get());
-			result.add(new Peer(ip.getHostAddress(), port));
+			result.add(new Peer(new InetSocketAddress(ip, port)));
 		}
 
 		return result;
@@ -206,9 +184,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 		List<Peer> peers) throws IOException, UnsupportedEncodingException {
 		Map<String, BEValue> response = new HashMap<String, BEValue>();
 		response.put("interval", new BEValue(interval));
-		response.put("minInterval", new BEValue(minInterval));
-		response.put("trackerid",
-			new BEValue(trackerId, Torrent.BYTE_ENCODING));
 		response.put("complete", new BEValue(complete));
 		response.put("incomplete", new BEValue(incomplete));
 
@@ -225,7 +200,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 
 		return new HTTPAnnounceResponseMessage(
 			BEncoder.bencode(response),
-			interval, minInterval, trackerId, complete, incomplete,
-			peers);
+			interval, complete, incomplete, peers);
 	}
 }
