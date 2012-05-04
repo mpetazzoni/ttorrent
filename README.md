@@ -15,12 +15,15 @@ Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
 * `BEP#0003`: The BitTorrent protocol specification  
   This is the base official protocol specification, which Ttorrent implements
   fully.
+* `BEP#0015`: UDP Tracker Protocol for BitTorrent  
+  The UDP tracker protocol is fully supported in the BitTorrent client to make
+  announce requests to UDP trackers. UDP tracker support itself is planned.
 * `BEP#0020`: Peer ID conventions  
   Ttorrent uses `TO` as the client identification string, and currently uses
   the `-T00042-` client ID prefix.
 * `BEP#0023`: Tracker Returns Compact Peer Lists  
   Compact peer lists are supported in both the client and the tracker.
-  Currently the tracker does not support sending back non-compact peer lists
+  Currently the tracker only supports sending back compact peer lists
   to an announce request.
 
 History
