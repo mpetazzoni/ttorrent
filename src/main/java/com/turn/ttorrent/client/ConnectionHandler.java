@@ -449,6 +449,8 @@ public class ConnectionHandler implements Runnable {
 					(this.peer.hasPeerId()
 						 ? this.peer.getPeerId().array()
 						 : null));
+				logger.info("Handshaked with {}, peer ID is {}.",
+					this.peer, Torrent.byteArrayToHexString(hs.getPeerId()));
 				this.handler.fireNewPeerConnection(socket, hs.getPeerId());
 			} catch (IOException ioe) {
 				try { socket.close(); } catch (IOException e) { }
