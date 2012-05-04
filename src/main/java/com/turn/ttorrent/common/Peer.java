@@ -18,7 +18,7 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.common.Torrent;
 
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 
@@ -34,8 +34,7 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
-	private final String ip;
-	private final int port;
+	private final InetSocketAddress address;
 	private final String hostId;
 
 	private ByteBuffer peerId;
@@ -44,11 +43,20 @@ public class Peer {
 	/**
 	 * Instantiate a new peer.
 	 *
+	 * @param address The peer's address, with port.
+	 */
+	public Peer(InetSocketAddress address) {
+		this(address, null);
+	}
+
+	/**
+	 * Instantiate a new peer.
+	 *
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
 	 */
 	public Peer(String ip, int port) {
-		this(ip, port, null);
+		this(new InetSocketAddress(ip, port), null);
 	}
 
 	/**
@@ -59,9 +67,20 @@ public class Peer {
 	 * @param peerId The byte-encoded peer ID.
 	 */
 	public Peer(String ip, int port, ByteBuffer peerId) {
-		this.ip = ip;
-		this.port = port;
-		this.hostId = String.format("%s:%d", ip, port);
+		this(new InetSocketAddress(ip, port), peerId);
+	}
+
+	/**
+	 * Instantiate a new peer.
+	 *
+	 * @param address The peer's address, with port.
+	 * @param peerId The byte-encoded peer ID.
+	 */
+	public Peer(InetSocketAddress address, ByteBuffer peerId) {
+		this.address = address;
+		this.hostId = String.format("%s:%d",
+			this.address.getAddress(),
+			this.address.getPort());
 
 		this.setPeerId(peerId);
 	}
@@ -114,14 +133,21 @@ public class Peer {
 	 * Returns this peer's IP address.
 	 */
 	public String getIp() {
-		return this.ip;
+		return this.address.getAddress().getHostAddress();
+	}
+
+	/**
+	 * Returns this peer's InetAddress.
+	 */
+	public InetAddress getAddress() {
+		return this.address.getAddress();
 	}
 
 	/**
 	 * Returns this peer's port number.
 	 */
 	public int getPort() {
-		return this.port;
+		return this.address.getPort();
 	}
 
 	/**
@@ -135,11 +161,7 @@ public class Peer {
 	 * Returns a binary representation of the peer's IP.
 	 */
 	public byte[] getRawIp() {
-		try {
-			return InetAddress.getByName(this.ip).getAddress();
-		} catch (UnknownHostException uhe) {
-			return null;
-		}
+		return this.address.getAddress().getAddress();
 	}
 
 	/**
@@ -147,7 +169,7 @@ public class Peer {
 	 */
 	public String toString() {
 		StringBuilder s = new StringBuilder("peer://")
-			.append(this.ip).append(":").append(this.port)
+			.append(this.getIp()).append(":").append(this.getPort())
 			.append("/");
 
 		if (this.hasPeerId()) {
