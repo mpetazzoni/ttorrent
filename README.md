@@ -15,6 +15,9 @@ Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
 * `BEP#0003`: The BitTorrent protocol specification  
   This is the base official protocol specification, which Ttorrent implements
   fully.
+* `BEP#0012`: Multi-tracker metadata extension  
+  Full support for the `announce-list` meta-info key providing a tiered tracker
+  list.
 * `BEP#0015`: UDP Tracker Protocol for BitTorrent  
   The UDP tracker protocol is fully supported in the BitTorrent client to make
   announce requests to UDP trackers. UDP tracker support itself is planned.
