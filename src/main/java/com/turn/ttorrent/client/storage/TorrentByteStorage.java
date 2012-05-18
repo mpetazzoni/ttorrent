@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 
-/** Abstract torrent byte storage.
+/**
+ * Abstract torrent byte storage.
  *
  * <p>
  * This interface defines the methods for accessing an abstracted torrent byte
@@ -37,10 +38,13 @@ public interface TorrentByteStorage {
 
 	public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
-	/** Returns the total size of the torrent storage. */
+	/**
+	 * Returns the total size of the torrent storage.
+	 */
 	public long size();
 
-	/** Read from the byte storage.
+	/**
+	 * Read from the byte storage.
 	 *
 	 * <p>
 	 * Read {@code length} bytes at offset {@code offset} from the underlying
@@ -57,7 +61,8 @@ public interface TorrentByteStorage {
 	 */
 	public int read(ByteBuffer buffer, long offset) throws IOException;
 
-	/** Write bytes to the byte storage.
+	/**
+	 * Write bytes to the byte storage.
 	 *
 	 * <p>
 	 * </p>
@@ -73,14 +78,16 @@ public interface TorrentByteStorage {
 	 */
 	public int write(ByteBuffer block, long offset) throws IOException;
 
-	/** Close this byte storage.
+	/**
+	 * Close this byte storage.
 	 *
 	 * @throws IOException If closing the underlying storage (file(s) ?)
 	 * failed.
 	 */
 	public void close() throws IOException;
 
-	/** Finalize the byte storage when the download is complete.
+	/**
+	 * Finalize the byte storage when the download is complete.
 	 *
 	 * <p>
 	 * This gives the byte storage the opportunity to perform finalization
@@ -92,7 +99,8 @@ public interface TorrentByteStorage {
 	 */
 	public void finish() throws IOException;
 
-	/** Tells whether this byte storage has been finalized.
+	/**
+	 * Tells whether this byte storage has been finalized.
 	 */
 	public boolean isFinished();
 }

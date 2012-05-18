@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -47,7 +47,9 @@ import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A torrent shared by the BitTorrent client.
+
+/**
+ * A torrent shared by the BitTorrent client.
  *
  * <p>
  * The {@link SharedTorrent} class extends the Torrent class with all the data
@@ -88,10 +90,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private BitSet completedPieces;
 	private BitSet requestedPieces;
 
-	/** Create a new shared torrent from a base Torrent object.
+	/**
+	 * Create a new shared torrent from a base Torrent object.
 	 *
+	 * <p>
 	 * This will recreate a SharedTorrent object from the provided Torrent
 	 * object's encoded meta-info data.
+	 * </p>
 	 *
 	 * @param torrent The Torrent object.
 	 * @param destDir The destination directory or location of the torrent
@@ -106,10 +111,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this(torrent, destDir, false);
 	}
 
-	/** Create a new shared torrent from a base Torrent object.
+	/**
+	 * Create a new shared torrent from a base Torrent object.
 	 *
+	 * <p>
 	 * This will recreate a SharedTorrent object from the provided Torrent
 	 * object's encoded meta-info data.
+	 * </p>
 	 *
 	 * @param torrent The Torrent object.
 	 * @param destDir The destination directory or location of the torrent
@@ -126,9 +134,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this(torrent.getEncoded(), destDir, seeder);
 	}
 
-	/** Create a new shared torrent from metainfo binary data.
+	/**
+	 * Create a new shared torrent from meta-info binary data.
 	 *
-	 * @param torrent The metainfo byte data.
+	 * @param torrent The meta-info byte data.
 	 * @param destDir The destination directory or location of the torrent
 	 * files.
 	 * @throws FileNotFoundException If the torrent file location or
@@ -140,9 +149,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this(torrent, destDir, false);
 	}
 
-	/** Create a new shared torrent from metainfo binary data.
+	/**
+	 * Create a new shared torrent from meta-info binary data.
 	 *
-	 * @param torrent The metainfo byte data.
+	 * @param torrent The meta-info byte data.
 	 * @param parent The parent directory or location the torrent files.
 	 * @param seeder Whether we're a seeder for this torrent or not (disables
 	 * validation).
@@ -150,6 +160,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException If the torrent file cannot be read or decoded.
 	 * @throws NoSuchAlgorithmException
+	 * @throws URISyntaxException When one of the defined tracker addresses is
+	 * invalid.
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
@@ -206,7 +218,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.requestedPieces = new BitSet();
 	}
 
-	/** Create a new shared torrent from the given torrent file.
+	/**
+	 * Create a new shared torrent from the given torrent file.
 	 *
 	 * @param source The <code>.torrent</code> file to read the torrent
 	 * meta-info from.
@@ -223,40 +236,48 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return new SharedTorrent(data, parent);
 	}
 
-	/** Get the number of bytes uploaded for this torrent.
+	/**
+	 * Get the number of bytes uploaded for this torrent.
 	 */
 	public long getUploaded() {
 		return this.uploaded;
 	}
 
-	/** Get the number of bytes downloaded for this torrent.
+	/**
+	 * Get the number of bytes downloaded for this torrent.
 	 *
+	 * <p>
 	 * <b>Note:</b> this could be more than the torrent's length, and should
 	 * not be used to determine a completion percentage.
+	 * </p>
 	 */
 	public long getDownloaded() {
 		return this.downloaded;
 	}
 
-	/** Get the number of bytes left to download for this torrent.
+	/**
+	 * Get the number of bytes left to download for this torrent.
 	 */
 	public long getLeft() {
 		return this.left;
 	}
 
-	/** Tells whether this torrent has been fully initialized yet.
+	/**
+	 * Tells whether this torrent has been fully initialized yet.
 	 */
 	public boolean isInitialized() {
 		return this.initialized;
 	}
 
-	/** Stop the torrent initialization as soon as possible.
+	/**
+	 * Stop the torrent initialization as soon as possible.
 	 */
 	public void stop() {
 		this.stop = true;
 	}
 
-	/** Build this torrent's pieces array.
+	/**
+	 * Build this torrent's pieces array.
 	 *
 	 * <p>
 	 * Hash and verify any potentially present local data and create this
@@ -350,7 +371,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 	}
 
-	/** Retrieve a piece object by index.
+	/**
+	 * Retrieve a piece object by index.
 	 *
 	 * @param index The index of the piece in this torrent.
 	 */
@@ -366,7 +388,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return this.pieces[index];
 	}
 
-	/** Get the number of pieces in this torrent.
+	/**
+	 * Get the number of pieces in this torrent.
 	 */
 	public int getPieceCount() {
 		if (this.pieces == null) {
@@ -377,10 +400,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	}
 
 
-	/** Return a copy of the bitfield of available pieces for this torrent.
+	/**
+	 * Return a copy of the bit field of available pieces for this torrent.
 	 *
+	 * <p>
 	 * Available pieces are pieces available in the swarm, and it does not
 	 * include our own pieces.
+	 * </p>
 	 */
 	public BitSet getAvailablePieces() {
 		if (!this.isInitialized()) {
@@ -400,7 +426,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return availablePieces;
 	}
 
-	/** Return a copy of the completed pieces bitset.
+	/**
+	 * Return a copy of the completed pieces bitset.
 	 */
 	public BitSet getCompletedPieces() {
 		if (!this.isInitialized()) {
@@ -412,7 +439,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 	}
 
-	/** Return a copy of the requested pieces bitset.
+	/**
+	 * Return a copy of the requested pieces bitset.
 	 */
 	public BitSet getRequestedPieces() {
 		if (!this.isInitialized()) {
@@ -424,7 +452,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 	}
 
-	/** Tells whether this torrent has been fully downloaded, or is fully
+	/**
+	 * Tells whether this torrent has been fully downloaded, or is fully
 	 * available locally.
 	 */
 	public synchronized boolean isComplete() {
@@ -432,7 +461,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.completedPieces.cardinality() == this.pieces.length;
 	}
 
-	/** Finalize the download of this torrent.
+	/**
+	 * Finalize the download of this torrent.
 	 *
 	 * <p>
 	 * This realizes the final, pre-seeding phase actions on this torrent,
@@ -458,10 +488,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		return this.isComplete() && this.bucket.isFinished();
 	}
 
-	/** Return the completion percentage of this torrent.
+	/**
+	 * Return the completion percentage of this torrent.
 	 *
+	 * <p>
 	 * This is computed from the number of completed pieces divided by the
 	 * number of pieces in this torrent, times 100.
+	 * </p>
 	 */
 	public float getCompletion() {
 		return this.isInitialized()
@@ -470,7 +503,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			: 0.0f;
 	}
 
-	/** Mark a piece as completed, decremeting the piece size in bytes from our
+	/**
+	 * Mark a piece as completed, decrementing the piece size in bytes from our
 	 * left bytes to download counter.
 	 */
 	public synchronized void markCompleted(Piece piece) {
@@ -486,11 +520,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	/** PeerActivityListener handler(s). *************************************/
 
-	/** Peer choked handler.
+	/**
+	 * Peer choked handler.
 	 *
+	 * <p>
 	 * When a peer chokes, the requests made to it are canceled and we need to
 	 * mark the eventually piece we requested from it as available again for
 	 * download tentative from another peer.
+	 * </p>
 	 *
 	 * @param peer The peer that choked.
 	 */
@@ -511,10 +548,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			});
 	}
 
-	/** Peer ready handler.
+	/**
+	 * Peer ready handler.
 	 *
+	 * <p>
 	 * When a peer becomes ready to accept piece block requests, select a piece
 	 * to download and go for it.
+	 * </p>
 	 *
 	 * @param peer The peer that became ready.
 	 */
@@ -569,10 +609,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		peer.downloadPiece(chosen);
 	}
 
-	/** Piece availability handler.
+	/**
+	 * Piece availability handler.
 	 *
+	 * <p>
 	 * Handle updates in piece availability from a peer's HAVE message. When
 	 * this happens, we need to mark that piece as available from the peer.
+	 * </p>
 	 *
 	 * @param peer The peer we got the update from.
 	 * @param piece The piece that became available.
@@ -607,15 +650,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 	}
 
-	/** Bitfield availability handler.
+	/**
+	 * Bit field availability handler.
 	 *
+	 * <p>
 	 * Handle updates in piece availability from a peer's BITFIELD message.
 	 * When this happens, we need to mark in all the pieces the peer has that
 	 * they can be reached through this peer, thus augmenting the global
 	 * availability of pieces.
+	 * </p>
 	 *
 	 * @param peer The peer we got the update from.
-	 * @param availablePieces The pieces availability bitfield of the peer.
+	 * @param availablePieces The pieces availability bit field of the peer.
 	 */
 	@Override
 	public synchronized void handleBitfieldAvailability(SharingPeer peer,
@@ -649,12 +695,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			});
 	}
 
-	/** Piece upload completion handler.
+	/**
+	 * Piece upload completion handler.
 	 *
+	 * <p>
 	 * When a piece has been sent to a peer, we just record that we sent that
 	 * many bytes. If the piece is valid on the peer's side, it will send us a
 	 * HAVE message and we'll record that the piece is available on the peer at
 	 * that moment (see <code>handlePieceAvailability()</code>).
+	 * </p>
 	 *
 	 * @param peer The peer we got this piece from.
 	 * @param piece The piece in question.
@@ -665,10 +714,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.uploaded += piece.size();
 	}
 
-	/** Piece download completion handler.
+	/**
+	 * Piece download completion handler.
 	 *
+	 * <p>
 	 * If the complete piece downloaded is valid, we can record in the torrent
-	 * completedPieces bitfield that we know have this piece.
+	 * completedPieces bit field that we know have this piece.
+	 * </p>
 	 *
 	 * @param peer The peer we got this piece from.
 	 * @param piece The piece in question.
@@ -697,10 +749,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			});
 	}
 
-	/** Peer disconnection handler.
+	/**
+	 * Peer disconnection handler.
 	 *
-	 * When a peer disconnect, we need to mark in all of the pieces it had
+	 * <p>
+	 * When a peer disconnects, we need to mark in all of the pieces it had
 	 * available that they can't be reached through this peer anymore.
+	 * </p>
 	 *
 	 * @param peer The peer we got this piece from.
 	 */

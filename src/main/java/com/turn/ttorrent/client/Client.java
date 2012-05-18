@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,31 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.client.announce.Announce;
+import com.turn.ttorrent.client.announce.AnnounceException;
+import com.turn.ttorrent.client.announce.AnnounceResponseListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.text.ParseException;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Observable;
 import java.util.Random;
 import java.util.Set;
@@ -53,7 +51,9 @@ import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A pure-java BitTorrent client.
+
+/**
+ * A pure-java BitTorrent client.
  *
  * <p>
  * A BitTorrent client in its bare essence shares a given torrent. If the
@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * simple to use. First, initialize a ShareTorrent object from a torrent
  * meta-info source (either a file or a byte array, see
  * com.turn.ttorrent.SharedTorrent for how to create a SharedTorrent object).
- * Then, instanciate your Client object with this SharedTorrent and call one of
+ * Then, instantiate your Client object with this SharedTorrent and call one of
  * {@link #download} to simply download the torrent, or {@link #share} to
  * download and continue seeding for the given amount of time after the
  * download completes.
@@ -76,8 +76,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  */
 public class Client extends Observable implements Runnable,
-	   AnnounceResponseListener, IncomingConnectionListener,
-		PeerActivityListener {
+	AnnounceResponseListener, IncomingConnectionListener, PeerActivityListener {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(Client.class);
@@ -107,15 +106,12 @@ public class Client extends Observable implements Runnable,
 
 	private SharedTorrent torrent;
 	private ClientState state;
-
-	private String id;
-	private String hexId;
+	private Peer self;
 
 	private Thread thread;
 	private boolean stop;
 	private long seed;
 
-	private InetSocketAddress address;
 	private ConnectionHandler service;
 	private Announce announce;
 	private ConcurrentMap<String, SharingPeer> peers;
@@ -123,7 +119,8 @@ public class Client extends Observable implements Runnable,
 
 	private Random random;
 
-	/** Initialize the BitTorrent client.
+	/**
+	 * Initialize the BitTorrent client.
 	 *
 	 * @param address The address to bind to.
 	 * @param torrent The torrent to download and share.
@@ -133,28 +130,32 @@ public class Client extends Observable implements Runnable,
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
-		this.id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
+		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
 			.toString().split("-")[4];
-		this.hexId = Torrent.toHexString(this.id);
 
 		// Initialize the incoming connection handler and register ourselves to
 		// it.
-		this.service = new ConnectionHandler(this.torrent, this.id, address);
+		this.service = new ConnectionHandler(this.torrent, id, address);
 		this.service.register(this);
-		this.address = this.service.getSocketAddress();
+
+		this.self = new Peer(
+			this.service.getSocketAddress()
+				.getAddress().getHostAddress(),
+			(short)this.service.getSocketAddress().getPort(),
+			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
-		this.announce = new Announce(this.torrent, this.id, this.address);
+		this.announce = new Announce(this.torrent, this.self);
 		this.announce.register(this);
 
-		logger.info("BitTorrent client [..{}] for {} started and " +
+		logger.info("BitTorrent client [{}] for {} started and " +
 			"listening at {}:{}...",
 			new Object[] {
-				this.hexId.substring(this.hexId.length()-6),
+				this.self.getShortHexPeerId(),
 				this.torrent.getName(),
-				this.address.getAddress().getHostName(),
-				this.address.getPort()
+				this.self.getIp(),
+				this.self.getPort()
 			});
 
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
@@ -162,21 +163,26 @@ public class Client extends Observable implements Runnable,
 		this.random = new Random(System.currentTimeMillis());
 	}
 
-	/** Get this client's peer ID.
+	/**
+	 * Get this client's peer specification.
 	 */
-	public String getID() {
-		return this.id;
+	public Peer getPeerSpec() {
+		return this.self;
 	}
 
-	/** Return the torrent this client is exchanging on.
+	/**
+	 * Return the torrent this client is exchanging on.
 	 */
 	public SharedTorrent getTorrent() {
 		return this.torrent;
 	}
 
-	/** Change this client's state and notify its observers.
+	/**
+	 * Change this client's state and notify its observers.
 	 *
+	 * <p>
 	 * If the state has changed, this client's observers will be notified.
+	 * </p>
 	 *
 	 * @param state The new client state.
 	 */
@@ -188,25 +194,29 @@ public class Client extends Observable implements Runnable,
 		this.notifyObservers(this.state);
 	}
 
-	/** Return the current state of this BitTorrent client.
+	/**
+	 * Return the current state of this BitTorrent client.
 	 */
 	public ClientState getState() {
 		return this.state;
 	}
 
-	/** Download the torrent without seeding after completion.
+	/**
+	 * Download the torrent without seeding after completion.
 	 */
 	public void download() {
 		this.share(0);
 	}
 
-	/** Download and share this client's torrent until interrupted.
+	/**
+	 * Download and share this client's torrent until interrupted.
 	 */
 	public void share() {
 		this.share(-1);
 	}
 
-	/** Download and share this client's torrent.
+	/**
+	 * Download and share this client's torrent.
 	 *
 	 * @param seed Seed time in seconds after the download is complete. Pass
 	 * <code>0</code> to immediately stop after downloading.
@@ -217,20 +227,21 @@ public class Client extends Observable implements Runnable,
 
 		if (this.thread == null || !this.thread.isAlive()) {
 			this.thread = new Thread(this);
-			this.thread.setName("bt-client(.." +
-					this.hexId.substring(this.hexId.length()-6)
-					.toUpperCase() + ")");
+			this.thread.setName("bt-client(" +
+				this.self.getShortHexPeerId() + ")");
 			this.thread.start();
 		}
 	}
 
-	/** Immediately but gracefully stop this client.
+	/**
+	 * Immediately but gracefully stop this client.
 	 */
 	public void stop() {
 		this.stop(true);
 	}
 
-	/** Immediately but gracefully stop this client.
+	/**
+	 * Immediately but gracefully stop this client.
 	 *
 	 * @param wait Whether to wait for the client execution thread to complete
 	 * or not. This allows for the client's state to be settled down in one of
@@ -253,21 +264,27 @@ public class Client extends Observable implements Runnable,
 		this.thread = null;
 	}
 
-	/** Tells whether we are a seed for the torrent we're sharing.
+	/**
+	 * Tells whether we are a seed for the torrent we're sharing.
 	 */
 	public boolean isSeed() {
 		return this.torrent.isComplete();
 	}
 
-	/** This is the main client loop.
+	/**
+	 * Main client loop.
 	 *
+	 * <p>
 	 * The main client download loop is very simple: it starts the announce
 	 * request thread, the incoming connection handler service, and loops
 	 * unchoking peers every UNCHOKING_FREQUENCY seconds until told to stop.
 	 * Every OPTIMISTIC_UNCHOKE_ITERATIONS, an optimistic unchoke will be
 	 * attempted to try out other peers.
+	 * </p>
 	 *
+	 * <p>
 	 * Once done, it stops the announce and connection services, and returns.
+	 * </p>
 	 */
 	@Override
 	public void run() {
@@ -354,49 +371,49 @@ public class Client extends Observable implements Runnable,
 		logger.info("BitTorrent client signing off.");
 	}
 
-	/** Display information about the BitTorrent client state.
+	/**
+	 * Display information about the BitTorrent client state.
 	 *
+	 * <p>
 	 * This emits an information line in the log about this client's state. It
 	 * includes the number of choked peers, number of connected peers, number
 	 * of known peers, information about the torrent availability and
 	 * completion and current transmission rates.
+	 * </p>
 	 */
 	public synchronized void info() {
 		float dl = 0;
 		float ul = 0;
-		int choked = 0;
 		for (SharingPeer peer : this.connected.values()) {
 			dl += peer.getDLRate().get();
 			ul += peer.getULRate().get();
-			if (peer.isChoked()) {
-				choked++;
-			}
 		}
 
-		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
-			"({}%, {} requested), {}/{} kB/s.",
+		logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
 			new Object[] {
 				this.getState().name(),
-				choked,
-				this.connected.size(),
-				this.peers.size(),
 				this.torrent.getCompletedPieces().cardinality(),
-				this.torrent.getAvailablePieces().cardinality(),
 				this.torrent.getPieceCount(),
 				String.format("%.2f", this.torrent.getCompletion()),
+				this.torrent.getAvailablePieces().cardinality(),
 				this.torrent.getRequestedPieces().cardinality(),
+				this.connected.size(),
+				this.peers.size(),
 				String.format("%.2f", dl/1024.0),
-				String.format("%.2f", ul/1024.0)
+				String.format("%.2f", ul/1024.0),
 			});
 	}
 
-	/** Reset peers download and upload rates.
+	/**
+	 * Reset peers download and upload rates.
 	 *
+	 * <p>
 	 * This method is called every RATE_COMPUTATION_ITERATIONS to reset the
 	 * download and upload rates of all peers. This contributes to making the
 	 * download and upload rate computations rolling averages every
 	 * UNCHOKING_FREQUENCY * RATE_COMPUTATION_ITERATIONS seconds (usually 20
 	 * seconds).
+	 * </p>
 	 */
 	private synchronized void resetPeerRates() {
 		for (SharingPeer peer : this.connected.values()) {
@@ -405,67 +422,67 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
-	/** Retrieve a SharingPeer object from the given peer ID, IP address and
-	 * port number.
+	/**
+	 * Retrieve a SharingPeer object from the given peer specification.
 	 *
+	 * <p>
 	 * This function tries to retrieve an existing peer object based on the
-	 * provided peer ID, or IP+Port if no peer ID is known, or otherwise
-	 * instantiates a new one and adds it to our peer repository.
+	 * provided peer specification or otherwise instantiates a new one and adds
+	 * it to our peer repository.
+	 * </p>
 	 *
-	 * @param peerId The byte-encoded string containing the peer ID. It will be
-	 * converted to its hexadecimal representation to lookup the peer in the
-	 * repository.
-	 * @param ip The peer IP address.
-	 * @param port The peer listening port number.
+	 * @param search The {@link Peer} specification.
 	 */
-	private SharingPeer getOrCreatePeer(byte[] peerId, String ip, int port) {
-		Peer search = new Peer(ip, port,
-				(peerId != null ? ByteBuffer.wrap(peerId) : (ByteBuffer)null));
-		SharingPeer peer = null;
+	private SharingPeer getOrCreatePeer(Peer search) {
+		SharingPeer peer;
 
 		synchronized (this.peers) {
-			peer = this.peers.get(search.hasPeerId()
-						? search.getHexPeerId()
-						: search.getHostIdentifier());
-
-			if (peer != null) {
-				return peer;
-			}
-
+			logger.trace("Searching for {}...", search);
 			if (search.hasPeerId()) {
-				peer = this.peers.get(search.getHostIdentifier());
+				peer = this.peers.get(search.getHexPeerId());
 				if (peer != null) {
-					// Set peer ID for perviously known peer.
-					peer.setPeerId(search.getPeerId());
-
-					// Replace the mapping for this peer from its host
-					// identifier to its now known peer ID.
-					this.peers.remove(peer.getHostIdentifier());
-					this.peers.put(peer.getHexPeerId(), peer);
+					logger.trace("Found peer (by peer ID): {}.", peer);
+					this.peers.put(peer.getHostIdentifier(), peer);
+					this.peers.put(search.getHostIdentifier(), peer);
 					return peer;
 				}
 			}
 
-			// Last case, it really didn't exist already, add it, either from
-			// peer ID or host identifier, whatever we have so that we can find
-			// it later.
-			peer = new SharingPeer(ip, port, search.getPeerId(), this.torrent);
-			this.peers.put(peer.hasPeerId()
-					? peer.getHexPeerId()
-					: peer.getHostIdentifier(),
-				peer);
-			logger.trace("Created new peer {}.", peer);
-		}
+			peer = this.peers.get(search.getHostIdentifier());
+			if (peer != null) {
+				if (search.hasPeerId()) {
+					logger.trace("Recording peer ID {} for {}.",
+						search.getHexPeerId(), peer);
+					peer.setPeerId(search.getPeerId());
+					this.peers.put(search.getHexPeerId(), peer);
+				}
 
-		return peer;
+				logger.debug("Found peer (by host ID): {}.", peer);
+				return peer;
+			}
+
+			peer = new SharingPeer(search.getIp(), search.getPort(),
+				search.getPeerId(), this.torrent);
+			logger.trace("Created new peer: {}.", peer);
+
+			this.peers.put(peer.getHostIdentifier(), peer);
+			if (peer.hasPeerId()) {
+				this.peers.put(peer.getHexPeerId(), peer);
+			}
+
+			return peer;
+		}
 	}
 
-	/** Retrieve a peer comparator.
+	/**
+	 * Retrieve a peer comparator.
 	 *
+	 * <p>
 	 * Returns a peer comparator based on either the download rate or the
 	 * upload rate of each peer depending on our state. While sharing, we rely
 	 * on the download rate we get from each peer. When our download is
 	 * complete and we're only seeding, we use the upload rate instead.
+	 * </p>
 	 *
 	 * @return A SharingPeer comparator that can be used to sort peers based on
 	 * the download or upload rate we get from them.
@@ -481,25 +498,34 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
-	/** Unchoke connected peers.
+	/**
+	 * Unchoke connected peers.
 	 *
+	 * <p>
 	 * This is one of the "clever" places of the BitTorrent client. Every
 	 * OPTIMISTIC_UNCHOKING_FREQUENCY seconds, we decide which peers should be
 	 * unchocked and authorized to grab pieces from us.
+	 * </p>
 	 *
+	 * <p>
 	 * Reciprocation (tit-for-tat) and upload capping is implemented here by
 	 * carefully choosing which peers we unchoke, and which peers we choke.
+	 * </p>
 	 *
+	 * <p>
 	 * The four peers with the best download rate and are interested in us get
 	 * unchoked. This maximizes our download rate as we'll be able to get data
 	 * from there four "best" peers quickly, while allowing these peers to
 	 * download from us and thus reciprocate their generosity.
+	 * </p>
 	 *
+	 * <p>
 	 * Peers that have a better download rate than these four downloaders but
 	 * are not interested get unchoked too, we want to be able to download from
 	 * them to get more data more quickly. If one becomes interested, it takes
 	 * a downloader's place as one of the four top downloaders (i.e. we choke
 	 * the downloader with the worst upload rate).
+	 * </p>
 	 *
 	 * @param optimistic Whether to perform an optimistic unchoke as well.
 	 */
@@ -559,105 +585,52 @@ public class Client extends Observable implements Runnable,
 
 	/** AnnounceResponseListener handler(s). **********************************/
 
-	/** Handle a tracker announce response.
+	/**
+	 * Handle an announce response event.
 	 *
-	 * The torrent's tracker answers each announce request by a response
-	 * containing peers exchanging on this torrent. This information is crucial
-	 * as it is the base to building our peer swarm.
-	 *
-	 * @param answer The B-decoded answer map.
-	 * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Tracker_Response">BitTorrent tracker response specification</a>
+	 * @param interval The announce interval requested by the tracker.
+	 * @param complete The number of seeders on this torrent.
+	 * @param incomplete The number of leechers on this torrent.
 	 */
 	@Override
-	public void handleAnnounceResponse(Map<String, BEValue> answer) {
-		try {
-			if (!answer.containsKey("peers")) {
-				// No peers returned by the tracker. Apparently we're alone on
-				// this one for now.
-				return;
-			}
-
-			try {
-				List<BEValue> peers = answer.get("peers").getList();
-				logger.debug("Got tracker response with {} peer(s).",
-					peers.size());
-				for (BEValue peerInfo : peers) {
-					Map<String, BEValue> info = peerInfo.getMap();
-
-					try {
-						byte[] peerId = info.get("peer id").getBytes();
-						String ip = new String(info.get("ip").getBytes(),
-								Torrent.BYTE_ENCODING);
-						int port = info.get("port").getInt();
-						this.processAnnouncedPeer(peerId, ip, port);
-					} catch (NullPointerException npe) {
-						throw new ParseException("Missing field from peer " +
-								"information in tracker response!", 0);
-					}
-				}
-			} catch (InvalidBEncodingException ibee) {
-				byte[] data = answer.get("peers").getBytes();
-				int nPeers = data.length / 6;
-				if (data.length % 6 != 0) {
-					throw new InvalidBEncodingException("Invalid peers " +
-							"binary information string!");
-				}
-
-				ByteBuffer peers = ByteBuffer.wrap(data);
-				logger.debug("Got compact tracker response with {} peer(s).",
-					nPeers);
-
-				for (int i=0; i < nPeers ; i++) {
-					byte[] ipBytes = new byte[4];
-					peers.get(ipBytes);
-					String ip = InetAddress.getByAddress(ipBytes)
-						.getHostAddress();
-					int port = (0xFF & (int)peers.get()) << 8
-						| (0xFF & (int)peers.get());
-					this.processAnnouncedPeer(null, ip, port);
-				}
-			}
-		} catch (UnknownHostException uhe) {
-			logger.warn("Invalid compact tracker response!", uhe);
-		} catch (ParseException pe) {
-			logger.warn("Invalid tracker response!", pe);
-		} catch (InvalidBEncodingException ibee) {
-			logger.warn("Invalid tracker response!", ibee);
-		} catch (UnsupportedEncodingException uee) {
-			logger.error("{}", uee.getMessage(), uee);
-		}
+	public void handleAnnounceResponse(int interval, int complete,
+		int incomplete) {
+		this.announce.setInterval(interval);
 	}
 
-	/** Process a peer's information obtained in an announce reply.
+	/**
+	 * Handle the discovery of new peers.
 	 *
-	 * <p>
-	 * Retrieve or create a new peer for the peer information obtained, and
-	 * eventually connect to it.
-	 * </p>
-	 *
-	 * @param peerId An optional peerId byte array.
-	 * @param ip The peer's IP address.
-	 * @param port The peer's port.
+	 * @param peers The list of peers discovered (from the announce response or
+	 * any other means like DHT/PEX, etc.).
 	 */
-	private void processAnnouncedPeer(byte[] peerId, String ip, int port) {
-		SharingPeer peer = this.getOrCreatePeer(peerId, ip, port);
+	@Override
+	public void handleDiscoveredPeers(List<Peer> peers) {
+		if (peers == null || peers.isEmpty()) {
+			// No peers returned by the tracker. Apparently we're alone on
+			// this one for now.
+			return;
+		}
 
-		synchronized (peer) {
-			// Attempt to connect to the peer if and only if:
-			//   - We're not already connected to it;
-			//   - We're not a seeder (we leave the responsibility
-			//	   of connecting to peers that need to download
-			//     something), or we are a seeder but we're still
-			//     willing to initiate some outbound connections.
-			if (!peer.isBound() &&
-				(!this.isSeed() ||
-				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
-				if (!this.service.connect(peer)) {
-					logger.debug("Removing peer {}.", peer);
-					this.peers.remove(peer.hasPeerId()
-							? peer.getHexPeerId()
-							: peer.getHostIdentifier());
+		logger.info("Got {} peer(s) in tracker response, initiating " +
+			"connections...", peers.size());
+		for (Peer peer : peers) {
+			SharingPeer match = this.getOrCreatePeer(peer);
+
+			synchronized (match) {
+				// Attempt to connect to the peer if and only if:
+				//   - We're not already connected to it;
+				//   - We're not a seeder (we leave the responsibility
+				//	   of connecting to peers that need to download
+				//     something), or we are a seeder but we're still
+				//     willing to initiate some out bound connections.
+				if (match.isBound() ||
+					(this.isSeed() && this.connected.size() >=
+						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
+					return;
 				}
+
+				this.service.connect(match);
 			}
 		}
 	}
@@ -665,13 +638,15 @@ public class Client extends Observable implements Runnable,
 
 	/** IncomingConnectionListener handler(s). ********************************/
 
-	/** Handle a new peer connection.
+	/**
+	 * Handle a new peer connection.
 	 *
+	 * <p>
 	 * This handler is called once the connection has been successfully
-	 * established and the handshake exchange made.
-	 *
-	 * This generally simply means binding the peer to the socket, which will
-	 * put in place the communication thread and logic with this peer.
+	 * established and the handshake exchange made. This generally simply means
+	 * binding the peer to the socket, which will put in place the communication
+	 * thread and logic with this peer.
+	 * </p>
 	 *
 	 * @param s The connected socket to the remote peer. Note that if the peer
 	 * somehow rejected our handshake reply, this socket might very soon get
@@ -682,11 +657,25 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleNewPeerConnection(Socket s, byte[] peerId) {
-		SharingPeer peer = this.getOrCreatePeer(peerId,
-				s.getInetAddress().getHostAddress(), s.getPort());
+		Peer search = new Peer(
+			s.getInetAddress().getHostAddress(),
+			s.getPort(),
+			(peerId != null
+				? ByteBuffer.wrap(peerId)
+				: (ByteBuffer)null));
+
+		logger.info("Handling new peer connection with {}...", search);
+		SharingPeer peer = this.getOrCreatePeer(search);
 
 		try {
 			synchronized (peer) {
+				if (peer.isBound()) {
+					logger.info("Already connected with {}, closing link.",
+						peer);
+					s.close();
+					return;
+				}
+
 				peer.register(this);
 				peer.bind(s);
 			}
@@ -699,13 +688,32 @@ public class Client extends Observable implements Runnable,
 					this.connected.size(),
 					this.peers.size()
 				});
-		} catch (SocketException se) {
+		} catch (Exception e) {
 			this.connected.remove(peer.getHexPeerId());
 			logger.warn("Could not handle new peer connection " +
-					"with {}: {}", peer, se.getMessage());
+					"with {}: {}", peer, e.getMessage());
 		}
 	}
 
+	/**
+	 * Handle a failed peer connection.
+	 *
+	 * <p>
+	 * If an outbound connection failed (could not connect, invalid handshake,
+	 * etc.), remove the peer from our known peers.
+	 * </p>
+	 *
+	 * @param peer The peer we were trying to connect with.
+	 * @param cause The exception encountered when connecting with the peer.
+	 */
+	@Override
+	public void handleFailedConnection(SharingPeer peer, Throwable cause) {
+		logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
+		this.peers.remove(peer.getHostIdentifier());
+		if (peer.hasPeerId()) {
+			this.peers.remove(peer.getHexPeerId());
+		}
+	}
 
 	/** PeerActivityListener handler(s). **************************************/
 
@@ -727,14 +735,19 @@ public class Client extends Observable implements Runnable,
 	public void handlePieceSent(SharingPeer peer,
 			Piece piece) { /* Do nothing */ }
 
-	/** Piece download completion handler.
+	/**
+	 * Piece download completion handler.
 	 *
+	 * <p>
 	 * When a piece is completed, and valid, we announce to all connected peers
 	 * that we now have this piece.
+	 * </p>
 	 *
+	 * <p>
 	 * We use this handler to identify when all of the pieces have been
 	 * downloaded. When that's the case, we can start the seeding period, if
 	 * any.
+	 * </p>
 	 *
 	 * @param peer The peer we got the piece from.
 	 * @param piece The piece in question.
@@ -758,7 +771,7 @@ public class Client extends Observable implements Runnable,
 					});
 
 				// Send a HAVE message to all connected peers
-				Message have = Message.HaveMessage.craft(piece.getIndex());
+				PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
 				for (SharingPeer remote : this.connected.values()) {
 					remote.send(have);
 				}
@@ -773,6 +786,17 @@ public class Client extends Observable implements Runnable,
 				logger.info("Last piece validated and completed, " +
 						"download is complete.");
 				this.torrent.finish();
+
+				try {
+					this.announce.getCurrentTrackerClient()
+						.announce(TrackerMessage
+							.AnnounceRequestMessage
+							.RequestEvent.COMPLETED, true);
+				} catch (AnnounceException ae) {
+					logger.warn("Error announcing completion event to " +
+						"tracker: {}", ae.getMessage());
+				}
+
 				this.seed();
 			}
 		}
@@ -805,16 +829,21 @@ public class Client extends Observable implements Runnable,
 
 	/** Post download seeding. ************************************************/
 
-	/** Start the seeding period, if any.
+	/**
+	 * Start the seeding period, if any.
 	 *
+	 * <p>
 	 * This method is called when all the pieces of our torrent have been
 	 * retrieved. This may happen immediately after the client starts if the
 	 * torrent was already fully download or we are the initial seeder client.
+	 * </p>
 	 *
+	 * <p>
 	 * When the download is complete, the client switches to seeding mode for
 	 * as long as requested in the <code>share()</code> call, if seeding was
 	 * requested. If not, the StopSeedingTask will execute immediately to stop
 	 * the client's main loop.
+	 * </p>
 	 *
 	 * @see StopSeedingTask
 	 */
@@ -841,25 +870,30 @@ public class Client extends Observable implements Runnable,
 
 		logger.info("Seeding for {} seconds...", this.seed);
 		Timer seedTimer = new Timer();
-		seedTimer.schedule(new StopSeedingTask(this), this.seed*1000);
+		seedTimer.schedule(new ClientShutdown(this), this.seed*1000);
 	}
 
-	/** Timer task to stop seeding.
+	/**
+	 * Timer task to stop seeding.
 	 *
+	 * <p>
 	 * This TimerTask will be called by a timer set after the download is
 	 * complete to stop seeding from this client after a certain amount of
 	 * requested seed time (might be 0 for immediate termination).
+	 * </p>
 	 *
+	 * <p>
 	 * This task simply contains a reference to this client instance and calls
 	 * its <code>stop()</code> method to interrupt the client's main loop.
+	 * </p>
 	 *
 	 * @author mpetazzoni
 	 */
-	private static class StopSeedingTask extends TimerTask {
+	private static class ClientShutdown extends TimerTask {
 
 		private Client client;
 
-		StopSeedingTask(Client client) {
+		ClientShutdown(Client client) {
 			this.client = client;
 		}
 
@@ -870,7 +904,8 @@ public class Client extends Observable implements Runnable,
 	};
 
 
-	/** Main client entry point for standalone operation.
+	/**
+	 * Main client entry point for stand-alone operation.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
@@ -887,6 +922,12 @@ public class Client extends Observable implements Runnable,
 					SharedTorrent.fromFile(
 					new File(args[0]),
 					new File(args.length > 1 ? args[1] : "/tmp")));
+
+			// Set a shutdown hook that will stop the sharing/seeding and send
+			// a STOPPED announce request.
+			Runtime.getRuntime()
+				.addShutdownHook(new Thread(new ClientShutdown(c)));
+
 			c.share();
 			if (ClientState.ERROR.equals(c.getState())) {
 				System.exit(1);

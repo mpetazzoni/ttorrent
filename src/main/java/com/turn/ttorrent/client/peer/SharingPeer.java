@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.client.Message;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 
@@ -34,7 +34,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A peer exchanging on a torrent with the BitTorrent client.
+
+/**
+ * A peer exchanging on a torrent with the BitTorrent client.
  *
  * <p>
  * A SharingPeer extends the base Peer class with all the data and logic needed
@@ -82,7 +84,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	private Piece requestedPiece;
 	private int lastRequestedOffset;
-	private BlockingQueue<Message.RequestMessage> requests;
+	private BlockingQueue<PeerMessage.RequestMessage> requests;
 
 	private PeerExchange exchange;
 	private Object exchangeLock;
@@ -91,7 +93,8 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	private Set<PeerActivityListener> listeners;
 
-	/** Create a new sharing peer on a given torrent.
+	/**
+	 * Create a new sharing peer on a given torrent.
 	 *
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
@@ -111,7 +114,8 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.requestedPiece = null;
 	}
 
-	/** Register a new peer activity listener.
+	/**
+	 * Register a new peer activity listener.
 	 *
 	 * @param listener The activity listener that wants to receive events from
 	 * this peer's activity.
@@ -128,10 +132,13 @@ public class SharingPeer extends Peer implements MessageListener {
 		return this.upload;
 	}
 
-	/** Reset the peer state.
+	/**
+	 * Reset the peer state.
 	 *
+	 * <p>
 	 * Initially, peers are considered choked, choking, and neither interested
 	 * nor interesting.
+	 * </p>
 	 */
 	public synchronized void reset() {
 		this.choking = true;
@@ -145,28 +152,34 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.lastRequestedOffset = 0;
 	}
 
-	/** Choke this peer.
+	/**
+	 * Choke this peer.
 	 *
+	 * <p>
 	 * We don't want to upload to this peer anymore, so mark that we're choking
 	 * from this peer.
+	 * </p>
 	 */
 	public void choke() {
 		if (!this.choking) {
 			logger.trace("Choking {}", this);
-			this.send(Message.ChokeMessage.craft());
+			this.send(PeerMessage.ChokeMessage.craft());
 			this.choking = true;
 		}
 	}
 
-	/** Unchoke this peer.
+	/**
+	 * Unchoke this peer.
 	 *
+	 * <p>
 	 * Mark that we are no longer choking from this peer and can resume
 	 * uploading to it.
+	 * </p>
 	 */
 	public void unchoke() {
 		if (this.choking) {
 			logger.trace("Unchoking {}", this);
-			this.send(Message.UnchokeMessage.craft());
+			this.send(PeerMessage.UnchokeMessage.craft());
 			this.choking = false;
 		}
 	}
@@ -179,7 +192,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void interesting() {
 		if (!this.interesting) {
 			logger.trace("Telling {} we're interested.", this);
-			this.send(Message.InterestedMessage.craft());
+			this.send(PeerMessage.InterestedMessage.craft());
 			this.interesting = true;
 		}
 	}
@@ -187,7 +200,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	public void notInteresting() {
 		if (this.interesting) {
 			logger.trace("Telling {} we're no longer interested.", this);
-			this.send(Message.NotInterestedMessage.craft());
+			this.send(PeerMessage.NotInterestedMessage.craft());
 			this.interesting = false;
 		}
 	}
@@ -205,9 +218,10 @@ public class SharingPeer extends Peer implements MessageListener {
 		return this.interested;
 	}
 
-	/** Returns the available pieces from this peer.
+	/**
+	 * Returns the available pieces from this peer.
 	 *
-	 * @return A clone of the available pieces bitfield from this peeer.
+	 * @return A clone of the available pieces bit field from this peer.
 	 */
 	public BitSet getAvailablePieces() {
 		synchronized (this.availablePieces) {
@@ -215,15 +229,18 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Returns the currently requested piece, if any.
+	/**
+	 * Returns the currently requested piece, if any.
 	 */
 	public Piece getRequestedPiece() {
 		return this.requestedPiece;
 	}
 
-	/** Tells whether this peer is a seed.
+	/**
+	 * Tells whether this peer is a seed.
 	 *
-	 * A peer is a seed if it has all of the torrent's pieces available.
+	 * @return Returns <em>true</em> if the peer has all of the torrent's pieces
+	 * available.
 	 */
 	public synchronized boolean isSeed() {
 		return this.torrent.getPieceCount() > 0 &&
@@ -231,10 +248,13 @@ public class SharingPeer extends Peer implements MessageListener {
 				this.torrent.getPieceCount();
 	}
 
-	/** Bind a connected socket to this peer.
+	/**
+	 * Bind a connected socket to this peer.
 	 *
+	 * <p>
 	 * This will create a new peer exchange with this peer using the given
 	 * socket, and register the peer as a message listener.
+	 * </p>
 	 *
 	 * @param socket The connected socket for this peer.
 	 */
@@ -251,8 +271,8 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.upload.reset();
 	}
 
-	/** Tells whether this peer as an active connection through a peer
-	 * exchange.
+	/**
+	 * Tells whether this peer as an active connection through a peer exchange.
 	 */
 	public boolean isBound() {
 		synchronized (this.exchangeLock) {
@@ -260,11 +280,14 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Unbind and disconnect this peer.
+	/**
+	 * Unbind and disconnect this peer.
 	 *
+	 * <p>
 	 * This terminates the eventually present and/or connected peer exchange
 	 * with the peer and fires the peer disconnected event to any peer activity
 	 * listeners registered on this peer.
+	 * </p>
 	 *
 	 * @param force Force unbind without sending cancel requests.
 	 */
@@ -273,7 +296,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			// Cancel all outgoing requests, and send a NOT_INTERESTED message to
 			// the peer.
 			this.cancelPendingRequests();
-			this.send(Message.NotInterestedMessage.craft());
+			this.send(PeerMessage.NotInterestedMessage.craft());
 		}
 
 		synchronized (this.exchangeLock) {
@@ -292,14 +315,17 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.requestedPiece = null;
 	}
 
-	/** Send a message to the peer.
+	/**
+	 * Send a message to the peer.
 	 *
+	 * <p>
 	 * Delivery of the message can only happen if the peer is connected.
+	 * </p>
 	 *
 	 * @param message The message to send to the remote peer through our peer
 	 * exchange.
 	 */
-	public void send(Message message) throws IllegalStateException {
+	public void send(PeerMessage message) throws IllegalStateException {
 		synchronized (this.exchangeLock) {
 			if (this.isBound()) {
 				this.exchange.send(message);
@@ -307,13 +333,18 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Download the given piece from this peer.
+	/**
+	 * Download the given piece from this peer.
 	 *
+	 * <p>
 	 * Starts a block request queue and pre-fill it with MAX_PIPELINED_REQUESTS
 	 * block requests.
+	 * </p>
 	 *
+	 * <p>
 	 * Further requests will be added, one by one, every time a block is
 	 * returned.
+	 * </p>
 	 *
 	 * @param piece The piece chosen to be downloaded from this peer.
 	 */
@@ -327,7 +358,7 @@ public class SharingPeer extends Peer implements MessageListener {
 			throw up; // ah ah.
 		}
 
-		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(
+		this.requests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(
 				SharingPeer.MAX_PIPELINED_REQUESTS);
 		this.requestedPiece = piece;
 		this.lastRequestedOffset = 0;
@@ -338,9 +369,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		return this.requests != null && this.requests.size() > 0;
 	}
 
-	/** Request some more blocks from this peer.
+	/**
+	 * Request some more blocks from this peer.
 	 *
+	 * <p>
 	 * Re-fill the pipeline to get download the next blocks from the peer.
+	 * </p>
 	 */
 	private synchronized void requestNextBlocks() {
 		if (this.requests == null || this.requestedPiece == null) {
@@ -350,33 +384,38 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		while (this.requests.remainingCapacity() > 0 &&
 				this.lastRequestedOffset < this.requestedPiece.size()) {
-			Message.RequestMessage request = Message.RequestMessage.craft(
+			PeerMessage.RequestMessage request = PeerMessage.RequestMessage
+				.craft(
 					this.requestedPiece.getIndex(),
 					this.lastRequestedOffset,
 					Math.min(this.requestedPiece.size() -
 							this.lastRequestedOffset,
-						Message.RequestMessage.DEFAULT_REQUEST_SIZE));
+						PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
 			this.requests.add(request);
 			this.send(request);
 			this.lastRequestedOffset += request.getLength();
 		}
 	}
 
-	/** Remove the REQUEST message from the request pipeline matching this
+	/**
+	 * Remove the REQUEST message from the request pipeline matching this
 	 * PIECE message.
 	 *
+	 * <p>
 	 * Upon reception of a piece block with a PIECE message, remove the
 	 * corresponding request from the pipeline to make room for the next block
 	 * requests.
+	 * </p>
 	 *
 	 * @param message The PIECE message received.
 	 */
-	private synchronized void removeBlockRequest(Message.PieceMessage message) {
+	private synchronized void removeBlockRequest(
+		PeerMessage.PieceMessage message) {
 		if (this.requests == null) {
 			return;
 		}
 
-		for (Message.RequestMessage request : this.requests) {
+		for (PeerMessage.RequestMessage request : this.requests) {
 			if (request.getPiece() == message.getPiece() &&
 					request.getOffset() == message.getOffset()) {
 				this.requests.remove(request);
@@ -385,21 +424,26 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Cancel all pending requests.
+	/**
+	 * Cancel all pending requests.
 	 *
+	 * <p>
 	 * This queues CANCEL messages for all the requests in the queue, and
 	 * returns the list of requests that were in the queue.
+	 * </p>
 	 *
+	 * <p>
 	 * If no request queue existed, or if it was empty, an empty set of request
 	 * messages is returned.
+	 * </p>
 	 */
-	private synchronized Set<Message.RequestMessage> cancelPendingRequests() {
-		Set<Message.RequestMessage> requests =
-			new HashSet<Message.RequestMessage>();
+	private synchronized Set<PeerMessage.RequestMessage> cancelPendingRequests() {
+		Set<PeerMessage.RequestMessage> requests =
+			new HashSet<PeerMessage.RequestMessage>();
 
 		if (this.requests != null) {
-			for (Message.RequestMessage request : this.requests) {
-				this.send(Message.CancelMessage.craft(request.getPiece(),
+			for (PeerMessage.RequestMessage request : this.requests) {
+				this.send(PeerMessage.CancelMessage.craft(request.getPiece(),
 							request.getOffset(), request.getLength()));
 				requests.add(request);
 			}
@@ -410,12 +454,13 @@ public class SharingPeer extends Peer implements MessageListener {
 		return requests;
 	}
 
-	/** Handle an incoming message from this peer.
+	/**
+	 * Handle an incoming message from this peer.
 	 *
 	 * @param msg The incoming, parsed message.
 	 */
 	@Override
-	public synchronized void handleMessage(Message msg) {
+	public synchronized void handleMessage(PeerMessage msg) {
 		switch (msg.getType()) {
 			case KEEP_ALIVE:
 				// Nothing to do, we're keeping the connection open anyways.
@@ -438,7 +483,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				break;
 			case HAVE:
 				// Record this peer has the given piece
-				Message.HaveMessage have = (Message.HaveMessage)msg;
+				PeerMessage.HaveMessage have = (PeerMessage.HaveMessage)msg;
 				Piece havePiece = this.torrent.getPiece(have.getPieceIndex());
 
 				synchronized (this.availablePieces) {
@@ -455,8 +500,9 @@ public class SharingPeer extends Peer implements MessageListener {
 				this.firePieceAvailabity(havePiece);
 				break;
 			case BITFIELD:
-				// Augment the hasPiece bitfield from this BITFIELD message
-				Message.BitfieldMessage bitfield = (Message.BitfieldMessage)msg;
+				// Augment the hasPiece bit field from this BITFIELD message
+				PeerMessage.BitfieldMessage bitfield =
+					(PeerMessage.BitfieldMessage)msg;
 
 				synchronized (this.availablePieces) {
 					this.availablePieces = bitfield.getBitfield();
@@ -473,7 +519,8 @@ public class SharingPeer extends Peer implements MessageListener {
 				this.fireBitfieldAvailabity();
 				break;
 			case REQUEST:
-				Message.RequestMessage request = (Message.RequestMessage)msg;
+				PeerMessage.RequestMessage request =
+					(PeerMessage.RequestMessage)msg;
 
 				// If we are choking from this peer and it still sends us
 				// requests, it is a violation of the BitTorrent protocol.
@@ -489,7 +536,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				}
 
 				if (request.getLength() >
-						Message.RequestMessage.MAX_REQUEST_SIZE) {
+						PeerMessage.RequestMessage.MAX_REQUEST_SIZE) {
 					logger.warn("Peer {} requested a block too big, " +
 						"terminating exchange.", this);
 					this.unbind(true);
@@ -503,7 +550,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 					ByteBuffer block = p.read(request.getOffset(),
 									request.getLength());
-					this.send(Message.PieceMessage.craft(request.getPiece(),
+					this.send(PeerMessage.PieceMessage.craft(request.getPiece(),
 								request.getOffset(), block));
 					this.upload.add(block.capacity());
 
@@ -521,7 +568,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				// Should we keep track of the requested pieces and act when we
 				// get a piece we didn't ask for, or should we just stay
 				// greedy?
-				Message.PieceMessage piece = (Message.PieceMessage)msg;
+				PeerMessage.PieceMessage piece = (PeerMessage.PieceMessage)msg;
 				Piece p = this.torrent.getPiece(piece.getPiece());
 
 				// Remove the corresponding request from the request to make
@@ -556,9 +603,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the peer choked event to all registered listeners.
+	/**
+	 * Fire the peer choked event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer that chocked.
+	 * </p>
 	 */
 	private void firePeerChoked() {
 		for (PeerActivityListener listener : this.listeners) {
@@ -566,9 +616,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the peer ready event to all registered listeners.
+	/**
+	 * Fire the peer ready event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer that unchoked or became ready.
+	 * </p>
 	 */
 	private void firePeerReady() {
 		for (PeerActivityListener listener : this.listeners) {
@@ -576,9 +629,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the piece availability event to all registered listeners.
+	/**
+	 * Fire the piece availability event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer (this), and the piece that became available.
+	 * </p>
 	 */
 	private void firePieceAvailabity(Piece piece) {
 		for (PeerActivityListener listener : this.listeners) {
@@ -586,9 +642,10 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the bitfield availability event to all registered listeners.
+	/**
+	 * Fire the bit field availability event to all registered listeners.
 	 *
-	 * The event contains the peer (this), and the bitfield of available pieces
+	 * The event contains the peer (this), and the bit field of available pieces
 	 * from this peer.
 	 */
 	private void fireBitfieldAvailabity() {
@@ -598,10 +655,13 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the piece sent event to all registered listeners.
+	/**
+	 * Fire the piece sent event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer (this), and the piece number that was
 	 * sent to the peer.
+	 * </p>
 	 *
 	 * @param piece The completed piece.
 	 */
@@ -611,10 +671,13 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the piece completion event to all registered listeners.
+	/**
+	 * Fire the piece completion event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer (this), and the piece number that was
 	 * completed.
+	 * </p>
 	 *
 	 * @param piece The completed piece.
 	 */
@@ -624,9 +687,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the peer disconnected event to all registered listeners.
+	/**
+	 * Fire the peer disconnected event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer that disconnected (this).
+	 * </p>
 	 */
 	private void firePeerDisconnected() {
 		for (PeerActivityListener listener : this.listeners) {
@@ -634,10 +700,13 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Fire the IOException event to all registered listeners.
+	/**
+	 * Fire the IOException event to all registered listeners.
 	 *
+	 * <p>
 	 * The event contains the peer that triggered the problem, and the
 	 * exception object.
+	 * </p>
 	 */
 	private void fireIOException(IOException ioe) {
 		for (PeerActivityListener listener : this.listeners) {
@@ -645,9 +714,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Download rate comparator.
+	/**
+	 * Download rate comparator.
 	 *
+	 * <p>
 	 * Compares sharing peers based on their current download rate.
+	 * </p>
 	 *
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator
@@ -660,9 +732,12 @@ public class SharingPeer extends Peer implements MessageListener {
 		}
 	}
 
-	/** Upload rate comparator.
+	/**
+	 * Upload rate comparator.
 	 *
+	 * <p>
 	 * Compares sharing peers based on their current upload rate.
+	 * </p>
 	 *
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator

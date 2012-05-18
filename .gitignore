@@ -3,7 +3,6 @@
 
 # Ignore build output
 /build/*
-/target/*
 
 # Ignore Javadoc output
 /doc/*
@@ -12,6 +11,7 @@
 # repository.
 /.classpath
 /.project
+/.settings
 
 # Ignore common editor swap files
 *.swp

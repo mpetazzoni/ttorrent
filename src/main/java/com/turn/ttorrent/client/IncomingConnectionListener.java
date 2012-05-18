@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.client;
+
+import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.net.Socket;
 import java.util.EventListener;
 
-/** EventListener interface for objects that want to handle incoming peer
+/**
+ * EventListener interface for objects that want to handle incoming peer
  * connections.
  *
  * @author mpetazzoni
@@ -26,4 +29,6 @@ import java.util.EventListener;
 public interface IncomingConnectionListener extends EventListener {
 
 	public void handleNewPeerConnection(Socket s, byte[] peerId);
+
+	public void handleFailedConnection(SharingPeer peer, Throwable cause);
 }

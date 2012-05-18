@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.bcodec;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** B-encoding encoder.
+/**
+ * B-encoding encoder.
  *
  * <p>
  * This class provides utility methods to encode objects and
@@ -57,7 +61,8 @@ public class BEncoder {
 		} else if (o instanceof Map) {
 			bencode((Map<String, BEValue>)o, out);
 		} else {
-			throw new IllegalArgumentException("Cannot bencode: " + o.getClass());
+			throw new IllegalArgumentException("Cannot bencode: " +
+				o.getClass());
 		}
 	}
 
@@ -73,7 +78,8 @@ public class BEncoder {
 		out.write('e');
 	}
 
-	public static void bencode(List<BEValue> l, OutputStream out) throws IOException {
+	public static void bencode(List<BEValue> l, OutputStream out)
+		throws IOException {
 		out.write('l');
 		for (BEValue value : l) {
 			bencode(value, out);
@@ -104,5 +110,13 @@ public class BEncoder {
 		}
 
 		out.write('e');
+	}
+
+	public static ByteBuffer bencode(Map<String, BEValue> m)
+		throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		BEncoder.bencode(m, baos);
+		baos.close();
+		return ByteBuffer.wrap(baos.toByteArray());
 	}
 }

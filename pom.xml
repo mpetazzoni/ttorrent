@@ -1,12 +1,55 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.turn.ttorrent</groupId>
-  <artifactId>ttorrent</artifactId>
-  <packaging>jar</packaging>
-  <version>1.1.2</version>
+
   <name>Java BitTorrent library</name>
   <url>http://turn.github.com/ttorrent/</url>
+  <groupId>com.turn.ttorrent</groupId>
+  <artifactId>ttorrent</artifactId>
+  <version>1.1.2</version>
+  <packaging>jar</packaging>
+
+  <organization>
+    <name>Turn, Inc.</name>
+    <url>http://www.turn.com</url>
+  </organization>
+
+  <scm>
+    <connection>scm:git:git://github.com/turn/ttorrent.git</connection>
+    <url>http://github.com/turn/ttorrent</url>
+  </scm>
+
+  <licenses>
+    <license>
+      <name>Apache Software License version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/turn/ttorrent/issues</url>
+  </issueManagement>
+
+  <developers>
+    <developer>
+      <id>mpetazzoni</id>
+      <name>Maxime Petazzoni</name>
+      <email>mpetazzoni@turn.com</email>
+      <url>http://www.bulix.org</url>
+      <organization>Turn, Inc</organization>
+      <organizationUrl>http://www.turn.com</organizationUrl>
+      <roles>
+        <role>maintainer</role>
+        <role>architect</role>
+        <role>developer</role>
+      </roles>
+      <timezone>-8</timezone>
+      <properties>
+        <picUrl>https://secure.gravatar.com/avatar/6f705e0c299bca294444de3a6a3308b3</picUrl>
+      </properties>
+    </developer>
+  </developers>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -40,6 +83,9 @@
   </dependencies>
 
   <build>
+    <defaultGoal>package</defaultGoal>
+    <directory>${basedir}/build</directory>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -59,6 +105,16 @@
           <includes>
             <include>**</include>
           </includes>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.8.1</version>
+        <configuration>
+          <reportOutputDirectory>${basedir}</reportOutputDirectory>
+          <destDir>doc</destDir>
         </configuration>
       </plugin>
 

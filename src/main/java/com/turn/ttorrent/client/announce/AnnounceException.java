@@ -1,4 +1,5 @@
-/** Copyright (C) 2011 Turn, Inc.
+/**
+ * Copyright (C) 2011-2012 Turn, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.turn.ttorrent.client.announce;
 
-package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.bcodec.BEValue;
-
-import java.util.EventListener;
-import java.util.Map;
-
-/** EventListener interface for objects that want to receive tracker responses.
+/**
+ * Exception thrown when an announce request failed.
  *
  * @author mpetazzoni
  */
-public interface AnnounceResponseListener extends EventListener {
+public class AnnounceException extends Exception {
 
-	public void handleAnnounceResponse(Map<String, BEValue> answer);
+	private static final long serialVersionUID = -1;
+
+	public AnnounceException(String message) {
+		super(message);
+	}
+
+	public AnnounceException(Throwable cause) {
+		super(cause);
+	}
+
+	public AnnounceException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }
