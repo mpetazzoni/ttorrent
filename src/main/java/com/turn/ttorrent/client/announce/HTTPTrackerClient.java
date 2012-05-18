@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
@@ -34,17 +35,16 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * Announcer for HTTP trackers.
  *
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Tracker_Request_Parameters">BitTorrent tracker request specification</a>
  */
-public class HTTPAnnounce extends Announce {
+public class HTTPTrackerClient extends TrackerClient {
 
 	protected static final Logger logger =
-		LoggerFactory.getLogger(HTTPAnnounce.class);
+		LoggerFactory.getLogger(HTTPTrackerClient.class);
 
 	/**
 	 * Create a new HTTP announcer for the given torrent.
@@ -52,8 +52,9 @@ public class HTTPAnnounce extends Announce {
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our own peer specification.
 	 */
-	protected HTTPAnnounce(SharedTorrent torrent, Peer peer) {
-		super(torrent, peer, "http");
+	protected HTTPTrackerClient(SharedTorrent torrent, Peer peer,
+		URI tracker) {
+		super(torrent, peer, tracker);
 	}
 
 	/**
@@ -90,8 +91,7 @@ public class HTTPAnnounce extends Announce {
 				this.buildAnnounceRequest(event);
 
 			// Send announce request (HTTP GET)
-			URL target = request.buildAnnounceURL(
-				this.torrent.getAnnounceUrl().toURL());
+			URL target = request.buildAnnounceURL(this.tracker.toURL());
 			URLConnection conn = target.openConnection();
 
 			InputStream is = new AutoCloseInputStream(conn.getInputStream());

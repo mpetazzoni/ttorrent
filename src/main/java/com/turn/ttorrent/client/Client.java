@@ -22,7 +22,7 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.File;
@@ -146,7 +146,7 @@ public class Client extends Observable implements Runnable,
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
-		this.announce = Announce.getAnnounce(this.torrent, this.self);
+		this.announce = new Announce(this.torrent, this.self);
 		this.announce.register(this);
 
 		logger.info("BitTorrent client [{}] for {} started and " +
@@ -595,7 +595,7 @@ public class Client extends Observable implements Runnable,
 	@Override
 	public void handleAnnounceResponse(int interval, int complete,
 		int incomplete) {
-		// We're not really interested in all this here.
+		this.announce.setInterval(interval);
 	}
 
 	/**
@@ -788,8 +788,10 @@ public class Client extends Observable implements Runnable,
 				this.torrent.finish();
 
 				try {
-					this.announce.announce(
-						AnnounceRequestMessage.RequestEvent.COMPLETED, true);
+					this.announce.getCurrentTrackerClient()
+						.announce(TrackerMessage
+							.AnnounceRequestMessage
+							.RequestEvent.COMPLETED, true);
 				} catch (AnnounceException ae) {
 					logger.warn("Error announcing completion event to " +
 						"tracker: {}", ae.getMessage());

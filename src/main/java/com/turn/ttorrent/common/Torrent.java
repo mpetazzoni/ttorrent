@@ -18,7 +18,6 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -38,9 +37,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -54,7 +55,6 @@ import org.apache.log4j.PatternLayout;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * A torrent file tracked by the controller's BitTorrent tracker.
@@ -111,7 +111,8 @@ public class Torrent {
 	private final byte[] info_hash;
 	private final String hex_info_hash;
 
-	private final List<List<URI>> announce;
+	private final List<List<URI>> trackers;
+	private final Set<URI> allTrackers;
 	private final Date creationDate;
 	private final String comment;
 	private final String createdBy;
@@ -150,9 +151,56 @@ public class Torrent {
 		this.info_hash = Torrent.hash(this.encoded_info);
 		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
 
-		// Parse announce information
+		/**
+		 * Parses the announce information from the decoded meta-info
+		 * structure.
+		 *
+		 * <p>
+		 * If the torrent doesn't define an announce-list, use the mandatory
+		 * announce field value as the single tracker in a single announce
+		 * tier.  Otherwise, the announce-list must be parsed and the trackers
+		 * from each tier extracted.
+		 * </p>
+		 *
+		 * @see <a href="http://bittorrent.org/beps/bep_0012.html">BitTorrent BEP#0012 "Multitracker Metadata Extension"</a>
+		 */
 		try {
-			this.announce = this.parseAnnounceInformation();
+			this.trackers = new ArrayList<List<URI>>();
+			this.allTrackers = new HashSet<URI>();
+
+			if (!this.decoded.containsKey("announce-list")) {
+				URI tracker = new URI(this.decoded.get("announce").getString());
+				this.allTrackers.add(tracker);
+
+				// Build a single-tier announce list.
+				List<URI> tier = new ArrayList<URI>();
+				tier.add(tracker);
+				this.trackers.add(tier);
+			} else {
+				List<BEValue> tiers = this.decoded.get("announce-list").getList();
+				for (BEValue tv : tiers) {
+					List<BEValue> trackers = tv.getList();
+					if (trackers.isEmpty()) {
+						continue;
+					}
+
+					List<URI> tier = new ArrayList<URI>();
+					for (BEValue tracker : trackers) {
+						URI uri = new URI(tracker.getString());
+
+						// Make sure we're not adding duplicate trackers.
+						if (!this.allTrackers.contains(uri)) {
+							tier.add(uri);
+							this.allTrackers.add(uri);
+						}
+					}
+
+					// Only add the tier if it's not empty.
+					if (!tier.isEmpty()) {
+						this.trackers.add(tier);
+					}
+				}
+			}
 		} catch (URISyntaxException use) {
 			throw new IOException(use);
 		}
@@ -202,8 +250,8 @@ public class Torrent {
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
 		logger.info("  Announced at:");
-		for (int i=0; i < this.announce.size(); i++) {
-			List<URI> tier = this.announce.get(i);
+		for (int i=0; i < this.trackers.size(); i++) {
+			List<URI> tier = this.trackers.get(i);
 			for (int j=0; j < tier.size(); j++) {
 				logger.info("    {}{}",
 					(j == 0 ? String.format("%2d. ", i+1) : "    "),
@@ -237,46 +285,6 @@ public class Torrent {
 
 		logger.info("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
-	}
-
-	/**
-	 * Parses the announce information from the decoded meta-info structure.
-	 *
-	 * <p>
-	 * If the torrent doesn't define an announce-list, use the mandatory
-	 * announce field value as the single tracker in a single announce tier.
-	 * Otherwise, the announce-list must be parsed and the trackers from each
-	 * tier extracted.
-	 * </p>
-	 *
-	 * @see <a href="http://bittorrent.org/beps/bep_0012.html">BitTorrent BEP#0012 "Multitracker Metadata Extension"</a>
-	 */
-	private List<List<URI>> parseAnnounceInformation()
-		throws InvalidBEncodingException, URISyntaxException {
-		List<List<URI>> list = new ArrayList<List<URI>>();
-
-		if (!this.decoded.containsKey("announce-list")) {
-			List<URI> tier = new ArrayList<URI>();
-			tier.add(new URI(this.decoded.get("announce").getString()));
-			list.add(tier);
-			return list;
-		}
-
-		List<BEValue> tiers = this.decoded.get("announce-list").getList();
-		for (BEValue tv : tiers) {
-			List<BEValue> trackers = tv.getList();
-			if (trackers.isEmpty()) {
-				continue;
-			}
-
-			List<URI> tier = new ArrayList<URI>();
-			for (BEValue tracker : trackers) {
-				tier.add(new URI(tracker.getString()));
-			}
-			list.add(tier);
-		}
-
-		return list;
 	}
 
 	/**
@@ -367,12 +375,17 @@ public class Torrent {
 	}
 
 	/**
-	 * Return the announce URI used by this torrent.
-	 *
-	 * TODO: complete implementation for BEP#0012 support.
+	 * Return the trackers for this torrent.
 	 */
-	public URI getAnnounceUrl() {
-		return this.announce.get(0).get(0);
+	public List<List<URI>> getAnnounceList() {
+		return this.trackers;
+	}
+
+	/**
+	 * Returns the number of trackers for this torrent.
+	 */
+	public int getTrackerCount() {
+		return this.allTrackers.size();
 	}
 
 	/**

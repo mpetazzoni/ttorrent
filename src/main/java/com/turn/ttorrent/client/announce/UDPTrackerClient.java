@@ -61,10 +61,10 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class UDPAnnounce extends Announce {
+public class UDPTrackerClient extends TrackerClient {
 
 	protected static final Logger logger =
-		LoggerFactory.getLogger(UDPAnnounce.class);
+		LoggerFactory.getLogger(UDPTrackerClient.class);
 
 	/**
 	 * Back-off timeout uses 15 * 2 ^ n formula.
@@ -112,9 +112,9 @@ public class UDPAnnounce extends Announce {
 	 * 
 	 * @param torrent
 	 */
-	protected UDPAnnounce(SharedTorrent torrent, Peer peer)
-		throws SocketException, UnknownHostException {
-		super(torrent, peer, "udp");
+	protected UDPTrackerClient(SharedTorrent torrent, Peer peer, URI tracker)
+		throws UnknownHostException {
+		super(torrent, peer, tracker);
 
 		/**
 		 * The UDP announce request protocol only supports IPv4
@@ -125,10 +125,9 @@ public class UDPAnnounce extends Announce {
 			throw new UnsupportedAddressTypeException();
 		}
 
-		URI announceURL = this.torrent.getAnnounceUrl();
 		this.address = new InetSocketAddress(
-			announceURL.getHost(),
-			announceURL.getPort());
+			tracker.getHost(),
+			tracker.getPort());
 
 		this.socket = null;
 		this.random = new Random();
@@ -165,12 +164,13 @@ public class UDPAnnounce extends Announce {
 				// Immediately decide if we can send the announce request
 				// directly or not. For this, we need a valid, non-expired
 				// connection ID.
-				if (this.connectionExpiration != null &&
-					new Date().before(this.connectionExpiration)) {
-					state = State.ANNOUNCE_REQUEST;
-				} else {
-					logger.debug("Announce connection ID expired, " +
-						"reconnecting with tracker...");
+				if (this.connectionExpiration != null) {
+					if (new Date().before(this.connectionExpiration)) {
+						state = State.ANNOUNCE_REQUEST;
+					} else {
+						logger.debug("Announce connection ID expired, " +
+							"reconnecting with tracker...");
+					}
 				}
 
 				switch (state) {
