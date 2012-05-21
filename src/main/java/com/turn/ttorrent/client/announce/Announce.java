@@ -295,7 +295,7 @@ public class Announce implements Runnable {
 	 * </p>
 	 */
 	private void promoteCurrentTrackerClient() {
-		logger.debug("Promoting current tracker client for {} " +
+		logger.trace("Promoting current tracker client for {} " +
 			"(tier {}, position {} -> 0).",
 			new Object[] {
 				this.getCurrentTrackerClient().getTrackerURI(),
@@ -322,25 +322,32 @@ public class Announce implements Runnable {
 	 * </p>
 	 */
 	private void moveToNextTrackerClient() {
-		this.currentClient++;
+		int tier = this.currentTier;
+		int client = this.currentClient + 1;
 
-		if (this.currentClient >= this.clients.get(this.currentTier).size()) {
-			this.currentClient = 0;
+		if (client >= this.clients.get(tier).size()) {
+			client = 0;
 
-			this.currentTier++;
+			tier++;
 
-			if (this.currentTier >= this.clients.size()) {
-				this.currentTier = 0;
+			if (tier >= this.clients.size()) {
+				tier = 0;
 			}
 		}
 
-		logger.debug("Switched to tracker client for {} " +
-			"(tier {}, position {}).",
-			new Object[] {
-				this.getCurrentTrackerClient().getTrackerURI(),
-				this.currentTier,
-				this.currentClient
-			});
+		if (tier != this.currentTier ||
+			client != this.currentClient) {
+			this.currentTier = tier;
+			this.currentClient = client;
+
+			logger.debug("Switched to tracker client for {} " +
+				"(tier {}, position {}).",
+				new Object[] {
+					this.getCurrentTrackerClient().getTrackerURI(),
+					this.currentTier,
+					this.currentClient
+				});
+		}
 	}
 
 	/**
