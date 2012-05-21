@@ -150,7 +150,7 @@ public abstract class TrackerClient {
 	protected void fireAnnounceResponseEvent(int complete, int incomplete,
 		int interval) {
 		for (AnnounceResponseListener listener : this.listeners) {
-			listener.handleAnnounceResponse(complete, incomplete, interval);
+			listener.handleAnnounceResponse(interval, complete, incomplete);
 		}
 	}
 
