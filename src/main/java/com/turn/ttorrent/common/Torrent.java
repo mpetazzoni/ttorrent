@@ -776,8 +776,9 @@ public class Torrent {
 
 			Torrent torrent = null;
 			if (source.isDirectory()) {
-				torrent = Torrent.create(source,
-					Arrays.asList(source.listFiles()),
+				File[] files = source.listFiles();
+				Arrays.sort(files);
+				torrent = Torrent.create(source, Arrays.asList(files),
 					announce, creator);
 			} else {
 				torrent = Torrent.create(source, announce, creator);
