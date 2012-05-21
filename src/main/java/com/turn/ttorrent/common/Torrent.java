@@ -222,7 +222,7 @@ public class Torrent {
 		if (this.decoded_info.containsKey("files")) {
 			for (BEValue file : this.decoded_info.get("files").getList()) {
 				Map<String, BEValue> fileInfo = file.getMap();
-				StringBuffer path = new StringBuffer();
+				StringBuilder path = new StringBuilder();
 				for (BEValue pathElement : fileInfo.get("path").getList()) {
 					path.append(File.separator)
 						.append(pathElement.getString());
@@ -707,7 +707,7 @@ public class Torrent {
 		}
 		long elapsed = System.nanoTime() - start;
 
-		StringBuffer hashes = new StringBuffer();
+		StringBuilder hashes = new StringBuilder();
 		try {
 			for (Future<String> chunk : results) {
 				hashes.append(chunk.get());
