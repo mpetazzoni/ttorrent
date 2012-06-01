@@ -313,6 +313,13 @@ public class Client extends Observable implements Runnable,
 			this.setState(ClientState.SHARING);
 		}
 
+		// Detect early stop
+		if (this.stop) {
+			logger.info("Download is complete and no seeding was requested.");
+			this.finish();
+			return;
+		}
+
 		this.announce.start();
 		this.service.start();
 
@@ -359,6 +366,13 @@ public class Client extends Observable implements Runnable,
 			peer.unbind(true);
 		}
 
+		this.finish();
+	}
+
+	/**
+	 * Close torrent and set final client state before signing off.
+	 */
+	private void finish() {
 		this.torrent.close();
 
 		// Determine final state
@@ -614,6 +628,12 @@ public class Client extends Observable implements Runnable,
 
 		logger.info("Got {} peer(s) in tracker response, initiating " +
 			"connections...", peers.size());
+
+		if (!this.service.isAlive()) {
+			logger.warn("Connection handler service is not available.");
+			return;
+		}
+
 		for (Peer peer : peers) {
 			SharingPeer match = this.getOrCreatePeer(peer);
 
@@ -869,8 +889,8 @@ public class Client extends Observable implements Runnable,
 		}
 
 		logger.info("Seeding for {} seconds...", this.seed);
-		Timer seedTimer = new Timer();
-		seedTimer.schedule(new ClientShutdown(this), this.seed*1000);
+		Timer timer = new Timer();
+		timer.schedule(new ClientShutdown(this, timer), this.seed*1000);
 	}
 
 	/**
@@ -891,15 +911,20 @@ public class Client extends Observable implements Runnable,
 	 */
 	private static class ClientShutdown extends TimerTask {
 
-		private Client client;
+		private final Client client;
+		private final Timer timer;
 
-		ClientShutdown(Client client) {
+		ClientShutdown(Client client, Timer timer) {
 			this.client = client;
+			this.timer = timer;
 		}
 
 		@Override
 		public void run() {
 			this.client.stop();
+			if (this.timer != null) {
+				this.timer.cancel();
+			}
 		}
 	};
 
@@ -925,8 +950,8 @@ public class Client extends Observable implements Runnable,
 
 			// Set a shutdown hook that will stop the sharing/seeding and send
 			// a STOPPED announce request.
-			Runtime.getRuntime()
-				.addShutdownHook(new Thread(new ClientShutdown(c)));
+			Runtime.getRuntime().addShutdownHook(
+				new Thread(new ClientShutdown(c, null)));
 
 			c.share();
 			if (ClientState.ERROR.equals(c.getState())) {

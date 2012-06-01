@@ -306,6 +306,16 @@ public class ConnectionHandler implements Runnable {
 	}
 
 	/**
+	 * Tells whether the connection handler is running and can be used to
+	 * handle new peer connections.
+	 */
+	public boolean isAlive() {
+		return this.executor != null &&
+			!this.executor.isShutdown() &&
+			!this.executor.isTerminated();
+	}
+
+	/**
 	 * Connect to the given peer and perform the BitTorrent handshake.
 	 *
 	 * <p>
@@ -316,6 +326,11 @@ public class ConnectionHandler implements Runnable {
 	 * @param peer The peer to connect to.
 	 */
 	public void connect(SharingPeer peer) {
+		if (!this.isAlive()) {
+			throw new IllegalStateException(
+				"Connection handler is not accepting new peers at this time!");
+		}
+
 		this.executor.submit(new ConnectorTask(this, peer));
 	}
 
