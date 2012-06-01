@@ -52,6 +52,8 @@ public class Announce implements Runnable {
 	protected static final Logger logger =
 		LoggerFactory.getLogger(Announce.class);
 
+	private final Peer peer;
+
 	/** The tiers of tracker clients matching the tracker URIs defined in the
 	 * torrent. */
 	private final List<List<TrackerClient>> clients;
@@ -77,6 +79,7 @@ public class Announce implements Runnable {
 	 * name).
 	 */
 	public Announce(SharedTorrent torrent, Peer peer) {
+		this.peer = peer;
 		this.clients = new ArrayList<List<TrackerClient>>();
 		this.allClients = new HashSet<TrackerClient>();
 
@@ -135,7 +138,8 @@ public class Announce implements Runnable {
 
 		if (this.thread == null || !this.thread.isAlive()) {
 			this.thread = new Thread(this);
-			this.thread.setName("bt-announce");
+			this.thread.setName("bt-announce(" +
+				this.peer.getShortHexPeerId() + ")");
 			this.thread.start();
 		}
 	}
