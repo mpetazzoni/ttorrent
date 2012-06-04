@@ -98,7 +98,10 @@ public class Announce implements Runnable {
 					this.allClients.add(client);
 				} catch (Exception e) {
 					logger.warn("Will not announce on {}: {}!",
-						tracker, e.getMessage());
+						tracker,
+						e.getMessage() != null
+							? e.getMessage()
+							: e.getClass().getSimpleName());
 				}
 			}
 

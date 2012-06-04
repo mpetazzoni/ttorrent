@@ -737,6 +737,8 @@ public class Torrent {
 	 * You can use the {@code main()} function of this {@link Torrent} class to
 	 * read or create torrent files. See usage for details.
 	 * </p>
+	 *
+	 * TODO: use CmdLineParser.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(

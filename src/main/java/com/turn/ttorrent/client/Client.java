@@ -27,12 +27,18 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Observable;
@@ -45,12 +51,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import jargs.gnu.CmdLineParser;
+
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * A pure-java BitTorrent client.
@@ -92,6 +99,9 @@ public class Client extends Observable implements Runnable,
 	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
 	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 20;
+
+	/** Default data output directory. */
+	private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
 	public enum ClientState {
 		WAITING,
@@ -928,6 +938,60 @@ public class Client extends Observable implements Runnable,
 		}
 	};
 
+	/**
+	 * Display program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s) {
+		s.println("usage: Client [options] <torrent>");
+		s.println();
+		s.println("Available options:");
+		s.println("  -h,--help             Show this help and exit.");
+		s.println("  -o,--output DIR       Read/write data to directory DIR.");
+		s.println("  -i,--iface IFACE      Bind to interface IFACE.");
+		s.println();
+	}
+
+	/**
+	 * Returns a usable {@link Inet4Address} for the given interface name.
+	 *
+	 * <p>
+	 * If an interface name is given, return the first usable IPv4 address for
+	 * that interface. If no interface name is given or if that interface
+	 * doesn't have an IPv4 address, return's localhost address (if IPv4).
+	 * </p>
+	 *
+	 * <p>
+	 * It is understood this makes the client IPv4 only, but it is important to
+	 * remember that most BitTorrent extensions (like compact peer lists from
+	 * trackers and UDP tracker support) are IPv4-only anyway.
+	 * </p>
+	 *
+	 * @param iface The network interface name.
+	 * @return A usable IPv4 address as a {@link Inet4Address}.
+	 * @throws UnsupportedAddressTypeException If no IPv4 address was available
+	 * to bind on.
+	 */
+	private static Inet4Address getIPv4Address(String iface)
+		throws SocketException, UnsupportedAddressTypeException,
+			UnknownHostException {
+		if (iface != null) {
+			Enumeration<InetAddress> addresses =
+				NetworkInterface.getByName(iface).getInetAddresses();
+			while (addresses.hasMoreElements()) {
+				InetAddress addr = addresses.nextElement();
+				if (addr instanceof Inet4Address) {
+					return (Inet4Address)addr;
+				}
+			}
+		}
+
+		InetAddress localhost = InetAddress.getLocalHost();
+		if (localhost instanceof Inet4Address) {
+			return (Inet4Address)localhost;
+		}
+
+		throw new UnsupportedAddressTypeException();
+	}
 
 	/**
 	 * Main client entry point for stand-alone operation.
@@ -936,17 +1000,41 @@ public class Client extends Observable implements Runnable,
 		BasicConfigurator.configure(new ConsoleAppender(
 			new PatternLayout("%d [%-25t] %-5p: %m%n")));
 
-		if (args.length < 1) {
-			System.err.println("usage: Client <torrent> [directory]");
+		CmdLineParser parser = new CmdLineParser();
+		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
+		CmdLineParser.Option output = parser.addStringOption('o', "output");
+		CmdLineParser.Option iface = parser.addStringOption('i', "iface");
+
+		try {
+			parser.parse(args);
+		} catch (CmdLineParser.OptionException oe) {
+			System.err.println(oe.getMessage());
+			usage(System.err);
+			System.exit(1);
+		}
+
+		// Display help and exit if requested
+		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
+			usage(System.out);
+			System.exit(0);
+		}
+
+		String outputValue = (String)parser.getOptionValue(output,
+				DEFAULT_OUTPUT_DIRECTORY);
+		String ifaceValue = (String)parser.getOptionValue(iface);
+
+		String[] otherArgs = parser.getRemainingArgs();
+		if (otherArgs.length != 1) {
+			usage(System.err);
 			System.exit(1);
 		}
 
 		try {
 			Client c = new Client(
-					InetAddress.getByName(System.getenv("HOSTNAME")),
-					SharedTorrent.fromFile(
-					new File(args[0]),
-					new File(args.length > 1 ? args[1] : "/tmp")));
+				getIPv4Address(ifaceValue),
+				SharedTorrent.fromFile(
+					new File(otherArgs[0]),
+					new File(outputValue)));
 
 			// Set a shutdown hook that will stop the sharing/seeding and send
 			// a STOPPED announce request.

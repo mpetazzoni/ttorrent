@@ -55,6 +55,14 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>jboss-thirdparty-releases</id>
+      <name>JBoss Thirdparty Releases</name>
+      <url>https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/</url>
+    </repository>
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>commons-io</groupId>
@@ -79,6 +87,12 @@
       <artifactId>testng</artifactId>
       <version>6.1.1</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>net.sf</groupId>
+      <artifactId>jargs</artifactId>
+      <version>1.0</version>
     </dependency>
   </dependencies>
 

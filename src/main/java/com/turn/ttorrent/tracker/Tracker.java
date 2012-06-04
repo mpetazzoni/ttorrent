@@ -20,6 +20,7 @@ import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
@@ -28,6 +29,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import jargs.gnu.CmdLineParser;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -279,6 +282,7 @@ public class Tracker {
 				connection.connect(address);
 			} catch (IOException ioe) {
 				logger.error("Could not start the tracker: {}!", ioe.getMessage());
+				Tracker.this.stop();
 			}
 		}
 	}
@@ -316,16 +320,57 @@ public class Tracker {
 	}
 
 	/**
+	 * Display program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s) {
+		s.println("usage: Tracker [options] [directory]");
+		s.println();
+		s.println("Available options:");
+		s.println("  -h,--help             Show this help and exit.");
+		s.println("  -p,--port PORT        Bind to port PORT.");
+		s.println();
+	}
+
+	/**
 	 * Main function to start a tracker.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
 			new PatternLayout("%d [%-25t] %-5p: %m%n")));
 
-		if (args.length < 1) {
-			System.err.println("usage: Tracker <directory> [port]");
+		CmdLineParser parser = new CmdLineParser();
+		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
+		CmdLineParser.Option port = parser.addIntegerOption('p', "port");
+
+		try {
+			parser.parse(args);
+		} catch (CmdLineParser.OptionException oe) {
+			System.err.println(oe.getMessage());
+			usage(System.err);
 			System.exit(1);
 		}
+
+		// Display help and exit if requested
+		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
+			usage(System.out);
+			System.exit(0);
+		}
+
+		Integer portValue = (Integer)parser.getOptionValue(port,
+			Integer.valueOf(DEFAULT_TRACKER_PORT));
+
+		String[] otherArgs = parser.getRemainingArgs();
+
+		if (otherArgs.length > 1) {
+			usage(System.err);
+			System.exit(1);
+		}
+
+		// Get directory from command-line argument or default to current
+		// directory
+		String directory = otherArgs.length > 0
+			? otherArgs[0]
+			: ".";
 
 		FilenameFilter filter = new FilenameFilter() {
 			@Override
@@ -335,13 +380,9 @@ public class Tracker {
 		};
 
 		try {
-			Tracker t = new Tracker(
-				new InetSocketAddress(
-					args.length > 1
-						? Integer.valueOf(args[1])
-						: DEFAULT_TRACKER_PORT));
+			Tracker t = new Tracker(new InetSocketAddress(portValue.intValue()));
 
-			File parent = new File(args[0]);
+			File parent = new File(directory);
 			for (File f : parent.listFiles(filter)) {
 				logger.info("Loading torrent from " + f.getName());
 				t.announce(TrackedTorrent.load(f));
