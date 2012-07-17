@@ -96,7 +96,7 @@ public class TrackerService implements Container {
 	 */
 	public void handle(Request request, Response response) {
 		// Reject non-announce requests
-		if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
+		if (!HTTPTracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
 			response.setCode(404);
 			response.setText("Not Found");
 			return;
