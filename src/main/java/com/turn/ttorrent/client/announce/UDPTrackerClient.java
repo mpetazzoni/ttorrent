@@ -155,7 +155,6 @@ public class UDPTrackerClient extends TrackerClient {
 
 		try {
 			this.socket = new DatagramSocket();
-			this.socket.connect(this.address);
 
 			while (++attempts <= maxAttempts) {
 				// Transaction ID is randomized for each exchange.
