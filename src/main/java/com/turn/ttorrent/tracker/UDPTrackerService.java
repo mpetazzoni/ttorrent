@@ -10,6 +10,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.Calendar;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.simpleframework.http.Status;
@@ -82,6 +83,7 @@ public class UDPTrackerService
 		this.torrents = torrents;
 		
 		this.random = new Random();
+		this.clients = new ConcurrentHashMap<Long, UDPTrackedClient>();
 	}
 
 	/**
@@ -179,8 +181,10 @@ public class UDPTrackerService
 			
 			throw new MessageValidationException("Unable to know what type of request");
 		} catch (Exception e) {
-			logger.warn("Error analyzing datagram packet from client at {}: {}.", 
-					packet.getAddress(), e.getMessage());
+			logger.warn("Error analyzing datagram packet from client at {}: {} (length={}).", 
+					new String[] { packet.getAddress().toString(), e.getMessage(), 
+					new Integer(packet.getLength()).toString() }, e);
+			e.printStackTrace();
 		}
 	}
 	
@@ -192,11 +196,13 @@ public class UDPTrackerService
 	 */
 	private void handleConnectResponse (DatagramPacket packet, UDPConnectRequestMessage request)
 	{
+		logger.info("Connect request received from "+packet.getAddress());
+		
 		// Generate a new connectionId
 		Long connectionId = null;
 		do {
 			connectionId = this.random.nextLong();
-		} while (!this.clients.containsKey(connectionId));
+		} while (this.clients.containsKey(connectionId));
 		
 		// Create the trackered client
 		InetSocketAddress address = new InetSocketAddress(packet.getAddress(), packet.getPort());
@@ -209,6 +215,7 @@ public class UDPTrackerService
 		// Compute and send the response
 		this.send(client.getAddress(), UDPConnectResponseMessage.craft(
 				request.getTransactionId(), connectionId.longValue()).getData());
+		logger.info("Connect response sent to "+packet.getAddress());
 	}
 
 	/**
@@ -224,6 +231,8 @@ public class UDPTrackerService
 	 */
 	private void handleAnnounceResponse (UDPTrackedClient client, UDPAnnounceRequestMessage request)
 	{
+		logger.info("Announce request received from "+client.getAddress());
+		
 		// The requested torrent must have been announced by the tracker
 		TrackedTorrent torrent = this.torrents.get(request.getHexInfoHash());
 		if (torrent == null) {
@@ -286,6 +295,7 @@ public class UDPTrackerService
 		
 		// Send the awnser
 		this.send(client.getAddress(), announceResponse.getData());
+		logger.info("Announce response sent to "+client.getAddress());
 	}
 	
 	/**

@@ -9,6 +9,8 @@ import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -119,13 +121,12 @@ public class HTTPTracker extends Tracker
 	 * This has the form http://host:port/announce.
 	 * </p>
 	 */
-	public URL getAnnounceUrl() {
+	public URI getAnnounceUrl() {
 		try {
-			return new URL("http",
+			return new URI("http", null,
 				this.address.getAddress().getCanonicalHostName(),
-				this.address.getPort(),
-				HTTPTracker.ANNOUNCE_URL);
-		} catch (MalformedURLException mue) {
+				this.address.getPort(), HTTPTracker.ANNOUNCE_URL, null, null);
+		} catch (URISyntaxException mue) {
 			logger.error("Could not build tracker URL: {}!", mue, mue);
 		}
 

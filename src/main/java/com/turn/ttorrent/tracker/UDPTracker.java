@@ -6,6 +6,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -87,12 +89,12 @@ public class UDPTracker extends Tracker
 	 * This has the form udp://host:port/.
 	 * </p>
 	 */
-	public URL getAnnounceUrl() {
+	public URI getAnnounceUrl() {
 		try {
-			return new URL("udp",
+			return new URI("udp", null,
 				this.address.getAddress().getCanonicalHostName(),
-				this.address.getPort(), "");
-		} catch (MalformedURLException mue) {
+				this.address.getPort(), null, null, null);
+		} catch (URISyntaxException mue) {
 			logger.error("Could not build tracker URL: {}!", mue, mue);
 		}
 

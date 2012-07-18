@@ -366,6 +366,7 @@ public class UDPTrackerClient extends TrackerClient {
 				new byte[UDP_PACKET_LENGTH],
 				UDP_PACKET_LENGTH);
 			this.socket.receive(p);
+			logger.info("Received {} bytes", p.getLength());
 			return ByteBuffer.wrap(p.getData(), 0, p.getLength());
 		} catch (SocketTimeoutException ste) {
 			throw ste;

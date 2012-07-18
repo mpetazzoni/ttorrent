@@ -24,6 +24,7 @@ import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -90,7 +91,7 @@ public abstract class Tracker {
 	 * Returns the full announce URL served by this tracker.
 	 *
 	 */
-	abstract public URL getAnnounceUrl();
+	abstract public URI getAnnounceUrl();
 
 	/**
 	 * Stop the tracker.
