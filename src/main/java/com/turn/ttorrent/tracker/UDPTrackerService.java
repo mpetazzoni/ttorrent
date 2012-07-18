@@ -1,19 +1,27 @@
 package com.turn.ttorrent.tracker;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 import java.util.Calendar;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
 
+import org.simpleframework.http.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.udp.UDPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.udp.UDPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.udp.UDPConnectRequestMessage;
 import com.turn.ttorrent.common.protocol.udp.UDPConnectResponseMessage;
 
@@ -206,11 +214,78 @@ public class UDPTrackerService
 	/**
 	 * Compute and send the announce response.
 	 * 
+	 * <p>
+	 * This method will respond to the announce request if the client
+	 * is known and connected (he made a connect request) and if
+	 * the torrent is known by the tracker.
+	 * </p>
+	 * 
 	 * @param message
 	 */
 	private void handleAnnounceResponse (UDPTrackedClient client, UDPAnnounceRequestMessage request)
 	{
-		// TODO Announce handling
+		// The requested torrent must have been announced by the tracker
+		TrackedTorrent torrent = this.torrents.get(request.getHexInfoHash());
+		if (torrent == null) {
+			logger.warn("Requested torrent wasn't announced by tracker: {}.",
+				request.getHexInfoHash());
+			return;
+		}
+		
+		AnnounceRequestMessage.RequestEvent event = request.getEvent();
+		String peerId = request.getHexPeerId();
+
+		// When no event is specified, it's a periodic update while the client
+		// is operating. If we don't have a peer for this announce, it means
+		// the tracker restarted while the client was running. Consider this
+		// announce request as a 'started' event.
+		if ((event == null ||
+				AnnounceRequestMessage.RequestEvent.NONE.equals(event)) &&
+			torrent.getPeer(peerId) == null) {
+			event = AnnounceRequestMessage.RequestEvent.STARTED;
+		}
+
+		// If an event other than 'started' is specified and we also haven't
+		// seen the peer on this torrent before, something went wrong. A
+		// previous 'started' announce request should have been made by the
+		// client that would have had us register that peer on the torrent this
+		// request refers to.
+		if (event != null && torrent.getPeer(peerId) == null &&
+			!AnnounceRequestMessage.RequestEvent.STARTED.equals(event)) {
+			logger.warn("Peer {} must be connected before an announcing request.",
+				peerId);
+			return;
+		}
+
+		// Update the torrent according to the announce event
+		TrackedPeer peer = null;
+		try {
+			peer = torrent.update(event,
+				ByteBuffer.wrap(request.getPeerId()),
+				request.getHexPeerId(),
+				request.getIp(),
+				request.getPort(),
+				request.getUploaded(),
+				request.getDownloaded(),
+				request.getLeft());
+		} catch (IllegalArgumentException iae) {
+			logger.warn("Peer {} sent an invalid event.", peerId);
+			return;
+		} catch (UnsupportedEncodingException e) {
+			logger.warn("Peer {} sent announce request with unsupported encoding.", peerId);
+			return;
+		}
+
+		// Craft the answer
+		UDPAnnounceResponseMessage announceResponse = UDPAnnounceResponseMessage.craft(
+			request.getTransactionId(),
+			torrent.getAnnounceInterval(), 
+			torrent.leechers(),
+			torrent.seeders(), 
+			torrent.getSomePeers(peer));
+		
+		// Send the awnser
+		this.send(client.getAddress(), announceResponse.getData());
 	}
 	
 	/**
