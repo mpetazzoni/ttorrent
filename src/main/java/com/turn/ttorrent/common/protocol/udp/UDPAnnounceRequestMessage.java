@@ -139,7 +139,7 @@ public class UDPAnnounceRequestMessage
 
 	@Override
 	public String getIp() {
-		return this.ip.toString();
+		return this.ip.getHostAddress();
 	}
 
 	@Override
