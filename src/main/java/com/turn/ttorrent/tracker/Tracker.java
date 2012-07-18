@@ -85,6 +85,12 @@ public abstract class Tracker {
 			this.collector.start();
 		}
 	}
+	
+	/**
+	 * Returns the full announce URL served by this tracker.
+	 *
+	 */
+	abstract public URL getAnnounceUrl();
 
 	/**
 	 * Stop the tracker.
@@ -194,7 +200,7 @@ public abstract class Tracker {
 
 		@Override
 		public void run() {
-			logger.info("Starting tracker peer collection for tracker...");
+			logger.info("Starting tracker peer collection for tracker at {}...", getAnnounceUrl());
 
 			while (!stop) {
 				for (TrackedTorrent torrent : torrents.values()) {

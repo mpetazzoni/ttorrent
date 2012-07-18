@@ -58,10 +58,10 @@ import org.simpleframework.http.core.Container;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-public class TrackerService implements Container {
+public class HTTPTrackerService implements Container {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(TrackerService.class);
+		LoggerFactory.getLogger(HTTPTrackerService.class);
 
 	private static final String[] NUMERIC_REQUEST_FIELDS = new String[] {
 		"port", "uploaded", "downloaded", "left", "compact", "no_peer_id" };
@@ -76,7 +76,7 @@ public class TrackerService implements Container {
 	 * @param torrents The torrents this TrackerService should serve requests
 	 * for.
 	 */
-	TrackerService(String version,
+	HTTPTrackerService(String version,
 			ConcurrentMap<String, TrackedTorrent> torrents) {
 		this.version = version;
 		this.torrents = torrents;

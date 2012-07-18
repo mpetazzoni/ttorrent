@@ -75,7 +75,7 @@ public class HTTPTracker extends Tracker
 
 		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
 		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
+				new HTTPTrackerService(version, this.torrents));
 	}
 	
 	/**
