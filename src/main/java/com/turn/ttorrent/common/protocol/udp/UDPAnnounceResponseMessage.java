@@ -17,6 +17,7 @@ package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.Type;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -129,6 +130,7 @@ public class UDPAnnounceResponseMessage
 		int interval, int complete, int incomplete, List<Peer> peers) {
 		ByteBuffer data = ByteBuffer
 			.allocate(UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE + 6*peers.size());
+		data.putInt(Type.ANNOUNCE_RESPONSE.getId());
 		data.putInt(transactionId);
 		data.putInt(interval);
 
