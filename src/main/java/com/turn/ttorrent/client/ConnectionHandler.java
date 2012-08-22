@@ -116,8 +116,6 @@ public class ConnectionHandler implements Runnable {
 		this.torrent = torrent;
 		this.id = id;
 
-		this.socket = new ServerSocket();
-
 		// Bind to the first available port in the range
 		// [PORT_RANGE_START; PORT_RANGE_END].
 		for (int port = ConnectionHandler.PORT_RANGE_START;
@@ -127,6 +125,7 @@ public class ConnectionHandler implements Runnable {
 				new InetSocketAddress(address, port);
 
 			try {
+				this.socket = new ServerSocket();
 				this.socket.bind(tryAddress);
 				this.address = tryAddress;
 				break;
