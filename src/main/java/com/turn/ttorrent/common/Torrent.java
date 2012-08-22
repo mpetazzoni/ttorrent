@@ -49,10 +49,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -741,9 +737,6 @@ public class Torrent {
 	 * TODO: use CmdLineParser.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
-
 		if (args.length != 1 && args.length != 3) {
 			System.err.println("usage: Torrent <torrent> [announce url] " +
 				"[file|directory]");

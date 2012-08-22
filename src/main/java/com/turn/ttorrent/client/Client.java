@@ -53,9 +53,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import jargs.gnu.CmdLineParser;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -997,9 +994,6 @@ public class Client extends Observable implements Runnable,
 	 * Main client entry point for stand-alone operation.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
-
 		CmdLineParser parser = new CmdLineParser();
 		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
 		CmdLineParser.Option output = parser.addStringOption('o', "output");
