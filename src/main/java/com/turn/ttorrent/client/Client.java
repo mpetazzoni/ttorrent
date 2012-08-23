@@ -28,6 +28,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -53,9 +54,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import jargs.gnu.CmdLineParser;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +114,7 @@ public class Client extends Observable implements Runnable,
 
 	private SharedTorrent torrent;
 	private ClientState state;
+	private ClientInfo lastInfo;
 	private Peer self;
 
 	private Thread thread;
@@ -128,6 +127,8 @@ public class Client extends Observable implements Runnable,
 	private ConcurrentMap<String, SharingPeer> connected;
 
 	private Random random;
+
+
 
 	/**
 	 * Initialize the BitTorrent client.
@@ -394,7 +395,7 @@ public class Client extends Observable implements Runnable,
 
 		logger.info("BitTorrent client signing off.");
 	}
-
+	
 	/**
 	 * Display information about the BitTorrent client state.
 	 *
@@ -406,26 +407,19 @@ public class Client extends Observable implements Runnable,
 	 * </p>
 	 */
 	public synchronized void info() {
-		float dl = 0;
-		float ul = 0;
-		for (SharingPeer peer : this.connected.values()) {
-			dl += peer.getDLRate().get();
-			ul += peer.getULRate().get();
-		}
-
-		logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
-			new Object[] {
-				this.getState().name(),
-				this.torrent.getCompletedPieces().cardinality(),
-				this.torrent.getPieceCount(),
-				String.format("%.2f", this.torrent.getCompletion()),
-				this.torrent.getAvailablePieces().cardinality(),
-				this.torrent.getRequestedPieces().cardinality(),
-				this.connected.size(),
-				this.peers.size(),
-				String.format("%.2f", dl/1024.0),
-				String.format("%.2f", ul/1024.0),
-			});
+		this.lastInfo = new ClientInfo(this);
+		this.lastInfo.display();
+	}
+	
+	/**
+	 * Get the last generated {@link ClientInfo} object.
+	 * 
+	 * @see #info()
+	 * 
+	 * @return
+	 */
+	public ClientInfo getLastInfo() {
+		return lastInfo;
 	}
 
 	/**
@@ -992,14 +986,124 @@ public class Client extends Observable implements Runnable,
 
 		throw new UnsupportedAddressTypeException();
 	}
+	
+	/**
+	 * Contains information about the BitTorrent client state.
+	 *
+	 * <p>
+	 * This can emits an information line in the log about this client's state. It
+	 * includes the number of choked peers, number of connected peers, number
+	 * of known peers, information about the torrent availability and
+	 * completion and current transmission rates.
+	 * </p>
+	 *
+	 */
+	public static class ClientInfo implements Serializable {
+		private static final long serialVersionUID = -2653733386272237917L;
+		
+		private float DLRate;
+		private float URLRate;		
+		private ClientState state;
+		private int completedPieces;
+		private int pieceCount;
+		private float completion;
+		private int availablePieces;
+		private int requestedPieces;
+		private int connectedPeersCount;
+		private int peersCount;
+		
+		public ClientInfo(Client client) {
+			float dl = 0;
+			float ul = 0;
+			for (SharingPeer peer : client.connected.values()) {
+				dl += peer.getDLRate().get();
+				ul += peer.getULRate().get();
+			}
+			
+			this.DLRate = dl;
+			this.URLRate = ul;
+			this.state = client.state;
+			this.completedPieces = client.torrent.getCompletedPieces().cardinality();
+			this.pieceCount = client.torrent.getPieceCount();
+			this.completion = client.torrent.getCompletion();
+			this.availablePieces = client.torrent.getAvailablePieces().cardinality();
+			this.requestedPieces = client.torrent.getRequestedPieces().cardinality();
+			this.connectedPeersCount = client.connected.size();
+			this.peersCount = client.peers.size();
+		}
+		
+		/**
+		 * Display information about the BitTorrent client state.
+		 *
+		 * <p>
+		 * This emits an information line in the log about this client's state. It
+		 * includes the number of choked peers, number of connected peers, number
+		 * of known peers, information about the torrent availability and
+		 * completion and current transmission rates.
+		 * </p>
+		 */
+		public void display() {
+			logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
+					new Object[] {
+						this.state,
+						this.completedPieces,
+						this.pieceCount,
+						String.format("%.2f", this.completion),
+						this.availablePieces,
+						this.requestedPieces,
+						this.connectedPeersCount,
+						this.peersCount,
+						String.format("%.2f", this.DLRate/1024.0),
+						String.format("%.2f", this.URLRate/1024.0),
+					});
+		}
+
+		public float getDLRate() {
+			return DLRate;
+		}
+
+		public float getURLRate() {
+			return URLRate;
+		}
+
+		public ClientState getState() {
+			return state;
+		}
+
+		public int getCompletedPieces() {
+			return completedPieces;
+		}
+
+		public int getPieceCount() {
+			return pieceCount;
+		}
+
+		public float getCompletion() {
+			return completion;
+		}
+
+		public int getAvailablePieces() {
+			return availablePieces;
+		}
+
+		public int getRequestedPieces() {
+			return requestedPieces;
+		}
+
+		public int getConnectedPeersCount() {
+			return connectedPeersCount;
+		}
+
+		public int getPeersCount() {
+			return peersCount;
+		}
+		
+	}
 
 	/**
 	 * Main client entry point for stand-alone operation.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
-
 		CmdLineParser parser = new CmdLineParser();
 		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
 		CmdLineParser.Option output = parser.addStringOption('o', "output");
