@@ -23,6 +23,7 @@ import com.turn.ttorrent.common.protocol.http.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -86,13 +87,15 @@ public class HTTPTrackerClient extends TrackerClient {
 				this.torrent.getLeft()
 			});
 
+		URLConnection conn = null;
+
 		try {
 			HTTPAnnounceRequestMessage request =
 				this.buildAnnounceRequest(event);
 
 			// Send announce request (HTTP GET)
 			URL target = request.buildAnnounceURL(this.tracker.toURL());
-			URLConnection conn = target.openConnection();
+			conn = target.openConnection();
 
 			InputStream is = new AutoCloseInputStream(conn.getInputStream());
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -110,6 +113,17 @@ public class HTTPTrackerClient extends TrackerClient {
 				"protocol (" + mve.getMessage() + ")", mve);
 		} catch (IOException ioe) {
 			throw new AnnounceException(ioe.getMessage(), ioe);
+		} finally {
+			if (conn != null && conn instanceof HttpURLConnection) {
+				InputStream err = ((HttpURLConnection) conn).getErrorStream();
+				if (err != null) {
+					try {
+						err.close();
+					} catch (IOException ioe) {
+						logger.warn("Problem ensuring error stream closed!", ioe);
+					}
+				}
+			}
 		}
 	}
 
