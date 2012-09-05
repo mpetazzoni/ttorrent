@@ -388,8 +388,9 @@ public class SharingPeer extends Peer implements MessageListener {
 				.craft(
 					this.requestedPiece.getIndex(),
 					this.lastRequestedOffset,
-					Math.min(this.requestedPiece.size() -
-							this.lastRequestedOffset,
+					Math.min(
+						(int)(this.requestedPiece.size() -
+							this.lastRequestedOffset),
 						PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
 			this.requests.add(request);
 			this.send(request);

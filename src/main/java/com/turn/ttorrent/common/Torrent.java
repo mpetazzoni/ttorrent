@@ -283,6 +283,9 @@ public class Torrent {
 			}
 		}
 
+		logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
+			(this.size / this.decoded_info.get("piece length").getInt()) + 1,
+			this.decoded_info.get("piece length").getInt());
 		logger.info("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
 	}

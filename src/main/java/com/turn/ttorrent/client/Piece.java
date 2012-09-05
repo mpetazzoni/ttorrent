@@ -55,7 +55,7 @@ public class Piece implements Comparable<Piece> {
 	private final TorrentByteStorage bucket;
 	private final int index;
 	private final long offset;
-	private final int length;
+	private final long length;
 	private final byte[] hash;
 	private final boolean seeder;
 
@@ -75,7 +75,7 @@ public class Piece implements Comparable<Piece> {
 	 * validation).
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset,
-		int length, byte[] hash, boolean seeder) {
+		long length, byte[] hash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
@@ -113,7 +113,7 @@ public class Piece implements Comparable<Piece> {
 	 * All pieces, except the last one, are expected to have the same size.
 	 * </p>
 	 */
-	public int size() {
+	public long size() {
 		return this.length;
 	}
 
@@ -160,8 +160,10 @@ public class Piece implements Comparable<Piece> {
 		this.valid = false;
 
 		try {
+			// TODO: remove cast to int when large ByteBuffer support is
+			// implemented in Java.
 			ByteBuffer buffer = this._read(0, this.length);
-			byte[] data = new byte[this.length];
+			byte[] data = new byte[(int)this.length];
 			buffer.get(data);
 			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 		} catch (NoSuchAlgorithmException nsae) {
@@ -188,14 +190,16 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	private ByteBuffer _read(long offset, int length) throws IOException {
+	private ByteBuffer _read(long offset, long length) throws IOException {
 		if (offset + length > this.length) {
 			throw new IllegalArgumentException("Piece#" + this.index +
 				" overrun (" + offset + " + " + length + " > " +
 				this.length + ") !");
 		}
 
-		ByteBuffer buffer = ByteBuffer.allocate(length);
+		// TODO: remove cast to int when large ByteBuffer support is
+		// implemented in Java.
+		ByteBuffer buffer = ByteBuffer.allocate((int)length);
 		int bytes = this.bucket.read(buffer, this.offset + offset);
 		buffer.clear();
 		buffer.limit(bytes >= 0 ? bytes : 0);
@@ -245,7 +249,9 @@ public class Piece implements Comparable<Piece> {
 	public synchronized void record(ByteBuffer block, int offset)
 		throws IOException {
 		if (this.data == null || offset == 0) {
-			this.data = ByteBuffer.allocate(this.length);
+			// TODO: remove cast to int when large ByteBuffer support is
+			// implemented in Java.
+			this.data = ByteBuffer.allocate((int)this.length);
 		}
 
 		int pos = block.position();

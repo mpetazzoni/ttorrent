@@ -73,8 +73,10 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		int bytes = 0;
 
 		for (FileOffset fo : this.select(offset, requested)) {
-			buffer.limit(bytes + (int)fo.length);
-			bytes += fo.file.read(buffer, (int)fo.offset);
+			// TODO: remove cast to int when large ByteBuffer support is
+			// implemented in Java.
+			buffer.limit((int)(bytes + fo.length));
+			bytes += fo.file.read(buffer, fo.offset);
 		}
 
 		if (bytes < requested) {
@@ -170,7 +172,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	 * @throws IllegalStateException If the files registered with this byte
 	 * storage can't accommodate the request (should not happen, really).
 	 */
-	private List<FileOffset> select(long offset, int length) {
+	private List<FileOffset> select(long offset, long length) {
 		if (offset + length > this.size) {
 			throw new IllegalArgumentException("Buffer overrun (" +
 				offset + " + " + length + " > " + this.size + ") !");
@@ -190,9 +192,9 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 			long position = offset - file.offset();
 			position = position > 0 ? position : 0;
-			int size = Math.min(
-				(int)(file.size() - position),
-				(int)(length - bytes));
+			long size = Math.min(
+				file.size() - position,
+				length - bytes);
 			selected.add(new FileOffset(file, position, size));
 			bytes += size;
 		}
