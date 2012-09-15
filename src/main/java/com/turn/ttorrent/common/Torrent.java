@@ -727,7 +727,7 @@ public class Torrent {
 				length,
 				results.size(),
 				expectedPieces,
-				String.format("%.1f", elapsed/1024.0/1024.0),
+				String.format("%.1f", elapsed/1e6),
 			});
 
 		return hashes.toString();
