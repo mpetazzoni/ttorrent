@@ -63,8 +63,15 @@ public class TrackerService implements Container {
 	private static final Logger logger =
 		LoggerFactory.getLogger(TrackerService.class);
 
-	private static final String[] NUMERIC_REQUEST_FIELDS = new String[] {
-		"port", "uploaded", "downloaded", "left", "compact", "no_peer_id" };
+	/**
+	 * The list of announce request URL fields that need to be interpreted as
+	 * numeric and thus converted as such in the request message parsing.
+	 */
+	private static final String[] NUMERIC_REQUEST_FIELDS =
+		new String[] {
+			"port", "uploaded", "downloaded", "left",
+			"compact", "no_peer_id", "numwant"
+		};
 
 	private final String version;
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
