@@ -188,6 +188,13 @@ public class Client extends Observable implements Runnable,
 	}
 
 	/**
+	 * Returns the set of known peers.
+	 */
+	public Set<SharingPeer> getPeers() {
+		return new HashSet<SharingPeer>(this.peers.values());
+	}
+
+	/**
 	 * Change this client's state and notify its observers.
 	 *
 	 * <p>
@@ -654,7 +661,7 @@ public class Client extends Observable implements Runnable,
 				//	   of connecting to peers that need to download
 				//     something), or we are a seeder but we're still
 				//     willing to initiate some out bound connections.
-				if (match.isBound() ||
+				if (match.isConnected() ||
 					(this.isSeed() && this.connected.size() >=
 						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
 					return;
@@ -699,7 +706,7 @@ public class Client extends Observable implements Runnable,
 
 		try {
 			synchronized (peer) {
-				if (peer.isBound()) {
+				if (peer.isConnected()) {
 					logger.info("Already connected with {}, closing link.",
 						peer);
 					s.close();
