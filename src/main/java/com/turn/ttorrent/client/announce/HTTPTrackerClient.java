@@ -132,12 +132,12 @@ public class HTTPTrackerClient extends TrackerClient {
 		return HTTPAnnounceRequestMessage.craft(
 				this.torrent.getInfoHash(),
 				this.peer.getPeerId().array(),
-				this.peer.getPort(),
+				this.peer.getExternalPort(),
 				this.torrent.getUploaded(),
 				this.torrent.getDownloaded(),
 				this.torrent.getLeft(),
 				true, false, event,
-				this.peer.getIp(),
+				this.peer.getExternalIp(),
 				AnnounceRequestMessage.DEFAULT_NUM_WANT);
 	}
 }

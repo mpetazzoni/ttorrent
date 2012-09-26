@@ -36,6 +36,16 @@ public class Peer {
 
 	private final InetSocketAddress address;
 	private final String hostId;
+	
+	/**
+	 * This attribute may contains a representation of the external address
+	 * of this peer.
+	 * 
+	 * It will be used to announce external IP address (for NAT tranversing
+	 * for instance) to tracker.
+	 * 
+	 */
+	private InetSocketAddress externalAddress = null;
 
 	private ByteBuffer peerId;
 	private String hexPeerId;
@@ -142,10 +152,63 @@ public class Peer {
 	}
 
 	/**
+	 * Returns the external peer's IP address.
+	 * 
+	 * If external address is not filled, returns the "normal" IP.
+	 * 
+	 */
+	public String getExternalIp() {
+		if (this.externalAddress != null) {
+			InetAddress addr = this.externalAddress.getAddress();
+			if (addr != null) {
+				return addr.getHostAddress();
+			} else {
+				return this.externalAddress.getHostName();
+			}
+		} else {
+			return getIp();
+		}
+	}
+
+	/**
 	 * Returns this peer's InetAddress.
 	 */
 	public InetAddress getAddress() {
 		return this.address.getAddress();
+	}
+	
+	/**
+	 * Returns this peer's external InetAddress.
+	 * 
+	 * If external address is not filled, returns the "normal" address.
+	 * 
+	 */
+	public InetAddress getExternalAddress () {
+		if (this.externalAddress != null) {
+			return this.externalAddress.getAddress();
+		}
+		return getAddress();
+	}
+	
+	/**
+	 * Set the external peer's address.
+	 * 
+	 */
+	public void setExternalAddress (InetSocketAddress address) {
+		this.externalAddress = address;
+	}
+	
+	/**
+	 * Get the external port number of peer.
+	 * 
+	 * If external address is not filled, returns the "normal" port.
+	 * 
+	 */
+	public int getExternalPort () {
+		if (this.externalAddress != null) {
+			return this.externalAddress.getPort();
+		}
+		return getPort();
 	}
 
 	/**
