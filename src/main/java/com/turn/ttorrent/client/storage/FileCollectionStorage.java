@@ -94,7 +94,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 		for (FileOffset fo : this.select(offset, requested)) {
 			buffer.limit(bytes + (int)fo.length);
-			bytes += fo.file.write(buffer, (int)fo.offset);
+			bytes += fo.file.write(buffer, fo.offset);
 		}
 
 		if (bytes < requested) {
