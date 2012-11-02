@@ -351,18 +351,23 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			Thread.sleep(10);
 		}
 
-		logger.debug("{}: we have {}/{} bytes (%.1f) [{}/{} pieces].",
+		logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
 			new Object[] {
 				this.getName(),
 				(this.getSize() - this.left),
 				this.getSize(),
-				(100f * this.left / this.getSize()),
+				String.format("%.1f", (100f * (1f - this.left / this.getSize()))),
 				this.completedPieces.cardinality(),
 				this.pieces.length
 			});
 		this.initialized = true;
 	}
 
+	/**
+	 * Process the pieces enqueued for hash validation so far.
+	 *
+	 * @param results The list of {@link Future}s of pieces to process.
+	 */
 	private void validatePieces(List<Future<Piece>> results)
 			throws InterruptedException, IOException {
 		try {
