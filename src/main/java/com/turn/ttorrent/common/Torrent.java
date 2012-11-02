@@ -678,7 +678,7 @@ public class Torrent {
 
 		long start = System.nanoTime();
 		for (File file : files) {
-			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
+			logger.info("Hashing data from {} with {} threads ({} pieces)...",
 				new Object[] {
 					file.getName(),
 					threads,
