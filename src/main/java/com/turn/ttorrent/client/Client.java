@@ -745,7 +745,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleFailedConnection(SharingPeer peer, Throwable cause) {
-		logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
+		logger.warn("Could not connect to {}: {}.", peer, cause.getMessage());
 		this.peers.remove(peer.getHostIdentifier());
 		if (peer.hasPeerId()) {
 			this.peers.remove(peer.getHexPeerId());
