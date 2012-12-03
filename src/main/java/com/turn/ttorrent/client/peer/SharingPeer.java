@@ -21,6 +21,7 @@ import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
@@ -725,11 +726,14 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator
 	 */
-	public static class DLRateComparator implements Comparator<SharingPeer> {
+	public static class DLRateComparator
+			implements Comparator<SharingPeer>, Serializable {
+
+		private static final long serialVersionUID = 96307229964730L;
+
 		@Override
 		public int compare(SharingPeer a, SharingPeer b) {
-			return new Rate.RateComparator()
-				.compare(a.getDLRate(), b.getDLRate());
+			return Rate.RATE_COMPARATOR.compare(a.getDLRate(), b.getDLRate());
 		}
 	}
 
@@ -743,11 +747,14 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator
 	 */
-	public static class ULRateComparator implements Comparator<SharingPeer> {
+	public static class ULRateComparator
+			implements Comparator<SharingPeer>, Serializable {
+
+		private static final long serialVersionUID = 38794949747717L;
+
 		@Override
 		public int compare(SharingPeer a, SharingPeer b) {
-			return new Rate.RateComparator()
-				.compare(a.getULRate(), b.getULRate());
+			return Rate.RATE_COMPARATOR.compare(a.getULRate(), b.getULRate());
 		}
 	}
 
