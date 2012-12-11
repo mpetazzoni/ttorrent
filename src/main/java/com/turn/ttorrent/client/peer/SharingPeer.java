@@ -22,9 +22,9 @@ import com.turn.ttorrent.client.SharedTorrent;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -257,12 +257,12 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * socket, and register the peer as a message listener.
 	 * </p>
 	 *
-	 * @param socket The connected socket for this peer.
+	 * @param channel The connected socket channel for this peer.
 	 */
-	public synchronized void bind(Socket socket) throws SocketException {
+	public synchronized void bind(SocketChannel channel) throws SocketException {
 		this.unbind(true);
 
-		this.exchange = new PeerExchange(this, this.torrent, socket);
+		this.exchange = new PeerExchange(this, this.torrent, channel);
 		this.exchange.register(this);
 
 		this.download = new Rate();
@@ -302,12 +302,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		synchronized (this.exchangeLock) {
 			if (this.exchange != null) {
-				if (force) {
-					this.exchange.terminate();
-				} else {
-					this.exchange.close();
-				}
-
+				this.exchange.close();
 				this.exchange = null;
 			}
 		}
@@ -327,10 +322,8 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * exchange.
 	 */
 	public void send(PeerMessage message) throws IllegalStateException {
-		synchronized (this.exchangeLock) {
-			if (this.isConnected()) {
-				this.exchange.send(message);
-			}
+		if (this.isConnected()) {
+			this.exchange.send(message);
 		}
 	}
 
@@ -560,7 +553,8 @@ public class SharingPeer extends Peer implements MessageListener {
 						this.firePieceSent(p);
 					}
 				} catch (IOException ioe) {
-					this.fireIOException(ioe);
+					this.fireIOException(new IOException(
+							"Error while sending piece block request!", ioe));
 				}
 
 				break;
@@ -595,7 +589,8 @@ public class SharingPeer extends Peer implements MessageListener {
 						this.requestNextBlocks();
 					}
 				} catch (IOException ioe) {
-					this.fireIOException(ioe);
+					this.fireIOException(new IOException(
+							"Error while storing received piece block!", ioe));
 					break;
 				}
 				break;

@@ -17,7 +17,6 @@ package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.Type;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
