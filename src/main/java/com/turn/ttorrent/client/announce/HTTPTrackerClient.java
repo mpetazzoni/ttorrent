@@ -27,10 +27,8 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.ByteBuffer;
 
-import org.apache.commons.io.input.AutoCloseInputStream;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import org.slf4j.Logger;
@@ -87,41 +85,69 @@ public class HTTPTrackerClient extends TrackerClient {
 				this.torrent.getLeft()
 			});
 
-		URLConnection conn = null;
-
+		URL target = null;
 		try {
 			HTTPAnnounceRequestMessage request =
 				this.buildAnnounceRequest(event);
+			target = request.buildAnnounceURL(this.tracker.toURL());
+		} catch (MalformedURLException mue) {
+			throw new AnnounceException("Invalid announce URL (" +
+				mue.getMessage() + ")", mue);
+		} catch (MessageValidationException mve) {
+			throw new AnnounceException("Announce request creation violated " +
+				"expected protocol (" + mve.getMessage() + ")", mve);
+		} catch (IOException ioe) {
+			throw new AnnounceException("Error building announce request (" +
+				ioe.getMessage() + ")", ioe);
+		}
 
-			// Send announce request (HTTP GET)
-			URL target = request.buildAnnounceURL(this.tracker.toURL());
-			conn = target.openConnection();
+		HttpURLConnection conn = null;
+		InputStream in = null;
+		try {
+			conn = (HttpURLConnection)target.openConnection();
+			in = conn.getInputStream();
+		} catch (IOException ioe) {
+			if (conn != null) {
+				in = conn.getErrorStream();
+			}
+		}
 
-			InputStream is = new AutoCloseInputStream(conn.getInputStream());
+		// At this point if the input stream is null it means we have neither a
+		// response body nor an error stream from the server. No point in going
+		// any further.
+		if (in == null) {
+			throw new AnnounceException("No response or unreachable tracker!");
+		}
+
+		try {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			baos.write(is);
+			baos.write(in);
 
 			// Parse and handle the response
 			HTTPTrackerMessage message =
 				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
 			this.handleTrackerAnnounceResponse(message, inhibitEvents);
-		} catch (MalformedURLException mue) {
-			throw new AnnounceException("Invalid announce URL (" +
-				mue.getMessage() + ")", mue);
+		} catch (IOException ioe) {
+			throw new AnnounceException("Error reading tracker response!", ioe);
 		} catch (MessageValidationException mve) {
 			throw new AnnounceException("Tracker message violates expected " +
 				"protocol (" + mve.getMessage() + ")", mve);
-		} catch (IOException ioe) {
-			throw new AnnounceException(ioe.getMessage(), ioe);
 		} finally {
-			if (conn != null && conn instanceof HttpURLConnection) {
-				InputStream err = ((HttpURLConnection) conn).getErrorStream();
-				if (err != null) {
-					try {
-						err.close();
-					} catch (IOException ioe) {
-						logger.warn("Problem ensuring error stream closed!", ioe);
-					}
+			// Make sure we close everything down at the end to avoid resource
+			// leaks.
+			try {
+				in.close();
+			} catch (IOException ioe) {
+				logger.warn("Problem ensuring error stream closed!", ioe);
+			}
+
+			// This means trying to close the error stream as well.
+			InputStream err = conn.getErrorStream();
+			if (err != null) {
+				try {
+					err.close();
+				} catch (IOException ioe) {
+					logger.warn("Problem ensuring error stream closed!", ioe);
 				}
 			}
 		}
