@@ -295,20 +295,21 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
 
+		int threads = getHashingThreadsCount();
 		int nPieces = (int) (Math.ceil(
 				(double)this.getSize() / this.pieceLength));
+		int step = 10;
+
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
-
 		this.piecesHashes.clear();
 
-		ExecutorService executor = Executors.newFixedThreadPool(
-			getHashingThreadsCount());
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
-		logger.debug("Analyzing local data for {} with {} threads...",
-			this.getName(), getHashingThreadsCount());
-		for (int idx=0; idx<this.pieces.length; idx++) {
+		logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
+			new Object[] { this.getName(), threads, nPieces });
+		for (int idx=0; idx<nPieces; idx++) {
 			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 			this.piecesHashes.get(hash);
 
@@ -325,7 +326,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 			Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
 			results.add(executor.submit(hasher));
+
+			if (results.size() >= threads) {
+				this.validatePieces(results);
+			}
+
+			if (idx / (float)nPieces * 100f > step) {
+				logger.info("  ... {}% complete", step);
+				step += 10;
+			}
 		}
+
+		this.validatePieces(results);
 
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
@@ -339,6 +351,25 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			Thread.sleep(10);
 		}
 
+		logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
+			new Object[] {
+				this.getName(),
+				(this.getSize() - this.left),
+				this.getSize(),
+				String.format("%.1f", (100f * (1f - this.left / this.getSize()))),
+				this.completedPieces.cardinality(),
+				this.pieces.length
+			});
+		this.initialized = true;
+	}
+
+	/**
+	 * Process the pieces enqueued for hash validation so far.
+	 *
+	 * @param results The list of {@link Future}s of pieces to process.
+	 */
+	private void validatePieces(List<Future<Piece>> results)
+			throws InterruptedException, IOException {
 		try {
 			for (Future<Piece> task : results) {
 				Piece piece = task.get();
@@ -347,20 +378,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					this.left -= piece.size();
 				}
 			}
+
+			results.clear();
 		} catch (ExecutionException e) {
 			throw new IOException("Error while hashing a torrent piece!", e);
 		}
-
-		logger.debug("{}: {}/{} bytes [{}/{}].",
-			new Object[] {
-				this.getName(),
-				(this.getSize() - this.left),
-				this.getSize(),
-				this.completedPieces.cardinality(),
-				this.pieces.length
-			});
-		this.initialized = true;
 	}
+
 
 	public synchronized void close() {
 		try {

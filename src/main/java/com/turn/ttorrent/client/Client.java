@@ -31,10 +31,10 @@ import java.io.PrintStream;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -98,7 +98,6 @@ public class Client extends Observable implements Runnable,
 
 	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 20;
 
 	/** Default data output directory. */
 	private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
@@ -185,6 +184,13 @@ public class Client extends Observable implements Runnable,
 	 */
 	public SharedTorrent getTorrent() {
 		return this.torrent;
+	}
+
+	/**
+	 * Returns the set of known peers.
+	 */
+	public Set<SharingPeer> getPeers() {
+		return new HashSet<SharingPeer>(this.peers.values());
 	}
 
 	/**
@@ -636,8 +642,7 @@ public class Client extends Observable implements Runnable,
 			return;
 		}
 
-		logger.info("Got {} peer(s) in tracker response, initiating " +
-			"connections...", peers.size());
+		logger.info("Got {} peer(s) in tracker response.", peers.size());
 
 		if (!this.service.isAlive()) {
 			logger.warn("Connection handler service is not available.");
@@ -645,22 +650,20 @@ public class Client extends Observable implements Runnable,
 		}
 
 		for (Peer peer : peers) {
+			// Attempt to connect to the peer if and only if:
+			//   - We're not already connected or connecting to it;
+			//   - We're not a seeder (we leave the responsibility
+			//	   of connecting to peers that need to download
+			//     something).
 			SharingPeer match = this.getOrCreatePeer(peer);
+			if (this.isSeed()) {
+				continue;
+			}
 
 			synchronized (match) {
-				// Attempt to connect to the peer if and only if:
-				//   - We're not already connected to it;
-				//   - We're not a seeder (we leave the responsibility
-				//	   of connecting to peers that need to download
-				//     something), or we are a seeder but we're still
-				//     willing to initiate some out bound connections.
-				if (match.isBound() ||
-					(this.isSeed() && this.connected.size() >=
-						Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
-					return;
+				if (!match.isConnected()) {
+					this.service.connect(match);
 				}
-
-				this.service.connect(match);
 			}
 		}
 	}
@@ -678,18 +681,18 @@ public class Client extends Observable implements Runnable,
 	 * thread and logic with this peer.
 	 * </p>
 	 *
-	 * @param s The connected socket to the remote peer. Note that if the peer
-	 * somehow rejected our handshake reply, this socket might very soon get
-	 * closed, but this is handled down the road.
+	 * @param channel The connected socket channel to the remote peer. Note
+	 * that if the peer somehow rejected our handshake reply, this socket might
+	 * very soon get closed, but this is handled down the road.
 	 * @param peerId The byte-encoded peerId extracted from the peer's
 	 * handshake, after validation.
 	 * @see com.turn.ttorrent.client.peer.SharingPeer
 	 */
 	@Override
-	public void handleNewPeerConnection(Socket s, byte[] peerId) {
+	public void handleNewPeerConnection(SocketChannel channel, byte[] peerId) {
 		Peer search = new Peer(
-			s.getInetAddress().getHostAddress(),
-			s.getPort(),
+			channel.socket().getInetAddress().getHostAddress(),
+			channel.socket().getPort(),
 			(peerId != null
 				? ByteBuffer.wrap(peerId)
 				: (ByteBuffer)null));
@@ -699,15 +702,15 @@ public class Client extends Observable implements Runnable,
 
 		try {
 			synchronized (peer) {
-				if (peer.isBound()) {
+				if (peer.isConnected()) {
 					logger.info("Already connected with {}, closing link.",
 						peer);
-					s.close();
+					channel.close();
 					return;
 				}
 
 				peer.register(this);
-				peer.bind(s);
+				peer.bind(channel);
 			}
 
 			this.connected.put(peer.getHexPeerId(), peer);
@@ -738,7 +741,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleFailedConnection(SharingPeer peer, Throwable cause) {
-		logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
+		logger.warn("Could not connect to {}: {}.", peer, cause.getMessage());
 		this.peers.remove(peer.getHostIdentifier());
 		if (peer.hasPeerId()) {
 			this.peers.remove(peer.getHexPeerId());
@@ -850,8 +853,8 @@ public class Client extends Observable implements Runnable,
 
 	@Override
 	public void handleIOException(SharingPeer peer, IOException ioe) {
-		logger.error("I/O problem occured when reading or writing piece " +
-				"data for peer {}: {}.", peer, ioe.getMessage());
+		logger.error("I/O error while exchanging data with {}, " +
+			"closing connection with it!", peer, ioe.getMessage());
 		this.stop();
 		this.setState(ClientState.ERROR);
 	}

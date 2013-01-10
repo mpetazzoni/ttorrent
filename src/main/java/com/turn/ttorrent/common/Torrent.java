@@ -667,32 +667,51 @@ public class Torrent {
 
 	private static String hashFiles(List<File> files)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		ExecutorService executor = Executors.newFixedThreadPool(
-			getHashingThreadsCount());
-		List<Future<String>> results = new LinkedList<Future<String>>();
-		long length = 0L;
-
+		int threads = getHashingThreadsCount();
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+		List<Future<String>> results = new LinkedList<Future<String>>();
+		StringBuilder hashes = new StringBuilder();
+
+		long length = 0L;
+		int pieces = 0;
 
 		long start = System.nanoTime();
 		for (File file : files) {
-			logger.info("Analyzing local data for {} with {} threads...",
-				file.getName(), getHashingThreadsCount());
+			logger.info("Hashing data from {} with {} threads ({} pieces)...",
+				new Object[] {
+					file.getName(),
+					threads,
+					(int) (Math.ceil(
+						(double)file.length() / Torrent.PIECE_LENGTH))
+				});
 
 			length += file.length();
 
 			FileInputStream fis = new FileInputStream(file);
 			FileChannel channel = fis.getChannel();
+			int step = 10;
 
-			while (channel.read(buffer) > 0) {
-				if (buffer.remaining() == 0) {
-					buffer.clear();
-					results.add(executor.submit(new CallableChunkHasher(buffer)));
+			try {
+				while (channel.read(buffer) > 0) {
+					if (buffer.remaining() == 0) {
+						buffer.clear();
+						results.add(executor.submit(new CallableChunkHasher(buffer)));
+					}
+
+					if (results.size() >= threads) {
+						pieces += accumulateHashes(hashes, results);
+					}
+
+					if (channel.position() / (double)channel.size() * 100f > step) {
+						logger.info("  ... {}% complete", step);
+						step += 10;
+					}
 				}
+			} finally {
+				channel.close();
+				fis.close();
 			}
-
-			channel.close();
-			fis.close();
 		}
 
 		// Hash the last bit, if any
@@ -702,6 +721,8 @@ public class Torrent {
 			results.add(executor.submit(new CallableChunkHasher(buffer)));
 		}
 
+		pieces += accumulateHashes(hashes, results);
+
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
 		executor.shutdown();
@@ -710,27 +731,39 @@ public class Torrent {
 		}
 		long elapsed = System.nanoTime() - start;
 
-		StringBuilder hashes = new StringBuilder();
-		try {
-			for (Future<String> chunk : results) {
-				hashes.append(chunk.get());
-			}
-		} catch (ExecutionException ee) {
-			throw new IOException("Error while hashing the torrent data!", ee);
-		}
-
 		int expectedPieces = (int) (Math.ceil(
 				(double)length / Torrent.PIECE_LENGTH));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),
 				length,
-				results.size(),
+				pieces,
 				expectedPieces,
 				String.format("%.1f", elapsed/1e6),
 			});
 
 		return hashes.toString();
+	}
+
+	/**
+	 * Accumulate the piece hashes into a given {@link StringBuilder}.
+	 *
+	 * @param hashes The {@link StringBuilder} to append hashes to.
+	 * @param results The list of {@link Future}s that will yield the piece
+	 *	hashes.
+	 */
+	private static int accumulateHashes(StringBuilder hashes,
+			List<Future<String>> results) throws InterruptedException, IOException {
+		try {
+			int pieces = results.size();
+			for (Future<String> chunk : results) {
+				hashes.append(chunk.get());
+			}
+			results.clear();
+			return pieces;
+		} catch (ExecutionException ee) {
+			throw new IOException("Error while hashing the torrent data!", ee);
+		}
 	}
 
 	/**

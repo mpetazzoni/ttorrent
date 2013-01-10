@@ -39,12 +39,14 @@ public class Handshake {
 	private Handshake(ByteBuffer data, ByteBuffer infoHash,
 			ByteBuffer peerId) {
 		this.data = data;
+		this.data.rewind();
+
 		this.infoHash = infoHash;
 		this.peerId = peerId;
 	}
 
-	public byte[] getBytes() {
-		return this.data.array();
+	public ByteBuffer getData() {
+		return this.data;
 	}
 
 	public byte[] getInfoHash() {

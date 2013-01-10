@@ -6,7 +6,7 @@
   <url>http://turn.github.com/ttorrent/</url>
   <groupId>com.turn.ttorrent</groupId>
   <artifactId>ttorrent</artifactId>
-  <version>1.1.2</version>
+  <version>1.1.4</version>
   <packaging>jar</packaging>
 
   <organization>

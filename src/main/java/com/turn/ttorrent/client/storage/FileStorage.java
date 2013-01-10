@@ -132,7 +132,10 @@ public class FileStorage implements TorrentByteStorage {
 
 	@Override
 	public synchronized void close() throws IOException {
-		this.channel.force(true);
+		logger.debug("Closing file channel to " + this.current.getName() + "...");
+		if (this.channel.isOpen()) {
+			this.channel.force(true);
+		}
 		this.raf.close();
 	}
 
@@ -140,7 +143,11 @@ public class FileStorage implements TorrentByteStorage {
 	 */
 	@Override
 	public synchronized void finish() throws IOException {
-		this.channel.force(true);
+		logger.debug("Closing file channel to " + this.current.getName() +
+			" (download complete).");
+		if (this.channel.isOpen()) {
+			this.channel.force(true);
+		}
 
 		// Nothing more to do if we're already on the target file.
 		if (this.isFinished()) {

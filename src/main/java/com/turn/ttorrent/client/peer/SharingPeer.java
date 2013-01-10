@@ -21,9 +21,10 @@ import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 
 import java.io.IOException;
-import java.net.Socket;
+import java.io.Serializable;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -256,12 +257,12 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * socket, and register the peer as a message listener.
 	 * </p>
 	 *
-	 * @param socket The connected socket for this peer.
+	 * @param channel The connected socket channel for this peer.
 	 */
-	public synchronized void bind(Socket socket) throws SocketException {
+	public synchronized void bind(SocketChannel channel) throws SocketException {
 		this.unbind(true);
 
-		this.exchange = new PeerExchange(this, this.torrent, socket);
+		this.exchange = new PeerExchange(this, this.torrent, channel);
 		this.exchange.register(this);
 
 		this.download = new Rate();
@@ -274,7 +275,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	/**
 	 * Tells whether this peer as an active connection through a peer exchange.
 	 */
-	public boolean isBound() {
+	public boolean isConnected() {
 		synchronized (this.exchangeLock) {
 			return this.exchange != null && this.exchange.isConnected();
 		}
@@ -301,12 +302,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		synchronized (this.exchangeLock) {
 			if (this.exchange != null) {
-				if (force) {
-					this.exchange.terminate();
-				} else {
-					this.exchange.close();
-				}
-
+				this.exchange.close();
 				this.exchange = null;
 			}
 		}
@@ -326,10 +322,8 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * exchange.
 	 */
 	public void send(PeerMessage message) throws IllegalStateException {
-		synchronized (this.exchangeLock) {
-			if (this.isBound()) {
-				this.exchange.send(message);
-			}
+		if (this.isConnected()) {
+			this.exchange.send(message);
 		}
 	}
 
@@ -559,7 +553,8 @@ public class SharingPeer extends Peer implements MessageListener {
 						this.firePieceSent(p);
 					}
 				} catch (IOException ioe) {
-					this.fireIOException(ioe);
+					this.fireIOException(new IOException(
+							"Error while sending piece block request!", ioe));
 				}
 
 				break;
@@ -594,7 +589,8 @@ public class SharingPeer extends Peer implements MessageListener {
 						this.requestNextBlocks();
 					}
 				} catch (IOException ioe) {
-					this.fireIOException(ioe);
+					this.fireIOException(new IOException(
+							"Error while storing received piece block!", ioe));
 					break;
 				}
 				break;
@@ -725,11 +721,14 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator
 	 */
-	public static class DLRateComparator implements Comparator<SharingPeer> {
+	public static class DLRateComparator
+			implements Comparator<SharingPeer>, Serializable {
+
+		private static final long serialVersionUID = 96307229964730L;
+
 		@Override
 		public int compare(SharingPeer a, SharingPeer b) {
-			return new Rate.RateComparator()
-				.compare(a.getDLRate(), b.getDLRate());
+			return Rate.RATE_COMPARATOR.compare(a.getDLRate(), b.getDLRate());
 		}
 	}
 
@@ -743,11 +742,14 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * @author mpetazzoni
 	 * @see Rate.RateComparator
 	 */
-	public static class ULRateComparator implements Comparator<SharingPeer> {
+	public static class ULRateComparator
+			implements Comparator<SharingPeer>, Serializable {
+
+		private static final long serialVersionUID = 38794949747717L;
+
 		@Override
 		public int compare(SharingPeer a, SharingPeer b) {
-			return new Rate.RateComparator()
-				.compare(a.getULRate(), b.getULRate());
+			return Rate.RATE_COMPARATOR.compare(a.getULRate(), b.getULRate());
 		}
 	}
 
