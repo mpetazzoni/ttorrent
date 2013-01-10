@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Copyright (C) 2013 Le Wang.
+# Email:larrie.wang at gmail.com
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+usage()
+{
+    cat <<HELP
+    USAGE: ttorrent [-h] [torrent|tracker|client] parms...
+
+           torrent  :  To make a torrent
+           tracker  :  To run a tracker server
+           client   :  To run BT client to start SHARING or SEEDING
+        
+           parms... :  These are parameters passed to java command line 
+           -h       :  Show this help message
+        
+HELP
+    exit 0
+}
+
+#///////////////TEST/////////////////////////////////////////
+[ $# == 0 ] && usage
+[ $1 == '-h' ] && usage
+
+# This shell script can run at cigwin and linux 
+# distribution(such as ubuntu\fedora\centos\debian\...)
+if [ -e '/bin/bash.exe' ] ; then
+    SEPERATOR=';'
+elif [ -e '/bin/bash' ] ; then
+    SEPERATOR=':'
+else
+    echo 'This script does not support your system.'
+    exit 0
+fi
+
+#///////////////REAL PART///////////////////////////////////
+# Find all lib and add them to classpath
+BASE=$(dirname $(readlink -f $0))
+LIB_JARS=`find -L $BASE/../build -name "*.jar" | tr [:space:] $SEPERATOR`
+
+# Here are the programs to be executed
+TORRENT='com.turn.ttorrent.common.Torrent'
+TRACKER='com.turn.ttorrent.tracker.Tracker'
+CLIENT='com.turn.ttorrent.client.Client'
+
+# Add classes under bin derectory to classpath
+LIB_JARS=$LIB_JARS'bin'
+
+# Switch command
+if [ $1 == 'torrent' ]
+then
+    OBJECT=$TORRENT
+elif [ $1 == 'tracker' ]
+then
+    OBJECT=$TRACKER
+elif [ $1 == 'client' ]
+then
+    OBJECT=$CLIENT
+else
+    echo 'unknow option : ' $1
+    usage
+fi
+
+#/////////////////PARAMETERS FOR JAVA//////////////////////
+
+# Shift the first paramter and pass all the last parameters
+# to java command line
+shift
+PARAMS="$@"
+
+#////////////////START UP//////////////////////////////////
+java -cp $LIB_JARS $OBJECT $PARAMS
+
