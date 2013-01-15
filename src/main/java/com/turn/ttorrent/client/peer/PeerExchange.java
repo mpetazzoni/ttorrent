@@ -202,19 +202,21 @@ class PeerExchange {
 
 		@Override
 		public void run() {
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1*1024*1024);
+
 			try {
 				while (!stop) {
-					ByteBuffer len = ByteBuffer.allocateDirect(
-						PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
+					buffer.rewind();
+					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
 
-					if (channel.read(len) < 0) {
+					if (channel.read(buffer) < 0) {
 						throw new EOFException(
 							"Reached end-of-stream while reading size header");
 					}
 
 					// Keep reading bytes until the length field has been read
 					// entirely.
-					if (len.remaining() > 0) {
+					if (buffer.hasRemaining()) {
 						try {
 							Thread.sleep(1);
 						} catch (InterruptedException ie) {
@@ -224,26 +226,20 @@ class PeerExchange {
 						continue;
 					}
 
-					len.rewind();
-					int pstrlen = len.getInt();
+					int pstrlen = buffer.getInt(0);
+					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
-					// Allocate the data buffer and place the message size in
-					// it, then read the rest of the message.
-					ByteBuffer data = ByteBuffer.allocateDirect(
-						PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
-					data.putInt(pstrlen);
-
-					while (!stop && data.hasRemaining()) {
-						if (channel.read(data) < 0) {
+					while (!stop && buffer.hasRemaining()) {
+						if (channel.read(buffer) < 0) {
 							throw new EOFException(
 								"Reached end-of-stream while reading message");
 						}
 					}
 
-					data.rewind();
+					buffer.rewind();
 
 					try {
-						PeerMessage message = PeerMessage.parse(data, torrent);
+						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
 
 						for (MessageListener listener : listeners) {
@@ -302,7 +298,7 @@ class PeerExchange {
 							message = PeerMessage.KeepAliveMessage.craft();
 						}
 
-						logger.trace("Sending {} to {}.", message, peer);
+						logger.trace("Sending {} to {}", message, peer);
 
 						ByteBuffer data = message.getData();
 						while (!stop && data.hasRemaining()) {
