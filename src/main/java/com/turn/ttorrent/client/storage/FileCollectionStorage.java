@@ -58,7 +58,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		this.files = files;
 		this.size = size;
 
-		logger.debug("Initialized torrent byte storage on {} file(s) " +
+		logger.info("Initialized torrent byte storage on {} file(s) " +
 			"({} total byte(s)).", files.size(), size);
 	}
 

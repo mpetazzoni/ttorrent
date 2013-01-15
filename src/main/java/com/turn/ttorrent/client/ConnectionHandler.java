@@ -288,7 +288,7 @@ public class ConnectionHandler implements Runnable {
 			logger.debug("New incoming connection, waiting for handshake...");
 			Handshake hs = this.validateHandshake(client, null);
 			int sent = this.sendHandshake(client);
-			logger.info("Replied to {} with handshake ({} bytes).",
+			logger.trace("Replied to {} with handshake ({} bytes).",
 				this.socketRepr(client), sent);
 
 			// Go to non-blocking mode for peer interaction
@@ -296,11 +296,11 @@ public class ConnectionHandler implements Runnable {
 			client.socket().setSoTimeout(CLIENT_KEEP_ALIVE_MINUTES*60*1000);
 			this.fireNewPeerConnection(client, hs.getPeerId());
 		} catch (ParseException pe) {
-			logger.debug("Invalid handshake from {}: {}",
+			logger.info("Invalid handshake from {}: {}",
 				this.socketRepr(client), pe.getMessage());
 			try { client.close(); } catch (IOException e) { }
 		} catch (IOException ioe) {
-			logger.debug("An error occured while reading an incoming " +
+			logger.warn("An error occured while reading an incoming " +
 					"handshake: {}", ioe.getMessage());
 			try {
 				if (client.isConnected()) {
@@ -362,7 +362,7 @@ public class ConnectionHandler implements Runnable {
 		ByteBuffer data;
 
 		// Read the handshake from the wire
-		logger.info("Reading handshake size (1 byte) from {}...", this.socketRepr(channel));
+		logger.trace("Reading handshake size (1 byte) from {}...", this.socketRepr(channel));
 		if (channel.read(len) < len.capacity()) {
 			throw new IOException("Handshake size read underrrun");
 		}
@@ -484,10 +484,10 @@ public class ConnectionHandler implements Runnable {
 					Thread.sleep(10);
 				}
 
-				logger.info("Connected. Sending handshake to {}...", this.peer);
+				logger.debug("Connected. Sending handshake to {}...", this.peer);
 				channel.configureBlocking(true);
 				int sent = this.handler.sendHandshake(channel);
-				logger.info("Sent handshake ({} bytes), waiting for response...", sent);
+				logger.debug("Sent handshake ({} bytes), waiting for response...", sent);
 				Handshake hs = this.handler.validateHandshake(channel,
 					(this.peer.hasPeerId()
 						 ? this.peer.getPeerId().array()

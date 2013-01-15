@@ -356,7 +356,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.getName(),
 				(this.getSize() - this.left),
 				this.getSize(),
-				String.format("%.1f", (100f * (1f - this.left / this.getSize()))),
+				String.format("%.1f", (100f * (1f - this.left / (float)this.getSize()))),
 				this.completedPieces.cardinality(),
 				this.pieces.length
 			});
@@ -564,12 +564,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 
 		logger.trace("Peer {} choked, we now have {} outstanding " +
-				"request(s): {}.",
+				"request(s): {}",
 			new Object[] {
 				peer,
 				this.requestedPieces.cardinality(),
 				this.requestedPieces
-			});
+		});
 	}
 
 	/**
@@ -701,7 +701,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			peer.interesting();
 		}
 
-		// Record the peer has all the pieces it told us it had.
+		// Record that the peer has all the pieces it told us it had.
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
 			this.pieces[i].seenAt(peer);
@@ -709,10 +709,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.rarest.add(this.pieces[i]);
 		}
 
-		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+		logger.trace("Peer {} contributes {} piece(s) ({} interesting) " +
+			"[completed={}; available={}/{}].",
 			new Object[] {
 				peer,
 				availablePieces.cardinality(),
+				interesting.cardinality(),
 				this.completedPieces.cardinality(),
 				this.getAvailablePieces().cardinality(),
 				this.pieces.length
@@ -799,7 +801,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.requestedPieces.set(requested.getIndex(), false);
 		}
 
-		logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
+		logger.debug("Peer {} went away with {} piece(s) [completed={}; available={}/{}]",
 			new Object[] {
 				peer,
 				availablePieces.cardinality(),

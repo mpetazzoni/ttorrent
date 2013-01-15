@@ -432,6 +432,15 @@ public class Client extends Observable implements Runnable,
 				String.format("%.2f", dl/1024.0),
 				String.format("%.2f", ul/1024.0),
 			});
+		for (SharingPeer peer : this.connected.values()) {
+			Piece piece = peer.getRequestedPiece();
+			logger.debug("  | {} {}",
+				peer,
+				piece != null
+					? "(downloading " + piece + ")"
+					: ""
+			);
+		}
 	}
 
 	/**
@@ -796,9 +805,11 @@ public class Client extends Observable implements Runnable,
 				// might be called before the torrent's piece completion
 				// handler is.
 				this.torrent.markCompleted(piece);
-				logger.debug("Completed download of {}, now has {}/{} pieces.",
+				logger.debug("Completed download of {} from {}. " +
+					"We now have {}/{} pieces",
 					new Object[] {
 						piece,
+						peer,
 						this.torrent.getCompletedPieces().cardinality(),
 						this.torrent.getPieceCount()
 					});
@@ -830,6 +841,7 @@ public class Client extends Observable implements Runnable,
 						"tracker: {}", ae.getMessage());
 				}
 
+				logger.info("Download is complete and finalized.");
 				this.seed();
 			}
 		}

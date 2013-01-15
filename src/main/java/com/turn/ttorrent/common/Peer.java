@@ -178,6 +178,10 @@ public class Peer {
 			s.append("?");
 		}
 
+		if (this.getPort() < 10000) {
+			s.append(" ");
+		}
+
 		return s.toString();
 	}
 
