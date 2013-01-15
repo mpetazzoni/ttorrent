@@ -71,6 +71,17 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * RAREST_PIECE_JITTER available from it. */
 	private static final int RAREST_PIECE_JITTER = 42;
 
+	/** End-game trigger ratio.
+	 *
+	 * <p>
+	 * Eng-game behavior (requesting already requested pieces from available
+	 * and ready peers to try to speed-up the end of the transfer) will only be
+	 * enabled when the ratio of completed pieces over total pieces in the
+	 * torrent is over this value.
+	 * </p>
+	 */
+	private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
+
 	private Random random;
 	private boolean stop;
 
@@ -600,6 +611,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			interesting.andNot(this.completedPieces);
 			if (interesting.cardinality() == 0) {
 				logger.trace("No interesting piece from {}!", peer);
+				return;
+			}
+
+			if (this.completedPieces.cardinality() <
+					ENG_GAME_COMPLETION_RATIO * this.pieces.length) {
+				logger.trace("Not far along enough to warrant end-game mode.");
 				return;
 			}
 
