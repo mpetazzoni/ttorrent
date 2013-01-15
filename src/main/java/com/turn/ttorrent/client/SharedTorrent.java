@@ -39,7 +39,6 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -307,48 +306,50 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
-		logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
-			new Object[] { this.getName(), threads, nPieces });
-		for (int idx=0; idx<nPieces; idx++) {
-			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
-			this.piecesHashes.get(hash);
+		try {
+			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
+				new Object[] { this.getName(), threads, nPieces });
+			for (int idx=0; idx<nPieces; idx++) {
+				byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
+				this.piecesHashes.get(hash);
 
-			// The last piece may be shorter than the torrent's global piece
-			// length. Let's make sure we get the right piece length in any
-			// situation.
-			long off = ((long)idx) * this.pieceLength;
-			long len = Math.min(
-				this.bucket.size() - off,
-				this.pieceLength);
+				// The last piece may be shorter than the torrent's global piece
+				// length. Let's make sure we get the right piece length in any
+				// situation.
+				long off = ((long)idx) * this.pieceLength;
+				long len = Math.min(
+					this.bucket.size() - off,
+					this.pieceLength);
 
-			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-				this.isSeeder());
+				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
+					this.isSeeder());
 
-			Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
-			results.add(executor.submit(hasher));
+				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
+				results.add(executor.submit(hasher));
 
-			if (results.size() >= threads) {
-				this.validatePieces(results);
+				if (results.size() >= threads) {
+					this.validatePieces(results);
+				}
+
+				if (idx / (float)nPieces * 100f > step) {
+					logger.info("  ... {}% complete", step);
+					step += 10;
+				}
 			}
 
-			if (idx / (float)nPieces * 100f > step) {
-				logger.info("  ... {}% complete", step);
-				step += 10;
+			this.validatePieces(results);
+		} finally {
+			// Request orderly executor shutdown and wait for hashing tasks to
+			// complete.
+			executor.shutdown();
+			while (!executor.isTerminated()) {
+				if (this.stop) {
+					throw new InterruptedException("Torrent data analysis " +
+						"interrupted.");
+				}
+
+				Thread.sleep(10);
 			}
-		}
-
-		this.validatePieces(results);
-
-		// Request orderly executor shutdown and wait for hashing tasks to
-		// complete.
-		executor.shutdown();
-		while (!executor.isTerminated()) {
-			if (this.stop) {
-				throw new InterruptedException("Torrent data analysis " +
-					"interrupted.");
-			}
-
-			Thread.sleep(10);
 		}
 
 		logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
@@ -380,7 +381,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 
 			results.clear();
-		} catch (ExecutionException e) {
+		} catch (Exception e) {
 			throw new IOException("Error while hashing a torrent piece!", e);
 		}
 	}
