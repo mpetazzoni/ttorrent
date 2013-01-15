@@ -824,11 +824,23 @@ public class Client extends Observable implements Runnable,
 				// completion information (or new seeding state)
 				this.setChanged();
 				this.notifyObservers(this.state);
+			} else {
+				logger.warn("Downloaded piece#{} from {} was not valid ;-(",
+					piece.getIndex(), peer);
 			}
 
 			if (this.torrent.isComplete()) {
-				logger.info("Last piece validated and completed, " +
-						"download is complete.");
+				logger.info("Last piece validated and completed, finishing download...");
+
+				// Cancel all remaining outstanding requests
+				for (SharingPeer remote : this.connected.values()) {
+					if (remote.isDownloading()) {
+						int requests = remote.cancelPendingRequests().size();
+						logger.info("Cancelled {} remaining pending requests on {}.",
+							requests, remote);
+					}
+				}
+
 				this.torrent.finish();
 
 				try {

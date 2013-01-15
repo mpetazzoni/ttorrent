@@ -585,52 +585,55 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	@Override
 	public synchronized void handlePeerReady(SharingPeer peer) {
-		ArrayList<Piece> choice = new ArrayList<Piece>(
-				SharedTorrent.RAREST_PIECE_JITTER);
-
 		BitSet interesting = peer.getAvailablePieces();
 		interesting.andNot(this.completedPieces);
 		interesting.andNot(this.requestedPieces);
 
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
-		logger.trace("Peer has {} piece(s), we have {} piece(s) and {} " +
-			"outstanding request(s): {}.",
-			new Object[] {
-				peer.getAvailablePieces().cardinality(),
-				this.completedPieces.cardinality(),
-				this.requestedPieces.cardinality(),
-				this.requestedPieces
-			});
 
-		// Bail out immediately if the peer has no interesting pieces
+		// If we didn't find interesting pieces, we need to check if we're in
+		// an end-game situation. If yes, we request an already requested piece
+		// to try to speed up the end.
 		if (interesting.cardinality() == 0) {
-			return;
+			interesting = peer.getAvailablePieces();
+			interesting.andNot(this.completedPieces);
+			if (interesting.cardinality() == 0) {
+				logger.trace("No interesting piece from {}!", peer);
+				return;
+			}
+
+			logger.trace("Possible end-game, we're about to request a piece " +
+				"that was already requested from another peer.");
 		}
 
 		// Extract the RAREST_PIECE_JITTER rarest pieces from the interesting
 		// pieces of this peer.
+		ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
 		for (Piece piece : this.rarest) {
 			if (interesting.get(piece.getIndex())) {
 				choice.add(piece);
-				if (choice.size() == RAREST_PIECE_JITTER) {
+				if (choice.size() >= RAREST_PIECE_JITTER) {
 					break;
 				}
 			}
 		}
 
-		Piece chosen = choice.get(this.random.nextInt(
-					Math.min(choice.size(),
-						SharedTorrent.RAREST_PIECE_JITTER)));
+		Piece chosen = choice.get(
+			this.random.nextInt(
+				Math.min(choice.size(),
+				RAREST_PIECE_JITTER)));
 		this.requestedPieces.set(chosen.getIndex());
+
 		logger.trace("Requesting {} from {}, we now have {} " +
-				" outstanding request(s): {}.",
+				"outstanding request(s): {}",
 			new Object[] {
 				chosen,
 				peer,
 				this.requestedPieces.cardinality(),
 				this.requestedPieces
 			});
+
 		peer.downloadPiece(chosen);
 	}
 
@@ -756,19 +759,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	public synchronized void handlePieceCompleted(SharingPeer peer,
 		Piece piece) throws IOException {
 		// Regardless of validity, record the number of bytes downloaded and
-		// mark the piece as not requseted anymore
+		// mark the piece as not requested anymore
 		this.downloaded += piece.size();
 		this.requestedPieces.set(piece.getIndex(), false);
 
-		if (piece.isValid()) {
-			logger.trace("Validated download of {} from {}.", piece, peer);
-			this.markCompleted(piece);
-		} else {
-			// When invalid, remark that piece as non-requested.
-			logger.warn("Downloaded piece {} was not valid ;-(", piece);
-		}
-
-		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}.",
+		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
 			new Object[] {
 				this.completedPieces.cardinality(),
 				this.requestedPieces.cardinality(),

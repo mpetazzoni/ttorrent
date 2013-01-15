@@ -59,7 +59,7 @@ public class Piece implements Comparable<Piece> {
 	private final byte[] hash;
 	private final boolean seeder;
 
-	private boolean valid;
+	private volatile boolean valid;
 	private int seen;
 	private ByteBuffer data;
 
@@ -149,11 +149,11 @@ public class Piece implements Comparable<Piece> {
 	 * storage, is valid, i.e. its SHA1 sum matches the one from the torrent
 	 * meta-info.
 	 */
-	public boolean validate() throws IOException {
+	public synchronized boolean validate() throws IOException {
 		if (this.seeder) {
 			logger.trace("Skipping validation of {} (seeder mode).", this);
 			this.valid = true;
-			return this.isValid();
+			return true;
 		}
 
 		logger.trace("Validating {}...", this);
@@ -271,9 +271,9 @@ public class Piece implements Comparable<Piece> {
 	 * Return a human-readable representation of this piece.
 	 */
 	public String toString() {
-		return String.format("piece%s#%d",
-			this.valid ? "" : "!",
-			this.index);
+		return String.format("piece#%4d%s",
+			this.index,
+			this.isValid() ? "+" : "-");
 	}
 
 	/**
