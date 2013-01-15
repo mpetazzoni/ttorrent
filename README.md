@@ -154,9 +154,6 @@ Caveats
 
 * Client write performance is a bit poor, mainly due to a (too?) simple piece
   caching algorithm.
-* End-game can be slow if the peer selected to retrieve the last piece from
-  doesn't upload fast enough (or at all). An end-game scenario should be
-  implemented.
 
 Contributions are welcome in all areas, even more so for these few points
 above!
