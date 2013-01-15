@@ -96,8 +96,18 @@ public abstract class PeerMessage {
 		return this.type;
 	}
 
+	/**
+	 * Returns a {@link ByteBuffer} backed by the same data as this message.
+	 *
+	 * <p>
+	 * This method returns a duplicate of the buffer stored in this {@link
+	 * PeerMessage} object to allow for multiple consumers to read from the
+	 * same message without conflicting access to the buffer's position, mark
+	 * and limit.
+	 * </p>
+	 */
 	public ByteBuffer getData() {
-		return this.data;
+		return this.data.duplicate();
 	}
 
 	/**
