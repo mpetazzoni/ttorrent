@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -48,6 +50,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import jargs.gnu.CmdLineParser;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -401,20 +405,11 @@ public class Torrent {
 	/**
 	 * Save this torrent meta-info structure into a .torrent file.
 	 *
-	 * @param output The file to write to.
+	 * @param output The stream to write to.
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
-	public void save(File output) throws IOException {
-		FileOutputStream fos = null;
-		try {
-			fos = new FileOutputStream(output);
-			fos.write(this.getEncoded());
-			logger.info("Wrote torrent file {}.", output.getAbsolutePath());
-		} finally {
-			if (fos != null) {
-				fos.close();
-			}
-		}
+	public void save(OutputStream output) throws IOException {
+		output.write(this.getEncoded());
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
@@ -767,6 +762,34 @@ public class Torrent {
 	}
 
 	/**
+	 * Display program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s) {
+		usage(s, null);
+	}
+
+	/**
+	 * Display a message and program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s, String msg) {
+		if (msg != null) {
+			s.println(msg);
+			s.println();
+		}
+
+		s.println("usage: Torrent [options] [file|directory]");
+		s.println();
+		s.println("Available options:");
+		s.println("  -h,--help             Show this help and exit.");
+		s.println("  -t,--torrent FILE     Use FILE to read/write torrent file.");
+		s.println();
+		s.println("  -c,--create           Create a new torrent file using " +
+			"the given announce URL and data.");
+		s.println("  -a,--announce         Tracker URL (can be repeated).");
+		s.println();
+	}
+
+	/**
 	 * Torrent reader and creator.
 	 *
 	 * <p>
@@ -774,58 +797,97 @@ public class Torrent {
 	 * read or create torrent files. See usage for details.
 	 * </p>
 	 *
-	 * TODO: use CmdLineParser.
+	 * TODO: support multiple announce URLs.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
+			new PatternLayout("%-5p: %m%n")));
 
-		if (args.length != 1 && args.length != 3) {
-			System.err.println("usage: Torrent <torrent> [announce url] " +
-				"[file|directory]");
+		CmdLineParser parser = new CmdLineParser();
+		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
+		CmdLineParser.Option filename = parser.addStringOption('t', "torrent");
+		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
+		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
+
+		try {
+			parser.parse(args);
+		} catch (CmdLineParser.OptionException oe) {
+			System.err.println(oe.getMessage());
+			usage(System.err);
 			System.exit(1);
 		}
 
+		// Display help and exit if requested
+		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
+			usage(System.out);
+			System.exit(0);
+		}
+
+		String filenameValue = (String)parser.getOptionValue(filename);
+		if (filenameValue == null) {
+			usage(System.err, "Torrent file must be provided!");
+			System.exit(1);
+		}
+
+		Boolean createFlag = (Boolean)parser.getOptionValue(create);
+		String announceURL = (String)parser.getOptionValue(announce);
+
+		String[] otherArgs = parser.getRemainingArgs();
+
+		if (Boolean.TRUE.equals(createFlag) &&
+				(otherArgs.length != 1 || announceURL == null)) {
+			usage(System.err, "Announce URL and a file or directory must be " +
+				"provided to create a torrent file!");
+			System.exit(1);
+		}
+
+		OutputStream fos = null;
 		try {
-			File outfile = new File(args[0]);
+			if (Boolean.TRUE.equals(createFlag)) {
+				if (filenameValue != null) {
+					fos = new FileOutputStream(filenameValue);
+				} else {
+					fos = System.out;
+				}
 
-			/*
-			 * If only one argument is provided, we just want to get
-			 * information about the torrent. Load the torrent to trigger the
-			 * information dump and exit.
-			 */
-			if (args.length == 1) {
-				logger.info("Dumping information on torrent {}...",
-					outfile.getAbsolutePath());
-				Torrent.load(outfile, null);
-				System.exit(0);
-			}
+				URI announceURI = new URI(announceURL);
+				File source = new File(otherArgs[0]);
+				if (!source.exists() || !source.canRead()) {
+					throw new IllegalArgumentException(
+						"Cannot access source file or directory " +
+						source.getName());
+				}
 
-			URI announce = new URI(args[1]);
-			File source = new File(args[2]);
-			if (!source.exists() || !source.canRead()) {
-				throw new IllegalArgumentException(
-					"Cannot access source file or directory " +
-					source.getName());
-			}
+				String creator = String.format("%s (ttorrent)",
+					System.getProperty("user.name"));
 
-			String creator = String.format("%s (ttorrent)",
-				System.getProperty("user.name"));
+				Torrent torrent = null;
+				if (source.isDirectory()) {
+					File[] files = source.listFiles();
+					Arrays.sort(files);
+					torrent = Torrent.create(source, Arrays.asList(files),
+						announceURI, creator);
+				} else {
+					torrent = Torrent.create(source, announceURI, creator);
+				}
 
-			Torrent torrent = null;
-			if (source.isDirectory()) {
-				File[] files = source.listFiles();
-				Arrays.sort(files);
-				torrent = Torrent.create(source, Arrays.asList(files),
-					announce, creator);
+				torrent.save(fos);
 			} else {
-				torrent = Torrent.create(source, announce, creator);
+				Torrent.load(
+					new File(filenameValue),
+					new File("."),
+					true);
 			}
-
-			torrent.save(outfile);
 		} catch (Exception e) {
 			logger.error("{}", e.getMessage(), e);
 			System.exit(2);
+		} finally {
+			if (fos != null && fos != System.out) {
+				try {
+					fos.close();
+				} catch (IOException ioe) {
+				}
+			}
 		}
 	}
 }
