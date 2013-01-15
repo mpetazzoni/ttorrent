@@ -82,7 +82,7 @@ public class TrackedTorrent extends Torrent {
 	 */
 	public TrackedTorrent(byte[] torrent)
 		throws IOException, NoSuchAlgorithmException {
-		super(torrent, null, false);
+		super(torrent, false);
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;

@@ -140,7 +140,7 @@ public class Torrent {
 	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
 	 */
-	public Torrent(byte[] torrent, File parent, boolean seeder)
+	public Torrent(byte[] torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		this.encoded = torrent;
 		this.seeder = seeder;
@@ -484,13 +484,12 @@ public class Torrent {
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
-	 * @param parent
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, File parent)
+	public static Torrent load(File torrent)
 		throws IOException, NoSuchAlgorithmException {
-		return Torrent.load(torrent, parent, false);
+		return Torrent.load(torrent, false);
 	}
 
 	/**
@@ -498,20 +497,19 @@ public class Torrent {
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
-	 * @param parent
 	 * @param seeder Whether we are a seeder for this torrent or not (disables
 	 * local data validation).
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, File parent, boolean seeder)
+	public static Torrent load(File torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(torrent);
 			byte[] data = new byte[(int)torrent.length()];
 			fis.read(data);
-			return new Torrent(data, parent, seeder);
+			return new Torrent(data, seeder);
 		} finally {
 			if (fis != null) {
 				fis.close();
@@ -608,7 +606,7 @@ public class Torrent {
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray(), null, true);
+		return new Torrent(baos.toByteArray(), true);
 	}
 
 	/**
@@ -873,10 +871,7 @@ public class Torrent {
 
 				torrent.save(fos);
 			} else {
-				Torrent.load(
-					new File(filenameValue),
-					new File("."),
-					true);
+				Torrent.load(new File(filenameValue), true);
 			}
 		} catch (Exception e) {
 			logger.error("{}", e.getMessage(), e);

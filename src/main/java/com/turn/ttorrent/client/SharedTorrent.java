@@ -164,7 +164,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		super(torrent, parent, seeder);
+		super(torrent, seeder);
 
 		if (parent == null || !parent.isDirectory()) {
 			throw new IllegalArgumentException("Invalid parent directory!");
