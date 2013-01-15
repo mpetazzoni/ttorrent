@@ -575,7 +575,7 @@ public class Torrent {
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 		torrent.put("announce", new BEValue(announce.toString()));
-		torrent.put("creation date", new BEValue(new Date().getTime()));
+		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
