@@ -201,7 +201,7 @@ public class Piece implements Comparable<Piece> {
 		// implemented in Java.
 		ByteBuffer buffer = ByteBuffer.allocate((int)length);
 		int bytes = this.bucket.read(buffer, this.offset + offset);
-		buffer.clear();
+		buffer.rewind();
 		buffer.limit(bytes >= 0 ? bytes : 0);
 		return buffer;
 	}
