@@ -56,7 +56,7 @@ public class Piece implements Comparable<Piece> {
 	private final int index;
 	private final long offset;
 	private final long length;
-	private final byte[] hash;
+	private final ByteBuffer torrentHash;
 	private final boolean seeder;
 
 	private volatile boolean valid;
@@ -70,17 +70,17 @@ public class Piece implements Comparable<Piece> {
 	 * @param index This piece index in the torrent.
 	 * @param offset This piece offset, in bytes, in the storage.
 	 * @param length This piece length, in bytes.
-	 * @param hash This piece 20-byte SHA1 hash sum.
+	 * @param torrentHash This full hash for every pieces.
 	 * @param seeder Whether we're seeding this torrent or not (disables piece
 	 * validation).
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset,
-		long length, byte[] hash, boolean seeder) {
+		long length, ByteBuffer torrentHash, boolean seeder) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
 		this.length = length;
-		this.hash = hash;
+		this.torrentHash = torrentHash;
 		this.seeder = seeder;
 
 		// Piece is considered invalid until first check.
@@ -160,17 +160,26 @@ public class Piece implements Comparable<Piece> {
 		this.valid = false;
 
 		try {
-			// TODO: remove cast to int when large ByteBuffer support is
-			// implemented in Java.
 			ByteBuffer buffer = this._read(0, this.length);
-			byte[] data = new byte[(int)this.length];
-			buffer.get(data);
-			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
+			this.valid = checkHash(buffer);
 		} catch (NoSuchAlgorithmException nsae) {
 			logger.error("{}", nsae);
 		}
 
 		return this.isValid();
+	}
+	
+	protected boolean checkHash(ByteBuffer data) throws NoSuchAlgorithmException {
+		byte[] calculatedHash = Torrent.hash(data);
+		
+		int torrentHashPosition = getIndex() * Torrent.PIECE_HASH_SIZE;
+		for (int i = 0; i < Torrent.PIECE_HASH_SIZE; i++) {
+			byte value = this.torrentHash.get(torrentHashPosition + i);
+			if (value != calculatedHash[i]) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
