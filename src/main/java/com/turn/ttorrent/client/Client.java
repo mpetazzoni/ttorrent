@@ -974,6 +974,7 @@ public class Client extends Observable implements Runnable,
 		s.println("  -h,--help             Show this help and exit.");
 		s.println("  -o,--output DIR       Read/write data to directory DIR.");
 		s.println("  -i,--iface IFACE      Bind to interface IFACE.");
+		s.println("  -s,--seed SECONDS     Time to seed after downloading (default: infinitely).");
 		s.println();
 	}
 
@@ -1030,6 +1031,7 @@ public class Client extends Observable implements Runnable,
 		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
 		CmdLineParser.Option output = parser.addStringOption('o', "output");
 		CmdLineParser.Option iface = parser.addStringOption('i', "iface");
+		CmdLineParser.Option seedTime = parser.addIntegerOption('s', "seed");
 
 		try {
 			parser.parse(args);
@@ -1048,6 +1050,7 @@ public class Client extends Observable implements Runnable,
 		String outputValue = (String)parser.getOptionValue(output,
 				DEFAULT_OUTPUT_DIRECTORY);
 		String ifaceValue = (String)parser.getOptionValue(iface);
+		int seedTimeValue = (Integer)parser.getOptionValue(seedTime, -1);
 
 		String[] otherArgs = parser.getRemainingArgs();
 		if (otherArgs.length != 1) {
@@ -1067,7 +1070,7 @@ public class Client extends Observable implements Runnable,
 			Runtime.getRuntime().addShutdownHook(
 				new Thread(new ClientShutdown(c, null)));
 
-			c.share();
+			c.share(seedTimeValue);
 			if (ClientState.ERROR.equals(c.getState())) {
 				System.exit(1);
 			}
