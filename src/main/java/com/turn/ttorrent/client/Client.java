@@ -912,18 +912,14 @@ public class Client extends Observable implements Runnable,
 		logger.info("Download of {} pieces completed.",
 			this.torrent.getPieceCount());
 
-		if (this.seed == 0) {
-			logger.info("No seeding requested, stopping client...");
-			this.stop();
-			return;
-		}
-
 		this.setState(ClientState.SEEDING);
 		if (this.seed < 0) {
 			logger.info("Seeding indefinetely...");
 			return;
 		}
 
+		// In case seeding for 0 seconds we still need to schedule the task in
+		// order to call stop() from different thread to avoid deadlock
 		logger.info("Seeding for {} seconds...", this.seed);
 		Timer timer = new Timer();
 		timer.schedule(new ClientShutdown(this, timer), this.seed*1000);

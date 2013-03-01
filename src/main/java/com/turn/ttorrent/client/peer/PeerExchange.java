@@ -113,6 +113,7 @@ class PeerExchange {
 		this.out = new OutgoingThread();
 		this.out.setName("bt-peer(" +
 			this.peer.getShortHexPeerId() + ")-send");
+		this.out.setDaemon(true);
 
 		// Automatically start the exchange activity loops
 		this.stop = false;
