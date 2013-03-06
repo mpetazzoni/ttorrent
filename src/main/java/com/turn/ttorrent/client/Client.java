@@ -912,18 +912,14 @@ public class Client extends Observable implements Runnable,
 		logger.info("Download of {} pieces completed.",
 			this.torrent.getPieceCount());
 
-		if (this.seed == 0) {
-			logger.info("No seeding requested, stopping client...");
-			this.stop();
-			return;
-		}
-
 		this.setState(ClientState.SEEDING);
 		if (this.seed < 0) {
 			logger.info("Seeding indefinetely...");
 			return;
 		}
 
+		// In case seeding for 0 seconds we still need to schedule the task in
+		// order to call stop() from different thread to avoid deadlock
 		logger.info("Seeding for {} seconds...", this.seed);
 		Timer timer = new Timer();
 		timer.schedule(new ClientShutdown(this, timer), this.seed*1000);
@@ -974,6 +970,7 @@ public class Client extends Observable implements Runnable,
 		s.println("  -h,--help             Show this help and exit.");
 		s.println("  -o,--output DIR       Read/write data to directory DIR.");
 		s.println("  -i,--iface IFACE      Bind to interface IFACE.");
+		s.println("  -s,--seed SECONDS     Time to seed after downloading (default: infinitely).");
 		s.println();
 	}
 
@@ -1030,6 +1027,7 @@ public class Client extends Observable implements Runnable,
 		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
 		CmdLineParser.Option output = parser.addStringOption('o', "output");
 		CmdLineParser.Option iface = parser.addStringOption('i', "iface");
+		CmdLineParser.Option seedTime = parser.addIntegerOption('s', "seed");
 
 		try {
 			parser.parse(args);
@@ -1048,6 +1046,7 @@ public class Client extends Observable implements Runnable,
 		String outputValue = (String)parser.getOptionValue(output,
 				DEFAULT_OUTPUT_DIRECTORY);
 		String ifaceValue = (String)parser.getOptionValue(iface);
+		int seedTimeValue = (Integer)parser.getOptionValue(seedTime, -1);
 
 		String[] otherArgs = parser.getRemainingArgs();
 		if (otherArgs.length != 1) {
@@ -1067,7 +1066,7 @@ public class Client extends Observable implements Runnable,
 			Runtime.getRuntime().addShutdownHook(
 				new Thread(new ClientShutdown(c, null)));
 
-			c.share();
+			c.share(seedTimeValue);
 			if (ClientState.ERROR.equals(c.getState())) {
 				System.exit(1);
 			}
