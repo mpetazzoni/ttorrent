@@ -281,7 +281,7 @@ public class Client extends Observable implements Runnable,
 			this.thread.interrupt();
 			if (wait) {
 				try {
-					this.thread.join();
+					waitForCompletion();
 				} catch (InterruptedException ie) {
 					// Ignore
 				}
