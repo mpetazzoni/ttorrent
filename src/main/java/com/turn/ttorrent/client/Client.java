@@ -232,6 +232,17 @@ public class Client extends Observable implements Runnable,
 	}
 
 	/**
+	 * Wait for downloading and seeding (if requested) to complete.
+	 * 
+	 * @throws InterruptedException
+	 */
+	public void waitForCompletion() throws InterruptedException {
+		if (this.thread != null) {
+			this.thread.join();
+		}
+	}
+	
+	/**
 	 * Download and share this client's torrent.
 	 *
 	 * @param seed Seed time in seconds after the download is complete. Pass

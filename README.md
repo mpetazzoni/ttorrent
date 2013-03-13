@@ -90,10 +90,12 @@ client.download();
 // client.share(3600);
 // Which would seed the torrent for an hour after the download is complete.
 
+// Downloading and seeding is done in background threads. 
+// To wait for this processes to finish call:
+// client.waitForCompletion();
+
 // At any time you can call client.stop() to interrupt the download.
 
-// When you're done, call client.finish() to close everything up:
-client.finish();
 ```
 
 #### Tracker code
