@@ -15,7 +15,7 @@
 		a tracker and a torrent manipulation utility.
 	</description>
 	<url>http://turn.github.com/ttorrent/</url>
-	<groupId>com.turn.ttorrent</groupId>
+	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
 	<version>1.2</version>
 	<packaging>jar</packaging>
