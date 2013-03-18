@@ -1,163 +1,174 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-  <name>Java BitTorrent library</name>
-  <url>http://turn.github.com/ttorrent/</url>
-  <groupId>com.turn.ttorrent</groupId>
-  <artifactId>ttorrent</artifactId>
-  <version>1.2</version>
-  <packaging>jar</packaging>
+	<parent>
+		<groupId>org.sonatype.oss</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>7</version>
+	</parent>
 
-  <organization>
-    <name>Turn, Inc.</name>
-    <url>http://www.turn.com</url>
-  </organization>
+	<name>Java BitTorrent library</name>
+	<description>
+		ttorrent is a pure-Java implementation of the BitTorrent protocol,
+		including support for several BEPs. It also provides a standalone client,
+		a tracker and a torrent manipulation utility.
+	</description>
+	<url>http://turn.github.com/ttorrent/</url>
+	<groupId>com.turn.ttorrent</groupId>
+	<artifactId>ttorrent</artifactId>
+	<version>1.2</version>
+	<packaging>jar</packaging>
 
-  <scm>
-    <connection>scm:git:git://github.com/turn/ttorrent.git</connection>
-    <url>http://github.com/turn/ttorrent</url>
-  </scm>
+	<organization>
+		<name>Turn, Inc.</name>
+		<url>http://www.turn.com</url>
+	</organization>
 
-  <licenses>
-    <license>
-      <name>Apache Software License version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-    </license>
-  </licenses>
+	<scm>
+		<connection>scm:git:git://github.com/turn/ttorrent.git</connection>
+		<url>http://github.com/turn/ttorrent</url>
+	</scm>
 
-  <issueManagement>
-    <system>GitHub</system>
-    <url>https://github.com/turn/ttorrent/issues</url>
-  </issueManagement>
+	<licenses>
+		<license>
+			<name>Apache Software License version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
 
-  <developers>
-    <developer>
-      <id>mpetazzoni</id>
-      <name>Maxime Petazzoni</name>
-      <email>mpetazzoni@turn.com</email>
-      <url>http://www.bulix.org</url>
-      <organization>Turn, Inc</organization>
-      <organizationUrl>http://www.turn.com</organizationUrl>
-      <roles>
-        <role>maintainer</role>
-        <role>architect</role>
-        <role>developer</role>
-      </roles>
-      <timezone>-8</timezone>
-      <properties>
-        <picUrl>https://secure.gravatar.com/avatar/6f705e0c299bca294444de3a6a3308b3</picUrl>
-      </properties>
-    </developer>
-  </developers>
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/turn/ttorrent/issues</url>
+	</issueManagement>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
+	<developers>
+		<developer>
+			<id>mpetazzoni</id>
+			<name>Maxime Petazzoni</name>
+			<email>mpetazzoni@turn.com</email>
+			<url>http://www.bulix.org</url>
+			<organization>Turn, Inc</organization>
+			<organizationUrl>http://www.turn.com</organizationUrl>
+			<roles>
+				<role>maintainer</role>
+				<role>architect</role>
+				<role>developer</role>
+			</roles>
+			<timezone>-8</timezone>
+			<properties>
+				<picUrl>https://secure.gravatar.com/avatar/6f705e0c299bca294444de3a6a3308b3</picUrl>
+			</properties>
+		</developer>
+	</developers>
 
-  <repositories>
-    <repository>
-      <id>jboss-thirdparty-releases</id>
-      <name>JBoss Thirdparty Releases</name>
-      <url>https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/</url>
-    </repository>
-  </repositories>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
 
-  <dependencies>
-    <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
-      <version>2.1</version>
-    </dependency>
+	<repositories>
+		<repository>
+			<id>jboss-thirdparty-releases</id>
+			<name>JBoss Thirdparty Releases</name>
+			<url>https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/</url>
+		</repository>
+	</repositories>
 
-    <dependency>
-      <groupId>org.simpleframework</groupId>
-      <artifactId>simple</artifactId>
-      <version>4.1.21</version>
-    </dependency>
+	<dependencies>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.1</version>
+		</dependency>
 
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>1.6.4</version>
-    </dependency>
+		<dependency>
+			<groupId>org.simpleframework</groupId>
+			<artifactId>simple</artifactId>
+			<version>4.1.21</version>
+		</dependency>
 
-    <dependency>
-      <groupId>org.testng</groupId>
-      <artifactId>testng</artifactId>
-      <version>6.1.1</version>
-      <scope>test</scope>
-    </dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.6.4</version>
+		</dependency>
 
-    <dependency>
-      <groupId>net.sf</groupId>
-      <artifactId>jargs</artifactId>
-      <version>1.0</version>
-    </dependency>
-  </dependencies>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>6.1.1</version>
+			<scope>test</scope>
+		</dependency>
 
-  <build>
-    <defaultGoal>package</defaultGoal>
-    <directory>${basedir}/build</directory>
+		<dependency>
+			<groupId>net.sf</groupId>
+			<artifactId>jargs</artifactId>
+			<version>1.0</version>
+		</dependency>
+	</dependencies>
 
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <source>1.6</source>
-          <target>1.6</target>
-        </configuration>
-      </plugin>
+	<build>
+		<defaultGoal>package</defaultGoal>
+		<directory>${basedir}/build</directory>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <version>2.4</version>
-        <configuration>
-          <includes>
-            <include>**</include>
-          </includes>
-        </configuration>
-      </plugin>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.8.1</version>
-        <configuration>
-          <reportOutputDirectory>${basedir}</reportOutputDirectory>
-          <destDir>doc</destDir>
-        </configuration>
-      </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<includes>
+						<include>**</include>
+					</includes>
+				</configuration>
+			</plugin>
 
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-          <appendAssemblyId>false</appendAssemblyId>
-          <archive>
-            <manifest>
-              <addClasspath>false</addClasspath>
-              <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-              <mainClass>com.turn.ttorrent.client.Client</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-my-jar-with-dependencies</id>
-            <phase>package</phase>
-            <goals>
-              <!--change assembly to single if you don't want include dependencies in jar-->
-              <goal>assembly</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.8.1</version>
+				<configuration>
+					<reportOutputDirectory>${basedir}</reportOutputDirectory>
+					<destDir>doc</destDir>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<appendAssemblyId>false</appendAssemblyId>
+					<archive>
+						<manifest>
+							<addClasspath>false</addClasspath>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+							<mainClass>com.turn.ttorrent.client.Client</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-my-jar-with-dependencies</id>
+						<phase>package</phase>
+						<goals>
+							<!--change assembly to single if you don't want include dependencies in jar-->
+							<goal>assembly</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>
