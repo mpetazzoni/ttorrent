@@ -316,6 +316,13 @@ public class Client extends Observable implements Runnable,
 					"Aborting right away.");
 		} finally {
 			if (!this.torrent.isInitialized()) {
+				try {
+					this.service.close();
+				} catch (IOException ioe) {
+					logger.warn("Error while releasing bound channel: {}!",
+						ioe.getMessage(), ioe);
+				}
+
 				this.setState(ClientState.ERROR);
 				this.torrent.close();
 				return;
@@ -373,7 +380,15 @@ public class Client extends Observable implements Runnable,
 
 		logger.debug("Stopping BitTorrent client connection service " +
 				"and announce threads...");
+
 		this.service.stop();
+		try {
+			this.service.close();
+		} catch (IOException ioe) {
+			logger.warn("Error while releasing bound channel: {}!",
+				ioe.getMessage(), ioe);
+		}
+
 		this.announce.stop();
 
 		// Close all peer connections
