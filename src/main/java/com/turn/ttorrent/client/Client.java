@@ -269,15 +269,24 @@ public class Client extends Observable implements Runnable,
 		if (this.thread != null && this.thread.isAlive()) {
 			this.thread.interrupt();
 			if (wait) {
-				try {
-					this.thread.join();
-				} catch (InterruptedException ie) {
-					// Ignore
-				}
+				this.waitForCompletion();
 			}
 		}
 
 		this.thread = null;
+	}
+
+	/**
+	 * Wait for downloading (and seeding, if requested) to complete.
+	 */
+	public void waitForCompletion() {
+		if (this.thread != null && this.thread.isAlive()) {
+			try {
+				this.thread.join();
+			} catch (InterruptedException ie) {
+				logger.error(ie.getMessage(), ie);
+			}
+		}
 	}
 
 	/**
