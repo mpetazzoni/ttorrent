@@ -381,7 +381,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @param results The list of {@link Future}s of pieces to process.
 	 */
 	private void validatePieces(List<Future<Piece>> results)
-			throws InterruptedException, IOException {
+			throws IOException {
 		try {
 			for (Future<Piece> task : results) {
 				Piece piece = task.get();

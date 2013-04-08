@@ -168,6 +168,11 @@ public class ConnectionHandler implements Runnable {
 	 * Start accepting new connections in a background thread.
 	 */
 	public void start() {
+		if (this.channel == null) {
+			throw new IllegalStateException(
+				"Connection handler cannot be recycled!");
+		}
+
 		this.stop = false;
 
 		if (this.executor == null || this.executor.isShutdown()) {
@@ -214,6 +219,18 @@ public class ConnectionHandler implements Runnable {
 	}
 
 	/**
+	 * Close this connection handler to release the port it is bound to.
+	 *
+	 * @throws IOException If the channel could not be closed.
+	 */
+	public void close() throws IOException {
+		if (this.channel != null) {
+			this.channel.close();
+			this.channel = null;
+		}
+	}
+
+	/**
 	 * The main service loop.
 	 *
 	 * <p>
@@ -241,12 +258,6 @@ public class ConnectionHandler implements Runnable {
 			} catch (InterruptedException ie) {
 				Thread.currentThread().interrupt();
 			}
-		}
-
-		try {
-			this.channel.close();
-		} catch (IOException ioe) {
-			// Ignore
 		}
 	}
 
