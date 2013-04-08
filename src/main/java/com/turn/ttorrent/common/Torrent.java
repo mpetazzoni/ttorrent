@@ -535,7 +535,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		return Torrent.create(source, null, announce, createdBy);
+		return Torrent.create(source, null, announce, null, createdBy);
 	}
 
 	/**
@@ -558,6 +558,76 @@ public class Torrent {
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws NoSuchAlgorithmException,
 		   InterruptedException, IOException {
+		return Torrent.create(parent, files, announce, null, createdBy);
+	}
+
+	/**
+	 * Create a {@link Torrent} object for a file.
+	 *
+	 * <p>
+	 * Hash the given file to create the {@link Torrent} object representing
+	 * the Torrent metainfo about this file, needed for announcing and/or
+	 * sharing said file.
+	 * </p>
+	 *
+	 * @param source The file to use in the torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	public static Torrent create(File source, List<List<URI>> announceList,
+			String createdBy) throws NoSuchAlgorithmException,
+			InterruptedException, IOException {
+		return Torrent.create(source, null, null, announceList, createdBy);
+	}
+	
+	/**
+	 * Create a {@link Torrent} object for a set of files.
+	 *
+	 * <p>
+	 * Hash the given files to create the multi-file {@link Torrent} object
+	 * representing the Torrent meta-info about them, needed for announcing
+	 * and/or sharing these files. Since we created the torrent, we're
+	 * considering we'll be a full initial seeder for it.
+	 * </p>
+	 *
+	 * @param parent The parent directory or location of the torrent files,
+	 * also used as the torrent's name.
+	 * @param files The files to add into this torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	public static Torrent create(File source, List<File> files,
+			List<List<URI>> announceList, String createdBy)
+			throws NoSuchAlgorithmException, InterruptedException, IOException {
+		return Torrent.create(source, files, null, announceList, createdBy);
+	}
+	
+	/**
+	 * Helper method to create a {@link Torrent} object for a set of files.
+	 *
+	 * <p>
+	 * Hash the given files to create the multi-file {@link Torrent} object
+	 * representing the Torrent meta-info about them, needed for announcing
+	 * and/or sharing these files. Since we created the torrent, we're
+	 * considering we'll be a full initial seeder for it.
+	 * </p>
+	 *
+	 * @param parent The parent directory or location of the torrent files,
+	 * also used as the torrent's name.
+	 * @param files The files to add into this torrent.
+	 * @param announce The announce URI that will be used for this torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	private static Torrent create(File parent, List<File> files, URI announce,
+			List<List<URI>> announceList, String createdBy)
+			throws NoSuchAlgorithmException, InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
 				parent.getName());
@@ -567,7 +637,22 @@ public class Torrent {
 		}
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-		torrent.put("announce", new BEValue(announce.toString()));
+
+		if (announce != null) {
+			torrent.put("announce", new BEValue(announce.toString()));
+		}
+		if (announceList != null) {
+			List<BEValue> tiers = new LinkedList<BEValue>();
+			for (List<URI> trackers : announceList) {
+				List<BEValue> tierInfo = new LinkedList<BEValue>();
+				for (URI trackerURI : trackers) {
+					tierInfo.add(new BEValue(trackerURI.toString()));
+				}
+				tiers.add(new BEValue(tierInfo));
+			}
+			torrent.put("announce-list", new BEValue(tiers));
+		}
+		
 		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
