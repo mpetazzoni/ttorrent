@@ -210,21 +210,18 @@ class PeerExchange {
 					buffer.rewind();
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
 
-					if (channel.read(buffer) < 0) {
-						throw new EOFException(
-							"Reached end-of-stream while reading size header");
-					}
-
 					// Keep reading bytes until the length field has been read
 					// entirely.
-					if (buffer.hasRemaining()) {
+					while (!stop && buffer.hasRemaining()) {
+						if (channel.read(buffer) < 0) {
+							throw new EOFException(
+								"Reached end-of-stream while reading size header");
+						}
 						try {
 							Thread.sleep(1);
 						} catch (InterruptedException ie) {
 							// Ignore and move along.
 						}
-
-						continue;
 					}
 
 					int pstrlen = buffer.getInt(0);
