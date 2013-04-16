@@ -5,6 +5,11 @@ Changes of this fork
 --------------------
 
 This fork, in the **master** branch add **UDP Tracker** implementation.
+Now, you have to use **UDPTracker** or **TCPTracker** classes instead of **Tracker** class.
+
+```java
+Tracker tracker = new UDPTracker(new InetSocketAddress(6969));
+```
 
 Description
 -----------
