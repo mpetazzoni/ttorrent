@@ -275,10 +275,10 @@ public class UDPTrackerClient extends TrackerClient {
 			this.torrent.getUploaded(),
 			this.torrent.getLeft(),
 			event,
-			this.peer.getExternalAddress(),
+			this.peer.getAddress(),
 			0,
 			TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
-			this.peer.getExternalPort());
+			this.peer.getPort());
 	}
 
 	/**
