@@ -39,7 +39,6 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -71,6 +70,17 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	/** Randomly select the next piece to download from a peer from the
 	 * RAREST_PIECE_JITTER available from it. */
 	private static final int RAREST_PIECE_JITTER = 42;
+
+	/** End-game trigger ratio.
+	 *
+	 * <p>
+	 * Eng-game behavior (requesting already requested pieces from available
+	 * and ready peers to try to speed-up the end of the transfer) will only be
+	 * enabled when the ratio of completed pieces over total pieces in the
+	 * torrent is over this value.
+	 * </p>
+	 */
+	private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
 	private Random random;
 	private boolean stop;
@@ -165,7 +175,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		super(torrent, parent, seeder);
+		super(torrent, seeder);
 
 		if (parent == null || !parent.isDirectory()) {
 			throw new IllegalArgumentException("Invalid parent directory!");
@@ -295,50 +305,83 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
 
+		int threads = getHashingThreadsCount();
 		int nPieces = (int) (Math.ceil(
 				(double)this.getSize() / this.pieceLength));
+		int step = 10;
+
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
-
 		this.piecesHashes.clear();
 
-		ExecutorService executor = Executors.newFixedThreadPool(
-			getHashingThreadsCount());
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
-		logger.debug("Analyzing local data for {} with {} threads...",
-			this.getName(), getHashingThreadsCount());
-		for (int idx=0; idx<this.pieces.length; idx++) {
-			byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
-			this.piecesHashes.get(hash);
+		try {
+			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
+				new Object[] { this.getName(), threads, nPieces });
+			for (int idx=0; idx<nPieces; idx++) {
+				byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
+				this.piecesHashes.get(hash);
 
-			// The last piece may be shorter than the torrent's global piece
-			// length. Let's make sure we get the right piece length in any
-			// situation.
-			long off = ((long)idx) * this.pieceLength;
-			int len = Math.min(
-				(int)(this.bucket.size() - off),
-				this.pieceLength);
+				// The last piece may be shorter than the torrent's global piece
+				// length. Let's make sure we get the right piece length in any
+				// situation.
+				long off = ((long)idx) * this.pieceLength;
+				long len = Math.min(
+					this.bucket.size() - off,
+					this.pieceLength);
 
-			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-				this.isSeeder());
+				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
+					this.isSeeder());
 
-			Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
-			results.add(executor.submit(hasher));
-		}
+				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
+				results.add(executor.submit(hasher));
 
-		// Request orderly executor shutdown and wait for hashing tasks to
-		// complete.
-		executor.shutdown();
-		while (!executor.isTerminated()) {
-			if (this.stop) {
-				throw new InterruptedException("Torrent data analysis " +
-					"interrupted.");
+				if (results.size() >= threads) {
+					this.validatePieces(results);
+				}
+
+				if (idx / (float)nPieces * 100f > step) {
+					logger.info("  ... {}% complete", step);
+					step += 10;
+				}
 			}
 
-			Thread.sleep(10);
+			this.validatePieces(results);
+		} finally {
+			// Request orderly executor shutdown and wait for hashing tasks to
+			// complete.
+			executor.shutdown();
+			while (!executor.isTerminated()) {
+				if (this.stop) {
+					throw new InterruptedException("Torrent data analysis " +
+						"interrupted.");
+				}
+
+				Thread.sleep(10);
+			}
 		}
 
+		logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
+			new Object[] {
+				this.getName(),
+				(this.getSize() - this.left),
+				this.getSize(),
+				String.format("%.1f", (100f * (1f - this.left / (float)this.getSize()))),
+				this.completedPieces.cardinality(),
+				this.pieces.length
+			});
+		this.initialized = true;
+	}
+
+	/**
+	 * Process the pieces enqueued for hash validation so far.
+	 *
+	 * @param results The list of {@link Future}s of pieces to process.
+	 */
+	private void validatePieces(List<Future<Piece>> results)
+			throws IOException {
 		try {
 			for (Future<Piece> task : results) {
 				Piece piece = task.get();
@@ -347,20 +390,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					this.left -= piece.size();
 				}
 			}
-		} catch (ExecutionException e) {
+
+			results.clear();
+		} catch (Exception e) {
 			throw new IOException("Error while hashing a torrent piece!", e);
 		}
-
-		logger.debug("{}: {}/{} bytes [{}/{}].",
-			new Object[] {
-				this.getName(),
-				(this.getSize() - this.left),
-				this.getSize(),
-				this.completedPieces.cardinality(),
-				this.pieces.length
-			});
-		this.initialized = true;
 	}
+
 
 	public synchronized void close() {
 		try {
@@ -540,12 +576,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 
 		logger.trace("Peer {} choked, we now have {} outstanding " +
-				"request(s): {}.",
+				"request(s): {}",
 			new Object[] {
 				peer,
 				this.requestedPieces.cardinality(),
 				this.requestedPieces
-			});
+		});
 	}
 
 	/**
@@ -560,52 +596,63 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	@Override
 	public synchronized void handlePeerReady(SharingPeer peer) {
-		ArrayList<Piece> choice = new ArrayList<Piece>(
-				SharedTorrent.RAREST_PIECE_JITTER);
-
 		BitSet interesting = peer.getAvailablePieces();
 		interesting.andNot(this.completedPieces);
 		interesting.andNot(this.requestedPieces);
 
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
-		logger.trace("Peer has {} piece(s), we have {} piece(s) and {} " +
-			"outstanding request(s): {}.",
-			new Object[] {
-				peer.getAvailablePieces().cardinality(),
-				this.completedPieces.cardinality(),
-				this.requestedPieces.cardinality(),
-				this.requestedPieces
-			});
 
-		// Bail out immediately if the peer has no interesting pieces
+		// If we didn't find interesting pieces, we need to check if we're in
+		// an end-game situation. If yes, we request an already requested piece
+		// to try to speed up the end.
 		if (interesting.cardinality() == 0) {
-			return;
+			interesting = peer.getAvailablePieces();
+			interesting.andNot(this.completedPieces);
+			if (interesting.cardinality() == 0) {
+				logger.trace("No interesting piece from {}!", peer);
+				return;
+			}
+
+			if (this.completedPieces.cardinality() <
+					ENG_GAME_COMPLETION_RATIO * this.pieces.length) {
+				logger.trace("Not far along enough to warrant end-game mode.");
+				return;
+			}
+
+			logger.trace("Possible end-game, we're about to request a piece " +
+				"that was already requested from another peer.");
 		}
 
 		// Extract the RAREST_PIECE_JITTER rarest pieces from the interesting
 		// pieces of this peer.
-		for (Piece piece : this.rarest) {
-			if (interesting.get(piece.getIndex())) {
-				choice.add(piece);
-				if (choice.size() == RAREST_PIECE_JITTER) {
-					break;
+		ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
+		synchronized (this.rarest) {
+			for (Piece piece : this.rarest) {
+				if (interesting.get(piece.getIndex())) {
+					choice.add(piece);
+					if (choice.size() >= RAREST_PIECE_JITTER) {
+						break;
+					}
 				}
 			}
 		}
 
-		Piece chosen = choice.get(this.random.nextInt(
-					Math.min(choice.size(),
-						SharedTorrent.RAREST_PIECE_JITTER)));
+		Piece chosen = choice.get(
+			this.random.nextInt(
+				Math.min(choice.size(),
+				RAREST_PIECE_JITTER)));
 		this.requestedPieces.set(chosen.getIndex());
+
 		logger.trace("Requesting {} from {}, we now have {} " +
-				" outstanding request(s): {}.",
+				"outstanding request(s): {}",
 			new Object[] {
 				chosen,
 				peer,
 				this.requestedPieces.cardinality(),
 				this.requestedPieces
 			});
+
 		peer.downloadPiece(chosen);
 	}
 
@@ -630,8 +677,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			peer.interesting();
 		}
 
-		piece.seenAt(peer);
 		this.rarest.remove(piece);
+		piece.seenAt(peer);
 		this.rarest.add(piece);
 
 		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
@@ -677,18 +724,20 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			peer.interesting();
 		}
 
-		// Record the peer has all the pieces it told us it had.
+		// Record that the peer has all the pieces it told us it had.
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.pieces[i].seenAt(peer);
 			this.rarest.remove(this.pieces[i]);
+			this.pieces[i].seenAt(peer);
 			this.rarest.add(this.pieces[i]);
 		}
 
-		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+		logger.trace("Peer {} contributes {} piece(s) ({} interesting) " +
+			"[completed={}; available={}/{}].",
 			new Object[] {
 				peer,
 				availablePieces.cardinality(),
+				interesting.cardinality(),
 				this.completedPieces.cardinality(),
 				this.getAvailablePieces().cardinality(),
 				this.pieces.length
@@ -729,19 +778,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	public synchronized void handlePieceCompleted(SharingPeer peer,
 		Piece piece) throws IOException {
 		// Regardless of validity, record the number of bytes downloaded and
-		// mark the piece as not requseted anymore
+		// mark the piece as not requested anymore
 		this.downloaded += piece.size();
 		this.requestedPieces.set(piece.getIndex(), false);
 
-		if (piece.isValid()) {
-			logger.trace("Validated download of {} from {}.", piece, peer);
-			this.markCompleted(piece);
-		} else {
-			// When invalid, remark that piece as non-requested.
-			logger.warn("Downloaded piece {} was not valid ;-(", piece);
-		}
-
-		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}.",
+		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
 			new Object[] {
 				this.completedPieces.cardinality(),
 				this.requestedPieces.cardinality(),
@@ -765,8 +806,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.pieces[i].noLongerAt(peer);
 			this.rarest.remove(this.pieces[i]);
+			this.pieces[i].noLongerAt(peer);
 			this.rarest.add(this.pieces[i]);
 		}
 
@@ -775,7 +816,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			this.requestedPieces.set(requested.getIndex(), false);
 		}
 
-		logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
+		logger.debug("Peer {} went away with {} piece(s) [completed={}; available={}/{}]",
 			new Object[] {
 				peer,
 				availablePieces.cardinality(),

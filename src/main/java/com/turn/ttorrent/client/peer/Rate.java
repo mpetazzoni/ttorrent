@@ -16,6 +16,7 @@
 
 package com.turn.ttorrent.client.peer;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 
@@ -29,7 +30,10 @@ import java.util.Comparator;
  *
  * @author mpetazzoni
  */
-public class Rate {
+public class Rate implements Comparable<Rate> {
+
+	public static final Comparator<Rate> RATE_COMPARATOR =
+		new RateComparator();
 
 	private long bytes = 0;
 	private long reset = 0;
@@ -73,6 +77,11 @@ public class Rate {
 		this.last = this.reset;
 	}
 
+	@Override
+	public int compareTo(Rate other) {
+		return RATE_COMPARATOR.compare(this, other);
+	}
+
 	/**
 	 * A rate comparator.
 	 *
@@ -90,7 +99,10 @@ public class Rate {
 	 *
 	 * @author mpetazzoni
 	 */
-	public static class RateComparator implements Comparator<Rate> {
+	private static class RateComparator
+			implements Comparator<Rate>, Serializable {
+
+		private static final long serialVersionUID = 72460233003600L;
 
 		/**
 		 * Compare two rates together.
@@ -108,11 +120,9 @@ public class Rate {
 		public int compare(Rate a, Rate b) {
 			if (a.get() > b.get()) {
 				return 1;
-			} else if (a.get() < b.get()) {
-				return -1;
 			}
 
-			return 0;
+			return -1;
 		}
 	}
 }

@@ -18,13 +18,12 @@ package com.turn.ttorrent.client.peer;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 
-import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.InterruptedException;
-import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.text.ParseException;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -74,34 +73,30 @@ class PeerExchange {
 		LoggerFactory.getLogger(PeerExchange.class);
 
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
-	private static final int KEEP_ALIVE_FOR_MINUTES = 3;
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
-	private Socket socket;
+	private SocketChannel channel;
 
 	private Set<MessageListener> listeners;
 
 	private IncomingThread in;
 	private OutgoingThread out;
 	private BlockingQueue<PeerMessage> sendQueue;
-	private boolean stop;
+	private volatile boolean stop;
 
 	/**
 	 * Initialize and start a new peer exchange.
 	 *
 	 * @param peer The remote peer to communicate with.
 	 * @param torrent The torrent we're exchanging on with the peer.
-	 * @param socket The connected socket to the peer.
+	 * @param channel A channel on the connected socket to the peer.
 	 */
 	public PeerExchange(SharingPeer peer, SharedTorrent torrent,
-			Socket socket) throws SocketException {
+			SocketChannel channel) throws SocketException {
 		this.peer = peer;
 		this.torrent = torrent;
-		this.socket = socket;
-
-		// Set the socket read timeout.
-		this.socket.setSoTimeout(PeerExchange.KEEP_ALIVE_FOR_MINUTES*60*1000);
+		this.channel = channel;
 
 		this.listeners = new HashSet<MessageListener>();
 		this.sendQueue = new LinkedBlockingQueue<PeerMessage>();
@@ -118,6 +113,7 @@ class PeerExchange {
 		this.out = new OutgoingThread();
 		this.out.setName("bt-peer(" +
 			this.peer.getShortHexPeerId() + ")-send");
+		this.out.setDaemon(true);
 
 		// Automatically start the exchange activity loops
 		this.stop = false;
@@ -147,7 +143,7 @@ class PeerExchange {
 	 * Tells if the peer exchange is active.
 	 */
 	public boolean isConnected() {
-		return this.socket.isConnected();
+		return this.channel.isConnected();
 	}
 
 	/**
@@ -174,44 +170,21 @@ class PeerExchange {
 	 * Close and stop the peer exchange.
 	 *
 	 * <p>
-	 * Closes the socket and stops both incoming and outgoing threads.
+	 * Closes the socket channel and stops both incoming and outgoing threads.
 	 * </p>
 	 */
 	public void close() {
 		this.stop = true;
 
-		if (!this.socket.isClosed()) {
+		if (this.channel.isConnected()) {
 			try {
-				// Interrupt the incoming thread immediately
-				this.in.interrupt();
-
-				// But join the outgoing thread to let it finish serving the queue.
-				this.out.join();
-
-				// Finally, close the socket
-				this.socket.close();
-			} catch (InterruptedException ie) {
-				// Ignore
+				this.channel.close();
 			} catch (IOException ioe) {
 				// Ignore
 			}
 		}
 
 		logger.debug("Peer exchange with {} closed.", this.peer);
-	}
-
-	public void terminate() {
-		this.stop = true;
-
-		try {
-			this.socket.close();
-			this.in.interrupt();
-			this.out.interrupt();
-		} catch (IOException ioe) {
-			// Ignore
-		}
-
-		logger.debug("Terminated peer exchange with {}.", this.peer);
 	}
 
 	/**
@@ -230,18 +203,41 @@ class PeerExchange {
 
 		@Override
 		public void run() {
-			try {
-				DataInputStream is = new DataInputStream(
-						socket.getInputStream());
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1*1024*1024);
 
+			try {
 				while (!stop) {
-					// Read the first byte from the wire to get the message
-					// length, then read the specified amount of bytes to get
-					// the full message.
-					int len = is.readInt();
-					ByteBuffer buffer = ByteBuffer.allocate(4 + len);
-					buffer.putInt(len);
-					is.readFully(buffer.array(), 4, buffer.remaining());
+					buffer.rewind();
+					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
+
+					if (channel.read(buffer) < 0) {
+						throw new EOFException(
+							"Reached end-of-stream while reading size header");
+					}
+
+					// Keep reading bytes until the length field has been read
+					// entirely.
+					if (buffer.hasRemaining()) {
+						try {
+							Thread.sleep(1);
+						} catch (InterruptedException ie) {
+							// Ignore and move along.
+						}
+
+						continue;
+					}
+
+					int pstrlen = buffer.getInt(0);
+					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
+
+					while (!stop && buffer.hasRemaining()) {
+						if (channel.read(buffer) < 0) {
+							throw new EOFException(
+								"Reached end-of-stream while reading message");
+						}
+					}
+
+					buffer.rewind();
 
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
@@ -255,8 +251,11 @@ class PeerExchange {
 					}
 				}
 			} catch (IOException ioe) {
-				logger.trace("Could not read message from {}: {}",
-					new Object[] { peer, ioe.getMessage(), ioe });
+				logger.debug("Could not read message from {}: {}",
+					peer,
+					ioe.getMessage() != null
+						? ioe.getMessage()
+						: ioe.getClass().getName());
 				peer.unbind(true);
 			}
 		}
@@ -283,8 +282,6 @@ class PeerExchange {
 		@Override
 		public void run() {
 			try {
-				OutputStream os = socket.getOutputStream();
-
 				// Loop until told to stop. When stop was requested, loop until
 				// the queue is served.
 				while (!stop || (stop && sendQueue.size() > 0)) {
@@ -302,15 +299,25 @@ class PeerExchange {
 							message = PeerMessage.KeepAliveMessage.craft();
 						}
 
-						logger.trace("Sending {} to {}.", message, peer);
-						os.write(message.getData().array());
+						logger.trace("Sending {} to {}", message, peer);
+
+						ByteBuffer data = message.getData();
+						while (!stop && data.hasRemaining()) {
+							if (channel.write(data) < 0) {
+								throw new EOFException(
+									"Reached end of stream while writing");
+							}
+						}
 					} catch (InterruptedException ie) {
 						// Ignore and potentially terminate
 					}
 				}
 			} catch (IOException ioe) {
-				logger.trace("Could not send message to {}: {}",
-					new Object[] { peer, ioe.getMessage(), ioe });
+				logger.debug("Could not send message to {}: {}",
+					peer,
+					ioe.getMessage() != null
+						? ioe.getMessage()
+						: ioe.getClass().getName());
 				peer.unbind(true);
 			}
 		}

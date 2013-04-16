@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -48,6 +50,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import jargs.gnu.CmdLineParser;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -136,7 +140,7 @@ public class Torrent {
 	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
 	 */
-	public Torrent(byte[] torrent, File parent, boolean seeder)
+	public Torrent(byte[] torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		this.encoded = torrent;
 		this.seeder = seeder;
@@ -283,6 +287,9 @@ public class Torrent {
 			}
 		}
 
+		logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
+			(this.size / this.decoded_info.get("piece length").getInt()) + 1,
+			this.decoded_info.get("piece length").getInt());
 		logger.info("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
 	}
@@ -398,20 +405,11 @@ public class Torrent {
 	/**
 	 * Save this torrent meta-info structure into a .torrent file.
 	 *
-	 * @param output The file to write to.
+	 * @param output The stream to write to.
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
-	public void save(File output) throws IOException {
-		FileOutputStream fos = null;
-		try {
-			fos = new FileOutputStream(output);
-			fos.write(this.getEncoded());
-			logger.info("Wrote torrent file {}.", output.getAbsolutePath());
-		} finally {
-			if (fos != null) {
-				fos.close();
-			}
-		}
+	public void save(OutputStream output) throws IOException {
+		output.write(this.getEncoded());
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
@@ -486,13 +484,12 @@ public class Torrent {
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
-	 * @param parent
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, File parent)
+	public static Torrent load(File torrent)
 		throws IOException, NoSuchAlgorithmException {
-		return Torrent.load(torrent, parent, false);
+		return Torrent.load(torrent, false);
 	}
 
 	/**
@@ -500,20 +497,19 @@ public class Torrent {
 	 *
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
-	 * @param parent
 	 * @param seeder Whether we are a seeder for this torrent or not (disables
 	 * local data validation).
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, File parent, boolean seeder)
+	public static Torrent load(File torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(torrent);
 			byte[] data = new byte[(int)torrent.length()];
 			fis.read(data);
-			return new Torrent(data, parent, seeder);
+			return new Torrent(data, seeder);
 		} finally {
 			if (fis != null) {
 				fis.close();
@@ -539,7 +535,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		return Torrent.create(source, null, announce, createdBy);
+		return Torrent.create(source, null, announce, null, createdBy);
 	}
 
 	/**
@@ -562,6 +558,76 @@ public class Torrent {
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws NoSuchAlgorithmException,
 		   InterruptedException, IOException {
+		return Torrent.create(parent, files, announce, null, createdBy);
+	}
+
+	/**
+	 * Create a {@link Torrent} object for a file.
+	 *
+	 * <p>
+	 * Hash the given file to create the {@link Torrent} object representing
+	 * the Torrent metainfo about this file, needed for announcing and/or
+	 * sharing said file.
+	 * </p>
+	 *
+	 * @param source The file to use in the torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	public static Torrent create(File source, List<List<URI>> announceList,
+			String createdBy) throws NoSuchAlgorithmException,
+			InterruptedException, IOException {
+		return Torrent.create(source, null, null, announceList, createdBy);
+	}
+	
+	/**
+	 * Create a {@link Torrent} object for a set of files.
+	 *
+	 * <p>
+	 * Hash the given files to create the multi-file {@link Torrent} object
+	 * representing the Torrent meta-info about them, needed for announcing
+	 * and/or sharing these files. Since we created the torrent, we're
+	 * considering we'll be a full initial seeder for it.
+	 * </p>
+	 *
+	 * @param parent The parent directory or location of the torrent files,
+	 * also used as the torrent's name.
+	 * @param files The files to add into this torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	public static Torrent create(File source, List<File> files,
+			List<List<URI>> announceList, String createdBy)
+			throws NoSuchAlgorithmException, InterruptedException, IOException {
+		return Torrent.create(source, files, null, announceList, createdBy);
+	}
+	
+	/**
+	 * Helper method to create a {@link Torrent} object for a set of files.
+	 *
+	 * <p>
+	 * Hash the given files to create the multi-file {@link Torrent} object
+	 * representing the Torrent meta-info about them, needed for announcing
+	 * and/or sharing these files. Since we created the torrent, we're
+	 * considering we'll be a full initial seeder for it.
+	 * </p>
+	 *
+	 * @param parent The parent directory or location of the torrent files,
+	 * also used as the torrent's name.
+	 * @param files The files to add into this torrent.
+	 * @param announce The announce URI that will be used for this torrent.
+	 * @param announceList The announce URIs organized as tiers that will 
+	 * be used for this torrent
+	 * @param createdBy The creator's name, or any string identifying the
+	 * torrent's creator.
+	 */
+	private static Torrent create(File parent, List<File> files, URI announce,
+			List<List<URI>> announceList, String createdBy)
+			throws NoSuchAlgorithmException, InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
 				parent.getName());
@@ -571,8 +637,23 @@ public class Torrent {
 		}
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-		torrent.put("announce", new BEValue(announce.toString()));
-		torrent.put("creation date", new BEValue(new Date().getTime()));
+
+		if (announce != null) {
+			torrent.put("announce", new BEValue(announce.toString()));
+		}
+		if (announceList != null) {
+			List<BEValue> tiers = new LinkedList<BEValue>();
+			for (List<URI> trackers : announceList) {
+				List<BEValue> tierInfo = new LinkedList<BEValue>();
+				for (URI trackerURI : trackers) {
+					tierInfo.add(new BEValue(trackerURI.toString()));
+				}
+				tiers.add(new BEValue(tierInfo));
+			}
+			torrent.put("announce-list", new BEValue(tiers));
+		}
+		
+		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
@@ -610,7 +691,7 @@ public class Torrent {
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray(), null, true);
+		return new Torrent(baos.toByteArray(), true);
 	}
 
 	/**
@@ -664,32 +745,51 @@ public class Torrent {
 
 	private static String hashFiles(List<File> files)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		ExecutorService executor = Executors.newFixedThreadPool(
-			getHashingThreadsCount());
-		List<Future<String>> results = new LinkedList<Future<String>>();
-		long length = 0L;
-
+		int threads = getHashingThreadsCount();
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+		List<Future<String>> results = new LinkedList<Future<String>>();
+		StringBuilder hashes = new StringBuilder();
+
+		long length = 0L;
+		int pieces = 0;
 
 		long start = System.nanoTime();
 		for (File file : files) {
-			logger.info("Analyzing local data for {} with {} threads...",
-				file.getName(), getHashingThreadsCount());
+			logger.info("Hashing data from {} with {} threads ({} pieces)...",
+				new Object[] {
+					file.getName(),
+					threads,
+					(int) (Math.ceil(
+						(double)file.length() / Torrent.PIECE_LENGTH))
+				});
 
 			length += file.length();
 
 			FileInputStream fis = new FileInputStream(file);
 			FileChannel channel = fis.getChannel();
+			int step = 10;
 
-			while (channel.read(buffer) > 0) {
-				if (buffer.remaining() == 0) {
-					buffer.clear();
-					results.add(executor.submit(new CallableChunkHasher(buffer)));
+			try {
+				while (channel.read(buffer) > 0) {
+					if (buffer.remaining() == 0) {
+						buffer.clear();
+						results.add(executor.submit(new CallableChunkHasher(buffer)));
+					}
+
+					if (results.size() >= threads) {
+						pieces += accumulateHashes(hashes, results);
+					}
+
+					if (channel.position() / (double)channel.size() * 100f > step) {
+						logger.info("  ... {}% complete", step);
+						step += 10;
+					}
 				}
+			} finally {
+				channel.close();
+				fis.close();
 			}
-
-			channel.close();
-			fis.close();
 		}
 
 		// Hash the last bit, if any
@@ -699,6 +799,8 @@ public class Torrent {
 			results.add(executor.submit(new CallableChunkHasher(buffer)));
 		}
 
+		pieces += accumulateHashes(hashes, results);
+
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
 		executor.shutdown();
@@ -707,27 +809,67 @@ public class Torrent {
 		}
 		long elapsed = System.nanoTime() - start;
 
-		StringBuilder hashes = new StringBuilder();
-		try {
-			for (Future<String> chunk : results) {
-				hashes.append(chunk.get());
-			}
-		} catch (ExecutionException ee) {
-			throw new IOException("Error while hashing the torrent data!", ee);
-		}
-
 		int expectedPieces = (int) (Math.ceil(
 				(double)length / Torrent.PIECE_LENGTH));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),
 				length,
-				results.size(),
+				pieces,
 				expectedPieces,
-				String.format("%.1f", elapsed/1024.0/1024.0),
+				String.format("%.1f", elapsed/1e6),
 			});
 
 		return hashes.toString();
+	}
+
+	/**
+	 * Accumulate the piece hashes into a given {@link StringBuilder}.
+	 *
+	 * @param hashes The {@link StringBuilder} to append hashes to.
+	 * @param results The list of {@link Future}s that will yield the piece
+	 *	hashes.
+	 */
+	private static int accumulateHashes(StringBuilder hashes,
+			List<Future<String>> results) throws InterruptedException, IOException {
+		try {
+			int pieces = results.size();
+			for (Future<String> chunk : results) {
+				hashes.append(chunk.get());
+			}
+			results.clear();
+			return pieces;
+		} catch (ExecutionException ee) {
+			throw new IOException("Error while hashing the torrent data!", ee);
+		}
+	}
+
+	/**
+	 * Display program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s) {
+		usage(s, null);
+	}
+
+	/**
+	 * Display a message and program usage on the given {@link PrintStream}.
+	 */
+	private static void usage(PrintStream s, String msg) {
+		if (msg != null) {
+			s.println(msg);
+			s.println();
+		}
+
+		s.println("usage: Torrent [options] [file|directory]");
+		s.println();
+		s.println("Available options:");
+		s.println("  -h,--help             Show this help and exit.");
+		s.println("  -t,--torrent FILE     Use FILE to read/write torrent file.");
+		s.println();
+		s.println("  -c,--create           Create a new torrent file using " +
+			"the given announce URL and data.");
+		s.println("  -a,--announce         Tracker URL (can be repeated).");
+		s.println();
 	}
 
 	/**
@@ -738,58 +880,94 @@ public class Torrent {
 	 * read or create torrent files. See usage for details.
 	 * </p>
 	 *
-	 * TODO: use CmdLineParser.
+	 * TODO: support multiple announce URLs.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
+			new PatternLayout("%-5p: %m%n")));
 
-		if (args.length != 1 && args.length != 3) {
-			System.err.println("usage: Torrent <torrent> [announce url] " +
-				"[file|directory]");
+		CmdLineParser parser = new CmdLineParser();
+		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
+		CmdLineParser.Option filename = parser.addStringOption('t', "torrent");
+		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
+		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
+
+		try {
+			parser.parse(args);
+		} catch (CmdLineParser.OptionException oe) {
+			System.err.println(oe.getMessage());
+			usage(System.err);
 			System.exit(1);
 		}
 
+		// Display help and exit if requested
+		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
+			usage(System.out);
+			System.exit(0);
+		}
+
+		String filenameValue = (String)parser.getOptionValue(filename);
+		if (filenameValue == null) {
+			usage(System.err, "Torrent file must be provided!");
+			System.exit(1);
+		}
+
+		Boolean createFlag = (Boolean)parser.getOptionValue(create);
+		String announceURL = (String)parser.getOptionValue(announce);
+
+		String[] otherArgs = parser.getRemainingArgs();
+
+		if (Boolean.TRUE.equals(createFlag) &&
+				(otherArgs.length != 1 || announceURL == null)) {
+			usage(System.err, "Announce URL and a file or directory must be " +
+				"provided to create a torrent file!");
+			System.exit(1);
+		}
+
+		OutputStream fos = null;
 		try {
-			File outfile = new File(args[0]);
+			if (Boolean.TRUE.equals(createFlag)) {
+				if (filenameValue != null) {
+					fos = new FileOutputStream(filenameValue);
+				} else {
+					fos = System.out;
+				}
 
-			/*
-			 * If only one argument is provided, we just want to get
-			 * information about the torrent. Load the torrent to trigger the
-			 * information dump and exit.
-			 */
-			if (args.length == 1) {
-				logger.info("Dumping information on torrent {}...",
-					outfile.getAbsolutePath());
-				Torrent.load(outfile, null);
-				System.exit(0);
-			}
+				URI announceURI = new URI(announceURL);
+				File source = new File(otherArgs[0]);
+				if (!source.exists() || !source.canRead()) {
+					throw new IllegalArgumentException(
+						"Cannot access source file or directory " +
+						source.getName());
+				}
 
-			URI announce = new URI(args[1]);
-			File source = new File(args[2]);
-			if (!source.exists() || !source.canRead()) {
-				throw new IllegalArgumentException(
-					"Cannot access source file or directory " +
-					source.getName());
-			}
+				String creator = String.format("%s (ttorrent)",
+					System.getProperty("user.name"));
 
-			String creator = String.format("%s (ttorrent)",
-				System.getProperty("user.name"));
+				Torrent torrent = null;
+				if (source.isDirectory()) {
+					File[] files = source.listFiles();
+					Arrays.sort(files);
+					torrent = Torrent.create(source, Arrays.asList(files),
+						announceURI, creator);
+				} else {
+					torrent = Torrent.create(source, announceURI, creator);
+				}
 
-			Torrent torrent = null;
-			if (source.isDirectory()) {
-				File[] files = source.listFiles();
-				Arrays.sort(files);
-				torrent = Torrent.create(source, Arrays.asList(files),
-					announce, creator);
+				torrent.save(fos);
 			} else {
-				torrent = Torrent.create(source, announce, creator);
+				Torrent.load(new File(filenameValue), true);
 			}
-
-			torrent.save(outfile);
 		} catch (Exception e) {
 			logger.error("{}", e.getMessage(), e);
 			System.exit(2);
+		} finally {
+			if (fos != null && fos != System.out) {
+				try {
+					fos.close();
+				} catch (IOException ioe) {
+				}
+			}
 		}
 	}
 }
