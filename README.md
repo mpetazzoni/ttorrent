@@ -1,6 +1,11 @@
 Ttorrent, a Java implementation of the BitTorrent protocol
 ==========================================================
 
+Changes of this fork
+--------------------
+
+This fork, in the **master** branch add **UDP Tracker** implementation.
+
 Description
 -----------
 
