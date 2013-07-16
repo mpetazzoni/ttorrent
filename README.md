@@ -4,11 +4,25 @@ Ttorrent, a Java implementation of the BitTorrent protocol
 Changes of this fork
 --------------------
 
-This fork, in the **master** branch add **UDP Tracker** implementation.
+### UDP Tracker ([pull request #41](https://github.com/turn/ttorrent/pull/41))
+
+This fork add **UDP Tracker** implementation.
 Now, you have to use **UDPTracker** or **TCPTracker** classes instead of **Tracker** class.
 
 ```java
 Tracker tracker = new UDPTracker(new InetSocketAddress(6969));
+```
+
+### Trackerless torrent files ([pull request #44](https://github.com/turn/ttorrent/pull/44))
+
+This fork allow you to create and load **trackerless torrent files**. It can be used to create
+a "real" distributed network without centralized point.
+
+Then you can just call the `handleDiscoveredPeers` method on the `Client` object to handle new
+peers that can be discovered by DHT, PEX or your own peer identification method.
+
+```java
+Torrent torrent = Torrent.create(file, (URI) null, "sroze.io");
 ```
 
 Description
