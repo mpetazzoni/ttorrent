@@ -58,10 +58,10 @@ import org.simpleframework.http.core.Container;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-public class TrackerService implements Container {
+public class HTTPTrackerService implements Container {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(TrackerService.class);
+		LoggerFactory.getLogger(HTTPTrackerService.class);
 
 	/**
 	 * The list of announce request URL fields that need to be interpreted as
@@ -83,7 +83,7 @@ public class TrackerService implements Container {
 	 * @param torrents The torrents this TrackerService should serve requests
 	 * for.
 	 */
-	TrackerService(String version,
+	HTTPTrackerService(String version,
 			ConcurrentMap<String, TrackedTorrent> torrents) {
 		this.version = version;
 		this.torrents = torrents;
@@ -103,7 +103,7 @@ public class TrackerService implements Container {
 	 */
 	public void handle(Request request, Response response) {
 		// Reject non-announce requests
-		if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
+		if (!HTTPTracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
 			response.setCode(404);
 			response.setText("Not Found");
 			return;

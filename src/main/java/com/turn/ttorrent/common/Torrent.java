@@ -172,15 +172,7 @@ public class Torrent {
 			this.trackers = new ArrayList<List<URI>>();
 			this.allTrackers = new HashSet<URI>();
 
-			if (!this.decoded.containsKey("announce-list")) {
-				URI tracker = new URI(this.decoded.get("announce").getString());
-				this.allTrackers.add(tracker);
-
-				// Build a single-tier announce list.
-				List<URI> tier = new ArrayList<URI>();
-				tier.add(tracker);
-				this.trackers.add(tier);
-			} else {
+			if (this.decoded.containsKey("announce-list")) {
 				List<BEValue> tiers = this.decoded.get("announce-list").getList();
 				for (BEValue tv : tiers) {
 					List<BEValue> trackers = tv.getList();
@@ -204,6 +196,14 @@ public class Torrent {
 						this.trackers.add(tier);
 					}
 				}
+			} else if (this.decoded.containsKey("announce")) {
+				URI tracker = new URI(this.decoded.get("announce").getString());
+				this.allTrackers.add(tracker);
+
+				// Build a single-tier announce list.
+				List<URI> tier = new ArrayList<URI>();
+				tier.add(tracker);
+				this.trackers.add(tier);
 			}
 		} catch (URISyntaxException use) {
 			throw new IOException(use);
@@ -253,7 +253,7 @@ public class Torrent {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
-		logger.info("  Announced at:");
+		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
 			for (int j=0; j < tier.size(); j++) {

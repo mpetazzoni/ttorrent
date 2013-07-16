@@ -133,7 +133,12 @@ public class Peer {
 	 * Returns this peer's IP address.
 	 */
 	public String getIp() {
-		return this.address.getAddress().getHostAddress();
+		InetAddress addr = this.address.getAddress();
+		if (addr != null) {
+			return addr.getHostAddress();
+		} else {
+			return this.address.getHostName();
+		}
 	}
 
 	/**

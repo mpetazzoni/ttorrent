@@ -139,7 +139,7 @@ public class Announce implements Runnable {
 		this.stop = false;
 		this.forceStop = false;
 
-		if (this.thread == null || !this.thread.isAlive()) {
+		if (this.clients.size() > 0 && (this.thread == null || !this.thread.isAlive())) {
 			this.thread = new Thread(this);
 			this.thread.setName("bt-announce(" +
 				this.peer.getShortHexPeerId() + ")");

@@ -1,6 +1,30 @@
 Ttorrent, a Java implementation of the BitTorrent protocol
 ==========================================================
 
+Changes of this fork
+--------------------
+
+### UDP Tracker ([pull request #41](https://github.com/turn/ttorrent/pull/41))
+
+This fork add **UDP Tracker** implementation.
+Now, you have to use **UDPTracker** or **TCPTracker** classes instead of **Tracker** class.
+
+```java
+Tracker tracker = new UDPTracker(new InetSocketAddress(6969));
+```
+
+### Trackerless torrent files ([pull request #44](https://github.com/turn/ttorrent/pull/44))
+
+This fork allow you to create and load **trackerless torrent files**. It can be used to create
+a "real" distributed network without centralized point.
+
+Then you can just call the `handleDiscoveredPeers` method on the `Client` object to handle new
+peers that can be discovered by DHT, PEX or your own peer identification method.
+
+```java
+Torrent torrent = Torrent.create(file, (URI) null, "sroze.io");
+```
+
 Description
 -----------
 
@@ -19,8 +43,8 @@ Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
   Full support for the `announce-list` meta-info key providing a tiered tracker
   list.
 * `BEP#0015`: UDP Tracker Protocol for BitTorrent  
-  The UDP tracker protocol is fully supported in the BitTorrent client to make
-  announce requests to UDP trackers. UDP tracker support itself is planned.
+  The UDP tracker protocol is fully supported in the BitTorrent client and 
+  tracker.
 * `BEP#0020`: Peer ID conventions  
   Ttorrent uses `TO` as the client identification string, and currently uses
   the `-T00042-` client ID prefix.
