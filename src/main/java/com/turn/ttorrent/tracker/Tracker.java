@@ -183,13 +183,21 @@ public class Tracker {
 		}
 	}
 
-  public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-    return torrents;
-  }
+  /**
+   *
+   * @return map of tracker's torrents (hash/tracked torrent)
+   */
+    public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
+        return torrents;
+    }
 
-  public Collection<TrackedTorrent> getTrackedTorrents(){
-    return torrents.values();
-  }
+  /**
+   *
+   * @return list of tracker's torrents
+   */
+    public Collection<TrackedTorrent> getTrackedTorrents(){
+        return torrents.values();
+    }
 
   /**
 	 * Announce a new torrent on this tracker.
