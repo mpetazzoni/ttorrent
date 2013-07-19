@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.PeerMessage.Type;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -200,6 +201,8 @@ class PeerExchange {
 	 * @author mpetazzoni
 	 */
 	private class IncomingThread extends Thread {
+		private Rate rate = new Rate();
+		private long sleep = 1000;
 
 		@Override
 		public void run() {
@@ -230,8 +233,11 @@ class PeerExchange {
 					int pstrlen = buffer.getInt(0);
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
+					long size = 0;
 					while (!stop && buffer.hasRemaining()) {
-						if (channel.read(buffer) < 0) {
+						int read = channel.read(buffer);
+						size += read;
+						if (read < 0) {
 							throw new EOFException(
 								"Reached end-of-stream while reading message");
 						}
@@ -242,6 +248,24 @@ class PeerExchange {
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
+						
+						// throttling
+						if(message.getType() == Type.PIECE && PeerExchange.this.torrent.getMaxDownloadRate() > 0){
+							try {
+								rate.add(size);
+								if(rate.get() > (PeerExchange.this.torrent.getMaxDownloadRate() * 1024)){
+									Thread.sleep(this.sleep);
+									this.sleep += 50;
+								} else {
+									this.sleep -= 50;
+								}
+								if(this.sleep < 0){
+									this.sleep = 0;
+								}
+							} catch (InterruptedException e) {
+								// not critical
+							}
+						}
 
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);
@@ -278,7 +302,9 @@ class PeerExchange {
 	 * @author mpetazzoni
 	 */
 	private class OutgoingThread extends Thread {
-
+		private Rate rate = new Rate();
+		private long sleep = 1000;
+		
 		@Override
 		public void run() {
 			try {
@@ -302,10 +328,30 @@ class PeerExchange {
 						logger.trace("Sending {} to {}", message, peer);
 
 						ByteBuffer data = message.getData();
+						long size = 0;
 						while (!stop && data.hasRemaining()) {
-							if (channel.write(data) < 0) {
+						    int written = channel.write(data);
+						    size += written;
+							if (written < 0) {
 								throw new EOFException(
 									"Reached end of stream while writing");
+							}
+						}
+						
+						if(message.getType() == Type.PIECE && PeerExchange.this.torrent.getMaxUploadRate() > 0){
+							try {
+								rate.add(size);
+								if(rate.get() > (PeerExchange.this.torrent.getMaxUploadRate() * 1024)){
+									Thread.sleep(this.sleep);
+									this.sleep += 50;
+								} else {
+									this.sleep -= 50;
+								}
+								if(this.sleep < 0){
+									this.sleep = 0;
+								}
+							} catch (InterruptedException e) {
+								// not critical
 							}
 						}
 					} catch (InterruptedException ie) {

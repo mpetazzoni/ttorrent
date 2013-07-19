@@ -171,6 +171,14 @@ public class Client extends Observable implements Runnable,
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
 		this.random = new Random(System.currentTimeMillis());
 	}
+	
+	public void setMaxDownloadRate(double rate){
+		this.torrent.setMaxDownloadRate(rate);
+	}
+	
+	public void setMaxUploadRate(double rate){
+		this.torrent.setMaxUploadRate(rate);
+	}
 
 	/**
 	 * Get this client's peer specification.
@@ -991,10 +999,12 @@ public class Client extends Observable implements Runnable,
 		s.println("usage: Client [options] <torrent>");
 		s.println();
 		s.println("Available options:");
-		s.println("  -h,--help             Show this help and exit.");
-		s.println("  -o,--output DIR       Read/write data to directory DIR.");
-		s.println("  -i,--iface IFACE      Bind to interface IFACE.");
-		s.println("  -s,--seed SECONDS     Time to seed after downloading (default: infinitely).");
+		s.println("  -h,--help                  Show this help and exit.");
+		s.println("  -o,--output DIR            Read/write data to directory DIR.");
+		s.println("  -i,--iface IFACE           Bind to interface IFACE.");
+		s.println("  -s,--seed SECONDS          Time to seed after downloading (default: infinitely).");
+		s.println("  -d,--max-download KB/SEC   Max download rate (default: infinitely).");
+		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: infinitely).");
 		s.println();
 	}
 
@@ -1052,6 +1062,11 @@ public class Client extends Observable implements Runnable,
 		CmdLineParser.Option output = parser.addStringOption('o', "output");
 		CmdLineParser.Option iface = parser.addStringOption('i', "iface");
 		CmdLineParser.Option seedTime = parser.addIntegerOption('s', "seed");
+		CmdLineParser.Option maxUpload = parser.addDoubleOption('u', "max-upload");
+		CmdLineParser.Option maxDownload = parser.addDoubleOption('d', "max-download");
+		
+		logger.debug("Max Download: {}", parser.getOptionValue(maxDownload, 0.0));
+		
 
 		try {
 			parser.parse(args);
@@ -1071,6 +1086,9 @@ public class Client extends Observable implements Runnable,
 				DEFAULT_OUTPUT_DIRECTORY);
 		String ifaceValue = (String)parser.getOptionValue(iface);
 		int seedTimeValue = (Integer)parser.getOptionValue(seedTime, -1);
+		
+		double maxDownloadRate = (Double)parser.getOptionValue(maxDownload, 0.0);
+		double maxUploadRate = (Double)parser.getOptionValue(maxUpload, 0.0);
 
 		String[] otherArgs = parser.getRemainingArgs();
 		if (otherArgs.length != 1) {
@@ -1084,6 +1102,9 @@ public class Client extends Observable implements Runnable,
 				SharedTorrent.fromFile(
 					new File(otherArgs[0]),
 					new File(outputValue)));
+			
+			c.setMaxDownloadRate(maxDownloadRate);
+			c.setMaxUploadRate(maxUploadRate);
 
 			// Set a shutdown hook that will stop the sharing/seeding and send
 			// a STOPPED announce request.
