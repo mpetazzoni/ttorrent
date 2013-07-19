@@ -26,10 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -51,7 +48,7 @@ import org.simpleframework.transport.connect.SocketConnection;
  * <p>
  * The tracker usually listens on port 6969 (the standard BitTorrent tracker
  * port). Torrents must be registered directly to this tracker with the
- * {@link #announce(Torrent torrent)}</code> method.
+ * {@link #announce(TrackedTorrent torrent)}</code> method.
  * </p>
  *
  * @author mpetazzoni
@@ -80,6 +77,8 @@ public class Tracker {
 	private Thread tracker;
 	private Thread collector;
 	private boolean stop;
+
+  private final TrackerService trackerService;
 
 	/**
 	 * Create a new BitTorrent tracker listening at the given address on the
@@ -118,9 +117,9 @@ public class Tracker {
 		this.address = address;
 
 		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
-		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
-	}
+        this.trackerService = new TrackerService(version, this.torrents);
+        this.connection = new SocketConnection(trackerService);
+    }
 
 	/**
 	 * Returns the full announce URL served by this tracker.
@@ -179,11 +178,25 @@ public class Tracker {
 
 		if (this.collector != null && this.collector.isAlive()) {
 			this.collector.interrupt();
-			logger.info("Peer collection terminated.");
-		}
-	}
+            try {
+                this.collector.join();
+            } catch (InterruptedException e) {
+                //
+            }
+            logger.info("Peer collection terminated.");
+        }
+        if (this.tracker != null && this.tracker.isAlive()) {
+            this.tracker.interrupt();
+            try {
+                this.tracker.join();
+            } catch (InterruptedException e) {
+                //
+            }
+            logger.info("Tracker terminated.");
+        }
+    }
 
-  /**
+    /**
    *
    * @return map of tracker's torrents (hash/tracked torrent)
    */
@@ -214,53 +227,49 @@ public class Tracker {
 	 * different from the supplied Torrent object if the tracker already
 	 * contained a torrent with the same hash.
 	 */
-	public synchronized TrackedTorrent announce(Torrent torrent) throws IOException, NoSuchAlgorithmException {
+	public synchronized TrackedTorrent announce(TrackedTorrent torrent) {
 		TrackedTorrent existing = this.torrents.get(torrent.getHexInfoHash());
 
 		if (existing != null) {
-			logger.warn("Tracker already announced torrent for '{}' " +
-				"with hash {}.", existing.getName(), existing.getHexInfoHash());
+			logger.warn("Tracker already announced torrent with hash {}.", existing.getHexInfoHash());
 			return existing;
 		}
 
-      final TrackedTorrent result;
-      if (torrent instanceof  TrackedTorrent) {
-        result = (TrackedTorrent) torrent;
-      } else {
-        result = new TrackedTorrent(torrent);
-      }
-      this.torrents.put(torrent.getHexInfoHash(), result);
-		logger.info("Registered new torrent for '{}' with hash {}.",
-			torrent.getName(), torrent.getHexInfoHash());
-		return result;
-	}
+		this.torrents.put(torrent.getHexInfoHash(), torrent);
+		logger.info("Registered new torrent with hash {}.", torrent.getHexInfoHash());
+		return torrent;
+    }
 
-	/**
-	 * Stop announcing the given torrent.
-	 *
-	 * @param torrent The Torrent object to stop tracking.
+    /**
+   * Stop announcing the torrent with given hash.
+   * @param info_hash torrent hash
 	 */
-	public synchronized void remove(Torrent torrent) {
-		if (torrent == null) {
-			return;
-		}
-
-		this.torrents.remove(torrent.getHexInfoHash());
-	}
+	public synchronized boolean remove(byte[] info_hash) {
+    return info_hash != null &&
+           this.torrents.remove(Torrent.byteArrayToHexString(info_hash)) != null;
+  }
 
 	/**
 	 * Stop announcing the given torrent after a delay.
 	 *
-	 * @param torrent The Torrent object to stop tracking.
+   * @param info_hash torrent hash
 	 * @param delay The delay, in milliseconds, before removing the torrent.
 	 */
-	public synchronized void remove(Torrent torrent, long delay) {
-		if (torrent == null) {
+	public synchronized void remove(byte[] info_hash, long delay) {
+		if (info_hash == null) {
 			return;
 		}
 
-		new Timer().schedule(new TorrentRemoveTimer(this, torrent), delay);
+		new Timer().schedule(new TorrentRemoveTimer(this, info_hash), delay);
 	}
+
+	/**
+     * Set to true to allow this tracker to track external torrents (i.e. those that were not explicitly announced here).
+     * @param acceptForeignTorrents true to accept foreign torrents (false otherwise)
+     */
+    public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {
+        this.trackerService.setAcceptForeignTorrents(acceptForeignTorrents);
+    }
 
 	/**
 	 * Timer task for removing a torrent from a tracker.
@@ -273,16 +282,16 @@ public class Tracker {
 	private static class TorrentRemoveTimer extends TimerTask {
 
 		private Tracker tracker;
-		private Torrent torrent;
+		private byte[] info_hash;
 
-		TorrentRemoveTimer(Tracker tracker, Torrent torrent) {
+		TorrentRemoveTimer(Tracker tracker, byte[] info_hash) {
 			this.tracker = tracker;
-			this.torrent = torrent;
+			this.info_hash = info_hash;
 		}
 
 		@Override
 		public void run() {
-			this.tracker.remove(torrent);
+			this.tracker.remove(this.info_hash);
 		}
 	}
 

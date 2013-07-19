@@ -19,16 +19,23 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public abstract class TrackerClient {
 
-	/** The set of listeners to announce request answers. */
+    private static final Logger logger =
+            LoggerFactory.getLogger(TrackerClient.class);
+
+
+    /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
 	protected final SharedTorrent torrent;
@@ -132,6 +139,15 @@ public abstract class TrackerClient {
 
 		AnnounceResponseMessage response =
 			(AnnounceResponseMessage)message;
+
+        logger.trace("Processing tracker announce response:\n {}C/{}I. Interval: {}, Peers: {}",
+                new Object[]{
+                        response.getComplete(),
+                        response.getIncomplete(),
+                        response.getInterval(),
+                        Arrays.toString(response.getPeers().toArray())
+                });
+
 		this.fireAnnounceResponseEvent(
 			response.getComplete(),
 			response.getIncomplete(),
