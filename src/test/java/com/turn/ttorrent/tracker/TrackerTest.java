@@ -113,6 +113,7 @@ public class TrackerTest {
         }
     }
 
+    @Test(invocationCount = 20) //TODO: this test is unstable. Figure out the reason
     public void tracker_accepts_torrent_from_seeder_plus_leech() throws IOException, NoSuchAlgorithmException, InterruptedException {
         assertEquals(0, this.tracker.getTrackedTorrents().size());
 
@@ -135,18 +136,8 @@ public class TrackerTest {
         }
     }
 
-    private Set<String> listFileNames(File downloadDir) {
-        if (downloadDir == null) return Collections.emptySet();
-        Set<String> names = new HashSet<String>();
-        File[] files = downloadDir.listFiles();
-        if (files == null) return Collections.emptySet();
-        for (File f : files) {
-            names.add(f.getName());
-        }
-        return names;
-    }
 
-
+    @Test(invocationCount = 20) //TODO: this test is unstable. Figure out the reason
     public void large_file_download() throws IOException, URISyntaxException, NoSuchAlgorithmException, InterruptedException {
 
 
@@ -166,7 +157,7 @@ public class TrackerTest {
             seeder.share();
             leech.download();
 
-            waitForFileInDir(downloadDir, tempFile.getName(), 40*1000, 1000);
+            waitForFileInDir(downloadDir, tempFile.getName(), 60*1000, 1000);
             assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
         } finally {
             seeder.stop(true);
@@ -182,7 +173,7 @@ public class TrackerTest {
         assertEquals(1, this.tracker.getTrackedTorrents().size());
     }
 
-    public void testForeignTorrent() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
+    public void test_foreign_torrent() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
 
         tracker.setAcceptForeignTorrents(true);
         final File tempFile = tempFiles.createTempFile(1025 * 1024);
@@ -217,6 +208,18 @@ public class TrackerTest {
             leech.stop(true);
         }
     }
+
+    private Set<String> listFileNames(File downloadDir) {
+        if (downloadDir == null) return Collections.emptySet();
+        Set<String> names = new HashSet<String>();
+        File[] files = downloadDir.listFiles();
+        if (files == null) return Collections.emptySet();
+        for (File f : files) {
+            names.add(f.getName());
+        }
+        return names;
+    }
+
 
     private void waitForSeeder(final byte[] torrentHash) {
         new WaitFor() {
