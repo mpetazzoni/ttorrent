@@ -47,6 +47,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	private final int complete;
 	private final int incomplete;
 	private final List<Peer> peers;
+	private String hexInfoHash;
 
 	private HTTPAnnounceResponseMessage(ByteBuffer data,
 		int interval, int complete, int incomplete, List<Peer> peers) {
@@ -55,6 +56,12 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 		this.complete = complete;
 		this.incomplete = incomplete;
 		this.peers = peers;
+	}
+
+	private HTTPAnnounceResponseMessage(ByteBuffer data,
+		int interval, int complete, int incomplete, List<Peer> peers, String hexInfoHash) {
+		this(data, interval, complete, incomplete, peers);
+		this.hexInfoHash = hexInfoHash;
 	}
 
 	@Override
@@ -75,6 +82,10 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	@Override
 	public List<Peer> getPeers() {
 		return this.peers;
+	}
+
+	public String getHexInfoHash() {
+		return this.hexInfoHash;
 	}
 
 	public static HTTPAnnounceResponseMessage parse(ByteBuffer data)
@@ -100,11 +111,19 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 				peers = toPeerList(params.get("peers").getList());
 			}
 
+			if (params.get("torrentIdentifier") != null) {
+				return new HTTPAnnounceResponseMessage(data,
+					params.get("interval").getInt(),
+					params.get("complete").getInt(),
+					params.get("incomplete").getInt(),
+					peers, params.get("torrentIdentifier").getString());
+			} else {
 			return new HTTPAnnounceResponseMessage(data,
 				params.get("interval").getInt(),
 				params.get("complete").getInt(),
 				params.get("incomplete").getInt(),
 				peers);
+			}
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException("Invalid response " +
 				"from tracker!", ibee);
@@ -173,19 +192,33 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * Craft a compact announce response message.
 	 *
 	 * @param interval
-	 * @param minInterval
-	 * @param trackerId
 	 * @param complete
 	 * @param incomplete
 	 * @param peers
 	 */
 	public static HTTPAnnounceResponseMessage craft(int interval,
-		int minInterval, String trackerId, int complete, int incomplete,
-		List<Peer> peers) throws IOException, UnsupportedEncodingException {
+                                                    int complete, int incomplete,
+                                                    List<Peer> peers) throws IOException {
+        return craft(interval, complete, incomplete, peers, null);
+	}
+	
+	/**
+	 * Craft a compact announce response message with a torrent identifier.
+	 *
+	 * @param interval
+	 * @param complete
+	 * @param incomplete
+	 * @param peers
+	 */
+	public static HTTPAnnounceResponseMessage craft(int interval, int complete, int incomplete,
+                                                    List<Peer> peers, String hexInfoHash) throws IOException {
 		Map<String, BEValue> response = new HashMap<String, BEValue>();
 		response.put("interval", new BEValue(interval));
 		response.put("complete", new BEValue(complete));
 		response.put("incomplete", new BEValue(incomplete));
+        if (hexInfoHash != null) {
+		    response.put("torrentIdentifier", new BEValue(hexInfoHash));
+        }
 
 		ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
 		for (Peer peer : peers) {
@@ -200,6 +233,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 
 		return new HTTPAnnounceResponseMessage(
 			BEncoder.bencode(response),
-			interval, complete, incomplete, peers);
+			interval, complete, incomplete, peers, hexInfoHash);
 	}
 }

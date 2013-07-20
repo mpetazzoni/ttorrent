@@ -77,7 +77,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure">Torrent meta-info file structure specification</a>
  */
-public class Torrent {
+public class Torrent implements TorrentHash {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(Torrent.class);

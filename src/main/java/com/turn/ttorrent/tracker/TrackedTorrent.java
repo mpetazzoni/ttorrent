@@ -17,6 +17,7 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
 
 import java.io.File;
@@ -51,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class TrackedTorrent extends Torrent {
+public class TrackedTorrent implements TorrentHash {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(TrackedTorrent.class);
@@ -68,21 +69,20 @@ public class TrackedTorrent extends Torrent {
 	private int answerPeers;
 	private int announceInterval;
 
+    private final byte[] info_hash;
+
 	/** Peers currently exchanging on this torrent. */
 	private ConcurrentMap<String, TrackedPeer> peers;
 
 	/**
 	 * Create a new tracked torrent from meta-info binary data.
 	 *
-	 * @param torrent The meta-info byte data.
-	 * @throws IOException When the info dictionary can't be
+	 * @param info_hash The meta-info byte data.
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
-	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
 	 */
-	public TrackedTorrent(byte[] torrent)
-		throws IOException, NoSuchAlgorithmException {
-		super(torrent, false);
+	public TrackedTorrent(byte[] info_hash) {
+		this.info_hash = info_hash;
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;
@@ -91,7 +91,7 @@ public class TrackedTorrent extends Torrent {
 
 	public TrackedTorrent(Torrent torrent)
 		throws IOException, NoSuchAlgorithmException {
-		this(torrent.getEncoded());
+		this(torrent.getInfoHash());
 	}
 
 	/**
@@ -213,13 +213,11 @@ public class TrackedTorrent extends Torrent {
 	public TrackedPeer update(RequestEvent event, ByteBuffer peerId,
 		String hexPeerId, String ip, int port, long uploaded, long downloaded,
 		long left) throws UnsupportedEncodingException {
-		TrackedPeer peer;
+		TrackedPeer peer = null;
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 
 		if (RequestEvent.STARTED.equals(event)) {
-			peer = new TrackedPeer(this, ip, port, peerId);
 			state = TrackedPeer.PeerState.STARTED;
-			this.addPeer(peer);
 		} else if (RequestEvent.STOPPED.equals(event)) {
 			peer = this.removePeer(hexPeerId);
 			state = TrackedPeer.PeerState.STOPPED;
@@ -233,7 +231,11 @@ public class TrackedTorrent extends Torrent {
 			throw new IllegalArgumentException("Unexpected announce event type!");
 		}
 
-		peer.update(state, uploaded, downloaded, left);
+        if (peer == null) {
+            peer = new TrackedPeer(this, ip, port, peerId);
+            this.addPeer(peer);
+        }
+        peer.update(state, uploaded, downloaded, left);
 		return peer;
 	}
 
@@ -295,18 +297,27 @@ public class TrackedTorrent extends Torrent {
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static TrackedTorrent load(File torrent) throws IOException,
-		NoSuchAlgorithmException {
-		FileInputStream fis = null;
-		try {
-			fis = new FileInputStream(torrent);
-			byte[] data = new byte[(int)torrent.length()];
-			fis.read(data);
-			return new TrackedTorrent(data);
-		} finally {
-			if (fis != null) {
-				fis.close();
-			}
-		}
-	}
+    public static TrackedTorrent load(File torrent) throws IOException,
+            NoSuchAlgorithmException {
+
+        Torrent t = Torrent.load(torrent);
+        return new TrackedTorrent(t.getInfoHash());
+    }
+
+    @Override
+    public byte[] getInfoHash() {
+        return this.info_hash;
+    }
+
+    @Override
+    public String getHexInfoHash() {
+        return Torrent.byteArrayToHexString(this.info_hash);
+    }
+
+    @Override
+    public String toString() {
+        return "TrackedTorrent{" +
+                "info_hash=" + getHexInfoHash() +
+                '}';
+    }
 }

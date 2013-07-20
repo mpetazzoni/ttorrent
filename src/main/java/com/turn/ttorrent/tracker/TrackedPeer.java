@@ -56,7 +56,7 @@ public class TrackedPeer extends Peer {
 	private long uploaded;
 	private long downloaded;
 	private long left;
-	private Torrent torrent;
+	private TrackedTorrent torrent;
 
 	/**
 	 * Represents the state of a peer exchanging on this torrent.
@@ -86,8 +86,8 @@ public class TrackedPeer extends Peer {
 		UNKNOWN,
 		STARTED,
 		COMPLETED,
-		STOPPED;
-	};
+		STOPPED
+	}
 
 	private PeerState state;
 	private Date lastAnnounce;
@@ -100,7 +100,7 @@ public class TrackedPeer extends Peer {
 	 * @param port The peer's port.
 	 * @param peerId The byte-encoded peer ID.
 	 */
-	public TrackedPeer(Torrent torrent, String ip, int port,
+	public TrackedPeer(TrackedTorrent torrent, String ip, int port,
 			ByteBuffer peerId) {
 		super(ip, port, peerId);
 		this.torrent = torrent;

@@ -30,11 +30,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,13 +172,16 @@ public class ConnectionHandler implements Runnable {
 		this.stop = false;
 
 		if (this.executor == null || this.executor.isShutdown()) {
-			this.executor = new ThreadPoolExecutor(
+            executor = Executors.newCachedThreadPool(new ConnectorThreadFactory());
+/*
+			this.executor =   new ThreadPoolExecutor(
 				OUTBOUND_CONNECTIONS_POOL_SIZE,
 				OUTBOUND_CONNECTIONS_POOL_SIZE,
 				OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS,
 				TimeUnit.SECONDS,
 				new LinkedBlockingQueue<Runnable>(),
 				new ConnectorThreadFactory());
+*/
 		}
 
 		if (this.thread == null || !this.thread.isAlive()) {
@@ -510,6 +509,7 @@ public class ConnectionHandler implements Runnable {
 				channel.configureBlocking(false);
 				this.handler.fireNewPeerConnection(channel, hs.getPeerId());
 			} catch (Exception e) {
+                logger.error("an error in connect",e);
 				try {
 					if (channel != null && channel.isConnected()) {
 						channel.close();
