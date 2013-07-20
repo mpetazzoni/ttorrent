@@ -12,7 +12,7 @@
 /.classpath
 /.project
 /.settings
-
+/.idea/workspace.xml
 # Ignore common editor swap files
 *.swp
 *.bak
