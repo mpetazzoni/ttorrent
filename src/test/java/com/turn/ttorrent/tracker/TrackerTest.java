@@ -34,7 +34,7 @@ public class TrackerTest {
     @BeforeMethod
     protected void setUp() throws Exception {
         BasicConfigurator.configure();
-        RootLogger.getRootLogger().setLevel(Level.ALL);
+        RootLogger.getRootLogger().setLevel(Level.INFO);
         tempFiles = new TempFiles();
         startTracker();
     }
