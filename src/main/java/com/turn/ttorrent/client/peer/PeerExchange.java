@@ -201,23 +201,45 @@ class PeerExchange {
 	 * @author ptgoetz
 	 *
 	 */
-	private abstract class RateLimitThread extends Thread{
+	private abstract class RateLimitThread extends Thread {
 		protected Rate rate = new Rate();
 		protected long sleep = 1000;
 		
-		protected void rateLimit(double maxRate, long messageSize, PeerMessage message){
-			if(message.getType() == Type.PIECE && maxRate > 0){
+		/**
+		 * Dynamically determines an amount of time to sleep, based 
+		 * on the average read/write throughput.
+		 * 
+		 * <p>
+		 * The algorithm is functional, but could certainly be
+		 * improved upon. One obvious drawback is that with large
+		 * changes in <code>maxRate</code>, it will take a while
+		 * for the sleep time to adjust and the throttled rate
+		 * to "smooth out."
+		 * </p>
+		 * 
+		 * <p>
+		 * Ideally, it would calculate the optimal sleep time
+		 * necessary to hit a desired throughput rather than
+		 * continuously adjust toward a goal.
+		 * </p>
+		 * 
+		 * @param maxRate the target rate in kB/second
+		 * @param messageSize the size, in bytes, of the last message read/written
+		 * @param message the last <code>PeerMessage</code> read/written
+		 */
+		protected void rateLimit(double maxRate, long messageSize, PeerMessage message) {
+			if(message.getType() == Type.PIECE && maxRate > 0) {
 				try {
 					this.rate.add(messageSize);
 					// continuously adjust the sleep time to try to hit our
 					// target rate limit
-					if(rate.get() > (maxRate * 1024)){
+					if(rate.get() > (maxRate * 1024)) {
 						Thread.sleep(this.sleep);
 						this.sleep += 50;
 					} else {
 						this.sleep -= 50;
 					}
-					if(this.sleep < 0){
+					if(this.sleep < 0) {
 						this.sleep = 0;
 					}
 				} catch (InterruptedException e) {
