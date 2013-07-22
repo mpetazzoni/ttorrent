@@ -187,6 +187,45 @@ class PeerExchange {
 
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
+	
+	/**
+	 * Abstract Thread subclass that allows conditional rate limiting
+	 * for <code>Type.PIECE</code> messages.
+	 * 
+	 * <p>
+	 * To impose rate limits, we only want to throttle when
+	 * processing PIECE messages. All other peer messages
+	 * should be exchanged as quickly as possible.
+	 * </p>
+	 * 
+	 * @author ptgoetz
+	 *
+	 */
+	private abstract class RateLimitThread extends Thread{
+		protected Rate rate = new Rate();
+		protected long sleep = 1000;
+		
+		protected void rateLimit(double maxRate, long messageSize, PeerMessage message){
+			if(message.getType() == Type.PIECE && maxRate > 0){
+				try {
+					this.rate.add(messageSize);
+					// continuously adjust the sleep time to try to hit our
+					// target rate limit
+					if(rate.get() > (maxRate * 1024)){
+						Thread.sleep(this.sleep);
+						this.sleep += 50;
+					} else {
+						this.sleep -= 50;
+					}
+					if(this.sleep < 0){
+						this.sleep = 0;
+					}
+				} catch (InterruptedException e) {
+					// not critical
+				}
+			}
+		}
+	}
 
 	/**
 	 * Incoming messages thread.
@@ -200,9 +239,7 @@ class PeerExchange {
 	 * 
 	 * @author mpetazzoni
 	 */
-	private class IncomingThread extends Thread {
-		private Rate rate = new Rate();
-		private long sleep = 1000;
+	private class IncomingThread extends RateLimitThread {
 
 		@Override
 		public void run() {
@@ -249,23 +286,7 @@ class PeerExchange {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
 						
-						// throttling
-						if(message.getType() == Type.PIECE && PeerExchange.this.torrent.getMaxDownloadRate() > 0){
-							try {
-								rate.add(size);
-								if(rate.get() > (PeerExchange.this.torrent.getMaxDownloadRate() * 1024)){
-									Thread.sleep(this.sleep);
-									this.sleep += 50;
-								} else {
-									this.sleep -= 50;
-								}
-								if(this.sleep < 0){
-									this.sleep = 0;
-								}
-							} catch (InterruptedException e) {
-								// not critical
-							}
-						}
+						rateLimit(PeerExchange.this.torrent.getMaxDownloadRate(), size, message);
 
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);
@@ -301,9 +322,7 @@ class PeerExchange {
 	 *
 	 * @author mpetazzoni
 	 */
-	private class OutgoingThread extends Thread {
-		private Rate rate = new Rate();
-		private long sleep = 1000;
+	private class OutgoingThread extends RateLimitThread {
 		
 		@Override
 		public void run() {
@@ -338,22 +357,7 @@ class PeerExchange {
 							}
 						}
 						
-						if(message.getType() == Type.PIECE && PeerExchange.this.torrent.getMaxUploadRate() > 0){
-							try {
-								rate.add(size);
-								if(rate.get() > (PeerExchange.this.torrent.getMaxUploadRate() * 1024)){
-									Thread.sleep(this.sleep);
-									this.sleep += 50;
-								} else {
-									this.sleep -= 50;
-								}
-								if(this.sleep < 0){
-									this.sleep = 0;
-								}
-							} catch (InterruptedException e) {
-								// not critical
-							}
-						}
+						rateLimit(PeerExchange.this.torrent.getMaxUploadRate(), size, message);
 					} catch (InterruptedException ie) {
 						// Ignore and potentially terminate
 					}
