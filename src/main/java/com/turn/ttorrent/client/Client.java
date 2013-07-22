@@ -173,22 +173,22 @@ public class Client extends Observable implements Runnable,
 	}
 	
 	/**
-	 * Set the maximum download rate (in kb/second) for this 
+	 * Set the maximum download rate (in kB/second) for this 
 	 * torrent. A setting of <= 0.0 disables rate limiting.
 	 * 
 	 * @param rate The maximum download rate
 	 */
-	public void setMaxDownloadRate(double rate){
+	public void setMaxDownloadRate(double rate) {
 		this.torrent.setMaxDownloadRate(rate);
 	}
 	
 	/**
-	 * Set the maximum upload rate (in kb/second) for this 
+	 * Set the maximum upload rate (in kB/second) for this 
 	 * torrent. A setting of <= 0.0 disables rate limiting.
 	 * 
 	 * @param rate The maximum upload rate
 	 */
-	public void setMaxUploadRate(double rate){
+	public void setMaxUploadRate(double rate) {
 		this.torrent.setMaxUploadRate(rate);
 	}
 
@@ -1015,8 +1015,8 @@ public class Client extends Observable implements Runnable,
 		s.println("  -o,--output DIR            Read/write data to directory DIR.");
 		s.println("  -i,--iface IFACE           Bind to interface IFACE.");
 		s.println("  -s,--seed SECONDS          Time to seed after downloading (default: infinitely).");
-		s.println("  -d,--max-download KB/SEC   Max download rate (default: infinitely).");
-		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: infinitely).");
+		s.println("  -d,--max-download KB/SEC   Max download rate (default: unlimited).");
+		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: unlimited).");
 		s.println();
 	}
 
@@ -1076,9 +1076,6 @@ public class Client extends Observable implements Runnable,
 		CmdLineParser.Option seedTime = parser.addIntegerOption('s', "seed");
 		CmdLineParser.Option maxUpload = parser.addDoubleOption('u', "max-upload");
 		CmdLineParser.Option maxDownload = parser.addDoubleOption('d', "max-download");
-		
-		logger.debug("Max Download: {}", parser.getOptionValue(maxDownload, 0.0));
-		
 
 		try {
 			parser.parse(args);

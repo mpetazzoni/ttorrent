@@ -83,7 +83,7 @@ Client client = new Client(
     new File("/path/to/output/directory")));
 
   // You can optionally set download/upload rate limits
-  // in kb/second. Setting a limit to 0.0 disables rate
+  // in kB/second. Setting a limit to 0.0 disables rate
   // limits.
   client.setMaxDownloadRate(50.0);
   client.setMaxUploadRate(50.0);
