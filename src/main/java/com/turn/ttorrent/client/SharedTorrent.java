@@ -248,29 +248,29 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		fis.close();
 		return new SharedTorrent(data, parent);
 	}
-	
+
 	public double getMaxUploadRate() {
 		return this.maxUploadRate;
 	}
-	
+
 	/**
-	 * Set the maximum upload rate (in kB/second) for this 
+	 * Set the maximum upload rate (in kB/second) for this
 	 * torrent. A setting of <= 0.0 disables rate limiting.
-	 * 
+	 *
 	 * @param rate The maximum upload rate
 	 */
 	public void setMaxUploadRate(double rate) {
 		this.maxUploadRate = rate;
 	}
-	
+
 	public double getMaxDownloadRate() {
 		return this.maxDownloadRate;
 	}
-	
+
 	/**
-	 * Set the maximum download rate (in kB/second) for this 
+	 * Set the maximum download rate (in kB/second) for this
 	 * torrent. A setting of <= 0.0 disables rate limiting.
-	 * 
+	 *
 	 * @param rate The maximum download rate
 	 */
 	public void setMaxDownloadRate(double rate) {

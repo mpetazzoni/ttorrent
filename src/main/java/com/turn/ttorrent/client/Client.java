@@ -171,21 +171,21 @@ public class Client extends Observable implements Runnable,
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
 		this.random = new Random(System.currentTimeMillis());
 	}
-	
+
 	/**
-	 * Set the maximum download rate (in kB/second) for this 
+	 * Set the maximum download rate (in kB/second) for this
 	 * torrent. A setting of <= 0.0 disables rate limiting.
-	 * 
+	 *
 	 * @param rate The maximum download rate
 	 */
 	public void setMaxDownloadRate(double rate) {
 		this.torrent.setMaxDownloadRate(rate);
 	}
-	
+
 	/**
-	 * Set the maximum upload rate (in kB/second) for this 
+	 * Set the maximum upload rate (in kB/second) for this
 	 * torrent. A setting of <= 0.0 disables rate limiting.
-	 * 
+	 *
 	 * @param rate The maximum upload rate
 	 */
 	public void setMaxUploadRate(double rate) {
