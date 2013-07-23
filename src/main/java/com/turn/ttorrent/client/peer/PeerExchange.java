@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.PeerMessage.Type;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -186,6 +187,67 @@ class PeerExchange {
 
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
+	
+	/**
+	 * Abstract Thread subclass that allows conditional rate limiting
+	 * for <code>Type.PIECE</code> messages.
+	 * 
+	 * <p>
+	 * To impose rate limits, we only want to throttle when
+	 * processing PIECE messages. All other peer messages
+	 * should be exchanged as quickly as possible.
+	 * </p>
+	 * 
+	 * @author ptgoetz
+	 *
+	 */
+	private abstract class RateLimitThread extends Thread {
+		protected Rate rate = new Rate();
+		protected long sleep = 1000;
+		
+		/**
+		 * Dynamically determines an amount of time to sleep, based 
+		 * on the average read/write throughput.
+		 * 
+		 * <p>
+		 * The algorithm is functional, but could certainly be
+		 * improved upon. One obvious drawback is that with large
+		 * changes in <code>maxRate</code>, it will take a while
+		 * for the sleep time to adjust and the throttled rate
+		 * to "smooth out."
+		 * </p>
+		 * 
+		 * <p>
+		 * Ideally, it would calculate the optimal sleep time
+		 * necessary to hit a desired throughput rather than
+		 * continuously adjust toward a goal.
+		 * </p>
+		 * 
+		 * @param maxRate the target rate in kB/second
+		 * @param messageSize the size, in bytes, of the last message read/written
+		 * @param message the last <code>PeerMessage</code> read/written
+		 */
+		protected void rateLimit(double maxRate, long messageSize, PeerMessage message) {
+			if(message.getType() == Type.PIECE && maxRate > 0) {
+				try {
+					this.rate.add(messageSize);
+					// continuously adjust the sleep time to try to hit our
+					// target rate limit
+					if(rate.get() > (maxRate * 1024)) {
+						Thread.sleep(this.sleep);
+						this.sleep += 50;
+					} else {
+						this.sleep -= 50;
+					}
+					if(this.sleep < 0) {
+						this.sleep = 0;
+					}
+				} catch (InterruptedException e) {
+					// not critical
+				}
+			}
+		}
+	}
 
 	/**
 	 * Incoming messages thread.
@@ -199,7 +261,7 @@ class PeerExchange {
 	 * 
 	 * @author mpetazzoni
 	 */
-	private class IncomingThread extends Thread {
+	private class IncomingThread extends RateLimitThread {
 
 		@Override
 		public void run() {
@@ -230,8 +292,11 @@ class PeerExchange {
 					int pstrlen = buffer.getInt(0);
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
+					long size = 0;
 					while (!stop && buffer.hasRemaining()) {
-						if (channel.read(buffer) < 0) {
+						int read = channel.read(buffer);
+						size += read;
+						if (read < 0) {
 							throw new EOFException(
 								"Reached end-of-stream while reading message");
 						}
@@ -242,6 +307,8 @@ class PeerExchange {
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
+						
+						rateLimit(PeerExchange.this.torrent.getMaxDownloadRate(), size, message);
 
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);
@@ -277,8 +344,8 @@ class PeerExchange {
 	 *
 	 * @author mpetazzoni
 	 */
-	private class OutgoingThread extends Thread {
-
+	private class OutgoingThread extends RateLimitThread {
+		
 		@Override
 		public void run() {
 			try {
@@ -302,12 +369,17 @@ class PeerExchange {
 						logger.trace("Sending {} to {}", message, peer);
 
 						ByteBuffer data = message.getData();
+						long size = 0;
 						while (!stop && data.hasRemaining()) {
-							if (channel.write(data) < 0) {
+						    int written = channel.write(data);
+						    size += written;
+							if (written < 0) {
 								throw new EOFException(
 									"Reached end of stream while writing");
 							}
 						}
+						
+						rateLimit(PeerExchange.this.torrent.getMaxUploadRate(), size, message);
 					} catch (InterruptedException ie) {
 						// Ignore and potentially terminate
 					}
