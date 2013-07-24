@@ -206,7 +206,7 @@ public class BDecoder {
 			c = this.read();
 			if (c == '0')
 				throw new InvalidBEncodingException("Negative zero not allowed");
-			chars[off] = (char)c;
+			chars[off] = '-';
 			off++;
 		}
 
