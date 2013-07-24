@@ -15,9 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.URISyntaxException;
+import java.net.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.zip.CRC32;
@@ -28,19 +26,19 @@ public class TrackerTest extends TestCase {
   private static final String TEST_RESOURCES = "src/test/resources";
   private Tracker tracker;
   private TempFiles tempFiles;
-    private String myLogfile;
+  private String myLogfile;
 
   @Override
   @BeforeMethod
   protected void setUp() throws Exception {
 //    org.apache.log4j.BasicConfigurator.configure();
-      final Logger rootLogger = RootLogger.getRootLogger();
-      rootLogger.removeAllAppenders();
-      rootLogger.setLevel(Level.ALL);
-      myLogfile = String.format("test-%d.txt", System.currentTimeMillis());
-      final Layout layout = new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN);
-      final FileAppender newAppender = new FileAppender(layout, myLogfile);
-      rootLogger.addAppender(newAppender);
+    final Logger rootLogger = RootLogger.getRootLogger();
+    rootLogger.removeAllAppenders();
+    rootLogger.setLevel(Level.ALL);
+    myLogfile = String.format("test-%d.txt", System.currentTimeMillis());
+    final Layout layout = new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN);
+    final FileAppender newAppender = new FileAppender(layout, myLogfile);
+    rootLogger.addAppender(newAppender);
     super.setUp();
     tempFiles = new TempFiles();
     Torrent.setHashingThreadsCount(1);
@@ -87,7 +85,7 @@ public class TrackerTest extends TestCase {
       assertEquals(1, trackedTorrents.size());
 
       TrackedTorrent trackedTorrent = trackedTorrents.iterator().next();
-      Map<String,TrackedPeer> peers = trackedTorrent.getPeers();
+      Map<String, TrackedPeer> peers = trackedTorrent.getPeers();
       assertEquals(1, peers.size());
       assertTrue(peers.values().iterator().next().isCompleted()); // seed
       assertEquals(1, trackedTorrent.seeders());
@@ -113,7 +111,7 @@ public class TrackerTest extends TestCase {
       assertEquals(1, trackedTorrents.size());
 
       TrackedTorrent trackedTorrent = trackedTorrents.iterator().next();
-      Map<String,TrackedPeer> peers = trackedTorrent.getPeers();
+      Map<String, TrackedPeer> peers = trackedTorrent.getPeers();
       assertEquals(1, peers.size());
       assertFalse(peers.values().iterator().next().isCompleted()); // leech
       assertEquals(0, trackedTorrent.seeders());
@@ -123,10 +121,12 @@ public class TrackerTest extends TestCase {
     }
   }
 
-    @Test(invocationCount = 50)
+  @Test(invocationCount = 50)
   public void tracker_accepts_torrent_from_seeder_plus_leech() throws IOException, NoSuchAlgorithmException, InterruptedException {
+/*
     this.tracker.setAcceptForeignTorrents(true);
     assertEquals(0, this.tracker.getTrackedTorrents().size());
+*/
 
     Client seeder = createClient();
     seeder.addTorrent(completeTorrent("file1.jar.torrent"));
@@ -146,10 +146,10 @@ public class TrackerTest extends TestCase {
     }
   }
 
-    @Test(invocationCount = 50)
+  @Test(invocationCount = 50)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
-    int numFiles = 100;
-    this.tracker.setAcceptForeignTorrents(true);
+    int numFiles = 200;
+//    this.tracker.setAcceptForeignTorrents(true);
 
     final File srcDir = tempFiles.createTempDir();
     final File downloadDir = tempFiles.createTempDir();
@@ -160,35 +160,36 @@ public class TrackerTest extends TestCase {
 
 
     try {
-
+      URL announce = new URL("http://127.0.0.1:6969/announce");
+      URI announceURI = announce.toURI();
       final Set<String> names = new HashSet<String>();
       List<File> filesToShare = new ArrayList<File>();
-      for (int i=0; i<numFiles; i++) {
-        File tempFile = tempFiles.createTempFile(513*1024);
+      for (int i = 0; i < numFiles; i++) {
+        File tempFile = tempFiles.createTempFile(513 * 1024);
         File srcFile = new File(srcDir, tempFile.getName());
         assertTrue(tempFile.renameTo(srcFile));
 
-        Torrent torrent = Torrent.create(srcFile, this.tracker.getAnnounceUrl().toURI(), "Test");
+        Torrent torrent = Torrent.create(srcFile, announceURI, "Test");
         File torrentFile = new File(srcFile.getParentFile(), srcFile.getName() + ".torrent");
         torrent.save(torrentFile);
         filesToShare.add(srcFile);
         names.add(srcFile.getName());
       }
 
-        for (File f : filesToShare) {
-            File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
-            SharedTorrent st1 = SharedTorrent.fromFile(torrentFile, f.getParentFile(), true);
-            seeder.addTorrent(st1);
-        }
+      for (File f : filesToShare) {
+        File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
+        SharedTorrent st1 = SharedTorrent.fromFile(torrentFile, f.getParentFile(), true);
+        seeder.addTorrent(st1);
+      }
       leech = createClient();
       leech.share();
-        for (File f : filesToShare) {
-            File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
-            SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);
-            leech.addTorrent(st2);
-        }
+      for (File f : filesToShare) {
+        File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
+        SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);
+        leech.addTorrent(st2);
+      }
 
-        new WaitFor(50*1000, 100) {
+      new WaitFor(90 * 1000, 100) {
         @Override
         protected boolean condition() {
           return listFileNames(downloadDir).containsAll(names);
@@ -207,19 +208,21 @@ public class TrackerTest extends TestCase {
     Set<String> names = new HashSet<String>();
     File[] files = downloadDir.listFiles();
     if (files == null) return Collections.emptySet();
-    for (File f: files) {
+    for (File f : files) {
       names.add(f.getName());
     }
     return names;
   }
 
-
+  @Test(invocationCount = 50)
   public void large_file_download() throws IOException, URISyntaxException, NoSuchAlgorithmException, InterruptedException {
-    this.tracker.setAcceptForeignTorrents(true);
+//    this.tracker.setAcceptForeignTorrents(true);
 
-    File tempFile = tempFiles.createTempFile(200 * 1024 * 1024);
+    File tempFile = tempFiles.createTempFile(201 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
 
-    Torrent torrent = Torrent.create(tempFile, this.tracker.getAnnounceUrl().toURI(), "Test");
+    Torrent torrent = Torrent.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     torrent.save(torrentFile);
 
@@ -256,7 +259,7 @@ public class TrackerTest extends TestCase {
 
     int numSeeders = 5;
     List<Client> seeders = new ArrayList<Client>();
-    for (int i=0; i<numSeeders; i++) {
+    for (int i = 0; i < numSeeders; i++) {
       seeders.add(createClient());
     }
 
@@ -267,7 +270,7 @@ public class TrackerTest extends TestCase {
       File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
       torrent.save(torrentFile);
 
-      for (int i=0; i<numSeeders; i++) {
+      for (int i = 0; i < numSeeders; i++) {
         Client client = seeders.get(i);
         client.addTorrent(SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false));
         client.share();
@@ -279,7 +282,7 @@ public class TrackerTest extends TestCase {
       assertEquals(1, torrents.size());
       assertEquals(numSeeders, torrents.iterator().next().seeders());
     } finally {
-      for (Client client: seeders) {
+      for (Client client : seeders) {
         client.stop();
       }
     }
@@ -290,7 +293,7 @@ public class TrackerTest extends TestCase {
     new WaitFor() {
       @Override
       protected boolean condition() {
-        for (TrackedTorrent tt: TrackerTest.this.tracker.getTrackedTorrents()) {
+        for (TrackedTorrent tt : TrackerTest.this.tracker.getTrackedTorrents()) {
           if (tt.seeders() == 1 && tt.getHexInfoHash().equals(Torrent.byteArrayToHexString(torrentHash))) return true;
         }
 
@@ -303,7 +306,7 @@ public class TrackerTest extends TestCase {
     new WaitFor() {
       @Override
       protected boolean condition() {
-        for (TrackedTorrent tt: TrackerTest.this.tracker.getTrackedTorrents()) {
+        for (TrackedTorrent tt : TrackerTest.this.tracker.getTrackedTorrents()) {
           if (tt.getPeers().size() == numPeers) return true;
         }
 
@@ -374,7 +377,7 @@ public class TrackerTest extends TestCase {
 
   private void startTracker() throws IOException {
     this.tracker = new Tracker(new InetSocketAddress(6969));
-    this.tracker.start();
+//    this.tracker.start();
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {

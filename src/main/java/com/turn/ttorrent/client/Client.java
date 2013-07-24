@@ -699,9 +699,7 @@ public class Client implements Runnable,
     try {
       synchronized (peer) {
         if (peer.isConnected()) {
-          logger.info("Already connected with {}, closing link.",
-            peer);
-					channel.close();
+          logger.info("Already connected with {}, ignoring.", peer);
           return;
         }
 

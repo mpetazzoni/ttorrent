@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-class PeerExchange {
+public class PeerExchange {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(PeerExchange.class);
@@ -257,11 +258,13 @@ class PeerExchange {
 					}
 				}
 			} catch (IOException ioe) {
+
 				logger.debug("Could not read message from {}: {}",
 					peer,
 					ioe.getMessage() != null
 						? ioe.getMessage()
 						: ioe.getClass().getName());
+                logger.debug("Exception", ioe);
 				peer.unbind(true);
 			}
 		}
@@ -324,6 +327,7 @@ class PeerExchange {
 					ioe.getMessage() != null
 						? ioe.getMessage()
 						: ioe.getClass().getName());
+                logger.debug("Exception", ioe);
 				peer.unbind(true);
 			}
 		}
