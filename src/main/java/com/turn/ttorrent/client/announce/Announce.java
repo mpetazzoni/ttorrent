@@ -290,8 +290,8 @@ public class Announce implements Runnable {
 	 *	in the torrent.
 	 */
 	public TrackerClient getCurrentTrackerClient() throws AnnounceException {
-		if (!this.clients.contains(this.currentTier) ||
-			!this.clients.get(this.currentTier).contains(this.currentClient)) {
+		if ((this.currentTier >= this.clients.size()) ||
+			(this.currentClient >= this.clients.get(this.currentTier).size())) {
 			throw new AnnounceException("Current tier or client isn't available");
 		}
 
