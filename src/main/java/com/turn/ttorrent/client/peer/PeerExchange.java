@@ -85,6 +85,8 @@ class PeerExchange {
 	private BlockingQueue<PeerMessage> sendQueue;
 	private volatile boolean stop;
 
+  public static final AtomicInteger readBytes = new AtomicInteger(0);
+
 	/**
 	 * Initialize and start a new peer exchange.
 	 *
@@ -107,18 +109,14 @@ class PeerExchange {
 		}
 
 		this.in = new IncomingThread();
-		this.in.setName("bt-peer(" +
-			this.peer.getShortHexPeerId() + ")-recv");
+    this.in.setName(String.format("bt-recv(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
 
 		this.out = new OutgoingThread();
-		this.out.setName("bt-peer(" +
-			this.peer.getShortHexPeerId() + ")-send");
+    this.out.setName(String.format("bt-send(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
 		this.out.setDaemon(true);
 
 		// Automatically start the exchange activity loops
 		this.stop = false;
-		this.in.start();
-		this.out.start();
 
 		logger.debug("Started peer exchange with {} for {}.",
 			this.peer, this.torrent);
@@ -131,6 +129,14 @@ class PeerExchange {
 	}
 
 	/**
+     * Start threads separately from creating to avoid race conditions
+     */
+    public void start(){
+        this.in.start();
+        this.out.start();
+    }
+
+  /**
 	 * Register a new message listener to receive messages.
 	 *
 	 * @param listener The message listener object.
@@ -241,7 +247,7 @@ class PeerExchange {
 
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
-						logger.trace("Received {} from {}", message, peer);
+            logger.trace("Received {} from {}. Will multicast it to {} listeners", new Object[]{ message, peer, listeners.size()});
 
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);

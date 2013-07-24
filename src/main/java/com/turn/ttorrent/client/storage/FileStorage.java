@@ -48,6 +48,7 @@ public class FileStorage implements TorrentByteStorage {
 	private final long size;
 
 	private RandomAccessFile raf;
+  private Thread closeTask;
 	private FileChannel channel;
 	private File current;
 

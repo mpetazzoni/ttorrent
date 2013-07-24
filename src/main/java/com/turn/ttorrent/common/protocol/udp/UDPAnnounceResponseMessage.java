@@ -83,6 +83,11 @@ public class UDPAnnounceResponseMessage
 		return this.peers;
 	}
 
+  @Override
+  public String getHexInfoHash() {
+    return "";
+  }
+
 	public static UDPAnnounceResponseMessage parse(ByteBuffer data)
 		throws MessageValidationException {
 		if (data.remaining() < UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE ||

@@ -107,6 +107,7 @@ public class TrackedTorrent implements TorrentHash {
 	 * @param peer The new Peer involved with this torrent.
 	 */
 	public void addPeer(TrackedPeer peer) {
+    logger.info("Added tracker peer {}:{}", peer.getIp(), peer.getPort());
 		this.peers.put(peer.getHexPeerId(), peer);
 	}
 
@@ -213,6 +214,7 @@ public class TrackedTorrent implements TorrentHash {
 	public TrackedPeer update(RequestEvent event, ByteBuffer peerId,
 		String hexPeerId, String ip, int port, long uploaded, long downloaded,
 		long left) throws UnsupportedEncodingException {
+    logger.info("event {}, Peer: {}:{}", new Object[]{event.getEventName(), ip, port});
 		TrackedPeer peer = null;
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 
@@ -300,7 +302,7 @@ public class TrackedTorrent implements TorrentHash {
     public static TrackedTorrent load(File torrent) throws IOException,
             NoSuchAlgorithmException {
 
-        Torrent t = Torrent.load(torrent);
+    Torrent t = Torrent.load(torrent, null);
         return new TrackedTorrent(t.getInfoHash());
     }
 

@@ -46,88 +46,47 @@
           <option name="myNodeType" value="jetbrains.buildServer.tree.descriptors.ChangesGroupDescriptor" />
         </pathElement>
       </expandedPath>
-      <selectedPath>
-        <pathElement>
-          <option name="myNodeId" value="1" />
-          <option name="myNodeType" value="jetbrains.buildServer.tree.descriptors.ChangesGroupDescriptor" />
-        </pathElement>
-        <pathElement>
-          <option name="myNodeId" value="124519" />
-          <option name="myNodeType" value="jetbrains.buildServer.tree.descriptors.VcsModificationDescriptor" />
-        </pathElement>
-      </selectedPath>
     </treeState>
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fe1c0f2e-ed63-44c2-b429-e660611ae90b" name="Default" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ClientState.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/CommunicationListener.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/TrackerAdapter.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Trackers.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/URIs.java" />
+      <change type="DELETED" beforePath="D:\Projects\TeamCity\Misc\ttorrent.paksv.fork\src\main\java\com\turn\ttorrent\client\IncomingConnectionListener.java" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/AnnounceResponseListener.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/AnnounceResponseListener.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Client.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Client.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ConnectionHandler.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ConnectionHandler.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/storage/FileCollectionStorage.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/storage/FileCollectionStorage.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/storage/FileStorage.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/storage/FileStorage.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/HTTPTrackerClient.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/HTTPTrackerClient.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Handshake.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Handshake.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerActivityListener.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerActivityListener.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerExchange.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerExchange.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/PeerMessage.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/PeerMessage.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Piece.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Piece.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/SharingPeer.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/SharingPeer.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/TempFiles.java" afterPath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/TempFiles.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/common/TorrentTest.java" afterPath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/common/TorrentTest.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedTorrent.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedTorrent.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/Tracker.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/Tracker.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/tracker/TrackerTest.java" afterPath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/tracker/TrackerTest.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/udp/UDPAnnounceResponseMessage.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/udp/UDPAnnounceResponseMessage.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/UDPTrackerClient.java" afterPath="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/UDPTrackerClient.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/WaitFor.java" afterPath="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/WaitFor.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/codeStyleSettings.xml" afterPath="$PROJECT_DIR$/.idea/codeStyleSettings.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="ttorrent.iws" />
     <ignored path=".idea/workspace.xml" />
-    <file path="/Dummy.txt" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319055472" ignored="false" />
-    <file path="/fragment.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374233954179" ignored="false" />
-    <file path="/TrackerTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319335156" ignored="false" />
-    <file path="/Tracker.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374167232678" ignored="false" />
-    <file path="/Torrent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374079661689" ignored="false" />
-    <file path="$PROJECT_DIR$/../ttorrent.paksv/pom.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374078808915" ignored="false" />
-    <file path="/pom.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374078568196" ignored="false" />
-    <file path="/TrackerService.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374167019817" ignored="false" />
-    <file path="$PROJECT_DIR$/../../../TestProject/JustTest/src/justTest/HashComparer.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374160465551" ignored="false" />
-    <file path="/HashComparer.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374160430221" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/BuildTypeImpl.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/AbstractBuildAgent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/BaseBuild.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/BuildQueueImpl.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/DummyBuildType.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/BuildTypeEx.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/META-INF/buildServerSpring.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/UnregisteredAgent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/BranchEx.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563278" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/RunningBuildImpl.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/BuildPromotionEx.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/CopyProjectHelper.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/LogUtil.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/BuildTypeBranches.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server-openapi/src/jetbrains/buildServer/serverSide/ServerPaths.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/ProjectManagerEx.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server-openapi/src/jetbrains/buildServer/serverSide/SBuildAgent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/agent/src/META-INF/buildAgentPerRunnerContext.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server/src/jetbrains/buildServer/serverSide/impl/BuildPromotionImpl.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/server-model/src/jetbrains/buildServer/serverSide/ResponsibilityInfo.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374157563279" ignored="false" />
-    <file path="/a.dummy" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374168780756" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/agent/src/jetbrains/buildServer/agent/impl/directories/FileRemover.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374252345531" ignored="false" />
-    <file path="/FileRemover.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374249945437" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/agent-test/src/jetbrains/buildServer/agent/FileRemoverTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374253073450" ignored="false" />
-    <file path="/FileRemoverTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374235539530" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/.idea/misc.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374162618962" ignored="false" />
-    <file path="/TrackedTorrent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374165586701" ignored="false" />
-    <file path="/a.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374167400542" ignored="false" />
-    <file path="/HTTPAnnounceResponseMessage.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374166254447" ignored="false" />
-    <file path="/ConnectionHandler.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374169438013" ignored="false" />
-    <file path="/TrackerClient.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374169721582" ignored="false" />
-    <file path="/WaitFor.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374170434974" ignored="false" />
-    <file path="$PROJECT_DIR$/../../Gaya-8.0.x/agent-test/src/jetbrains/buildServer/agent/impl/BackgroundDirectoryCleanerTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374235584136" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent-test/src/jetbrains/buildServer/agent/FileRemoverTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374253248150" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent-test/src/jetbrains/buildServer/agent/impl/BackgroundDirectoryCleanerTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374253248150" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent/src/jetbrains/buildServer/agent/impl/directories/FileRemover.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374253248150" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent/src/jetbrains/buildServer/agent/impl/directories/SmartDirectoryCleanerImpl.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374253248150" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server/src/jetbrains/buildServer/license/ServerLicenseManager.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319033274" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/web/WEB-INF/tags/buildChain.tag" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent/src/META-INF/buildAgentSpring.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server-test/src/jetbrains/buildServer/license/ServerLicenseManagerTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/web/resources/admin/serverLicenses.jsp" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server/src/jetbrains/buildServer/license/ServerLicenseList.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/agent/src/META-INF/buildAgentPerBuildContext.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/libraries_metadata.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/web/WEB-INF/tags/_branchesTable.tag" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/web/src/jetbrains/buildServer/controllers/license/ServerLicenseBean.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server-test/src/jetbrains/buildServer/serverSide/impl/SimpleMockBuildAgent.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server/src/META-INF/buildServerSpring.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/license-common/src/jetbrains/buildServer/license/data/LicenseInfo.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/license-common/src/jetbrains/buildServer/license/data/ServerLicenseInfo.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/server-test/src/jetbrains/buildServer/serverSide/impl/BuildProblemsTest.java" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
-    <file path="$PROJECT_DIR$/../../BuildServer/hub-plugin/src/META-INF/build-server-plugin-hub.xml" changelist="fe1c0f2e-ed63-44c2-b429-e660611ae90b" time="1374319018685" ignored="false" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -191,44 +150,63 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="TrackerTest.java" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/tracker/TrackerTest.java">
+      <file leaf-file-name="Announce.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="140" column="20" selection-start="5242" selection-end="5242" vertical-scroll-proportion="0.0">
+            <state line="56" column="18" selection-start="1823" selection-end="1823" vertical-scroll-proportion="0.0" vertical-offset="1100" max-vertical-offset="5800">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Torrent.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="816" column="116" selection-start="24727" selection-end="24727" vertical-scroll-proportion="0.0" vertical-offset="14802" max-vertical-offset="16920">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="pom.xml" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/pom.xml">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="20" column="39" selection-start="784" selection-end="784" vertical-scroll-proportion="0.0" vertical-offset="380" max-vertical-offset="3960">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="SharedTorrent.java" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="53" column="68" selection-start="1801" selection-end="1801" vertical-scroll-proportion="1.488764" vertical-offset="0" max-vertical-offset="17940">
               <folding>
-                <element signature="method#setUp#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#test_share_and_download#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#tracker_accepts_torrent_from_seeder#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#tracker_accepts_torrent_from_leech#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#tracker_accepts_torrent_from_seeder_plus_leech#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#test_announce#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#test_foreign_torrent#0;class#TrackerTest#0" expanded="false" />
-                <element signature="class#7423:7822" expanded="false" />
-                <element signature="method#condition#0;class#7423:7822" expanded="false" />
-                <element signature="method#listFileNames#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#waitForSeeder#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#waitForPeers#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#waitForFileInDir#0;class#TrackerTest#0" expanded="false" />
-                <element signature="class#9490:9677" expanded="false" />
-                <element signature="method#condition#0;class#9490:9677" expanded="false" />
-                <element signature="method#waitForFileInDir#1;class#TrackerTest#0" expanded="false" />
-                <element signature="method#loadTorrent#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#tearDown#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#startTracker#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#createClient#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#getCompleteTorrent#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#getIncompleteTorrent#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#stopTracker#0;class#TrackerTest#0" expanded="false" />
-                <element signature="method#assertFilesEqual#0;class#TrackerTest#0" expanded="false" />
+                <element signature="n#!!doc" expanded="true" />
+                <element signature="imports" expanded="true" />
+                <element signature="e#7042#7055#0" expanded="true" />
+                <element signature="e#10929#10944#0" expanded="true" />
+                <element signature="e#12550#12557#0" expanded="true" />
+                <element signature="e#20106#20113#0" expanded="true" />
+                <element signature="e#20292#20299#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="workspace.xml" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
+      <file leaf-file-name="PeerActivityListener.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerActivityListener.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="148" column="103" selection-start="15709" selection-end="15709" vertical-scroll-proportion="4.2528734">
+            <state line="138" column="67" selection-start="3892" selection-end="3892" vertical-scroll-proportion="0.0" vertical-offset="1462" max-vertical-offset="2520">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="TrackerClient.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="30" column="22" selection-start="1021" selection-end="1021" vertical-scroll-proportion="0.0" vertical-offset="580" max-vertical-offset="3640">
               <folding />
             </state>
           </provider>
@@ -259,17 +237,22 @@
         <option value="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/common/TorrentTest.java" />
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/TorrentHash.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedPeer.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedTorrent.java" />
-        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/Tracker.java" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ConnectionHandler.java" />
         <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java" />
         <option value="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/WaitFor.java" />
         <option value="$PROJECT_DIR$/.idea/workspace.xml" />
         <option value="$PROJECT_DIR$/src/test/java/com/turn/ttorrent/tracker/TrackerTest.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Client.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Piece.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java" />
+        <option value="$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerActivityListener.java" />
       </list>
     </option>
   </component>
@@ -373,6 +356,8 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scope" />
+      <pane id="PackagesPane" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -404,18 +389,6 @@
               <option name="myItemId" value="src" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="test" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="resources" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="torrents" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
           </PATH>
           <PATH>
             <PATH_ELEMENT>
@@ -431,29 +404,7 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="test" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="resources" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent.paksv.fork" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="test" />
+              <option name="myItemId" value="main" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
@@ -462,66 +413,6 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent.paksv.fork" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="test" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="java" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="tracker" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent.paksv.fork" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="test" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="java" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="common" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -551,55 +442,27 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="tracker" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent.paksv.fork" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="main" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="java" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ttorrent" />
+              <option name="myItemId" value="client" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="project.structure.last.edited" value="Modules" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth0" value="289" />
-    <property name="OverrideImplement.combined" value="true" />
-    <property name="project.structure.proportion" value="0.15" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth1" value="289" />
+    <property name="project.structure.proportion" value="0.15" />
+    <property name="OverrideImplement.combined" value="true" />
     <property name="options.splitter.main.proportions" value="0.3" />
-    <property name="recentsLimit" value="5" />
-    <property name="MemberChooser.sorted" value="false" />
-    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder1" value="1" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth0" value="289" />
+    <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder1" value="1" />
+    <property name="MemberChooser.sorted" value="false" />
+    <property name="recentsLimit" value="5" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatOrder0" value="0" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/pom.xml" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../patches/turn/0012-Don-t-attempt-to-stop-the-full-client-on-peers-IOExc.patch" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth2" value="289" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeWidth3" value="964" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_flatWidth3" value="964" />
@@ -612,8 +475,8 @@
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
     <property name="options.splitter.details.proportions" value="0.2" />
-    <property name="GoToFile.includeJavaFiles" value="false" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder0" value="0" />
+    <property name="GoToFile.includeJavaFiles" value="false" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder3" value="3" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder1" value="1" />
     <property name="FileHistory.git4idea.history.GitHistoryProvider_treeOrder2" value="2" />
@@ -621,8 +484,8 @@
     <property name="project.structure.side.proportion" value="0.2" />
     <property name="MemberChooser.copyJavadoc" value="false" />
     <property name="restartRequiresConfirmation" value="true" />
-    <property name="options.searchVisible" value="true" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.searchVisible" value="true" />
   </component>
   <component name="RecentsManager">
     <key name="CreateClassDialog.RecentsKey">
@@ -745,7 +608,7 @@
       <ConfigurationWrapper RunnerId="Run" />
       <method />
     </configuration>
-    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin">
+    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin" singleton="true">
       <module name="" />
       <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m" />
       <option name="PROGRAM_PARAMETERS" />
@@ -781,6 +644,19 @@
       <option name="PORT" value="5005" />
       <method />
     </configuration>
+    <configuration default="true" type="Applet" factoryName="Applet">
+      <module name="" />
+      <option name="MAIN_CLASS_NAME" />
+      <option name="HTML_FILE_NAME" />
+      <option name="HTML_USED" value="false" />
+      <option name="WIDTH" value="400" />
+      <option name="HEIGHT" value="300" />
+      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
+      <option name="VM_PARAMETERS" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
+      <option name="ALTERNATIVE_JRE_PATH" />
+      <method />
+    </configuration>
     <configuration default="true" type="TestNG" factoryName="TestNG">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
       <module name="" />
@@ -807,19 +683,6 @@
       <envs />
       <properties />
       <listeners />
-      <method />
-    </configuration>
-    <configuration default="true" type="Applet" factoryName="Applet">
-      <module name="" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="HTML_FILE_NAME" />
-      <option name="HTML_USED" value="false" />
-      <option name="WIDTH" value="400" />
-      <option name="HEIGHT" value="300" />
-      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
-      <option name="VM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
       <method />
     </configuration>
     <configuration default="true" type="Application" factoryName="Application">
@@ -959,32 +822,34 @@
     <frame x="-1928" y="-8" width="1936" height="1216" extended-state="6" />
     <editor active="false" />
     <layout>
-      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3282876" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Changes" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32672334" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Java Enterprise" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.5752129" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TeamCity" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="IDEtalk Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="IDEtalk" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="CDI" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32977587" sideWeight="0.6717124" order="3" side_tool="true" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.709147" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.11526147" sideWeight="0.6713881" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.16061899" sideWeight="0.5118259" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.16061899" sideWeight="0.67327666" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.48817408" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Analyze Dataflow to" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32923368" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="CDI" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3282876" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Coverage" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32977587" sideWeight="0.6717124" order="3" side_tool="true" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
@@ -1055,380 +920,258 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/Tracker.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0">
+        <state line="57" column="18" selection-start="1829" selection-end="1829" vertical-scroll-proportion="0.0" vertical-offset="1180" max-vertical-offset="5800">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="958" column="54" selection-start="28551" selection-end="28551" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="docComment;class#Torrent#0" expanded="false" />
-            <element signature="docComment;field#PIECE_LENGTH#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;field#BYTE_ENCODING#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#TorrentFile#0;class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#Torrent#0;class#Torrent#0" expanded="false" />
-            <element signature="method#Torrent#0;class#Torrent#0" expanded="false" />
-            <element signature="e#7499#7554#0" expanded="false" />
-            <element signature="docComment;method#getName#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getName#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getComment#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getComment#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getCreatedBy#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getCreatedBy#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getSize#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getSize#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getFilenames#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getFilenames#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#isMultifile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#isMultifile#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getHexInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getHexInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#toString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#toString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getEncoded#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getEncoded#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getAnnounceList#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getAnnounceList#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getTrackerCount#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getTrackerCount#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#isSeeder#0;class#Torrent#0" expanded="false" />
-            <element signature="method#isSeeder#0;class#Torrent#0" expanded="false" />
-            <element signature="method#save#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#byteArrayToHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#byteArrayToHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#toHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#toHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getHashingThreadsCount#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getHashingThreadsCount#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#load#0;class#Torrent#0" expanded="false" />
-            <element signature="method#load#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#load#1;class#Torrent#0" expanded="false" />
-            <element signature="method#load#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#0;class#Torrent#0" expanded="false" />
-            <element signature="method#create#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#1;class#Torrent#0" expanded="false" />
-            <element signature="method#create#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#2;class#Torrent#0" expanded="false" />
-            <element signature="method#create#2;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#3;class#Torrent#0" expanded="false" />
-            <element signature="method#create#3;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#4;class#Torrent#0" expanded="false" />
-            <element signature="method#create#4;class#Torrent#0" expanded="false" />
-            <element signature="docComment;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="method#CallableChunkHasher#0;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="method#call#0;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#hashFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hashFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hashFiles#0;class#Torrent#0" expanded="false" />
-            <element signature="e#24209#24275#0" expanded="false" />
-            <element signature="docComment;method#accumulateHashes#0;class#Torrent#0" expanded="false" />
-            <element signature="method#accumulateHashes#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#usage#0;class#Torrent#0" expanded="false" />
-            <element signature="method#usage#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#usage#1;class#Torrent#0" expanded="false" />
-            <element signature="method#usage#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#main#0;class#Torrent#0" expanded="false" />
-            <element signature="method#main#0;class#Torrent#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bin/client">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="18" column="38" selection-start="700" selection-end="700" vertical-scroll-proportion="0.371134" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/FileUtil.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="7" column="13" selection-start="144" selection-end="144" vertical-scroll-proportion="0.082474224">
+        <state line="767" column="49" selection-start="23280" selection-end="23280" vertical-scroll-proportion="0.0" vertical-offset="15320" max-vertical-offset="18760">
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/TempFiles.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="5" column="0" selection-start="67" selection-end="67" vertical-scroll-proportion="0.082474224">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/README.md">
-      <provider editor-type-id="com.intellij.persistence.database.editor.CsvTableFileEditorProvider">
-        <state />
-      </provider>
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../ttorrent.pavel/src/test/java/com/turn/ttorrent/common/TorrentTest.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://C:/CScience/apache-maven-3.0.5/lib/maven-model-builder-3.0.5.jar!/org/apache/maven/model/pom-4.0.0.xml">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="78" column="8" selection-start="2740" selection-end="2740" vertical-scroll-proportion="0.3329897">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/common/TorrentTest.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="25" column="35" selection-start="997" selection-end="997" vertical-scroll-proportion="0.68926555">
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pom.xml">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="111" column="61" selection-start="2964" selection-end="2964" vertical-scroll-proportion="0.59322035">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceRequestMessage.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="77" column="18" selection-start="2462" selection-end="2462" vertical-scroll-proportion="1.3149718">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/bcodec/BDecoder.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="169" column="0" selection-start="4505" selection-end="4505" vertical-scroll-proportion="0.2980226">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://$MAVEN_REPOSITORY$/org/simpleframework/simple/4.1.21/simple-4.1.21.jar!/org/simpleframework/transport/connect/SocketConnection.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="13" column="11" selection-start="556" selection-end="556" vertical-scroll-proportion="0.35820895">
+        <state line="20" column="39" selection-start="784" selection-end="784" vertical-scroll-proportion="0.0" vertical-offset="380" max-vertical-offset="3960">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="239" column="32" selection-start="7995" selection-end="7995" vertical-scroll-proportion="0.33333334">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="jar://C:/JDK/src.zip!/java/util/concurrent/ExecutorService.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="266" column="14" selection-start="9598" selection-end="9598" vertical-scroll-proportion="0.22348484">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Client.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="89" column="0" selection-start="3119" selection-end="3198" vertical-scroll-proportion="0.24242425">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/WaitFor.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="11" column="48" selection-start="332" selection-end="332" vertical-scroll-proportion="0.20833333">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ConnectionHandler.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="174" column="0" selection-start="5392" selection-end="5392" vertical-scroll-proportion="0.21969697">
+        <state line="295" column="0" selection-start="9738" selection-end="9738" vertical-scroll-proportion="0.0" vertical-offset="5880" max-vertical-offset="15580">
           <folding>
+            <element signature="n#!!doc" expanded="true" />
             <element signature="imports" expanded="true" />
+            <element signature="e#7042#7055#0" expanded="true" />
+            <element signature="e#10929#10944#0" expanded="true" />
+            <element signature="e#12550#12557#0" expanded="true" />
+            <element signature="e#20106#20113#0" expanded="true" />
+            <element signature="e#20292#20299#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="33" column="0" selection-start="1061" selection-end="1061" vertical-scroll-proportion="0.13257575">
+        <state line="31" column="22" selection-start="1044" selection-end="1044" vertical-scroll-proportion="0.0" vertical-offset="600" max-vertical-offset="3640">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="201" column="15" selection-start="6082" selection-end="6082" vertical-scroll-proportion="3.0833333">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="31" column="22" selection-start="1044" selection-end="1044" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/FileUtil.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="7" column="13" selection-start="144" selection-end="144" vertical-scroll-proportion="0.082474224" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/TempFiles.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="5" column="0" selection-start="67" selection-end="67" vertical-scroll-proportion="0.082474224" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.md">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+      <provider editor-type-id="com.intellij.persistence.database.editor.CsvTableFileEditorProvider">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../ttorrent.pavel/src/test/java/com/turn/ttorrent/common/TorrentTest.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="jar://C:/CScience/apache-maven-3.0.5/lib/maven-model-builder-3.0.5.jar!/org/apache/maven/model/pom-4.0.0.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="78" column="8" selection-start="2740" selection-end="2740" vertical-scroll-proportion="0.3329897" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/common/TorrentTest.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="25" column="35" selection-start="997" selection-end="997" vertical-scroll-proportion="0.68926555" vertical-offset="0" max-vertical-offset="0">
           <folding>
-            <element signature="e#6554#6571#0" expanded="true" />
+            <element signature="imports" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java">
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceRequestMessage.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="408" column="7" selection-start="11527" selection-end="11527" vertical-scroll-proportion="1.7045455">
+        <state line="77" column="18" selection-start="2462" selection-end="2462" vertical-scroll-proportion="1.3149718" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/bcodec/BDecoder.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="169" column="0" selection-start="4505" selection-end="4505" vertical-scroll-proportion="0.2980226" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="jar://$MAVEN_REPOSITORY$/org/simpleframework/simple/4.1.21/simple-4.1.21.jar!/org/simpleframework/transport/connect/SocketConnection.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="13" column="11" selection-start="556" selection-end="556" vertical-scroll-proportion="0.35820895" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="jar://C:/JDK/src.zip!/java/util/concurrent/ExecutorService.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="266" column="14" selection-start="9598" selection-end="9598" vertical-scroll-proportion="0.22348484" vertical-offset="0" max-vertical-offset="0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/WaitFor.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="11" column="48" selection-start="332" selection-end="332" vertical-scroll-proportion="0.20833333" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/ConnectionHandler.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="174" column="0" selection-start="5392" selection-end="5392" vertical-scroll-proportion="0.21969697" vertical-offset="0" max-vertical-offset="0">
           <folding>
-            <element signature="docComment;class#Torrent#0" expanded="false" />
-            <element signature="docComment;field#PIECE_LENGTH#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;field#BYTE_ENCODING#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#TorrentFile#0;class#TorrentFile#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#Torrent#0;class#Torrent#0" expanded="false" />
-            <element signature="method#Torrent#0;class#Torrent#0" expanded="false" />
-            <element signature="e#7499#7554#0" expanded="false" />
-            <element signature="docComment;method#getName#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getName#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getComment#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getComment#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getCreatedBy#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getCreatedBy#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getSize#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getSize#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getFilenames#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getFilenames#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#isMultifile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#isMultifile#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getHexInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getHexInfoHash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#toString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#toString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getEncoded#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getEncoded#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getAnnounceList#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getAnnounceList#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getTrackerCount#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getTrackerCount#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#isSeeder#0;class#Torrent#0" expanded="false" />
-            <element signature="method#isSeeder#0;class#Torrent#0" expanded="false" />
-            <element signature="method#save#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hash#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#byteArrayToHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#byteArrayToHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#toHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="method#toHexString#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#getHashingThreadsCount#0;class#Torrent#0" expanded="false" />
-            <element signature="method#getHashingThreadsCount#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#load#0;class#Torrent#0" expanded="false" />
-            <element signature="method#load#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#load#1;class#Torrent#0" expanded="false" />
-            <element signature="method#load#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#0;class#Torrent#0" expanded="false" />
-            <element signature="method#create#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#1;class#Torrent#0" expanded="false" />
-            <element signature="method#create#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#2;class#Torrent#0" expanded="false" />
-            <element signature="method#create#2;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#3;class#Torrent#0" expanded="false" />
-            <element signature="method#create#3;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#create#4;class#Torrent#0" expanded="false" />
-            <element signature="method#create#4;class#Torrent#0" expanded="false" />
-            <element signature="docComment;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="method#CallableChunkHasher#0;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="method#call#0;class#CallableChunkHasher#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#hashFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hashFile#0;class#Torrent#0" expanded="false" />
-            <element signature="method#hashFiles#0;class#Torrent#0" expanded="false" />
-            <element signature="e#24209#24275#0" expanded="false" />
-            <element signature="docComment;method#accumulateHashes#0;class#Torrent#0" expanded="false" />
-            <element signature="method#accumulateHashes#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#usage#0;class#Torrent#0" expanded="false" />
-            <element signature="method#usage#0;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#usage#1;class#Torrent#0" expanded="false" />
-            <element signature="method#usage#1;class#Torrent#0" expanded="false" />
-            <element signature="docComment;method#main#0;class#Torrent#0" expanded="false" />
-            <element signature="method#main#0;class#Torrent#0" expanded="false" />
+            <element signature="imports" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/TorrentHash.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="13" column="0" selection-start="279" selection-end="279" vertical-scroll-proportion="0.24621212">
-          <folding />
-        </state>
+        <state line="13" column="0" selection-start="279" selection-end="279" vertical-scroll-proportion="0.24621212" vertical-offset="0" max-vertical-offset="0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/Tracker.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="374" column="75" selection-start="10629" selection-end="10629" vertical-scroll-proportion="5.007576">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="64" column="64" selection-start="2211" selection-end="2211" vertical-scroll-proportion="0.45454547">
-          <folding>
-            <element signature="e#8228#8234#0" expanded="true" />
-          </folding>
-        </state>
+        <state line="374" column="75" selection-start="10629" selection-end="10629" vertical-scroll-proportion="5.007576" vertical-offset="0" max-vertical-offset="0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedPeer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="116" column="7" selection-start="3424" selection-end="3424" vertical-scroll-proportion="0.4318182">
-          <folding />
-        </state>
+        <state line="116" column="7" selection-start="3424" selection-end="3424" vertical-scroll-proportion="0.4318182" vertical-offset="0" max-vertical-offset="0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackedTorrent.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="94" column="5" selection-start="3092" selection-end="3092" vertical-scroll-proportion="-3.4507575">
-          <folding>
-            <element signature="e#7410#7416#0" expanded="true" />
-            <element signature="e#7509#7522#0" expanded="true" />
-          </folding>
-        </state>
+        <state line="94" column="5" selection-start="3092" selection-end="3092" vertical-scroll-proportion="-3.4507575" vertical-offset="0" max-vertical-offset="0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/test/java/com/turn/ttorrent/tracker/TrackerTest.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="140" column="20" selection-start="5242" selection-end="5242" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="method#setUp#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#test_share_and_download#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#tracker_accepts_torrent_from_seeder#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#tracker_accepts_torrent_from_leech#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#tracker_accepts_torrent_from_seeder_plus_leech#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#test_announce#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#test_foreign_torrent#0;class#TrackerTest#0" expanded="false" />
-            <element signature="class#7423:7822" expanded="false" />
-            <element signature="method#condition#0;class#7423:7822" expanded="false" />
-            <element signature="method#listFileNames#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#waitForSeeder#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#waitForPeers#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#waitForFileInDir#0;class#TrackerTest#0" expanded="false" />
-            <element signature="class#9490:9677" expanded="false" />
-            <element signature="method#condition#0;class#9490:9677" expanded="false" />
-            <element signature="method#waitForFileInDir#1;class#TrackerTest#0" expanded="false" />
-            <element signature="method#loadTorrent#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#tearDown#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#startTracker#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#createClient#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#getCompleteTorrent#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#getIncompleteTorrent#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#stopTracker#0;class#TrackerTest#0" expanded="false" />
-            <element signature="method#assertFilesEqual#0;class#TrackerTest#0" expanded="false" />
-          </folding>
+        <state line="140" column="20" selection-start="5243" selection-end="5243" vertical-scroll-proportion="0.028169014" vertical-offset="0" max-vertical-offset="0">
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="148" column="103" selection-start="15709" selection-end="15709" vertical-scroll-proportion="4.2528734">
+        <state line="165" column="62" selection-start="16476" selection-end="16476" vertical-scroll-proportion="0.6886657" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Client.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="723" column="0" selection-start="20512" selection-end="20512" vertical-scroll-proportion="-5.271831" vertical-offset="0" max-vertical-offset="0">
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/AnnounceResponseListener.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="-0.43521127" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Handshake.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="33" column="15" selection-start="1008" selection-end="1008" vertical-scroll-proportion="0.1971831" vertical-offset="0" max-vertical-offset="0">
+          <folding>
+            <element signature="docComment;class#Handshake#0" expanded="false" />
+            <element signature="method#getData#0;class#Handshake#0" expanded="false" />
+            <element signature="method#getInfoHash#0;class#Handshake#0" expanded="false" />
+            <element signature="method#getPeerId#0;class#Handshake#0" expanded="false" />
+            <element signature="method#parse#0;class#Handshake#0" expanded="false" />
+            <element signature="method#craft#0;class#Handshake#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/protocol/http/HTTPAnnounceResponseMessage.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="56" column="93" selection-start="1887" selection-end="1887" vertical-scroll-proportion="0.4169014" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/tracker/TrackerService.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="247" column="0" selection-start="8193" selection-end="8193" vertical-scroll-proportion="0.27605635" vertical-offset="0" max-vertical-offset="0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/TrackerClient.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="30" column="22" selection-start="1021" selection-end="1021" vertical-scroll-proportion="0.0" vertical-offset="580" max-vertical-offset="3640">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/announce/Announce.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="56" column="18" selection-start="1823" selection-end="1823" vertical-scroll-proportion="0.0" vertical-offset="1100" max-vertical-offset="5800">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/pom.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="20" column="39" selection-start="784" selection-end="784" vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/Piece.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="314" column="87" selection-start="9752" selection-end="9752" vertical-scroll-proportion="0.69665074" vertical-offset="4992" max-vertical-offset="6860">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/common/Torrent.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="816" column="116" selection-start="24727" selection-end="24727" vertical-scroll-proportion="0.0" vertical-offset="14802" max-vertical-offset="16920">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/peer/PeerActivityListener.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="138" column="67" selection-start="3892" selection-end="3892" vertical-scroll-proportion="0.0" vertical-offset="1462" max-vertical-offset="2520">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/com/turn/ttorrent/client/SharedTorrent.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="53" column="68" selection-start="1801" selection-end="1801" vertical-scroll-proportion="1.488764" vertical-offset="0" max-vertical-offset="17940">
+          <folding>
+            <element signature="n#!!doc" expanded="true" />
+            <element signature="imports" expanded="true" />
+            <element signature="e#7042#7055#0" expanded="true" />
+            <element signature="e#10929#10944#0" expanded="true" />
+            <element signature="e#12550#12557#0" expanded="true" />
+            <element signature="e#20106#20113#0" expanded="true" />
+            <element signature="e#20292#20299#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

@@ -197,22 +197,6 @@ public class Tracker {
     }
 
     /**
-   *
-   * @return map of tracker's torrents (hash/tracked torrent)
-   */
-    public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-        return torrents;
-    }
-
-  /**
-   *
-   * @return list of tracker's torrents
-   */
-    public Collection<TrackedTorrent> getTrackedTorrents(){
-        return torrents.values();
-    }
-
-  /**
 	 * Announce a new torrent on this tracker.
 	 *
 	 * <p>
@@ -272,6 +256,13 @@ public class Tracker {
     }
 
 	/**
+   * @return all tracked torrents.
+   */
+  public Collection<TrackedTorrent> getTrackedTorrents() {
+    return Collections.unmodifiableCollection(this.torrents.values());
+  }
+
+  /**
 	 * Timer task for removing a torrent from a tracker.
 	 *
 	 * <p>

@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.Piece;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 
 import java.io.IOException;
 
@@ -134,4 +135,6 @@ public interface PeerActivityListener extends EventListener {
 	 * @param ioe The IOException object, for reporting.
 	 */
 	public void handleIOException(SharingPeer peer, IOException ioe);
+
+  public void sendPeerMessage(SharingPeer peer, PeerMessage message);
 }

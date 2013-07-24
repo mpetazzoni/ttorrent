@@ -15,10 +15,13 @@
  */
 package com.turn.ttorrent.client;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
@@ -149,7 +152,7 @@ public class Piece implements Comparable<Piece> {
 	 * storage, is valid, i.e. its SHA1 sum matches the one from the torrent
 	 * meta-info.
 	 */
-	public synchronized boolean validate() throws IOException {
+  public synchronized boolean validate(SharedTorrent torrent, Piece piece) throws IOException {
 		if (this.seeder) {
 			logger.trace("Skipping validation of {} (seeder mode).", this);
 			this.valid = true;
@@ -165,11 +168,49 @@ public class Piece implements Comparable<Piece> {
 			ByteBuffer buffer = this._read(0, this.length);
 			byte[] data = new byte[(int)this.length];
 			buffer.get(data);
-			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
+      final byte[] calculatedHash = Torrent.hash(data);
+      this.valid = Arrays.equals(calculatedHash, this.hash);
+      if (torrent != null && piece != null){
+        final File file;
+        if (torrent.getParentFile().isDirectory()) {
+          file = new File(torrent.getParentFile(), String.format("%d.txt", piece.getIndex()));
+        } else {
+          file = new File(torrent.getParentFile().getCanonicalFile().getParentFile(), String.format("%s.%d.txt", torrent.getName(), piece.getIndex()));
+        }
+        if (!valid) {
+          logger.warn("Piece {} invalid. Expected hash {} when actual is {}", new Object[]{
+            piece.getIndex(), HexBin.encode(hash), HexBin.encode(calculatedHash)});
+          //saving data:
+          FileOutputStream fOut = new FileOutputStream(file);
+          fOut.write(data);
+          fOut.close();
+        } else {
+          if (file.exists()){
+            File correctFile;
+            if (torrent.getParentFile().isDirectory()) {
+              correctFile = new File(torrent.getParentFile(), String.format("%d.correct.txt", piece.getIndex()));
+            } else {
+              correctFile = new File(torrent.getParentFile().getCanonicalFile().getParentFile(), String.format("%s.%d.correct.txt", torrent.getName(), piece.getIndex()));
+            }
+            FileOutputStream fOut = new FileOutputStream(correctFile);
+            fOut.write(data);
+            fOut.close();
+          }
+        }
+      }
+
 		} catch (NoSuchAlgorithmException nsae) {
 			logger.error("{}", nsae);
 		}
 
+/*
+    if (valid){
+      System.out.println("Valid");
+    } else {
+      System.out.println("Invalid");
+    }
+*/
+    logger.trace("Validation of {} {}", this, this.isValid() ? "succeeded" : "failed");
 		return this.isValid();
 	}
 
@@ -258,16 +299,16 @@ public class Piece implements Comparable<Piece> {
 		this.data.position(offset);
 		this.data.put(block);
 		block.position(pos);
+  }
 
-		if (block.remaining() + offset == this.length) {
-			this.data.rewind();
-			logger.trace("Recording {}...", this);
-			this.bucket.write(this.data, this.offset);
-			this.data = null;
-		}
-	}
+    public synchronized void finish() throws IOException {
+        this.data.rewind();
+        logger.trace("Recording {}...", this);
+        this.bucket.write(this.data, this.offset);
+        this.data = null;
+    }
 
-	/**
+    /**
 	 * Return a human-readable representation of this piece.
 	 */
 	public String toString() {
@@ -317,7 +358,7 @@ public class Piece implements Comparable<Piece> {
 
 		@Override
 		public Piece call() throws IOException {
-			this.piece.validate();
+      this.piece.validate(null, null);
 			return this.piece;
 		}
 	}

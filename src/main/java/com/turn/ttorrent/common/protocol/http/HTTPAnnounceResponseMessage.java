@@ -120,8 +120,8 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 			} else {
 			return new HTTPAnnounceResponseMessage(data,
 				params.get("interval").getInt(),
-				params.get("complete").getInt(),
-				params.get("incomplete").getInt(),
+          params.get("complete") != null ? params.get("complete").getInt() : 0,
+          params.get("incomplete") != null ? params.get("incomplete").getInt() : 0,
 				peers);
 			}
 		} catch (InvalidBEncodingException ibee) {
@@ -197,9 +197,27 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @param peers
 	 */
 	public static HTTPAnnounceResponseMessage craft(int interval,
-                                                    int complete, int incomplete,
-                                                    List<Peer> peers) throws IOException {
-        return craft(interval, complete, incomplete, peers, null);
+                                                  int minInterval, String trackerId, int complete, int incomplete,
+                                                  List<Peer> peers) throws IOException, UnsupportedEncodingException {
+    Map<String, BEValue> response = new HashMap<String, BEValue>();
+    response.put("interval", new BEValue(interval));
+    response.put("complete", new BEValue(complete));
+    response.put("incomplete", new BEValue(incomplete));
+
+    ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
+    for (Peer peer : peers) {
+      byte[] ip = peer.getRawIp();
+      if (ip == null || ip.length != 4) {
+        continue;
+      }
+      data.put(ip);
+      data.putShort((short) peer.getPort());
+    }
+    response.put("peers", new BEValue(data.array()));
+
+    return new HTTPAnnounceResponseMessage(
+      BEncoder.bencode(response),
+      interval, complete, incomplete, peers);
 	}
 	
 	/**
@@ -210,8 +228,9 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @param incomplete
 	 * @param peers
 	 */
-	public static HTTPAnnounceResponseMessage craft(int interval, int complete, int incomplete,
-                                                    List<Peer> peers, String hexInfoHash) throws IOException {
+  public static HTTPAnnounceResponseMessage craft(int interval,
+                                                  int minInterval, String trackerId, int complete, int incomplete,
+                                                  List<Peer> peers, String hexInfoHash) throws IOException, UnsupportedEncodingException {
 		Map<String, BEValue> response = new HashMap<String, BEValue>();
 		response.put("interval", new BEValue(interval));
 		response.put("complete", new BEValue(complete));

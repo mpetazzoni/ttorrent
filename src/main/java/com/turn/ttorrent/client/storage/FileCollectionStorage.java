@@ -58,7 +58,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		this.files = files;
 		this.size = size;
 
-		logger.info("Initialized torrent byte storage on {} file(s) " +
+    logger.debug("Initialized torrent byte storage on {} file(s) " +
 			"({} total byte(s)).", files.size(), size);
 	}
 
@@ -94,7 +94,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 		for (FileOffset fo : this.select(offset, requested)) {
 			buffer.limit(bytes + (int)fo.length);
-			bytes += fo.file.write(buffer, fo.offset);
+      bytes += fo.file.write(buffer, (int) fo.offset);
 		}
 
 		if (bytes < requested) {

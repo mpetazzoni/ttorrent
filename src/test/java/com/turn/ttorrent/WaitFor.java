@@ -3,21 +3,15 @@ package com.turn.ttorrent;
 public abstract class WaitFor {
   private long myPollInterval = 100;
 
-    private boolean myIsConditionMet = false;
-
-    public static final long DEFAULT_POLL_INTERVAL = 100;
-    public static final long DEFAULT_TIMEOUT = 15*1000;
-
   protected WaitFor() {
-    this(DEFAULT_TIMEOUT,DEFAULT_POLL_INTERVAL);
+    this(60 * 1000);
   }
 
-  protected WaitFor(long timeout, long pollInterval) {
-    myPollInterval = pollInterval;
+  protected WaitFor(long timeout) {
     long started = System.currentTimeMillis();
     try {
       while(true) {
-        if (myIsConditionMet=condition()) return;
+        if (condition()) return;
         if (System.currentTimeMillis() - started < timeout) {
           Thread.sleep(myPollInterval);
         } else {
@@ -30,13 +24,10 @@ public abstract class WaitFor {
     }
   }
 
-  protected WaitFor(long timeout) {
-      this(timeout, DEFAULT_POLL_INTERVAL);
+  protected WaitFor(long timeout, long pollInterval) {
+    this(timeout);
+    myPollInterval = pollInterval;
   }
 
-    public boolean isConditionMet() {
-        return myIsConditionMet;
-    }
-
-    protected abstract boolean condition();
+  protected abstract boolean condition();
 }

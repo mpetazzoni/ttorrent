@@ -3,6 +3,10 @@ package com.turn.ttorrent;
 import java.io.*;
 import java.util.*;
 
+/**
+ * @author Pavel.Sher
+ *         Date: 05.03.2008
+ */
 public class TempFiles {
   private static final File ourCurrentTempDir = FileUtil.getTempDirectory();
   private final File myCurrentTempDir;

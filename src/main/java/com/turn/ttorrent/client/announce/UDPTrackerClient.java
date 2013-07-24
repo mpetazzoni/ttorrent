@@ -137,13 +137,13 @@ public class UDPTrackerClient extends TrackerClient {
 
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvents) throws AnnounceException {
+                       boolean inhibitEvents, SharedTorrent torrent) throws AnnounceException {
 		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
 			new Object[] {
 				this.formatAnnounceEvent(event),
-				this.torrent.getUploaded(),
-				this.torrent.getDownloaded(),
-				this.torrent.getLeft()
+        torrent.getUploaded(),
+        torrent.getDownloaded(),
+        torrent.getLeft()
 			});
 
 		State state = State.CONNECT_REQUEST;
@@ -195,12 +195,12 @@ public class UDPTrackerClient extends TrackerClient {
 						break;
 
 					case ANNOUNCE_REQUEST:
-						this.send(this.buildAnnounceRequest(event).getData());
+            this.send(this.buildAnnounceRequest(event, torrent).getData());
 
 						try {
 							this.handleTrackerAnnounceResponse(
 								UDPTrackerMessage.UDPTrackerResponseMessage
-									.parse(this.recv(attempts)), inhibitEvents);
+                  .parse(this.recv(attempts)), inhibitEvents, torrent.getHexInfoHash());
 							// If we got here, we succesfully completed this
 							// announce exchange and can simply return to exit the
 							// loop.
@@ -247,9 +247,9 @@ public class UDPTrackerClient extends TrackerClient {
 	 */
 	@Override
 	protected void handleTrackerAnnounceResponse(TrackerMessage message,
-		boolean inhibitEvents) throws AnnounceException {
+                                               boolean inhibitEvents, String hexInfoHash) throws AnnounceException {
 		this.validateTrackerResponse(message);
-		super.handleTrackerAnnounceResponse(message, inhibitEvents);
+    super.handleTrackerAnnounceResponse(message, inhibitEvents, hexInfoHash);
 	}
 
 	/**
@@ -266,15 +266,15 @@ public class UDPTrackerClient extends TrackerClient {
 	}
 
 	private UDPAnnounceRequestMessage buildAnnounceRequest(
-		AnnounceRequestMessage.RequestEvent event) {
+    AnnounceRequestMessage.RequestEvent event, SharedTorrent torrent) {
 		return UDPAnnounceRequestMessage.craft(
 			this.connectionId,
 			transactionId,
-			this.torrent.getInfoHash(),
+      torrent.getInfoHash(),
 			this.peer.getPeerId().array(),
-			this.torrent.getDownloaded(),
-			this.torrent.getUploaded(),
-			this.torrent.getLeft(),
+      torrent.getDownloaded(),
+      torrent.getUploaded(),
+      torrent.getLeft(),
 			event,
 			this.peer.getAddress(),
 			0,

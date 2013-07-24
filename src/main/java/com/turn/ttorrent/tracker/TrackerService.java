@@ -243,6 +243,8 @@ public class TrackerService implements Container {
 		try {
 			announceResponse = HTTPAnnounceResponseMessage.craft(
 				torrent.getAnnounceInterval(),
+        TrackedTorrent.MIN_ANNOUNCE_INTERVAL_SECONDS,
+        this.version,
 				torrent.seeders(),
 				torrent.leechers(),
         peer == null ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),

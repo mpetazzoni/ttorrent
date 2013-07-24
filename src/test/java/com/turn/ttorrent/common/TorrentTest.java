@@ -1,5 +1,6 @@
 package com.turn.ttorrent.common;
 
+import junit.framework.TestCase;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -8,10 +9,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
 
-import static org.testng.Assert.assertEquals;
-
 @Test
-public class TorrentTest  {
+public class TorrentTest extends TestCase {
 
   public void test_create_torrent() throws URISyntaxException, IOException, NoSuchAlgorithmException, InterruptedException {
     URI announceURI = new URI("http://localhost:6969/announce");
@@ -22,7 +21,7 @@ public class TorrentTest  {
   }
 
   public void load_torrent_created_by_utorrent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
-    Torrent t = Torrent.load(new File("src/test/resources/torrents/file1.jar.torrent"));
+    Torrent t = Torrent.load(new File("src/test/resources/torrents/file1.jar.torrent"), null);
     assertEquals(new URI("http://localhost:6969/announce"), t.getAnnounceList().get(0).get(0));
     assertEquals("B92D38046C76D73948E14C42DF992CAF25489D08", t.getHexInfoHash());
     assertEquals("uTorrent/3130", t.getCreatedBy());

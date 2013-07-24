@@ -35,16 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -77,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure">Torrent meta-info file structure specification</a>
  */
-public class Torrent implements TorrentHash {
+public class Torrent extends Observable implements TorrentHash {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(Torrent.class);
@@ -463,20 +454,7 @@ public class Torrent implements TorrentHash {
 	 * @return How many threads to use for concurrent piece hashing.
 	 */
 	protected static int getHashingThreadsCount() {
-		String threads = System.getenv("TTORRENT_HASHING_THREADS");
-
-		if (threads != null) {
-			try {
-				int count = Integer.parseInt(threads);
-				if (count > 0) {
-					return count;
-				}
-			} catch (NumberFormatException nfe) {
-				// Pass
-			}
-		}
-
-		return Runtime.getRuntime().availableProcessors();
+    return hashingThreadsCount;
 	}
 
 	/** Torrent loading ---------------------------------------------------- */
@@ -494,9 +472,9 @@ public class Torrent implements TorrentHash {
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent)
+  public static Torrent load(File torrent, File parent)
 		throws IOException, NoSuchAlgorithmException {
-		return Torrent.load(torrent, false);
+    return Torrent.load(torrent, parent, false);
 	}
 
 	/**
@@ -509,7 +487,7 @@ public class Torrent implements TorrentHash {
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent, boolean seeder)
+  public static Torrent load(File torrent, File parent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		FileInputStream fis = null;
 		try {
@@ -542,7 +520,7 @@ public class Torrent implements TorrentHash {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		return Torrent.create(source, null, announce, null, createdBy);
+    return Torrent.create(source, null, announce, createdBy);
 	}
 
 	/**
@@ -644,22 +622,7 @@ public class Torrent implements TorrentHash {
 		}
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-
-		if (announce != null) {
 			torrent.put("announce", new BEValue(announce.toString()));
-		}
-		if (announceList != null) {
-			List<BEValue> tiers = new LinkedList<BEValue>();
-			for (List<URI> trackers : announceList) {
-				List<BEValue> tierInfo = new LinkedList<BEValue>();
-				for (URI trackerURI : trackers) {
-					tierInfo.add(new BEValue(trackerURI.toString()));
-				}
-				tiers.add(new BEValue(tierInfo));
-			}
-			torrent.put("announce-list", new BEValue(tiers));
-		}
-		
 		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
@@ -752,30 +715,26 @@ public class Torrent implements TorrentHash {
 
 	private static String hashFiles(List<File> files)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		int threads = getHashingThreadsCount();
-		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
-		List<Future<String>> results = new LinkedList<Future<String>>();
-		StringBuilder hashes = new StringBuilder();
+    List<Future<String>> results = new LinkedList<Future<String>>();
+    long length = 0L;
 
-		long length = 0L;
-		int pieces = 0;
+		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+
+    int numConcurrentThreads = getHashingThreadsCount();
+
+    ExecutorService executor = Executors.newFixedThreadPool(numConcurrentThreads);
+
+		StringBuilder hashes = new StringBuilder();
 
 		long start = System.nanoTime();
 		for (File file : files) {
-			logger.info("Hashing data from {} with {} threads ({} pieces)...",
-				new Object[] {
-					file.getName(),
-					threads,
-					(int) (Math.ceil(
-						(double)file.length() / Torrent.PIECE_LENGTH))
-				});
+      logger.info("Analyzing local data for {} with {} threads...",
+        file.getName(), getHashingThreadsCount());
 
 			length += file.length();
 
 			FileInputStream fis = new FileInputStream(file);
 			FileChannel channel = fis.getChannel();
-			int step = 10;
 
 			try {
 				while (channel.read(buffer) > 0) {
@@ -784,13 +743,10 @@ public class Torrent implements TorrentHash {
 						results.add(executor.submit(new CallableChunkHasher(buffer)));
 					}
 
-					if (results.size() >= threads) {
-						pieces += accumulateHashes(hashes, results);
-					}
-
-					if (channel.position() / (double)channel.size() * 100f > step) {
-						logger.info("  ... {}% complete", step);
-						step += 10;
+          if (results.size() >= numConcurrentThreads) {
+            // process hashers, otherwise they will spend too much memory
+            calculateHashes(results, hashes);
+            results.clear();
 					}
 				}
 			} finally {
@@ -806,7 +762,7 @@ public class Torrent implements TorrentHash {
 			results.add(executor.submit(new CallableChunkHasher(buffer)));
 		}
 
-		pieces += accumulateHashes(hashes, results);
+    calculateHashes(results, hashes);
 
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
@@ -822,7 +778,7 @@ public class Torrent implements TorrentHash {
 			new Object[] {
 				files.size(),
 				length,
-				pieces,
+        results.size(),
 				expectedPieces,
 				String.format("%.1f", elapsed/1e6),
 			});
@@ -830,53 +786,40 @@ public class Torrent implements TorrentHash {
 		return hashes.toString();
 	}
 
-	/**
-	 * Accumulate the piece hashes into a given {@link StringBuilder}.
-	 *
-	 * @param hashes The {@link StringBuilder} to append hashes to.
-	 * @param results The list of {@link Future}s that will yield the piece
-	 *	hashes.
-	 */
-	private static int accumulateHashes(StringBuilder hashes,
-			List<Future<String>> results) throws InterruptedException, IOException {
+  private static void calculateHashes(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
 		try {
-			int pieces = results.size();
 			for (Future<String> chunk : results) {
 				hashes.append(chunk.get());
 			}
-			results.clear();
-			return pieces;
 		} catch (ExecutionException ee) {
 			throw new IOException("Error while hashing the torrent data!", ee);
 		}
 	}
 
 	/**
-	 * Display program usage on the given {@link PrintStream}.
+   * Sets max number of threads to use when hash for file is calculated.
+   *
+   * @param hashingThreadsCount number of concurrent threads for file hash calculation
 	 */
-	private static void usage(PrintStream s) {
-		usage(s, null);
+  public static void setHashingThreadsCount(int hashingThreadsCount) {
+    Torrent.hashingThreadsCount = hashingThreadsCount;
 	}
 
-	/**
-	 * Display a message and program usage on the given {@link PrintStream}.
-	 */
-	private static void usage(PrintStream s, String msg) {
-		if (msg != null) {
-			s.println(msg);
-			s.println();
-		}
+  private static int hashingThreadsCount = Runtime.getRuntime().availableProcessors();
 
-		s.println("usage: Torrent [options] [file|directory]");
-		s.println();
-		s.println("Available options:");
-		s.println("  -h,--help             Show this help and exit.");
-		s.println("  -t,--torrent FILE     Use FILE to read/write torrent file.");
-		s.println();
-		s.println("  -c,--create           Create a new torrent file using " +
-			"the given announce URL and data.");
-		s.println("  -a,--announce         Tracker URL (can be repeated).");
-		s.println();
+  static {
+    String threads = System.getenv("TTORRENT_HASHING_THREADS");
+
+    if (threads != null) {
+      try {
+        int count = Integer.parseInt(threads);
+        if (count > 0) {
+          hashingThreadsCount = count;
+        }
+      } catch (NumberFormatException nfe) {
+        // Pass
+      }
+		}
 	}
 
 	/**
@@ -891,57 +834,31 @@ public class Torrent implements TorrentHash {
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%-5p: %m%n")));
+      new PatternLayout("%d [%-25t] %-5p: %m%n")));
 
-		CmdLineParser parser = new CmdLineParser();
-		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
-		CmdLineParser.Option filename = parser.addStringOption('t', "torrent");
-		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
-		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
+    if (args.length != 1 && args.length != 3) {
+      System.err.println("usage: Torrent <torrent> [announce url] " +
+        "[file|directory]");
+      System.exit(1);
+    }
 
 		try {
-			parser.parse(args);
-		} catch (CmdLineParser.OptionException oe) {
-			System.err.println(oe.getMessage());
-			usage(System.err);
-			System.exit(1);
-		}
+      File outfile = new File(args[0]);
 
-		// Display help and exit if requested
-		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
-			usage(System.out);
+			/*
+             * If only one argument is provided, we just want to get
+			 * information about the torrent. Load the torrent to trigger the
+			 * information dump and exit.
+			 */
+      if (args.length == 1) {
+        logger.info("Dumping information on torrent {}...",
+          outfile.getAbsolutePath());
+        Torrent.load(outfile, null);
 			System.exit(0);
 		}
 
-		String filenameValue = (String)parser.getOptionValue(filename);
-		if (filenameValue == null) {
-			usage(System.err, "Torrent file must be provided!");
-			System.exit(1);
-		}
-
-		Boolean createFlag = (Boolean)parser.getOptionValue(create);
-		String announceURL = (String)parser.getOptionValue(announce);
-
-		String[] otherArgs = parser.getRemainingArgs();
-
-		if (Boolean.TRUE.equals(createFlag) &&
-				(otherArgs.length != 1 || announceURL == null)) {
-			usage(System.err, "Announce URL and a file or directory must be " +
-				"provided to create a torrent file!");
-			System.exit(1);
-		}
-
-		OutputStream fos = null;
-		try {
-			if (Boolean.TRUE.equals(createFlag)) {
-				if (filenameValue != null) {
-					fos = new FileOutputStream(filenameValue);
-				} else {
-					fos = System.out;
-				}
-
-				URI announceURI = new URI(announceURL);
-				File source = new File(otherArgs[0]);
+      URI announce = new URI(args[1]);
+      File source = new File(args[2]);
 				if (!source.exists() || !source.canRead()) {
 					throw new IllegalArgumentException(
 						"Cannot access source file or directory " +
@@ -954,27 +871,18 @@ public class Torrent implements TorrentHash {
 				Torrent torrent = null;
 				if (source.isDirectory()) {
 					File[] files = source.listFiles();
+        assert files != null;
 					Arrays.sort(files);
 					torrent = Torrent.create(source, Arrays.asList(files),
-						announceURI, creator);
+          announce, creator);
 				} else {
-					torrent = Torrent.create(source, announceURI, creator);
+        torrent = Torrent.create(source, announce, creator);
 				}
 
-              fos.write(torrent.getEncoded());
-            } else {
-				Torrent.load(new File(filenameValue), true);
-			}
+      torrent.save(outfile);
 		} catch (Exception e) {
 			logger.error("{}", e.getMessage(), e);
 			System.exit(2);
-		} finally {
-			if (fos != null && fos != System.out) {
-				try {
-					fos.close();
-				} catch (IOException ioe) {
-				}
-			}
 		}
 	}
 }
