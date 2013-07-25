@@ -317,23 +317,33 @@ public class Piece implements Comparable<Piece> {
 			this.isValid() ? "+" : "-");
 	}
 
-	/**
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof Piece) {
+      return this.index == ((Piece)obj).index;
+    } else {
+      return false;
+    }
+  }
+
+  /**
 	 * Piece comparison function for ordering pieces based on their
 	 * availability.
 	 *
 	 * @param other The piece to compare with, should not be <em>null</em>.
 	 */
 	public int compareTo(Piece other) {
-		if (this == other) {
-			return 0;
-		}
-
-		if (this.seen < other.seen) {
-			return -1;
-		} else {
-			return 1;
-		}
-	}
+      // return true for the same pieces, otherwise sort by time seen, then by index;
+      if (this.equals(other)) {
+        return 0;
+      } else if (this.seen == other.seen) {
+        return Integer.compare(this.index, other.index);
+      } else if (this.seen < other.seen) {
+        return -1;
+      } else {
+        return 1;
+      }
+    }
 
 	/**
 	 * A {@link Callable} to call the piece validation function.

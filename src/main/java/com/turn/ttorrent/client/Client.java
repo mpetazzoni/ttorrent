@@ -178,7 +178,9 @@ public class Client implements Runnable,
     }
   }
 
-
+  public InetAddress getAddress(){
+    return service.getSocketAddress().getAddress();
+  }
   /**
    * Get this client's peer specification.
    */
@@ -805,8 +807,8 @@ public class Client implements Runnable,
           remote.send(have);
         }
       } else {
-          logger.warn("Downloaded piece#{} from {} was not valid ;-(",
-                  piece.getIndex(), peer);
+        logger.warn("Downloaded piece#{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
+        peer.getPoorlyAvailablePieces().set(piece.getIndex());
       }
 
       if (torrent.isComplete()) {

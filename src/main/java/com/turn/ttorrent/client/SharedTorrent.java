@@ -632,6 +632,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     BitSet interesting = peer.getAvailablePieces();
     interesting.andNot(this.completedPieces);
     interesting.andNot(this.requestedPieces);
+    interesting.andNot(peer.getPoorlyAvailablePieces());
 
     logger.trace("Peer {} is ready and has {} interesting piece(s).",
             peer, interesting.cardinality());

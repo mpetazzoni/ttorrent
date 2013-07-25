@@ -48,7 +48,6 @@ public class HTTPTrackerClient extends TrackerClient {
 	/**
 	 * Create a new HTTP announcer for the given torrent.
 	 *
-	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our own peer specification.
 	 */
   protected HTTPTrackerClient(Peer peer, URI tracker) {

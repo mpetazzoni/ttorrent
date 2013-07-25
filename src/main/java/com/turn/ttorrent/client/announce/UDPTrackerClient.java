@@ -109,12 +109,11 @@ public class UDPTrackerClient extends TrackerClient {
 	};
 
 	/**
-	 * 
-	 * @param torrent
-	 */
-	protected UDPTrackerClient(SharedTorrent torrent, Peer peer, URI tracker)
+	 *
+     */
+	protected UDPTrackerClient(Peer peer, URI tracker)
 		throws UnknownHostException {
-		super(torrent, peer, tracker);
+		super(peer, tracker);
 
 		/**
 		 * The UDP announce request protocol only supports IPv4

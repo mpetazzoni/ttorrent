@@ -71,7 +71,7 @@ public class ConnectionHandler implements Runnable {
     LoggerFactory.getLogger(ConnectionHandler.class);
 
   public static final int PORT_RANGE_START = 6881;
-  public static final int PORT_RANGE_END = 6889;
+  public static final int PORT_RANGE_END = 6989;
 
   private static final int OUTBOUND_CONNECTIONS_POOL_SIZE = 20;
   private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 10;
@@ -119,7 +119,17 @@ public class ConnectionHandler implements Runnable {
       try {
 				this.myServerSocketChannel = ServerSocketChannel.open();
 				this.myServerSocketChannel.socket().bind(tryAddress);
-				this.myServerSocketChannel.configureBlocking(false);
+                this.myServerSocketChannel.configureBlocking(false);
+                if (!this.myServerSocketChannel.socket().isBound()){
+                  myServerSocketChannel.close();
+                  continue;
+                }
+                if (!this.myServerSocketChannel.socket().isBound()){
+                  this.myServerSocketChannel.socket().bind(tryAddress);
+                  if (!this.myServerSocketChannel.socket().isBound()){
+                    System.out.println("Here");
+                  }
+                }
         this.address = tryAddress;
         break;
       } catch (IOException ioe) {
@@ -128,7 +138,7 @@ public class ConnectionHandler implements Runnable {
       }
     }
 
-		if (this.myServerSocketChannel == null || !this.myServerSocketChannel.socket().isBound()) {
+	if (this.myServerSocketChannel == null || !this.myServerSocketChannel.socket().isBound()) {
       throw new IOException("No available port for the BitTorrent client!");
     }
     logger.info("Listening for incoming connections on {}.", this.address);

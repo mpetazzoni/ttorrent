@@ -74,7 +74,7 @@ public class Torrent extends Observable implements TorrentHash {
 		LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int PIECE_LENGTH = 512 * 1024;
+	private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
 
@@ -610,8 +610,13 @@ public class Torrent extends Observable implements TorrentHash {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	private static Torrent create(File parent, List<File> files, URI announce,
-			List<List<URI>> announceList, String createdBy)
+	public static Torrent create(File parent, List<File> files, URI announce,List<List<URI>> announceList, String createdBy)
+			throws NoSuchAlgorithmException, InterruptedException, IOException {
+      return create(parent, files, announce, announceList, createdBy, DEFAULT_PIECE_LENGTH);
+    }
+
+	public static Torrent create(File parent, List<File> files, URI announce,
+                                  List<List<URI>> announceList, String createdBy, final int pieceSize)
 			throws NoSuchAlgorithmException, InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -628,11 +633,11 @@ public class Torrent extends Observable implements TorrentHash {
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
-		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+		info.put("piece length", new BEValue(pieceSize));
 
 		if (files == null || files.isEmpty()) {
 			info.put("length", new BEValue(parent.length()));
-			info.put("pieces", new BEValue(Torrent.hashFile(parent),
+			info.put("pieces", new BEValue(Torrent.hashFile(parent, pieceSize),
 				Torrent.BYTE_ENCODING));
 		} else {
 			List<BEValue> fileInfo = new LinkedList<BEValue>();
@@ -654,7 +659,7 @@ public class Torrent extends Observable implements TorrentHash {
 				fileInfo.add(new BEValue(fileMap));
 			}
 			info.put("files", new BEValue(fileInfo));
-			info.put("pieces", new BEValue(Torrent.hashFiles(files),
+			info.put("pieces", new BEValue(Torrent.hashFiles(files, pieceSize),
 				Torrent.BYTE_ENCODING));
 		}
 		torrent.put("info", new BEValue(info));
@@ -698,7 +703,7 @@ public class Torrent extends Observable implements TorrentHash {
 	 *
 	 * <p>
 	 * Hashes the given file piece by piece using the default Torrent piece
-	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
+	 * length (see {@link #DEFAULT_PIECE_LENGTH}) and returns the concatenation of
 	 * these hashes, as a string.
 	 * </p>
 	 *
@@ -708,17 +713,17 @@ public class Torrent extends Observable implements TorrentHash {
 	 *
 	 * @param file The file to hash.
 	 */
-	private static String hashFile(File file)
+	private static String hashFile(final File file, final int pieceSize)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }));
+		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceSize);
 	}
 
-	private static String hashFiles(List<File> files)
+	private static String hashFiles(final List<File> files, final int pieceSize)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
     List<Future<String>> results = new LinkedList<Future<String>>();
     long length = 0L;
 
-		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+		ByteBuffer buffer = ByteBuffer.allocate(pieceSize);
 
     int numConcurrentThreads = getHashingThreadsCount();
 
@@ -773,7 +778,7 @@ public class Torrent extends Observable implements TorrentHash {
 		long elapsed = System.nanoTime() - start;
 
 		int expectedPieces = (int) (Math.ceil(
-				(double)length / Torrent.PIECE_LENGTH));
+				(double)length / pieceSize));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),

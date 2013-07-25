@@ -38,7 +38,6 @@ public abstract class TrackerClient {
     /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
-	protected final SharedTorrent torrent;
 	protected final Peer peer;
 	protected final URI tracker;
 

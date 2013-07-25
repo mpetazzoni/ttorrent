@@ -83,7 +83,6 @@ public class UDPAnnounceResponseMessage
 		return this.peers;
 	}
 
-  @Override
   public String getHexInfoHash() {
     return "";
   }

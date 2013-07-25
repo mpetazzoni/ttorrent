@@ -3,6 +3,7 @@ package com.turn.ttorrent.tracker;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.ClientState;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Torrent;
 import junit.framework.TestCase;
@@ -13,9 +14,11 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.zip.CRC32;
@@ -289,6 +292,259 @@ public class TrackerTest extends TestCase {
 
   }
 
+  public void no_full_seeder_test() throws IOException, URISyntaxException, InterruptedException, NoSuchAlgorithmException {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int numSeeders = 10;
+    final int piecesCount = numSeeders * 3 + 15;
+
+    final List<Client> clientsList;
+    clientsList = new ArrayList<Client>(piecesCount);
+
+    final MessageDigest md5 = MessageDigest.getInstance("MD5");
+
+    try {
+      File tempFile = tempFiles.createTempFile(piecesCount * pieceSize);
+
+      createMultipleSeedersWithDifferentPieces(tempFile, piecesCount, pieceSize, numSeeders, clientsList);
+      String baseMD5 = getFileMD5(tempFile, md5);
+
+      validateMultipleClientsResults(clientsList, md5, tempFile, baseMD5);
+
+    } finally {
+      for (Client client : clientsList) {
+        client.stop();
+      }
+    }
+  }
+
+  @Test(invocationCount = 50)
+  public void bad_seeder() throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int numSeeders = 5;
+    final int piecesCount = numSeeders +7;
+
+    final List<Client> clientsList;
+    clientsList = new ArrayList<Client>(piecesCount);
+
+    final MessageDigest md5 = MessageDigest.getInstance("MD5");
+
+    try {
+      File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
+
+      createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
+      String baseMD5 = getFileMD5(baseFile, md5);
+      Client firstClient = clientsList.get(0);
+      final SharedTorrent torrent = firstClient.getTorrents().iterator().next();
+      {
+        File file = new File(torrent.getParentFile(), torrent.getFilenames().get(0));
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+        raf.seek(0);
+        final int read = raf.read();
+        raf.seek(0);
+        // replacing the byte
+        if (read != 35) {
+          raf.write(35);
+        } else {
+          raf.write(45);
+        }
+        raf.close();
+      }
+
+      {
+        byte[] piece = new byte[pieceSize];
+        FileInputStream fin = new FileInputStream(baseFile);
+        fin.read(piece);
+        fin.close();
+
+        final File baseDir = tempFiles.createTempDir();
+        final File seederPiecesFile = new File(baseDir, baseFile.getName());
+        RandomAccessFile raf = new RandomAccessFile(seederPiecesFile, "rw");
+        raf.setLength(baseFile.length());
+        raf.seek(0);
+        raf.write(piece);
+        Client client = createClient();
+        clientsList.add(client);
+        client.addTorrent(new SharedTorrent(torrent, baseDir, false));
+        client.share();
+      }
+
+      validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5);
+
+    } finally {
+      for (Client client : clientsList) {
+        client.stop();
+      }
+    }
+  }
+
+  public void corrupted_seeder_repair()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int numSeeders = 5;
+    final int piecesCount = numSeeders +7;
+
+    final List<Client> clientsList;
+    clientsList = new ArrayList<Client>(piecesCount);
+
+    final MessageDigest md5 = MessageDigest.getInstance("MD5");
+
+    try {
+      File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
+
+      createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
+      String baseMD5 = getFileMD5(baseFile, md5);
+      Client firstClient = clientsList.get(0);
+      final SharedTorrent torrent = firstClient.getTorrents().iterator().next();
+      final File file = new File(torrent.getParentFile(), torrent.getFilenames().get(0));
+      final int oldByte;
+      {
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+        raf.seek(0);
+        oldByte = raf.read();
+        raf.seek(0);
+        // replacing the byte
+        if (oldByte != 35) {
+          raf.write(35);
+        } else {
+          raf.write(45);
+        }
+        raf.close();
+      }
+      final WaitFor waitFor = new WaitFor(30 * 1000, 1000) {
+        @Override
+        protected boolean condition() {
+          for (Client client : clientsList) {
+            final SharedTorrent next = client.getTorrents().iterator().next();
+            if (next.getCompletedPieces().cardinality() < next.getCompletedPieces().size()-1){
+              return false;
+            }
+          }
+          return true;
+        }
+      };
+
+      if (!waitFor.isMyResult()){
+        fail("All seeders didn't get their files:" + myLogfile);
+      }
+
+      {
+        byte[] piece = new byte[pieceSize];
+        FileInputStream fin = new FileInputStream(baseFile);
+        fin.read(piece);
+        fin.close();
+        RandomAccessFile raf;
+        try {
+          raf = new RandomAccessFile(file, "rw");
+          raf.seek(0);
+          raf.write(oldByte);
+          raf.close();
+        } catch (FileNotFoundException e) {
+          e.printStackTrace();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+
+      validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5);
+
+    } finally {
+      for (Client client : clientsList) {
+        client.stop();
+      }
+    }
+  }
+
+  private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
+    final WaitFor waitFor = new WaitFor(50 * 1000, 1000) {
+      @Override
+      protected boolean condition() {
+        boolean retval = true;
+        for (Client client : clientsList) {
+          if (!retval) return false;
+          final boolean torrentState = client.getTorrents().iterator().next().getClientState() == ClientState.SEEDING;
+          retval = retval && torrentState;
+        }
+        return retval;
+      }
+    };
+
+    if (!waitFor.isMyResult()){
+      fail("All seeders didn't get their files:" + myLogfile);
+    } else {
+      // check file contents here:
+      for (Client client : clientsList) {
+        final SharedTorrent st = client.getTorrents().iterator().next();
+        final File file = new File(st.getParentFile(), st.getFilenames().get(0));
+        assertEquals(String.format("MD5 hash is invalid. C:%s, O:%s ",
+          file.getAbsolutePath(), baseFile.getAbsolutePath()), baseMD5, getFileMD5(file, md5));
+      }
+    }
+  }
+
+  private void createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,
+       List<Client> clientList) throws IOException, InterruptedException, NoSuchAlgorithmException, URISyntaxException {
+
+    List<byte[]> piecesList = new ArrayList<byte[]>(piecesCount);
+    FileInputStream fin = new FileInputStream(baseFile);
+    for (int i=0; i<piecesCount; i++){
+      byte[] piece = new byte[pieceSize];
+      fin.read(piece);
+      piecesList.add(piece);
+    }
+    fin.close();
+
+    final long torrentFileLength = baseFile.length();
+    Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceUrl().toURI(), null,  "Test", pieceSize);
+    File torrentFile = new File(baseFile.getParentFile(), baseFile.getName() + ".torrent");
+    torrent.save(torrentFile);
+
+
+    for (int i=0; i<numSeeders; i++){
+      final File baseDir = tempFiles.createTempDir();
+      final File seederPiecesFile = new File(baseDir, baseFile.getName());
+      RandomAccessFile raf = new RandomAccessFile(seederPiecesFile, "rw");
+      raf.setLength(torrentFileLength);
+      for (int pieceIdx=i; pieceIdx<piecesCount; pieceIdx += numSeeders){
+        raf.seek(pieceIdx*pieceSize);
+        raf.write(piecesList.get(pieceIdx));
+      }
+      Client client = createClient();
+      clientList.add(client);
+      client.addTorrent(new SharedTorrent(torrent, baseDir, false));
+      client.share();
+    }
+  }
+
+  private String getFileMD5(File file, MessageDigest digest) throws IOException {
+    DigestInputStream dIn = new DigestInputStream(new FileInputStream(file), digest);
+    while (dIn.read() >= 0);
+    return dIn.getMessageDigest().toString();
+  }
+
+
+
+  public void check_tracker_memory_usage() throws IOException, URISyntaxException, InterruptedException, NoSuchAlgorithmException {
+    Random r = new Random();
+    for (int i=0; i<2500; i++){
+      byte[] hash = new byte[20];
+      r.nextBytes(hash);
+      final TrackedTorrent announce = tracker.announce(new TrackedTorrent(hash));
+      for (int j=0; j<50; j++) {
+        byte[] peerId = new byte[10];
+        r.nextBytes(peerId);
+        announce.addPeer(new TrackedPeer(announce, "localhost", 6881 + i + j, ByteBuffer.wrap(peerId)));
+      }
+    }
+    final long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    assertTrue("Memory usage is too high " + usedMemory/1024/1024, usedMemory < 150*1024*1024);
+  }
+
+
   private void waitForSeeder(final byte[] torrentHash) {
     new WaitFor() {
       @Override
@@ -314,42 +570,6 @@ public class TrackerTest extends TestCase {
       }
     };
   }
-
-/*
-  public void utorrent_test_leech() throws IOException, NoSuchAlgorithmException {
-    this.tracker.setAcceptForeignTorrents(true);
-
-    new WaitFor(3600 * 1000) {
-      @Override
-      protected boolean condition() {
-        return TrackerTest.this.tracker.getTrackedTorrents().size() == 1;
-      }
-    };
-  }
-*/
-
-/*
-  public void utorrent_test_seed() throws IOException, NoSuchAlgorithmException, InterruptedException {
-    this.tracker.setAcceptForeignTorrents(true);
-
-    final File downloadDir = tempFiles.createTempDir();
-    Client leech = createClient("file1.jar.torrent", downloadDir);
-
-    waitForSeeder(leech.getTorrents().iterator().next().getInfoHash());
-
-    TrackedTorrent tt = this.tracker.getTrackedTorrents().iterator().next();
-    assertEquals(1, tt.seeders());
-
-    try {
-      leech.download();
-
-      waitForFileInDir(downloadDir, "file1.jar");
-    } finally {
-      leech.stop(true);
-    }
-  }
-*/
-
 
   private void waitForFileInDir(final File downloadDir, final String fileName) {
     new WaitFor() {
@@ -377,7 +597,7 @@ public class TrackerTest extends TestCase {
 
   private void startTracker() throws IOException {
     this.tracker = new Tracker(new InetSocketAddress(6969));
-//    this.tracker.start();
+    this.tracker.start();
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
