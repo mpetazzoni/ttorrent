@@ -25,8 +25,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -41,8 +39,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import jargs.gnu.CmdLineParser;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -472,9 +468,9 @@ public class Torrent extends Observable implements TorrentHash {
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-  public static Torrent load(File torrent, File parent)
+  public static Torrent load(File torrent)
 		throws IOException, NoSuchAlgorithmException {
-    return Torrent.load(torrent, parent, false);
+    return Torrent.load(torrent, false);
 	}
 
 	/**
@@ -487,7 +483,7 @@ public class Torrent extends Observable implements TorrentHash {
 	 * @throws IOException When the torrent file cannot be read.
 	 * @throws NoSuchAlgorithmException
 	 */
-  public static Torrent load(File torrent, File parent, boolean seeder)
+  public static Torrent load(File torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
 		FileInputStream fis = null;
 		try {
@@ -858,7 +854,7 @@ public class Torrent extends Observable implements TorrentHash {
       if (args.length == 1) {
         logger.info("Dumping information on torrent {}...",
           outfile.getAbsolutePath());
-        Torrent.load(outfile, null);
+        Torrent.load(outfile);
 			System.exit(0);
 		}
 

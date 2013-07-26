@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.storage;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -43,57 +44,56 @@ public class FileStorage implements TorrentByteStorage {
 		LoggerFactory.getLogger(FileStorage.class);
 
 	private final File target;
-	private final File partial;
+	private File partial;
 	private final long offset;
 	private final long size;
 
 	private RandomAccessFile raf;
-  private Thread closeTask;
-	private FileChannel channel;
+  private FileChannel channel;
 	private File current;
 
-	public FileStorage(File file, long size) throws IOException {
-		this(file, 0, size);
-	}
-
-	public FileStorage(File file, long offset, long size)
+  public FileStorage(File file, long offset, long size)
 		throws IOException {
 		this.target = file;
 		this.offset = offset;
 		this.size = size;
 
-		this.partial = new File(this.target.getAbsolutePath() +
-			TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
-
-		if (this.partial.exists()) {
-			logger.debug("Partial download found at {}. Continuing...",
-				this.partial.getAbsolutePath());
-			this.current = this.partial;
-		} else if (!this.target.exists()) {
-			logger.debug("Downloading new file to {}...",
-				this.partial.getAbsolutePath());
-			this.current = this.partial;
-		} else {
-			logger.debug("Using existing file {}.",
-				this.target.getAbsolutePath());
-			this.current = this.target;
-		}
-
-		this.raf = new RandomAccessFile(this.current, "rw");
-
-		// Set the file length to the appropriate size, eventually truncating
-		// or extending the file if it already exists with a different size.
-		this.raf.setLength(this.size);
-
-		this.channel = raf.getChannel();
-		logger.info("Initialized byte storage file at {} " +
-			"({}+{} byte(s)).",
-			new Object[] {
-				this.current.getAbsolutePath(),
-				this.offset,
-				this.size,
-			});
 	}
+
+  public void open() throws IOException {
+    this.partial = new File(this.target.getAbsolutePath() +
+      TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+
+    if (this.partial.exists()) {
+      logger.debug("Partial download found at {}. Continuing...",
+        this.partial.getAbsolutePath());
+      this.current = this.partial;
+    } else if (!this.target.exists()) {
+      logger.debug("Downloading new file to {}...",
+        this.partial.getAbsolutePath());
+      this.current = this.partial;
+    } else {
+      logger.debug("Using existing file {}.",
+        this.target.getAbsolutePath());
+      this.current = this.target;
+    }
+
+    this.raf = new RandomAccessFile(this.current, "rw");
+
+    // Set the file length to the appropriate size, eventually truncating
+    // or extending the file if it already exists with a different size.
+    this.raf.setLength(this.size);
+
+    this.channel = raf.getChannel();
+
+    logger.info("Opened byte storage file at {} " +
+      "({}+{} byte(s)).",
+      new Object[] {
+        this.current.getAbsolutePath(),
+        this.offset,
+        this.size,
+      });
+  }
 
 	protected long offset() {
 		return this.offset;
@@ -133,7 +133,7 @@ public class FileStorage implements TorrentByteStorage {
 
 	@Override
 	public synchronized void close() throws IOException {
-		logger.debug("Closing file channel to " + this.current.getName() + "...");
+		logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
 		if (this.channel.isOpen()) {
 			this.channel.force(true);
 		}

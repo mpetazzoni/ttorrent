@@ -62,6 +62,12 @@ public class FileCollectionStorage implements TorrentByteStorage {
 			"({} total byte(s)).", files.size(), size);
 	}
 
+  public void open() throws IOException {
+    for (FileStorage file : files) {
+      file.open();
+    }
+  }
+
 	@Override
 	public long size() {
 		return this.size;

@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -37,6 +38,8 @@ import java.nio.ByteBuffer;
 public interface TorrentByteStorage {
 
 	public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+
+  public void open() throws IOException;
 
 	/**
 	 * Returns the total size of the torrent storage.

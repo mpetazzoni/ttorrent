@@ -136,5 +136,6 @@ public interface PeerActivityListener extends EventListener {
 	 */
 	public void handleIOException(SharingPeer peer, IOException ioe);
 
-  public void sendPeerMessage(SharingPeer peer, PeerMessage message);
+
+  public void handleNewPeerConnected(SharingPeer peer);
 }

@@ -21,10 +21,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -141,7 +138,19 @@ public class Tracker {
 		return null;
 	}
 
-	/**
+  public URI getAnnounceURI() {
+    URL announceURL = getAnnounceUrl();
+    if (announceURL != null) {
+      try {
+        return announceURL.toURI();
+      } catch (URISyntaxException e) {
+        logger.error("Cannot convert announce URL to URI", e);
+      }
+    }
+    return null;
+  }
+
+  /**
 	 * Start the tracker thread.
 	 */
 	public void start() {

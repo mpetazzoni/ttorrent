@@ -197,10 +197,13 @@ public class Announce implements Runnable {
 
     while (!this.stop) {
       try {
+        logger.debug("Starting announce for {} torrents", torrents.size());
         for (SharedTorrent torrent : this.torrents) {
           TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
           if (trackerClient != null) {
             trackerClient.announce(event, false, torrent);
+          } else {
+            logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
           }
         }
         event = AnnounceRequestMessage.RequestEvent.NONE;

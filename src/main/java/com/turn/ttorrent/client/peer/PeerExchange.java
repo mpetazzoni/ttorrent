@@ -194,7 +194,11 @@ public class PeerExchange {
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
-	/**
+  public SocketChannel getChannel() {
+    return channel;
+  }
+
+  /**
 	 * Incoming messages thread.
 	 *
 	 * <p>
@@ -210,7 +214,7 @@ public class PeerExchange {
 
 		@Override
 		public void run() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(1*1024*1024);
+			ByteBuffer buffer = ByteBuffer.allocateDirect(2*1024*1024);
 
 			try {
 				while (!stop) {
@@ -235,6 +239,10 @@ public class PeerExchange {
 					}
 
 					int pstrlen = buffer.getInt(0);
+                  if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen > buffer.capacity()){
+                    logger.warn("Proposed limit of {} is larger than capacity of {}",
+                      PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen, buffer.capacity() );
+                  }
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
 					while (!stop && buffer.hasRemaining()) {
@@ -257,15 +265,15 @@ public class PeerExchange {
 						logger.warn("{}", pe.getMessage());
 					}
 				}
-			} catch (IOException ioe) {
+			} catch (Exception ioe) {
+              logger.debug("Exception", ioe);
+              peer.unbind(true);
 
-				logger.debug("Could not read message from {}: {}",
+              logger.debug("Could not read message from {}: {}",
 					peer,
 					ioe.getMessage() != null
 						? ioe.getMessage()
 						: ioe.getClass().getName());
-                logger.debug("Exception", ioe);
-				peer.unbind(true);
 			}
 		}
 	}

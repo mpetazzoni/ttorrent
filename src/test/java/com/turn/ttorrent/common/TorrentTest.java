@@ -21,7 +21,7 @@ public class TorrentTest extends TestCase {
   }
 
   public void load_torrent_created_by_utorrent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
-    Torrent t = Torrent.load(new File("src/test/resources/torrents/file1.jar.torrent"), null);
+    Torrent t = Torrent.load(new File("src/test/resources/torrents/file1.jar.torrent"));
     assertEquals(new URI("http://localhost:6969/announce"), t.getAnnounceList().get(0).get(0));
     assertEquals("B92D38046C76D73948E14C42DF992CAF25489D08", t.getHexInfoHash());
     assertEquals("uTorrent/3130", t.getCreatedBy());

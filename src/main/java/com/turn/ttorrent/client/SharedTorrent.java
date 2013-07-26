@@ -21,8 +21,8 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +80,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private long downloaded;
   private long left;
 
-  private final TorrentByteStorage bucket;
+  private TorrentByteStorage bucket;
 
   private final int pieceLength;
   private final ByteBuffer piecesHashes;
@@ -90,6 +90,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private Set<Integer> rarest;
   private BitSet completedPieces;
   private final BitSet requestedPieces;
+
+  private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
   private volatile ClientState clientState = ClientState.WAITING;
 
@@ -243,6 +245,25 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     return new SharedTorrent(data, parent, multiThreadHash);
   }
 
+  private synchronized void openFileChannelIfNecessary(){
+    logger.debug("Opening file channel for {}. Downloaders: {}", getName(), myDownloaders.size());
+    try {
+      if (myDownloaders.size() == 0) {
+        this.bucket.open();
+      }
+    } catch (IOException e) {
+      logger.error("IO error when opening channel to torrent data", e);
+      clientState = ClientState.ERROR;
+    }
+  }
+
+  private synchronized void closeFileChannelIfNecessary() throws IOException {
+    logger.debug("Closing file channel for {}. Downloaders: {}", getName(), myDownloaders.size());
+    if (this.myDownloaders.size() == 0) {
+      this.bucket.close();
+    }
+  }
+
   /**
    * Get the number of bytes uploaded for this torrent.
    */
@@ -304,10 +325,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       throw new IllegalStateException("Torrent was already initialized!");
     }
 
-    if (multiThreadHash) {
-      hashMultiThread();
-    } else {
-      hashSingleThread();
+    try {
+      openFileChannelIfNecessary();
+      if (multiThreadHash) {
+        hashMultiThread();
+      } else {
+        hashSingleThread();
+      }
+    } finally {
+      closeFileChannelIfNecessary();
     }
 
     logger.debug("{}: {}/{} bytes [{}/{}].",
@@ -421,6 +447,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   public synchronized void close() {
+    logger.trace("Closing torrent", getName());
     try {
       this.bucket.close();
     } catch (IOException ioe) {
@@ -632,10 +659,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     BitSet interesting = peer.getAvailablePieces();
     interesting.andNot(this.completedPieces);
     interesting.andNot(this.requestedPieces);
-    interesting.andNot(peer.getPoorlyAvailablePieces());
+//    interesting.andNot(peer.getPoorlyAvailablePieces());
 
     logger.trace("Peer {} is ready and has {} interesting piece(s).",
-            peer, interesting.cardinality());
+      peer, interesting.cardinality());
 
 		// If we didn't find interesting pieces, we need to check if we're in
 		// an end-game situation. If yes, we request an already requested piece
@@ -852,8 +879,10 @@ Exception in thread "bt-recv(..623464, SharedTorrent{[test-447119754.tmp]})" jav
       this.requestedPieces.set(requested.getIndex(), false);
     }
 
+    myDownloaders.remove(peer);
+
     try {
-      this.bucket.close();
+        closeFileChannelIfNecessary();
     } catch (IOException e) {
       logger.warn("I/O error on attempt to close file storage: " + e.toString());
     }
@@ -879,11 +908,14 @@ Exception in thread "bt-recv(..623464, SharedTorrent{[test-447119754.tmp]})" jav
                                              IOException ioe) { /* Do nothing */ }
 
   @Override
-  public void sendPeerMessage(SharingPeer peer, PeerMessage message) {
-    // TODO Auto-generated method stub
+  public void handleNewPeerConnected(SharingPeer peer){
+    openFileChannelIfNecessary();
+    if (clientState != ClientState.ERROR) {
+      myDownloaders.add(peer);
+    }
   }
 
-    @Override
+  @Override
     public String toString() {
         return "SharedTorrent{" +
           Arrays.toString(getFilenames().toArray()) +

@@ -71,7 +71,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Client implements Runnable,
   AnnounceResponseListener, CommunicationListener, PeerActivityListener {
 
-  private static final Logger logger =
+  protected static final Logger logger =
     LoggerFactory.getLogger(Client.class);
 
   /**
@@ -360,6 +360,10 @@ public class Client implements Runnable,
     this.finish();
   }
 
+  public boolean isRunning(){
+    return this.thread != null && this.thread.isAlive();
+  }
+
   /**
    * Close torrent and set final client state before signing off.
    */
@@ -451,7 +455,7 @@ public class Client implements Runnable,
    * @param hexInfoHash
    */
   private SharingPeer getOrCreatePeer(Peer search, String hexInfoHash) {
-    SharingPeer peer;
+//    SharingPeer peer;
 
     synchronized (this.peers) {
       logger.trace("Searching for {}...", search);
@@ -480,11 +484,9 @@ public class Client implements Runnable,
 
       SharedTorrent torrent = this.torrents.get(hexInfoHash);
 
-      peer = new SharingPeer(search.getIp(), search.getPort(),
+      SharingPeer peer = new SharingPeer(search.getIp(), search.getPort(),
         search.getPeerId(), torrent);
       logger.trace("Created new peer: {}.", peer);
-
-      this.peers.add(peer);
 
       return peer;
     }
@@ -627,7 +629,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.info("Got {} peer(s) in tracker response", peers.size());
+    logger.info("Got {} peer(s) for {} in tracker response", peers.size(), hexInfoHash);
 
     if (!this.service.isAlive()) {
       logger.warn("Connection handler service is not available.");
@@ -649,12 +651,13 @@ public class Client implements Runnable,
           continue;
         }
 
-        this.service.connect(match);
+      this.peers.add(match);
+      this.service.connect(match);
     }
 
     List<SharingPeer> toRemove = new ArrayList<SharingPeer>();
     for (SharingPeer peer : this.peers) {
-      if (peer.getTorrentHexInfoHash().equals(hexInfoHash) && !foundPeers.contains(peer) && !peer.isConnected()) {
+      if (peer.getTorrentHexInfoHash().equals(hexInfoHash) && foundPeers.contains(peer) && !peer.isConnected()) {
         toRemove.add(peer);
       }
     }
@@ -706,7 +709,8 @@ public class Client implements Runnable,
         }
 
         peer.register(this);
-				peer.bind(channel);
+        peer.bind(channel);
+        peers.add(peer);
       }
 
       peer.register(peer.getTorrent());
@@ -760,10 +764,6 @@ public class Client implements Runnable,
   @Override
   public void handlePieceSent(SharingPeer peer,
                               Piece piece) { /* Do nothing */ }
-
-  @Override
-  public void sendPeerMessage(SharingPeer peer,
-                              PeerMessage message) { /* Do nothing */ }
 
   /**
    * Piece download completion handler.
@@ -849,7 +849,7 @@ public class Client implements Runnable,
   @Override
   public void handlePeerDisconnected(SharingPeer peer) {
     peer.reset();
-
+    this.peers.remove(peer);
     logger.debug("Peer {} disconnected, [{}/{}].",
       new Object[]{
         peer,
@@ -864,6 +864,11 @@ public class Client implements Runnable,
       "data for peer {}: {}.", peer, ioe.getMessage());
 
     peer.unbind(true);
+  }
+
+  @Override
+  public void handleNewPeerConnected(SharingPeer peer) {
+    //TODO figure out what to do here
   }
 
 
@@ -903,8 +908,6 @@ public class Client implements Runnable,
       }
     }
   }
-
-  ;
 
   /**
    * Display program usage on the given {@link PrintStream}.

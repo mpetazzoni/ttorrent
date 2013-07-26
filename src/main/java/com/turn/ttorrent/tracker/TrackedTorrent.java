@@ -21,7 +21,6 @@ import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -302,7 +301,7 @@ public class TrackedTorrent implements TorrentHash {
     public static TrackedTorrent load(File torrent) throws IOException,
             NoSuchAlgorithmException {
 
-    Torrent t = Torrent.load(torrent, null);
+    Torrent t = Torrent.load(torrent);
         return new TrackedTorrent(t.getInfoHash());
     }
 

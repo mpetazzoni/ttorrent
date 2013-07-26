@@ -88,12 +88,12 @@ public class SharingPeer extends Peer implements MessageListener {
   private PeerExchange exchange = null;
   private Rate download;
   private Rate upload;
-  private SocketChannel socketChannel;
   private Set<PeerActivityListener> listeners;
 
   private final Object requestsLock, exchangeLock;
 
-  private volatile Future connectTask;
+  private volatile Future
+    connectTask;
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -128,6 +128,7 @@ public class SharingPeer extends Peer implements MessageListener {
    */
   public void register(PeerActivityListener listener) {
     this.listeners.add(listener);
+    firePeerConnected();
   }
 
   public Rate getDLRate() {
@@ -271,7 +272,7 @@ public class SharingPeer extends Peer implements MessageListener {
    * @param channel The connected socket channel for this peer.
    */
   public synchronized void bind(SocketChannel channel) throws SocketException {
-    this.unbind(true);
+//    this.unbind(true);
 
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel);
@@ -605,6 +606,7 @@ public class SharingPeer extends Peer implements MessageListener {
             this.firePieceSent(rp);
           }
         } catch (IOException ioe) {
+          logger.error("error", ioe);
           this.fireIOException(new IOException(
             "Error while sending piece block request!", ioe));
         }
@@ -776,9 +778,9 @@ public class SharingPeer extends Peer implements MessageListener {
     }
   }
 
-  private void fireNewMessage(PeerMessage message) {
+  private void firePeerConnected(){
     for (PeerActivityListener listener : this.listeners) {
-      listener.sendPeerMessage(this, message);
+      listener.handleNewPeerConnected(this);
     }
   }
 
@@ -829,11 +831,7 @@ public class SharingPeer extends Peer implements MessageListener {
   }
 
   public SocketChannel getSocketChannel() {
-    return socketChannel;
-  }
-
-  public void setSocketChannel(SocketChannel socketChannel) {
-    this.socketChannel = socketChannel;
+    return exchange.getChannel();
   }
 
   /**
