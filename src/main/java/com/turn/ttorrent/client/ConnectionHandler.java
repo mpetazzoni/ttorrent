@@ -246,9 +246,10 @@ public class ConnectionHandler implements Runnable {
       try {
         SocketChannel client = this.myServerSocketChannel.accept();
         if (client != null) {
-          client.setOption(StandardSocketOptions.SO_RCVBUF, 65536);
-          client.setOption(StandardSocketOptions.SO_SNDBUF, 65536);
-//          client.setOption(StandardSocketOptions.TCP_NODELAY, Boolean.TRUE);
+          client.socket().setReceiveBufferSize(65536);
+          client.socket().setSendBufferSize(65536);
+          // this actually doesn't work in 1.6. Waiting for 1.7
+          client.socket().setPerformancePreferences(0, 0, 1);
           this.accept(client);
         }
       } catch (SocketTimeoutException ste) {

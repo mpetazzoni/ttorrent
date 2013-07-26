@@ -337,7 +337,7 @@ public class Piece implements Comparable<Piece> {
       if (this.equals(other)) {
         return 0;
       } else if (this.seen == other.seen) {
-        return Integer.compare(this.index, other.index);
+        return new Integer(this.index).compareTo(other.index);
       } else if (this.seen < other.seen) {
         return -1;
       } else {
