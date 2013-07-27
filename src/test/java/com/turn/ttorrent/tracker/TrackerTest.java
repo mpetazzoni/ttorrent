@@ -570,8 +570,8 @@ public class TrackerTest{
     for (Client client : clientsList) {
       final SharedTorrent st = client.getTorrents().iterator().next();
       final File file = new File(st.getParentFile(), st.getFilenames().get(0));
-      assertEquals(String.format("MD5 hash is invalid. C:%s, O:%s ",
-        file.getAbsolutePath(), baseFile.getAbsolutePath()), baseMD5, getFileMD5(file, md5));
+      assertEquals(baseMD5, getFileMD5(file, md5), String.format("MD5 hash is invalid. C:%s, O:%s ",
+        file.getAbsolutePath(), baseFile.getAbsolutePath()));
     }
   }
 
