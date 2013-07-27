@@ -26,18 +26,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static org.testng.Assert.*;
+
 @Test
-public class TrackerTest extends TestCase {
+public class TrackerTest{
   private static final String TEST_RESOURCES = "src/test/resources";
   private Tracker tracker;
   private TempFiles tempFiles;
-  private String myLogfile;
+//  private String myLogfile;
   private List<Client> clientList = new ArrayList<Client>();
 
-  @Override
   @BeforeMethod
   protected void setUp() throws Exception {
-//    org.apache.log4j.BasicConfigurator.configure();
+    org.apache.log4j.BasicConfigurator.configure();
+/*
     final Logger rootLogger = RootLogger.getRootLogger();
     rootLogger.removeAllAppenders();
     rootLogger.setLevel(Level.ALL);
@@ -45,7 +47,7 @@ public class TrackerTest extends TestCase {
     final Layout layout = new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN);
     final FileAppender newAppender = new FileAppender(layout, myLogfile);
     rootLogger.addAppender(newAppender);
-    super.setUp();
+*/
     tempFiles = new TempFiles();
     Torrent.setHashingThreadsCount(1);
     startTracker();
@@ -200,7 +202,7 @@ public class TrackerTest extends TestCase {
         }
       };
 
-      assertTrue(myLogfile, listFileNames(downloadDir).equals(names));
+      assertTrue(listFileNames(downloadDir).equals(names));
     } finally {
       leech.stop(true);
       seeder.stop(true);
@@ -437,7 +439,7 @@ public class TrackerTest extends TestCase {
       };
 
       if (!waitFor.isMyResult()){
-        fail("All seeders didn't get their files:" + myLogfile);
+        fail("All seeders didn't get their files");
       }
       Thread.sleep(10*1000);
       {
@@ -523,7 +525,7 @@ public class TrackerTest extends TestCase {
       };
       //manually add leech here for graceful shutdown.
       clientList.add(leech);
-      downloadAndStop(torrent, 45*1000, leech);
+      downloadAndStop(torrent, 45 * 1000, leech);
       Thread.sleep(2*1000);
     }
 
@@ -546,7 +548,7 @@ public class TrackerTest extends TestCase {
       }
     };
 
-    assertTrue("File wasn't downloaded in time", waitFor.isMyResult());
+    assertTrue(waitFor.isMyResult(), "File wasn't downloaded in time");
   }
 
   private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
@@ -563,16 +565,13 @@ public class TrackerTest extends TestCase {
       }
     };
 
-    if (!waitFor.isMyResult()){
-      fail("All seeders didn't get their files:" + myLogfile);
-    } else {
+    assertTrue(waitFor.isMyResult(), "All seeders didn't get their files");
       // check file contents here:
-      for (Client client : clientsList) {
-        final SharedTorrent st = client.getTorrents().iterator().next();
-        final File file = new File(st.getParentFile(), st.getFilenames().get(0));
-        assertEquals(String.format("MD5 hash is invalid. C:%s, O:%s ",
-          file.getAbsolutePath(), baseFile.getAbsolutePath()), baseMD5, getFileMD5(file, md5));
-      }
+    for (Client client : clientsList) {
+      final SharedTorrent st = client.getTorrents().iterator().next();
+      final File file = new File(st.getParentFile(), st.getFilenames().get(0));
+      assertEquals(String.format("MD5 hash is invalid. C:%s, O:%s ",
+        file.getAbsolutePath(), baseFile.getAbsolutePath()), baseMD5, getFileMD5(file, md5));
     }
   }
 
@@ -650,7 +649,7 @@ public class TrackerTest extends TestCase {
       }
     };
 
-    assertTrue(this.myLogfile, new File(downloadDir, fileName).isFile());
+    assertTrue(new File(downloadDir, fileName).isFile());
   }
 
   private TrackedTorrent loadTorrent(String name) throws IOException, NoSuchAlgorithmException {
@@ -658,10 +657,8 @@ public class TrackerTest extends TestCase {
   }
 
 
-  @Override
   @AfterMethod
   protected void tearDown() throws Exception {
-    super.tearDown();
     stopTracker();
     for (Client client : clientList) {
       client.stop();
@@ -696,7 +693,7 @@ public class TrackerTest extends TestCase {
   }
 
   private void assertFilesEqual(File f1, File f2) throws IOException {
-    assertEquals("Files size differs", f1.length(), f2.length());
+    assertEquals(f1.length(), f2.length(), "Files sizes differ");
     Checksum c1 = FileUtils.checksum(f1, new CRC32());
     Checksum c2 = FileUtils.checksum(f2, new CRC32());
     assertEquals(c1.getValue(), c2.getValue());
