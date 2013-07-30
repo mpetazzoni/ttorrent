@@ -239,7 +239,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 *
 	 * <p>
 	 * Verifies the transaction ID of the message before passing it over to
-	 * {@link Announce#handleTrackerAnnounceResponse()}.
+	 * any registered {@link AnnounceResponseListener}.
 	 * </p>
 	 *
 	 * @param message The message received from the tracker in response to the
@@ -352,7 +352,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 *
 	 * @param attempt The attempt number, used to calculate the timeout for the
 	 * receive operation.
-	 * @retun Returns a {@link ByteBuffer} containing the packet data.
+	 * @return Returns a {@link ByteBuffer} containing the packet data.
 	 */
 	private ByteBuffer recv(int attempt)
 		throws IOException, SocketException, SocketTimeoutException {

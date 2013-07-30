@@ -75,8 +75,6 @@ public class Announce implements Runnable {
 	 *
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our peer specification.
-	 * @param type A string representing the announce type (used in the thread
-	 * name).
 	 */
 	public Announce(SharedTorrent torrent, Peer peer) {
 		this.peer = peer;

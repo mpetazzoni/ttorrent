@@ -941,11 +941,11 @@ public class Client extends Observable implements Runnable,
 	 * <p>
 	 * When the download is complete, the client switches to seeding mode for
 	 * as long as requested in the <code>share()</code> call, if seeding was
-	 * requested. If not, the StopSeedingTask will execute immediately to stop
-	 * the client's main loop.
+	 * requested. If not, the {@link ClientShutdown} will execute
+	 * immediately to stop the client's main loop.
 	 * </p>
 	 *
-	 * @see StopSeedingTask
+	 * @see ClientShutdown
 	 */
 	private synchronized void seed() {
 		// Silently ignore if we're already seeding.
