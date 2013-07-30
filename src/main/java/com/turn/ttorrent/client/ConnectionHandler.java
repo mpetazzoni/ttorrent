@@ -246,8 +246,18 @@ public class ConnectionHandler implements Runnable {
       try {
         SocketChannel client = this.myServerSocketChannel.accept();
         if (client != null) {
-          client.socket().setReceiveBufferSize(65536);
-          client.socket().setSendBufferSize(65536);
+          int recvBufferSize = 65536;
+          try {
+            recvBufferSize = Integer.parseInt(System.getProperty("torrent.recv.buffer.size", "65536"));
+          } catch (NumberFormatException ne){
+          }
+          client.socket().setReceiveBufferSize(recvBufferSize);
+          int sendBufferSize = 65536;
+          try {
+            sendBufferSize = Integer.parseInt(System.getProperty("torrent.send.buffer.size", "65536"));
+          } catch (NumberFormatException ne){
+          }
+          client.socket().setSendBufferSize(sendBufferSize);
           // this actually doesn't work in 1.6. Waiting for 1.7
           client.socket().setPerformancePreferences(0, 0, 1);
           this.accept(client);
