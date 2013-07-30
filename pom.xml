@@ -127,6 +127,11 @@
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.4</version>
 				<configuration>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
 					<includes>
 						<include>**</include>
 					</includes>
@@ -144,28 +149,24 @@
 			</plugin>
 
 			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<descriptorRefs>
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-					</descriptorRefs>
-					<appendAssemblyId>false</appendAssemblyId>
-					<archive>
-						<manifest>
-							<addClasspath>false</addClasspath>
-							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-							<mainClass>com.turn.ttorrent.client.Client</mainClass>
-						</manifest>
-					</archive>
-				</configuration>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.1</version>
 				<executions>
 					<execution>
-						<id>make-my-jar-with-dependencies</id>
 						<phase>package</phase>
 						<goals>
-							<!--change assembly to single if you don't want include dependencies in jar-->
-							<goal>assembly</goal>
+							<goal>shade</goal>
 						</goals>
+						<configuration>
+							<outputFile>${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar</outputFile>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<manifestEntries>
+										<Main-Class>com.turn.ttorrent.client.Client</Main-Class>
+									</manifestEntries>
+								</transformer>
+							</transformers>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
