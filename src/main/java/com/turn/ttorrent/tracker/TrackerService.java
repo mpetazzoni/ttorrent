@@ -252,7 +252,7 @@ public class TrackerService implements Container {
 	 * Tracker HTTP protocol.
 	 * </p>
 	 *
-	 * @param uri The request's full URI, including query parameters.
+	 * @param request The request's full URI, including query parameters.
 	 * @return The {@link AnnounceRequestMessage} representing the client's
 	 * announce request.
 	 */
@@ -350,7 +350,7 @@ public class TrackerService implements Container {
 	 * @param response The HTTP response object.
 	 * @param body The response output stream to write to.
 	 * @param status The HTTP status code to return.
-	 * @param error The failure reason reported by the tracker.
+	 * @param reason The failure reason reported by the tracker.
 	 */
 	private void serveError(Response response, OutputStream body,
 		Status status, ErrorMessage.FailureReason reason) throws IOException {
