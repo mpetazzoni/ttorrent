@@ -15,4 +15,4 @@
 # limitations under the License.
 
 base=$(dirname $(readlink -f $0))
-exec java -cp $(find ${base}/../build -name "ttorrent-*.jar" | tail -n 1) com.turn.ttorrent.tracker.Tracker $*
+exec java -cp $(find ${base}/../build -name "ttorrent-*-shaded.jar" | tail -n 1) com.turn.ttorrent.tracker.Tracker $*
