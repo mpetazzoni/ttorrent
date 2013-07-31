@@ -1024,11 +1024,6 @@
         <state line="169" column="0" selection-start="4505" selection-end="4505" vertical-scroll-proportion="0.2980226" vertical-offset="0" max-vertical-offset="0" />
       </provider>
     </entry>
-    <entry file="jar://$MAVEN_REPOSITORY$/org/simpleframework/simple/4.1.21/simple-4.1.21.jar!/org/simpleframework/transport/connect/SocketConnection.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="13" column="11" selection-start="556" selection-end="556" vertical-scroll-proportion="0.35820895" vertical-offset="0" max-vertical-offset="0" />
-      </provider>
-    </entry>
     <entry file="jar://C:/JDK/src.zip!/java/util/concurrent/ExecutorService.java">
       <provider selected="true" editor-type-id="text-editor">
         <state line="266" column="14" selection-start="9598" selection-end="9598" vertical-scroll-proportion="0.22348484" vertical-offset="0" max-vertical-offset="0">
