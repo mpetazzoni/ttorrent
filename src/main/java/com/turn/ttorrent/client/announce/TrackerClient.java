@@ -83,7 +83,7 @@ public abstract class TrackerClient {
 	 * Close any opened announce connection.
 	 *
 	 * <p>
-	 * This method is called by {@link #stop()} to make sure all connections
+	 * This method is called by {@link Announce#stop()} to make sure all connections
 	 * are correctly closed when the announce thread is asked to stop.
 	 * </p>
 	 */
