@@ -66,8 +66,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Torrent extends Observable implements TorrentHash {
 
-	private static final Logger logger =
-		LoggerFactory.getLogger(Torrent.class);
+	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
 	private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
@@ -775,7 +774,7 @@ public class Torrent extends Observable implements TorrentHash {
 
 		int expectedPieces = (int) (Math.ceil(
 				(double)length / pieceSize));
-		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
+		logger.debug("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),
 				length,

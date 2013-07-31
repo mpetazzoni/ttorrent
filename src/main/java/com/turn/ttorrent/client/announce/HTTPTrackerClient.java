@@ -71,20 +71,13 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @param event The announce event type (can be AnnounceEvent.NONE for
 	 * periodic updates).
 	 * @param inhibitEvents Prevent event listeners from being notified.
-   * @param torrent
+     * @param torrent
 	 */
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
                        boolean inhibitEvents, SharedTorrent torrent) throws AnnounceException {
-		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
-			new Object[] {
-				this.formatAnnounceEvent(event),
-        torrent.getUploaded(),
-        torrent.getDownloaded(),
-        torrent.getLeft()
-			});
-
-		URL target = null;
+      logAnnounceRequest(event, torrent);
+      URL target = null;
 		try {
 			HTTPAnnounceRequestMessage request =
             this.buildAnnounceRequest(event, torrent);

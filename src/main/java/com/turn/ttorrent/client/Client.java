@@ -26,20 +26,13 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import jargs.gnu.CmdLineParser;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -301,7 +294,7 @@ public class Client implements Runnable,
   public void run() {
     // Detect early stop
     if (this.stop) {
-      logger.info("Download is complete and no seeding was requested.");
+      logger.info("Early stop detected. Stopping...");
       this.finish();
       return;
     }
@@ -343,15 +336,15 @@ public class Client implements Runnable,
     logger.debug("Stopping BitTorrent client connection service " +
       "and announce threads...");
     this.service.stop();
-      try {
-          this.service.close();
-      } catch (IOException ioe) {
-          logger.warn("Error while releasing bound channel: {}!",
-                  ioe.getMessage(), ioe);
-      }
+    try {
+      this.service.close();
+    } catch (IOException ioe) {
+      logger.warn("Error while releasing bound channel: {}!",
+              ioe.getMessage(), ioe);
+    }
 
 
-      // Close all peer connections
+    // Close all peer connections
     logger.debug("Closing all remaining peer connections...");
     for (SharingPeer peer : this.peers) {
       peer.unbind(true);
@@ -629,10 +622,10 @@ public class Client implements Runnable,
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.info("Got {} peer(s) for {} in tracker response", peers.size(), hexInfoHash);
+    logger.debug("Got {} peer(s) for {} in tracker response", peers.size(), hexInfoHash);
 
     if (!this.service.isAlive()) {
-      logger.warn("Connection handler service is not available.");
+      logger.info("Connection handler service is not available.");
       return;
     }
 
@@ -698,13 +691,13 @@ public class Client implements Runnable,
         ? ByteBuffer.wrap(peerId)
         : null));
 
-    logger.info("Handling new peer connection with {}...", search);
+    logger.debug("Handling new peer connection with {}...", search);
     SharingPeer peer = this.getOrCreatePeer(search, hexInfoHash);
 
     try {
       synchronized (peer) {
         if (peer.isConnected()) {
-          logger.info("Already connected with {}, ignoring.", peer);
+          logger.debug("Already connected with {}, ignoring.", peer);
           return;
         }
 
@@ -739,7 +732,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handleFailedConnection(SharingPeer peer, Throwable cause) {
-    logger.info("Could not connect to {}: {}.", peer, cause.getMessage());
+    logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
     this.peers.remove(peer);
   }
 
@@ -807,12 +800,12 @@ public class Client implements Runnable,
           remote.send(have);
         }
       } else {
-        logger.warn("Downloaded piece#{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
+        logger.debug("Downloaded piece#{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
         peer.getPoorlyAvailablePieces().set(piece.getIndex());
       }
 
       if (torrent.isComplete()) {
-          logger.info("Last piece validated and completed, finishing download...");
+          logger.info("Download of {} complete.", torrent.getName());
 
           // Cancel all remaining outstanding requests
           //TODO: rework this in case of multi-torrent client
@@ -833,8 +826,7 @@ public class Client implements Runnable,
               .AnnounceRequestMessage
               .RequestEvent.COMPLETED, true, torrent);
         } catch (AnnounceException ae) {
-          logger.warn("Error announcing completion event to " +
-            "tracker: {}", ae.getMessage());
+          logger.debug("Error announcing completion event to tracker: {}", ae.getMessage());
         }
 
         torrent.setClientState(ClientState.SEEDING);
@@ -860,15 +852,14 @@ public class Client implements Runnable,
 
   @Override
   public void handleIOException(SharingPeer peer, IOException ioe) {
-    logger.error("I/O problem occured when reading or writing piece " +
-      "data for peer {}: {}.", peer, ioe.getMessage());
+    logger.debug("I/O problem occured when reading or writing piece data for peer {}: {}.", peer, ioe.getMessage());
 
     peer.unbind(true);
   }
 
   @Override
   public void handleNewPeerConnected(SharingPeer peer) {
-    //TODO figure out what to do here
+    //do nothing
   }
 
 
@@ -906,118 +897,6 @@ public class Client implements Runnable,
       if (this.timer != null) {
         this.timer.cancel();
       }
-    }
-  }
-
-  /**
-   * Display program usage on the given {@link PrintStream}.
-   */
-  private static void usage(PrintStream s) {
-    s.println("usage: Client [options] <torrent>");
-    s.println();
-    s.println("Available options:");
-    s.println("  -h,--help             Show this help and exit.");
-    s.println("  -o,--output DIR       Read/write data to directory DIR.");
-    s.println("  -i,--iface IFACE      Bind to interface IFACE.");
-    s.println();
-  }
-
-  /**
-   * Returns a usable {@link Inet4Address} for the given interface name.
-   * <p/>
-   * <p>
-   * If an interface name is given, return the first usable IPv4 address for
-   * that interface. If no interface name is given or if that interface
-   * doesn't have an IPv4 address, return's localhost address (if IPv4).
-   * </p>
-   * <p/>
-   * <p>
-   * It is understood this makes the client IPv4 only, but it is important to
-   * remember that most BitTorrent extensions (like compact peer lists from
-   * trackers and UDP tracker support) are IPv4-only anyway.
-   * </p>
-   *
-   * @param iface The network interface name.
-   * @return A usable IPv4 address as a {@link Inet4Address}.
-   * @throws UnsupportedAddressTypeException
-   *          If no IPv4 address was available
-   *          to bind on.
-   */
-  private static Inet4Address getIPv4Address(String iface)
-    throws SocketException, UnsupportedAddressTypeException,
-    UnknownHostException {
-    if (iface != null) {
-      Enumeration<InetAddress> addresses =
-        NetworkInterface.getByName(iface).getInetAddresses();
-      while (addresses.hasMoreElements()) {
-        InetAddress addr = addresses.nextElement();
-        if (addr instanceof Inet4Address) {
-          return (Inet4Address) addr;
-        }
-      }
-    }
-
-    InetAddress localhost = InetAddress.getLocalHost();
-    if (localhost instanceof Inet4Address) {
-      return (Inet4Address) localhost;
-    }
-
-    throw new UnsupportedAddressTypeException();
-  }
-
-  /**
-   * Main client entry point for stand-alone operation.
-   */
-  public static void main(String[] args) {
-    BasicConfigurator.configure(new ConsoleAppender(
-      new PatternLayout("%d [%-25t] %-5p: %m%n")));
-
-    CmdLineParser parser = new CmdLineParser();
-    CmdLineParser.Option help = parser.addBooleanOption('h', "help");
-    CmdLineParser.Option output = parser.addStringOption('o', "output");
-    CmdLineParser.Option iface = parser.addStringOption('i', "iface");
-
-    try {
-      parser.parse(args);
-    } catch (CmdLineParser.OptionException oe) {
-      System.err.println(oe.getMessage());
-      usage(System.err);
-      System.exit(1);
-    }
-
-    // Display help and exit if requested
-    if (Boolean.TRUE.equals(parser.getOptionValue(help))) {
-      usage(System.out);
-      System.exit(0);
-    }
-
-    String outputValue = (String) parser.getOptionValue(output,
-      DEFAULT_OUTPUT_DIRECTORY);
-    String ifaceValue = (String) parser.getOptionValue(iface);
-
-    String[] otherArgs = parser.getRemainingArgs();
-    if (otherArgs.length != 1) {
-      usage(System.err);
-      System.exit(1);
-    }
-
-    try {
-      Client c = new Client(getIPv4Address(ifaceValue));
-      SharedTorrent torrent = SharedTorrent.fromFile(new File(otherArgs[0]), new File(outputValue), false);
-      c.addTorrent(torrent);
-
-      // Set a shutdown hook that will stop the sharing/seeding and send
-      // a STOPPED announce request.
-      Runtime.getRuntime().addShutdownHook(
-        new Thread(new ClientShutdown(c, null)));
-
-      c.share();
-      if (ClientState.ERROR.equals(torrent.getClientState())) {
-        System.exit(1);
-      }
-    } catch (Exception e) {
-      logger.error("Fatal error: {}", e.getMessage(), e);
-      System.exit(2);
     }
   }
 

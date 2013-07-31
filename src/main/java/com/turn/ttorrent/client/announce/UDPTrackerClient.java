@@ -137,13 +137,7 @@ public class UDPTrackerClient extends TrackerClient {
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
                        boolean inhibitEvents, SharedTorrent torrent) throws AnnounceException {
-		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
-			new Object[] {
-				this.formatAnnounceEvent(event),
-        torrent.getUploaded(),
-        torrent.getDownloaded(),
-        torrent.getLeft()
-			});
+      logAnnounceRequest(event, torrent);
 
 		State state = State.CONNECT_REQUEST;
 		int maxAttempts = AnnounceRequestMessage.RequestEvent

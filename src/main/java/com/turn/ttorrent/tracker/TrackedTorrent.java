@@ -213,7 +213,7 @@ public class TrackedTorrent implements TorrentHash {
 	public TrackedPeer update(RequestEvent event, ByteBuffer peerId,
 		String hexPeerId, String ip, int port, long uploaded, long downloaded,
 		long left) throws UnsupportedEncodingException {
-    logger.info("event {}, Peer: {}:{}", new Object[]{event.getEventName(), ip, port});
+    logger.debug("event {}, Peer: {}:{}", new Object[]{event.getEventName(), ip, port});
 		TrackedPeer peer = null;
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 

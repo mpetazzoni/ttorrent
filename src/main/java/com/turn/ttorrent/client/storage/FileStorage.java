@@ -86,7 +86,7 @@ public class FileStorage implements TorrentByteStorage {
 
     this.channel = raf.getChannel();
 
-    logger.info("Opened byte storage file at {} " +
+    logger.debug("Opened byte storage file at {} " +
       "({}+{} byte(s)).",
       new Object[] {
         this.current.getAbsolutePath(),

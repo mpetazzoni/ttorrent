@@ -84,6 +84,24 @@ public abstract class TrackerClient {
 	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
                                 boolean inhibitEvent, SharedTorrent torrent) throws AnnounceException;
 
+  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, SharedTorrent torrent){
+    if (event != AnnounceRequestMessage.RequestEvent.NONE) {
+      logger.info("Announcing {} to tracker with {}U/{}D/{}L bytes...",
+          new Object[]{
+              this.formatAnnounceEvent(event),
+              torrent.getUploaded(),
+              torrent.getDownloaded(),
+              torrent.getLeft()
+          });
+    } else {
+      logger.debug("Simply announcing to tracker with {}U/{}D/{}L bytes...",
+          new Object[]{
+              torrent.getUploaded(),
+              torrent.getDownloaded(),
+              torrent.getLeft()
+          });
+    }
+  }
 	/**
 	 * Close any opened announce connection.
 	 *
