@@ -272,7 +272,7 @@ public class TrackerTest{
     try {
       File tempFile = tempFiles.createTempFile(100 * 1024);
 
-      Torrent torrent = Torrent.create(tempFile, this.tracker.getAnnounceUrl().toURI(), "Test");
+      Torrent torrent = Torrent.create(tempFile, this.tracker.getAnnounceURI(), "Test");
       File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
       torrent.save(torrentFile);
 
@@ -588,7 +588,7 @@ public class TrackerTest{
     fin.close();
 
     final long torrentFileLength = baseFile.length();
-    Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceUrl().toURI(), null,  "Test", pieceSize);
+    Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
     File torrentFile = new File(baseFile.getParentFile(), baseFile.getName() + ".torrent");
     torrent.save(torrentFile);
 
@@ -667,7 +667,7 @@ public class TrackerTest{
   }
 
   private void startTracker() throws IOException {
-    this.tracker = new Tracker(new InetSocketAddress(6969));
+    this.tracker = new Tracker(6969);
     this.tracker.start();
   }
 

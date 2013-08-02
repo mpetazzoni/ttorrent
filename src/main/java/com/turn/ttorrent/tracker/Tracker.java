@@ -57,7 +57,6 @@ public class Tracker {
 		"BitTorrent Tracker (ttorrent)";
 
 	private final Connection connection;
-	private final InetSocketAddress address;
 
 	/** The in-memory repository of torrents tracked. */
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
@@ -65,45 +64,31 @@ public class Tracker {
 	private Thread tracker;
 	private Thread collector;
 	private boolean stop;
+  private String myAnnounceUrl;
+  private final int myPort;
 
   private final TrackerService trackerService;
 
 	/**
-	 * Create a new BitTorrent tracker listening at the given address on the
-	 * default port.
-	 *
-	 * @param address The address to bind to.
-	 * @throws IOException Throws an <em>IOException</em> if the tracker
-	 * cannot be initialized.
-	 */
-	public Tracker(InetAddress address) throws IOException {
-		this(new InetSocketAddress(address, DEFAULT_TRACKER_PORT),
-			DEFAULT_VERSION_STRING);
-	}
-
-	/**
 	 * Create a new BitTorrent tracker listening at the given address.
 	 *
-	 * @param address The address to bind to.
-	 * @throws IOException Throws an <em>IOException</em> if the tracker
-	 * cannot be initialized.
-	 */
-	public Tracker(InetSocketAddress address) throws IOException {
-		this(address, DEFAULT_VERSION_STRING);
-	}
-
-	/**
-	 * Create a new BitTorrent tracker listening at the given address.
-	 *
-	 * @param address The address to bind to.
 	 * @param version A version string served in the HTTP headers
 	 * @throws IOException Throws an <em>IOException</em> if the tracker
 	 * cannot be initialized.
 	 */
-	public Tracker(InetSocketAddress address, String version)
-		throws IOException {
-		this.address = address;
+	public Tracker(int port) throws IOException {
+      this(port,
+          getDefaultAnnounceUrl(new InetSocketAddress(InetAddress.getLocalHost(), port)).toString(),
+          null);
+    }
+	public Tracker(int port, String announceURL) throws IOException {
+      this (port, announceURL, null);
+    }
 
+	public Tracker(int port, String announceURL, String version)
+		throws IOException {
+        this.myPort = port;
+        this.myAnnounceUrl = announceURL;
 		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
         this.trackerService = new TrackerService(version, this.torrents);
         this.connection = new SocketConnection(trackerService);
@@ -116,12 +101,12 @@ public class Tracker {
 	 * This has the form http://host:port/announce.
 	 * </p>
 	 */
-	public URL getAnnounceUrl() {
+	private static URL getDefaultAnnounceUrl(InetSocketAddress address) {
 		try {
 			return new URL("http",
-				this.address.getAddress().getCanonicalHostName(),
-				this.address.getPort(),
-				Tracker.ANNOUNCE_URL);
+				address.getAddress().getCanonicalHostName(),
+				address.getPort(),
+				ANNOUNCE_URL);
 		} catch (MalformedURLException mue) {
 			logger.error("Could not build tracker URL: {}!", mue, mue);
 		}
@@ -129,14 +114,20 @@ public class Tracker {
 		return null;
 	}
 
+  public String getAnnounceUrl() {
+    return myAnnounceUrl;
+  }
+
   public URI getAnnounceURI() {
-    URL announceURL = getAnnounceUrl();
-    if (announceURL != null) {
-      try {
+    try {
+      URL announceURL = new URL(getAnnounceUrl());
+      if (announceURL != null) {
         return announceURL.toURI();
-      } catch (URISyntaxException e) {
-        logger.error("Cannot convert announce URL to URI", e);
       }
+    } catch (URISyntaxException e) {
+      logger.error("Cannot convert announce URL to URI", e);
+    } catch (MalformedURLException e) {
+      logger.error("Cannot create URL from announceURL", e);
     }
     return null;
   }
@@ -147,13 +138,13 @@ public class Tracker {
 	public void start() {
 		if (this.tracker == null || !this.tracker.isAlive()) {
 			this.tracker = new TrackerThread();
-			this.tracker.setName("tracker:" + this.address.getPort());
+			this.tracker.setName("tracker:" + myPort);
 			this.tracker.start();
 		}
 
 		if (this.collector == null || !this.collector.isAlive()) {
 			this.collector = new PeerCollectorThread();
-			this.collector.setName("peer-collector:" + this.address.getPort());
+			this.collector.setName("peer-collector:" + myPort);
 			this.collector.start();
 		}
 	}
@@ -298,19 +289,32 @@ public class Tracker {
 	 */
 	private class TrackerThread extends Thread {
 
-		@Override
-		public void run() {
-			logger.info("Starting BitTorrent tracker on {}...",
-				getAnnounceUrl());
+      @Override
+      public void run() {
+        logger.info("Starting BitTorrent tracker on {}...",
+            getAnnounceUrl());
 
-			try {
-				connection.connect(address);
-			} catch (IOException ioe) {
-				logger.error("Could not start the tracker: {}!", ioe.getMessage());
-				Tracker.this.stop();
-			}
-		}
-	}
+        List<SocketAddress> tries = new ArrayList<SocketAddress>() {{
+          try {add(new InetSocketAddress(InetAddress.getByAddress(new byte[4]), myPort));} catch (Exception ex) {}
+          try {add(new InetSocketAddress(InetAddress.getLocalHost(), myPort));} catch (Exception ex) {}
+          try {add(new InetSocketAddress(InetAddress.getByName(new URL(getAnnounceUrl()).getHost()), myPort));} catch (Exception ex) {}
+        }};
+
+
+        for (SocketAddress address : tries) {
+          try {
+            if (connection.connect(address) != null) {
+              logger.info("Started torrent tracker on {}", address);
+              return;
+            }
+          } catch (IOException ioe) {
+            logger.warn("Can't start the tracker using address{} : ", address.toString(), ioe.getMessage());
+          }
+        }
+        logger.error("Cannot start tracker on port {}. Stopping now...", myPort);
+        Tracker.this.stop();
+      }
+    }
 
 	/**
 	 * The unfresh peer collector thread.
