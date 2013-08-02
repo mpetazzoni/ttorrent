@@ -178,7 +178,7 @@ public class Piece implements Comparable<Piece> {
           file = new File(torrent.getParentFile().getCanonicalFile().getParentFile(), String.format("%s.%d.txt", torrent.getName(), piece.getIndex()));
         }
         if (!valid) {
-          logger.warn("Piece {} invalid. Expected hash {} when actual is {}", new Object[]{
+          logger.debug("Piece {} invalid. Expected hash {} when actual is {}", new Object[]{
             piece.getIndex(), HexBin.encode(hash), HexBin.encode(calculatedHash)});
           //saving data:
           FileOutputStream fOut = new FileOutputStream(file);

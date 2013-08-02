@@ -36,10 +36,14 @@ public class TrackerTest{
 //  private String myLogfile;
   private List<Client> clientList = new ArrayList<Client>();
 
-  @BeforeMethod
-  protected void setUp() throws Exception {
+
+  public  TrackerTest(){
     org.apache.log4j.BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.INFO);
+  }
+
+  @BeforeMethod
+  protected void setUp() throws Exception {
 /*
     final Logger rootLogger = RootLogger.getRootLogger();
     rootLogger.removeAllAppenders();

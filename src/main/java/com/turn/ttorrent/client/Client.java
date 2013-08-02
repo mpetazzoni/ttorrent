@@ -630,22 +630,22 @@ public class Client implements Runnable,
     }
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
+    Set<SharingPeer> addedPeers = new HashSet<SharingPeer>();
     for (Peer peer : peers) {
       SharingPeer match = this.getOrCreatePeer(peer, hexInfoHash);
       foundPeers.add(match);
 
-        // Attempt to connect to the peer if and only if:
-        //   - We're not already connected to it;
-        //   - We're not a seeder (we leave the responsibility
-        //	   of connecting to peers that need to download
-        //     something), or we are a seeder but we're still
-        //     willing to initiate some out bound connections.
-        if (match.isConnected() || this.isSeed(hexInfoHash) || match.getTorrent().isFinished()) {
-          continue;
-        }
+      // Attempt to connect to the peer if and only if:
+      //   - We're not already connected to it;
+      //   - We're not a seeder (we leave the responsibility
+      //	   of connecting to peers that need to download
+      //     something), or we are a seeder but we're still
+      //     willing to initiate some out bound connections.
+      if (match.isConnected() || this.isSeed(hexInfoHash) || match.getTorrent().isFinished()) {
+        continue;
+      }
 
-      this.peers.add(match);
-      this.service.connect(match);
+      addedPeers.add(match);
     }
 
     List<SharingPeer> toRemove = new ArrayList<SharingPeer>();
@@ -654,14 +654,16 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
-
     this.peers.removeAll(toRemove);
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
     }
+    peers.addAll(addedPeers);
+    for (SharingPeer addedPeer : addedPeers) {
+      this.service.connect(addedPeer);
+    }
 
   }
-
 
   /** CommunicationListener handler(s). ********************************/
 
