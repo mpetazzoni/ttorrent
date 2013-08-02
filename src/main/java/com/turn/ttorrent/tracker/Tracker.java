@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 
+import org.simpleframework.http.core.ContainerServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +67,7 @@ public class Tracker {
 	private boolean stop;
   private String myAnnounceUrl;
   private final int myPort;
+  private SocketAddress myBoundAddress = null;
 
   private final TrackerService trackerService;
 
@@ -91,7 +93,7 @@ public class Tracker {
         this.myAnnounceUrl = announceURL;
 		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
         this.trackerService = new TrackerService(version, this.torrents);
-        this.connection = new SocketConnection(trackerService);
+        this.connection = new SocketConnection(new ContainerServer(trackerService));
     }
 
 	/**
@@ -135,12 +137,15 @@ public class Tracker {
   /**
 	 * Start the tracker thread.
 	 */
-	public void start() {
+	public void start() throws IOException {
 		if (this.tracker == null || !this.tracker.isAlive()) {
 			this.tracker = new TrackerThread();
 			this.tracker.setName("tracker:" + myPort);
-			this.tracker.start();
-		}
+			this.tracker.run();
+          if (myBoundAddress == null) {
+            throw new IOException("Unable to start tracker on desired port " + myPort);
+          }
+        }
 
 		if (this.collector == null || !this.collector.isAlive()) {
 			this.collector = new PeerCollectorThread();
@@ -303,7 +308,7 @@ public class Tracker {
 
         for (SocketAddress address : tries) {
           try {
-            if (connection.connect(address) != null) {
+            if ((myBoundAddress = connection.connect(address)) != null) {
               logger.info("Started torrent tracker on {}", address);
               return;
             }

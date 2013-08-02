@@ -58,6 +58,26 @@ public class TrackerTest{
     startTracker();
   }
 
+  public void test_tracker_all_ports() throws IOException {
+    final int port = tracker.getAnnounceURI().getPort();
+    final Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces();
+    while (e.hasMoreElements()){
+      final NetworkInterface ni = e.nextElement();
+      final Enumeration<InetAddress> addresses = ni.getInetAddresses();
+      while (addresses.hasMoreElements()){
+        final InetAddress addr = addresses.nextElement();
+        try {
+          Socket s = new Socket(addr, port);
+        } catch (Exception ex){
+          if (System.getProperty("java.version").startsWith("1.7.") || addr instanceof Inet4Address){
+              fail("Unable to connect to " + addr, ex);
+          }
+        }
+      }
+
+    }
+  }
+
   public void test_share_and_download() throws IOException, NoSuchAlgorithmException, InterruptedException {
     final TrackedTorrent tt = this.tracker.announce(loadTorrent("file1.jar.torrent"));
     assertEquals(0, tt.getPeers().size());

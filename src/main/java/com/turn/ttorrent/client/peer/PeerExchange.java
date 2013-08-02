@@ -257,7 +257,9 @@ public class PeerExchange {
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
             logger.trace("Received {} from {}. Will multicast it to {} listeners", new Object[]{ message, peer, listeners.size()});
-
+                      if (!peer.isConnected()){
+                        logger.debug("Got message from disconnected peer :-/");
+                      }
 						for (MessageListener listener : listeners) {
 							listener.handleMessage(message);
 						}
