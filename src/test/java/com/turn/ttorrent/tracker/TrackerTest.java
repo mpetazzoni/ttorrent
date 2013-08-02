@@ -39,6 +39,7 @@ public class TrackerTest{
   @BeforeMethod
   protected void setUp() throws Exception {
     org.apache.log4j.BasicConfigurator.configure();
+    Logger.getRootLogger().setLevel(Level.INFO);
 /*
     final Logger rootLogger = RootLogger.getRootLogger();
     rootLogger.removeAllAppenders();
@@ -497,7 +498,7 @@ public class TrackerTest{
     seeder.share();
 
     for(int i=0; i<5; i++) {
-      downloadAndStop(torrent, 1000*1000, createClient());
+      downloadAndStop(torrent, 20*1000, createClient());
       Thread.sleep(5*1000);
     }
   }
@@ -552,7 +553,7 @@ public class TrackerTest{
   }
 
   private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
-    final WaitFor waitFor = new WaitFor(5000 * 1000, 1000) {
+    final WaitFor waitFor = new WaitFor(75 * 1000, 1000) {
       @Override
       protected boolean condition() {
         boolean retval = true;

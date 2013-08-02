@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -52,6 +54,8 @@ public class FileStorage implements TorrentByteStorage {
   private FileChannel channel;
 	private File current;
 
+  private final ReadWriteLock myLock = new ReentrantReadWriteLock();
+
   public FileStorage(File file, long offset, long size)
 		throws IOException {
 		this.target = file;
@@ -61,6 +65,8 @@ public class FileStorage implements TorrentByteStorage {
 	}
 
   public void open() throws IOException {
+    try {
+      myLock.writeLock().lock();
     this.partial = new File(this.target.getAbsolutePath() +
       TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
@@ -78,7 +84,8 @@ public class FileStorage implements TorrentByteStorage {
       this.current = this.target;
     }
 
-    this.raf = new RandomAccessFile(this.current, "rw");
+
+      this.raf = new RandomAccessFile(this.current, "rw");
 
     // Set the file length to the appropriate size, eventually truncating
     // or extending the file if it already exists with a different size.
@@ -93,6 +100,9 @@ public class FileStorage implements TorrentByteStorage {
         this.offset,
         this.size,
       });
+    } finally {
+      myLock.writeLock().unlock();
+    }
   }
 
 	protected long offset() {
@@ -106,6 +116,8 @@ public class FileStorage implements TorrentByteStorage {
 
 	@Override
 	public int read(ByteBuffer buffer, long offset) throws IOException {
+      try {
+        myLock.readLock().lock();
 		int requested = buffer.remaining();
 
 		if (offset + requested > this.size) {
@@ -118,10 +130,15 @@ public class FileStorage implements TorrentByteStorage {
 		}
 
 		return bytes;
-	}
+      } finally {
+        myLock.readLock().unlock();
+      }
+    }
 
 	@Override
 	public int write(ByteBuffer buffer, long offset) throws IOException {
+      try {
+        myLock.writeLock().lock();
 		int requested = buffer.remaining();
 
 		if (offset + requested > this.size) {
@@ -129,21 +146,31 @@ public class FileStorage implements TorrentByteStorage {
 		}
 
 		return this.channel.write(buffer, offset);
-	}
+      } finally {
+        myLock.writeLock().unlock();
+      }
+    }
 
 	@Override
-	public synchronized void close() throws IOException {
+	public void close() throws IOException {
+      try {
+        myLock.writeLock().lock();
 		logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
 		if (this.channel.isOpen()) {
 			this.channel.force(true);
 		}
 		this.raf.close();
-	}
+      } finally {
+        myLock.writeLock().unlock();
+      }
+    }
 
 	/** Move the partial file to its final location.
 	 */
 	@Override
-	public synchronized void finish() throws IOException {
+	public void finish() throws IOException {
+      try {
+        myLock.writeLock().lock();
 		logger.debug("Closing file channel to " + this.current.getName() +
 			" (download complete).");
 		if (this.channel.isOpen()) {
@@ -155,9 +182,13 @@ public class FileStorage implements TorrentByteStorage {
 			return;
 		}
 
-		this.raf.close();
-		FileUtils.deleteQuietly(this.target);
-		FileUtils.moveFile(this.current, this.target);
+        try {
+          FileUtils.deleteQuietly(this.target);
+          this.raf.close();
+          FileUtils.moveFile(this.current, this.target);
+        } catch (Exception ex) {
+          logger.error("An error occured while moving file to its final location", ex);
+        }
 
 		logger.debug("Re-opening torrent byte storage at {}.",
 				this.target.getAbsolutePath());
@@ -171,7 +202,10 @@ public class FileStorage implements TorrentByteStorage {
 		logger.info("Moved torrent data from {} to {}.",
 			this.partial.getName(),
 			this.target.getName());
-	}
+      } finally {
+        myLock.writeLock().unlock();
+      }
+    }
 
 	@Override
 	public boolean isFinished() {
