@@ -630,7 +630,6 @@ public class Client implements Runnable,
     }
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
-    Set<SharingPeer> addedPeers = new HashSet<SharingPeer>();
     for (Peer peer : peers) {
       SharingPeer match = this.getOrCreatePeer(peer, hexInfoHash);
       foundPeers.add(match);
@@ -645,7 +644,8 @@ public class Client implements Runnable,
           continue;
         }
 
-      addedPeers.add(match);
+      this.peers.add(match);
+      this.service.connect(match);
     }
 
     List<SharingPeer> toRemove = new ArrayList<SharingPeer>();
@@ -654,13 +654,10 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
+
     this.peers.removeAll(toRemove);
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
-    }
-    peers.addAll(addedPeers);
-    for (SharingPeer addedPeer : addedPeers) {
-      this.service.connect(addedPeer);
     }
 
   }

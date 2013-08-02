@@ -60,7 +60,7 @@ public class FileStorage implements TorrentByteStorage {
 
 	}
 
-  public synchronized void open() throws IOException {
+  public void open() throws IOException {
     this.partial = new File(this.target.getAbsolutePath() +
       TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
@@ -105,7 +105,7 @@ public class FileStorage implements TorrentByteStorage {
 	}
 
 	@Override
-	public synchronized int read(ByteBuffer buffer, long offset) throws IOException {
+	public int read(ByteBuffer buffer, long offset) throws IOException {
 		int requested = buffer.remaining();
 
 		if (offset + requested > this.size) {
@@ -121,7 +121,7 @@ public class FileStorage implements TorrentByteStorage {
 	}
 
 	@Override
-	public synchronized int write(ByteBuffer buffer, long offset) throws IOException {
+	public int write(ByteBuffer buffer, long offset) throws IOException {
 		int requested = buffer.remaining();
 
 		if (offset + requested > this.size) {
