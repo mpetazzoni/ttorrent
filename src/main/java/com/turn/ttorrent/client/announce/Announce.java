@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import org.slf4j.Logger;
@@ -95,6 +96,11 @@ public class Announce implements Runnable {
       client = this.createTrackerClient(peer, trackerUrl);
       client.register(listener);
       this.clients.put(trackerUrl.toString(), client);
+    }
+    try {
+      client.announce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrent);
+    } catch (AnnounceException e) {
+      logger.warn("Unable to force announce torrent {} on tracker {}", torrent.getName(), client.getTrackerURI());
     }
   }
 
@@ -192,21 +198,17 @@ public class Announce implements Runnable {
     // in real-time by the tracker's responses to our announce requests.
     this.interval = 5;
 
-    AnnounceRequestMessage.RequestEvent event =
-      AnnounceRequestMessage.RequestEvent.STARTED;
-
     while (!this.stop) {
       try {
         logger.debug("Starting announce for {} torrents", torrents.size());
         for (SharedTorrent torrent : this.torrents) {
           TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
           if (trackerClient != null) {
-            trackerClient.announce(event, false, torrent);
+            trackerClient.announce(AnnounceRequestMessage.RequestEvent.NONE, false, torrent);
           } else {
             logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
           }
         }
-        event = AnnounceRequestMessage.RequestEvent.NONE;
       } catch (AnnounceException ae) {
         logger.warn(ae.getMessage());
       } catch (Exception e) {
@@ -225,7 +227,6 @@ public class Announce implements Runnable {
     if (!this.forceStop) {
       // Send the final 'stopped' event to the tracker after a little
       // while.
-      event = AnnounceRequestMessage.RequestEvent.STOPPED;
       try {
         Thread.sleep(500);
       } catch (InterruptedException ie) {
@@ -234,7 +235,7 @@ public class Announce implements Runnable {
 
       try {
         for (SharedTorrent torrent : this.torrents) {
-          this.getCurrentTrackerClient(torrent).announce(event, true, torrent);
+          this.getCurrentTrackerClient(torrent).announce(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
         }
       } catch (AnnounceException ae) {
         logger.warn(ae.getMessage());
@@ -250,7 +251,7 @@ public class Announce implements Runnable {
    * @throws UnknownHostException    If the tracker address is invalid.
    * @throws UnknownServiceException If the tracker protocol is not supported.
    */
-  private TrackerClient createTrackerClient(Peer peer, URI tracker) throws UnknownHostException, UnknownServiceException {
+  public static TrackerClient createTrackerClient(Peer peer, URI tracker) throws UnknownHostException, UnknownServiceException {
     String scheme = tracker.getScheme();
 
     if ("http".equals(scheme) || "https".equals(scheme)) {
@@ -266,7 +267,7 @@ public class Announce implements Runnable {
   /**
    * Returns the current tracker client used for announces.
    */
-  public TrackerClient getCurrentTrackerClient(SharedTorrent torrent) {
+  public TrackerClient getCurrentTrackerClient(Torrent torrent) {
     List<List<URI>> announceList = torrent.getAnnounceList();
     if (announceList.size() == 0) return null;
     List<URI> uris = announceList.get(0);

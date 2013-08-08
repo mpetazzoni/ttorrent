@@ -275,6 +275,21 @@ public class Client implements Runnable,
     return t != null && t.isComplete();
   }
 
+  public void downloadUninterruptibly(SharedTorrent torrent, long downloadTimeoutSeconds) throws IOException, InterruptedException {
+    addTorrent(torrent);
+    // we must ensure that at every moment we are downloading a piece of that torrent
+    long startTime = System.currentTimeMillis();
+    while (!torrent.isComplete() &&
+        (torrent.getSeedersCount() > 0 || torrent.getLastAnnounceTime() < 0) &&
+        (System.currentTimeMillis() - startTime <= downloadTimeoutSeconds*1000)){
+      Thread.sleep(100);
+    }
+    if (!torrent.isComplete()) {
+      removeTorrent(torrent);
+      throw new IOException("Unable to download torrent completely - no full seeder or timed out");
+    }
+  }
+
   /**
    * Main client loop.
    * <p/>
@@ -612,6 +627,11 @@ public class Client implements Runnable,
   @Override
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
     this.announce.setInterval(interval);
+    final SharedTorrent sharedTorrent = this.torrents.get(hexInfoHash);
+    if (sharedTorrent != null){
+      sharedTorrent.setSeedersCount(complete);
+      sharedTorrent.setLastAnnounceTime(System.currentTimeMillis());
+    }
   }
 
   /**

@@ -8,10 +8,8 @@ import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.Torrent;
-import junit.framework.TestCase;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.*;
-import org.apache.log4j.spi.RootLogger;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -350,70 +348,6 @@ public class TrackerTest{
   public void testDelete(){
 
   }
-//  @Test(invocationCount = 50)
-/*
-  public void bad_seeder() throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
-//    throw new SkipTestException();
-    this.tracker.setAcceptForeignTorrents(true);
-
-    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
-    final int numSeeders = 5;
-    final int piecesCount = numSeeders +7;
-
-    final List<Client> clientsList;
-    clientsList = new ArrayList<Client>(piecesCount);
-
-    final MessageDigest md5 = MessageDigest.getInstance("MD5");
-
-    try {
-      File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
-
-      createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
-      String baseMD5 = getFileMD5(baseFile, md5);
-      Client firstClient = clientsList.get(0);
-      final SharedTorrent torrent = firstClient.getTorrents().iterator().next();
-      {
-        File file = new File(torrent.getParentFile(), torrent.getFilenames().get(0));
-        RandomAccessFile raf = new RandomAccessFile(file, "rw");
-        raf.seek(0);
-        final int read = raf.read();
-        raf.seek(0);
-        // replacing the byte
-        if (read != 35) {
-          raf.write(35);
-        } else {
-          raf.write(45);
-        }
-        raf.close();
-      }
-
-      {
-        byte[] piece = new byte[pieceSize];
-        FileInputStream fin = new FileInputStream(baseFile);
-        fin.read(piece);
-        fin.close();
-
-        final File baseDir = tempFiles.createTempDir();
-        final File seederPiecesFile = new File(baseDir, baseFile.getName());
-        RandomAccessFile raf = new RandomAccessFile(seederPiecesFile, "rw");
-        raf.setLength(baseFile.length());
-        raf.seek(0);
-        raf.write(piece);
-        Client client = createClient();
-        clientsList.add(client);
-        client.addTorrent(new SharedTorrent(torrent, baseDir, false));
-        client.share();
-      }
-
-      validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5);
-
-    } finally {
-      for (Client client : clientsList) {
-        client.stop();
-      }
-    }
-  }
-*/
 
 //  @Test(invocationCount = 50)
   public void corrupted_seeder_repair()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
@@ -555,6 +489,55 @@ public class TrackerTest{
     }
 
   }
+
+  public void download_uninterruptibly_positive() throws InterruptedException, NoSuchAlgorithmException, IOException {
+    tracker.setAcceptForeignTorrents(true);
+    Client seeder = createClient();
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+
+    seeder.share();
+    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    Client leecher = createClient();
+    leecher.share();
+    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
+    leecher.downloadUninterruptibly(st, 10);
+
+    assertTrue(st.getClientState()==ClientState.SEEDING);
+  }
+
+  public void download_uninterruptibly_negative() throws InterruptedException, NoSuchAlgorithmException, IOException {
+    tracker.setAcceptForeignTorrents(true);
+    final AtomicInteger downloadedPiecesCount = new AtomicInteger(0);
+    final Client seeder = createClient();
+
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+
+    seeder.share();
+    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    final Client leecher = new Client(InetAddress.getLocalHost()){
+      @Override
+      public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
+        super.handlePieceCompleted(peer, piece);
+        if (downloadedPiecesCount.incrementAndGet() > 10){
+          seeder.stop();
+        }
+      }
+    };
+    clientList.add(leecher);
+    leecher.share();
+    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
+    try {
+      leecher.downloadUninterruptibly(st, 20);
+      fail("Must fail, because file wasn't downloaded completely");
+    } catch (IOException ex){
+      assertTrue(st.getClientState()==ClientState.SHARING);
+    }
+
+  }
+
+
 
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final File tempDir = tempFiles.createTempDir();

@@ -80,6 +80,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private long downloaded;
   private long left;
 
+  private long myLastAnnounceTime = -1;
+  private int mySeedersCount=0;
+
   private TorrentByteStorage bucket;
 
   private final int pieceLength;
@@ -116,7 +119,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash)
-    throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+    throws IOException, NoSuchAlgorithmException {
     this(torrent, destDir, multiThreadHash, false);
   }
 
@@ -139,7 +142,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash, boolean seeder)
-    throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+    throws IOException, NoSuchAlgorithmException {
     this(torrent.getEncoded(), destDir, multiThreadHash, seeder);
   }
 
@@ -154,7 +157,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws IOException           If the torrent file cannot be read or decoded.
    */
   public SharedTorrent(byte[] torrent, File destDir, boolean multiThreadHash)
-    throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+    throws IOException, NoSuchAlgorithmException {
     this(torrent, destDir, multiThreadHash, false);
   }
 
@@ -288,6 +291,22 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public long getLeft() {
     return this.left;
+  }
+
+  public int getSeedersCount() {
+    return mySeedersCount;
+  }
+
+  public void setSeedersCount(int seedersCount) {
+    mySeedersCount = seedersCount;
+  }
+
+  public long getLastAnnounceTime() {
+    return myLastAnnounceTime;
+  }
+
+  public void setLastAnnounceTime(long lastAnnounceTime) {
+    myLastAnnounceTime = lastAnnounceTime;
   }
 
   /**

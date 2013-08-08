@@ -348,7 +348,33 @@ public class Torrent extends Observable implements TorrentHash {
 		return this.hex_info_hash;
 	}
 
-	/**
+  /**
+   * Get the number of bytes uploaded for this torrent.
+   */
+  public long getUploaded() {
+    return 0;
+  }
+
+  /**
+   * Get the number of bytes downloaded for this torrent.
+   * <p/>
+   * <p>
+   * <b>Note:</b> this could be more than the torrent's length, and should
+   * not be used to determine a completion percentage.
+   * </p>
+   */
+  public long getDownloaded() {
+    return 0;
+  }
+
+  /**
+   * Get the number of bytes left to download for this torrent.
+   */
+  public long getLeft() {
+    return 0;
+  }
+
+  /**
 	 * Return a human-readable representation of this torrent object.
 	 *
 	 * <p>

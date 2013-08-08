@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import org.slf4j.Logger;
@@ -77,14 +78,15 @@ public abstract class TrackerClient {
 	 * with the decoded payload.
 	 * </p>
 	 *
-	 * @param event The announce event type (can be AnnounceEvent.NONE for
-	 * periodic updates).
-	 * @param inhibitEvent Prevent event listeners from being notified.
-	 */
+     * @param event The announce event type (can be AnnounceEvent.NONE for
+     * periodic updates).
+     * @param inhibitEvent Prevent event listeners from being notified.
+     * @param torrent
+     */
 	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
-                                boolean inhibitEvent, SharedTorrent torrent) throws AnnounceException;
+                                boolean inhibitEvent, Torrent torrent) throws AnnounceException;
 
-  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, SharedTorrent torrent){
+  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, Torrent torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
       logger.info("Announcing {} to tracker with {}U/{}D/{}L bytes...",
           new Object[]{
@@ -106,7 +108,7 @@ public abstract class TrackerClient {
 	 * Close any opened announce connection.
 	 *
 	 * <p>
-	 * This method is called by {@link #stop()} to make sure all connections
+	 * This method is called to make sure all connections
 	 * are correctly closed when the announce thread is asked to stop.
 	 * </p>
 	 */

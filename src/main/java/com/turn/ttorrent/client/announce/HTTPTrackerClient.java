@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.http.*;
 
@@ -68,14 +69,13 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * with the decoded payload.
 	 * </p>
 	 *
-	 * @param event The announce event type (can be AnnounceEvent.NONE for
-	 * periodic updates).
-	 * @param inhibitEvents Prevent event listeners from being notified.
+     * @param event The announce event type (can be AnnounceEvent.NONE for
+     * periodic updates).
+     * @param inhibitEvents Prevent event listeners from being notified.
      * @param torrent
-	 */
-	@Override
+     */
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, SharedTorrent torrent) throws AnnounceException {
+                       boolean inhibitEvents, Torrent torrent) throws AnnounceException {
       logAnnounceRequest(event, torrent);
       URL target = null;
 		try {
@@ -157,19 +157,22 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @throws MessageValidationException
 	 */
 	private HTTPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, SharedTorrent torrent)
+    AnnounceRequestMessage.RequestEvent event, Torrent torrent)
 		throws UnsupportedEncodingException, IOException,
 			MessageValidationException {
 		// Build announce request message
-		return HTTPAnnounceRequestMessage.craft(
+      final long uploaded = torrent.getUploaded();
+      final long downloaded = torrent.getDownloaded();
+      final long left = torrent.getLeft();
+      return HTTPAnnounceRequestMessage.craft(
       torrent.getInfoHash(),
-				this.peer.getPeerId().array(),
-				this.peer.getPort(),
-      torrent.getUploaded(),
-      torrent.getDownloaded(),
-      torrent.getLeft(),
-				true, false, event,
-				this.peer.getIp(),
-				AnnounceRequestMessage.DEFAULT_NUM_WANT);
-	}
+          this.peer.getPeerId().array(),
+          this.peer.getPort(),
+          uploaded,
+          downloaded,
+          left,
+          true, false, event,
+          this.peer.getIp(),
+          AnnounceRequestMessage.DEFAULT_NUM_WANT);
+    }
 }
