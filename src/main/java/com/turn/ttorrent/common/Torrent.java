@@ -648,8 +648,22 @@ public class Torrent extends Observable implements TorrentHash {
 		}
 
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-			torrent.put("announce", new BEValue(announce.toString()));
-		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
+
+      if (announce != null) {
+        torrent.put("announce", new BEValue(announce.toString()));
+      }
+      if (announceList != null) {
+        List<BEValue> tiers = new LinkedList<BEValue>();
+        for (List<URI> trackers : announceList) {
+          List<BEValue> tierInfo = new LinkedList<BEValue>();
+          for (URI trackerURI : trackers) {
+            tierInfo.add(new BEValue(trackerURI.toString()));
+          }
+          tiers.add(new BEValue(tierInfo));
+        }
+        torrent.put("announce-list", new BEValue(tiers));
+      }
+      torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();

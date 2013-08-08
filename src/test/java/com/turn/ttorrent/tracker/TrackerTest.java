@@ -532,7 +532,7 @@ public class TrackerTest{
       leecher.downloadUninterruptibly(st, 20);
       fail("Must fail, because file wasn't downloaded completely");
     } catch (IOException ex){
-      assertTrue(st.getClientState()==ClientState.SHARING);
+      assertEquals(st.getClientState(),ClientState.DONE);
     }
 
   }
