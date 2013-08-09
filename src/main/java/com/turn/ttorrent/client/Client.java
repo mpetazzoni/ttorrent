@@ -189,6 +189,10 @@ public class Client implements Runnable,
     return this.torrents.values();
   }
 
+  public Map<String, SharedTorrent> getTorrentsMap(){
+    return torrents;
+  }
+
   public SharedTorrent getTorrentByFilePath(File file){
     String path = file.getAbsolutePath();
     for (SharedTorrent torrent : torrents.values()) {
@@ -292,9 +296,6 @@ public class Client implements Runnable,
   }
 
   public void downloadUninterruptibly(SharedTorrent torrent, long downloadTimeoutSeconds) throws IOException, InterruptedException {
-    if (torrents.containsKey(torrent.getHexInfoHash())){
-      removeTorrent(torrent);
-    }
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     long startTime = System.currentTimeMillis();
