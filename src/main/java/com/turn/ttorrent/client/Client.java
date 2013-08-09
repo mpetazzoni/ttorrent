@@ -29,6 +29,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -188,6 +189,21 @@ public class Client implements Runnable,
     return this.torrents.values();
   }
 
+  public SharedTorrent getTorrentByFilePath(File file){
+    String path = file.getAbsolutePath();
+    for (SharedTorrent torrent : torrents.values()) {
+      File parentFile = torrent.getParentFile();
+      final List<String> filenames = torrent.getFilenames();
+      for (String filename : filenames) {
+        File seededFile = new File(parentFile, filename);
+        if (seededFile.getAbsolutePath().equals(path)){
+          return torrent;
+        }
+      }
+    }
+    return null;
+  }
+
   /**
    * Returns the set of known peers.
    */
@@ -276,6 +292,9 @@ public class Client implements Runnable,
   }
 
   public void downloadUninterruptibly(SharedTorrent torrent, long downloadTimeoutSeconds) throws IOException, InterruptedException {
+    if (torrents.containsKey(torrent.getHexInfoHash())){
+      removeTorrent(torrent);
+    }
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     long startTime = System.currentTimeMillis();
