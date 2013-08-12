@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol;
 
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.TorrentInfo;
 
 import java.nio.ByteBuffer;
 import java.text.ParseException;
@@ -118,9 +118,9 @@ public abstract class PeerMessage {
 	 * it makes sense. Otherwise, it defaults to true.
 	 * </p>
 	 *
-	 * @param torrent The torrent this message is about.
-	 */
-	public PeerMessage validate(SharedTorrent torrent)
+   * @param torrent The torrent this message is about.
+   */
+	public PeerMessage validate(TorrentInfo torrent)
 		throws MessageValidationException {
 		return this;
 	}
@@ -137,13 +137,14 @@ public abstract class PeerMessage {
 	 * subclass object.
 	 * </p>
 	 *
-	 * @param buffer The byte buffer containing the message data.
-	 * @param torrent The torrent this message is about.
-	 * @return A PeerMessage subclass instance.
+	 *
+   * @param buffer The byte buffer containing the message data.
+   * @param torrent The torrent this message is about.
+   * @return A PeerMessage subclass instance.
 	 * @throws ParseException When the message is invalid, can't be parsed or
 	 * does not match the protocol requirements.
 	 */
-	public static PeerMessage parse(ByteBuffer buffer, SharedTorrent torrent)
+	public static PeerMessage parse(ByteBuffer buffer, TorrentInfo torrent)
 		throws ParseException {
 		int length = buffer.getInt();
 		if (length == 0) {
@@ -209,7 +210,7 @@ public abstract class PeerMessage {
 		}
 
 		public static KeepAliveMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                         TorrentInfo torrent) throws MessageValidationException {
 			return (KeepAliveMessage)new KeepAliveMessage(buffer)
 				.validate(torrent);
 		}
@@ -236,7 +237,7 @@ public abstract class PeerMessage {
 		}
 
 		public static ChokeMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+				TorrentInfo torrent) throws MessageValidationException {
 			return (ChokeMessage)new ChokeMessage(buffer)
 				.validate(torrent);
 		}
@@ -264,7 +265,7 @@ public abstract class PeerMessage {
 		}
 
 		public static UnchokeMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                       TorrentInfo torrent) throws MessageValidationException {
 			return (UnchokeMessage)new UnchokeMessage(buffer)
 				.validate(torrent);
 		}
@@ -292,7 +293,7 @@ public abstract class PeerMessage {
 		}
 
 		public static InterestedMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                          TorrentInfo torrent) throws MessageValidationException {
 			return (InterestedMessage)new InterestedMessage(buffer)
 				.validate(torrent);
 		}
@@ -320,7 +321,7 @@ public abstract class PeerMessage {
 		}
 
 		public static NotInterestedMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                             TorrentInfo torrent) throws MessageValidationException {
 			return (NotInterestedMessage)new NotInterestedMessage(buffer)
 				.validate(torrent);
 		}
@@ -355,7 +356,7 @@ public abstract class PeerMessage {
 		}
 
 		@Override
-		public HaveMessage validate(SharedTorrent torrent)
+		public HaveMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount()) {
 				return this;
@@ -365,7 +366,7 @@ public abstract class PeerMessage {
 		}
 
 		public static HaveMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                    TorrentInfo torrent) throws MessageValidationException {
 			return new HaveMessage(buffer, buffer.getInt())
 				.validate(torrent);
 		}
@@ -405,7 +406,7 @@ public abstract class PeerMessage {
 		}
 
 		@Override
-		public BitfieldMessage validate(SharedTorrent torrent)
+		public BitfieldMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.bitfield.length() <= torrent.getPieceCount()) {
 				return this;
@@ -415,7 +416,7 @@ public abstract class PeerMessage {
 		}
 
 		public static BitfieldMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                        TorrentInfo torrent) throws MessageValidationException {
 			BitSet bitfield = new BitSet(buffer.remaining()*8);
 			for (int i=0; i < buffer.remaining()*8; i++) {
 				if ((buffer.get(i/8) & (1 << (7 -(i % 8)))) > 0) {
@@ -489,11 +490,11 @@ public abstract class PeerMessage {
 		}
 
 		@Override
-		public RequestMessage validate(SharedTorrent torrent)
+		public RequestMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).size()) {
+					torrent.getPieceSize(this.piece)) {
 				return this;
 			}
 
@@ -501,7 +502,7 @@ public abstract class PeerMessage {
 		}
 
 		public static RequestMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                       TorrentInfo torrent) throws MessageValidationException {
 			int piece = buffer.getInt();
 			int offset = buffer.getInt();
 			int length = buffer.getInt();
@@ -560,11 +561,11 @@ public abstract class PeerMessage {
 		}
 
 		@Override
-		public PieceMessage validate(SharedTorrent torrent)
+		public PieceMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.block.limit() <=
-				torrent.getPiece(this.piece).size()) {
+				torrent.getPieceSize(this.piece)) {
 				return this;
 			}
 
@@ -572,7 +573,7 @@ public abstract class PeerMessage {
 		}
 
 		public static PieceMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                     TorrentInfo torrent) throws MessageValidationException {
 			int piece = buffer.getInt();
 			int offset = buffer.getInt();
 			ByteBuffer block = buffer.slice();
@@ -632,11 +633,11 @@ public abstract class PeerMessage {
 		}
 
 		@Override
-		public CancelMessage validate(SharedTorrent torrent)
+		public CancelMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).size()) {
+					torrent.getPieceSize(this.piece)) {
 				return this;
 			}
 
@@ -644,7 +645,7 @@ public abstract class PeerMessage {
 		}
 
 		public static CancelMessage parse(ByteBuffer buffer,
-				SharedTorrent torrent) throws MessageValidationException {
+                                      TorrentInfo torrent) throws MessageValidationException {
 			int piece = buffer.getInt();
 			int offset = buffer.getInt();
 			int length = buffer.getInt();

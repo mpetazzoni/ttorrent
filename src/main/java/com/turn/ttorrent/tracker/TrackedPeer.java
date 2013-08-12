@@ -51,7 +51,7 @@ public class TrackedPeer extends Peer {
 	private static final Logger logger =
 		LoggerFactory.getLogger(TrackedPeer.class);
 
-	private static final int FRESH_TIME_SECONDS = 30;
+	private static final int FRESH_TIME_SECONDS = 120;
 
 	private long uploaded;
 	private long downloaded;
@@ -203,7 +203,7 @@ public class TrackedPeer extends Peer {
 	public BEValue toBEValue() throws UnsupportedEncodingException {
 		Map<String, BEValue> peer = new HashMap<String, BEValue>();
 		if (this.hasPeerId()) {
-			peer.put("peer id", new BEValue(this.getPeerId().array()));
+			peer.put("peer id", new BEValue(this.getPeerIdArray()));
 		}
 		peer.put("ip", new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
 		peer.put("port", new BEValue(this.getPort()));

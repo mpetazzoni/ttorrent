@@ -86,7 +86,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
 	@Override
 	public byte[] getPeerId() {
-		return this.peer.getPeerId().array();
+		return this.peer.getPeerIdArray();
 	}
 
 	@Override

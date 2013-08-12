@@ -492,16 +492,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     return this.pieces[index];
   }
 
-  /**
-   * Get the number of pieces in this torrent.
-   */
-  public int getPieceCount() {
-    if (this.pieces == null) {
-      throw new IllegalStateException("Torrent not initialized yet.");
-    }
-
-    return this.pieces.length;
-  }
 
   public File getParentFile() {
     return parentFile;

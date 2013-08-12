@@ -16,6 +16,8 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.SharingPeerInfo;
+import com.turn.ttorrent.common.Peer;
 
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -36,7 +38,7 @@ public interface CommunicationListener extends EventListener {
 
   public void handleNewData(SocketChannel s, List<ByteBuffer> data);
 
-  public void handleFailedConnection(SharingPeer peer, Throwable cause);
+  public void handleFailedConnection(Peer peer, Throwable cause);
 
   public void handleNewPeerConnection(SocketChannel s, byte[] peerId, String hexInfoHash);
 }

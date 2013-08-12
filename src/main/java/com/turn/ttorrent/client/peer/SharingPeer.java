@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.peer;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  *
  * @author mpetazzoni
  */
-public class SharingPeer extends Peer implements MessageListener {
+public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
 
   private static final Logger logger =
     LoggerFactory.getLogger(SharingPeer.class);
@@ -92,8 +93,11 @@ public class SharingPeer extends Peer implements MessageListener {
 
   private final Object requestsLock, exchangeLock;
 
-  private volatile Future
-    connectTask;
+  private volatile Future connectTask;
+
+  public SharingPeer(Peer peer, SharedTorrent torrent){
+    this(peer.getIp(), peer.getPort(), peer.getPeerId(), torrent);
+  }
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -103,8 +107,7 @@ public class SharingPeer extends Peer implements MessageListener {
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId,
-                     SharedTorrent torrent) {
+  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
@@ -832,6 +835,11 @@ public class SharingPeer extends Peer implements MessageListener {
 
   public SocketChannel getSocketChannel() {
     return exchange.getChannel();
+  }
+
+  @Override
+  public TorrentHash getTorrentHash() {
+    return torrent;
   }
 
   /**

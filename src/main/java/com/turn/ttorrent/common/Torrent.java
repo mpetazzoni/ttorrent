@@ -64,12 +64,12 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure">Torrent meta-info file structure specification</a>
  */
-public class Torrent extends Observable implements TorrentHash {
+public class Torrent extends Observable implements TorrentInfo {
 
 	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
+	public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
 
@@ -111,6 +111,9 @@ public class Torrent extends Observable implements TorrentHash {
 	protected final List<TorrentFile> files;
 
 	private final boolean seeder;
+
+  private final int myPieceCount;
+  private final long myPieceLength;
 
 	/**
 	 * Create a new torrent from meta-info binary data.
@@ -277,6 +280,10 @@ public class Torrent extends Observable implements TorrentHash {
 			this.decoded_info.get("piece length").getInt());
 		logger.info("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
+
+    myPieceLength = this.decoded_info.get("piece length").getInt();
+    myPieceCount = (int) (Math.ceil(
+            (double) this.getSize() / myPieceLength));
 	}
 
 	/**
@@ -373,6 +380,25 @@ public class Torrent extends Observable implements TorrentHash {
   public long getLeft() {
     return 0;
   }
+
+  /**
+   * Get the number of pieces in this torrent.
+   */
+  public int getPieceCount() {
+
+    return this.myPieceCount;
+  }
+
+  public long getPieceSize(final int pieceIdx){
+    if (pieceIdx >=0 && pieceIdx < myPieceCount-1){
+      return myPieceLength;
+    } else if (pieceIdx == myPieceCount-1){
+      return (int) Math.min(myPieceLength, size);
+    } else {
+      return 0;
+    }
+  }
+
 
   /**
 	 * Return a human-readable representation of this torrent object.
@@ -636,8 +662,16 @@ public class Torrent extends Observable implements TorrentHash {
       return create(parent, files, announce, announceList, createdBy, DEFAULT_PIECE_LENGTH);
     }
 
-	public static Torrent create(File parent, List<File> files, URI announce,
-                                  List<List<URI>> announceList, String createdBy, final int pieceSize)
+  public static Torrent create(File parent, List<File> files, URI announce,
+                               List<List<URI>> announceList, String createdBy, final int pieceSize)
+          throws NoSuchAlgorithmException, InterruptedException, IOException {
+    return create(parent, files, announce, announceList, createdBy, System.currentTimeMillis() / 1000, pieceSize);
+  }
+
+
+  //for tests
+  /*package local*/ static Torrent create(File parent, List<File> files, URI announce,
+                                  List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
 			throws NoSuchAlgorithmException, InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -663,7 +697,7 @@ public class Torrent extends Observable implements TorrentHash {
         }
         torrent.put("announce-list", new BEValue(tiers));
       }
-      torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
+      torrent.put("creation date", new BEValue(creationTimeSecs));
 		torrent.put("created by", new BEValue(createdBy));
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();

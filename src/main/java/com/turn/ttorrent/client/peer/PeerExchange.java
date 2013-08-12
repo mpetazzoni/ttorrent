@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 
 import java.io.EOFException;
@@ -218,55 +219,8 @@ public class PeerExchange {
 
 			try {
 				while (!stop) {
-					buffer.rewind();
-					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
-
-					if (channel.read(buffer) < 0) {
-						throw new EOFException(
-							"Reached end-of-stream while reading size header");
-					}
-
-					// Keep reading bytes until the length field has been read
-					// entirely.
-					if (buffer.hasRemaining()) {
-						try {
-							Thread.sleep(1);
-						} catch (InterruptedException ie) {
-							// Ignore and move along.
-						}
-
-						continue;
-					}
-
-					int pstrlen = buffer.getInt(0);
-                  if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen > buffer.capacity()){
-                    logger.warn("Proposed limit of {} is larger than capacity of {}",
-                      PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen, buffer.capacity() );
-                  }
-					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
-
-					while (!stop && buffer.hasRemaining()) {
-						if (channel.read(buffer) < 0) {
-							throw new EOFException(
-								"Reached end-of-stream while reading message");
-						}
-					}
-
-					buffer.rewind();
-
-					try {
-						PeerMessage message = PeerMessage.parse(buffer, torrent);
-            logger.trace("Received {} from {}. Will multicast it to {} listeners", new Object[]{ message, peer, listeners.size()});
-                      if (!peer.isConnected()){
-                        logger.debug("Got message from disconnected peer :-/");
-                      }
-						for (MessageListener listener : listeners) {
-							listener.handleMessage(message);
-						}
-					} catch (ParseException pe) {
-						logger.warn("{}", pe.getMessage());
-					}
-				}
+          ConnectionUtils.readAndHandleMessage(buffer, channel, stop, torrent, listeners);
+        }
 			} catch (Exception ioe) {
               logger.debug("Exception", ioe);
               peer.unbind(true);
@@ -280,7 +234,8 @@ public class PeerExchange {
 		}
 	}
 
-	/**
+
+  /**
 	 * Outgoing messages thread.
 	 *
 	 * <p>

@@ -62,8 +62,7 @@ public class Tracker {
 	/** The in-memory repository of torrents tracked. */
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
-	private Thread tracker;
-	private Thread collector;
+  private Thread collector;
 	private boolean stop;
   private String myAnnounceUrl;
   private final int myPort;
@@ -138,14 +137,31 @@ public class Tracker {
 	 * Start the tracker thread.
 	 */
 	public void start() throws IOException {
-		if (this.tracker == null || !this.tracker.isAlive()) {
-			this.tracker = new TrackerThread();
-			this.tracker.setName("tracker:" + myPort);
-			this.tracker.run();
-          if (myBoundAddress == null) {
-            throw new IOException("Unable to start tracker on desired port " + myPort);
-          }
+    logger.info("Starting BitTorrent tracker on {}...",
+            getAnnounceUrl());
+
+    List<SocketAddress> tries = new ArrayList<SocketAddress>() {{
+      try {add(new InetSocketAddress(InetAddress.getByAddress(new byte[4]), myPort));} catch (Exception ex) {}
+      try {add(new InetSocketAddress(InetAddress.getLocalHost(), myPort));} catch (Exception ex) {}
+      try {add(new InetSocketAddress(InetAddress.getByName(new URL(getAnnounceUrl()).getHost()), myPort));} catch (Exception ex) {}
+    }};
+
+    boolean started = false;
+    for (SocketAddress address : tries) {
+      try {
+        if ((myBoundAddress = connection.connect(address)) != null) {
+          logger.info("Started torrent tracker on {}", address);
+          started = true;
         }
+      } catch (IOException ioe) {
+        logger.warn("Can't start the tracker using address{} : ", address.toString(), ioe.getMessage());
+      }
+    }
+    logger.error("Cannot start tracker on port {}. Stopping now...", myPort);
+    if (!started){
+      stop();
+      return;
+    }
 
 		if (this.collector == null || !this.collector.isAlive()) {
 			this.collector = new PeerCollectorThread();
@@ -180,15 +196,6 @@ public class Tracker {
                 //
             }
             logger.info("Peer collection terminated.");
-        }
-        if (this.tracker != null && this.tracker.isAlive()) {
-            this.tracker.interrupt();
-            try {
-                this.tracker.join();
-            } catch (InterruptedException e) {
-                //
-            }
-            logger.info("Tracker terminated.");
         }
     }
 
@@ -229,21 +236,7 @@ public class Tracker {
            this.torrents.remove(Torrent.byteArrayToHexString(info_hash)) != null;
   }
 
-	/**
-	 * Stop announcing the given torrent after a delay.
-	 *
-   * @param info_hash torrent hash
-	 * @param delay The delay, in milliseconds, before removing the torrent.
-	 */
-	public synchronized void remove(byte[] info_hash, long delay) {
-		if (info_hash == null) {
-			return;
-		}
-
-		new Timer().schedule(new TorrentRemoveTimer(this, info_hash), delay);
-	}
-
-	/**
+  /**
      * Set to true to allow this tracker to track external torrents (i.e. those that were not explicitly announced here).
      * @param acceptForeignTorrents true to accept foreign torrents (false otherwise)
      */
@@ -283,45 +276,6 @@ public class Tracker {
 	}
 
 	/**
-	 * The main tracker thread.
-	 *
-	 * <p>
-	 * The core of the BitTorrent tracker run by the controller is the
-	 * SimpleFramework HTTP service listening on the configured address. It can
-	 * be stopped with the <em>stop()</em> method, which closes the listening
-	 * socket.
-	 * </p>
-	 */
-	private class TrackerThread extends Thread {
-
-      @Override
-      public void run() {
-        logger.info("Starting BitTorrent tracker on {}...",
-            getAnnounceUrl());
-
-        List<SocketAddress> tries = new ArrayList<SocketAddress>() {{
-          try {add(new InetSocketAddress(InetAddress.getByAddress(new byte[4]), myPort));} catch (Exception ex) {}
-          try {add(new InetSocketAddress(InetAddress.getLocalHost(), myPort));} catch (Exception ex) {}
-          try {add(new InetSocketAddress(InetAddress.getByName(new URL(getAnnounceUrl()).getHost()), myPort));} catch (Exception ex) {}
-        }};
-
-
-        for (SocketAddress address : tries) {
-          try {
-            if ((myBoundAddress = connection.connect(address)) != null) {
-              logger.info("Started torrent tracker on {}", address);
-              return;
-            }
-          } catch (IOException ioe) {
-            logger.warn("Can't start the tracker using address{} : ", address.toString(), ioe.getMessage());
-          }
-        }
-        logger.error("Cannot start tracker on port {}. Stopping now...", myPort);
-        Tracker.this.stop();
-      }
-    }
-
-	/**
 	 * The unfresh peer collector thread.
 	 *
 	 * <p>
@@ -331,7 +285,7 @@ public class Tracker {
 	 */
 	private class PeerCollectorThread extends Thread {
 
-		private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
+		private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 150;
 
 		@Override
 		public void run() {

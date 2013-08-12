@@ -99,6 +99,10 @@ public class Peer {
 		return this.peerId;
 	}
 
+  public byte[] getPeerIdArray(){
+    return peerId==null ? null : peerId.array();
+  }
+
 	/**
 	 * Set a peer ID for this peer (usually during handshake).
 	 *

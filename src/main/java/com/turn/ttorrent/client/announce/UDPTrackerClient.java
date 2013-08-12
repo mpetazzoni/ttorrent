@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.udp.*;
@@ -137,7 +138,7 @@ public class UDPTrackerClient extends TrackerClient {
 
 	@Override
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, Torrent torrent) throws AnnounceException {
+                       boolean inhibitEvents, TorrentInfo torrent) throws AnnounceException {
       logAnnounceRequest(event, torrent);
 
 		State state = State.CONNECT_REQUEST;
@@ -260,12 +261,12 @@ public class UDPTrackerClient extends TrackerClient {
 	}
 
 	private UDPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, Torrent torrent) {
+    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent) {
 		return UDPAnnounceRequestMessage.craft(
 			this.connectionId,
 			transactionId,
       torrent.getInfoHash(),
-			this.peer.getPeerId().array(),
+			this.peer.getPeerIdArray(),
       torrent.getDownloaded(),
       torrent.getUploaded(),
       torrent.getLeft(),

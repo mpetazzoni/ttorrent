@@ -32,11 +32,13 @@ public class Handshake {
 	public static final String BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol";
 	public static final int BASE_HANDSHAKE_LENGTH = 49;
 
-	ByteBuffer data;
-	ByteBuffer infoHash;
-	ByteBuffer peerId;
+	private ByteBuffer data;
+  private ByteBuffer infoHash;
+  private ByteBuffer peerId;
 
-  String torrentIdentifier;
+  private String torrentIdentifier;
+
+  private int myPstrlen;
 
 	private Handshake(ByteBuffer data, ByteBuffer infoHash,
 			ByteBuffer peerId) {
@@ -99,8 +101,13 @@ public class Handshake {
     return hs;
   }
 
-	public static Handshake craft(byte[] torrentInfoHash,
-			byte[] clientPeerId) {
+  public static Handshake parse(ByteBuffer buffer, int pstrlen) throws UnsupportedEncodingException, ParseException {
+    Handshake hs = Handshake.parse(buffer);
+    hs.myPstrlen = pstrlen;
+    return hs;
+  }
+
+	public static Handshake craft(byte[] torrentInfoHash, byte[] clientPeerId) {
 		try {
 			ByteBuffer buffer = ByteBuffer.allocate(
 					Handshake.BASE_HANDSHAKE_LENGTH +
@@ -132,5 +139,13 @@ public class Handshake {
 
   public void setTorrentIdentifier(String torrentIdentifier) {
     this.torrentIdentifier = torrentIdentifier;
+  }
+
+  public int getPstrlen() {
+    return myPstrlen;
+  }
+
+  public String getTorrentIdentifier() {
+    return torrentIdentifier;
   }
 }

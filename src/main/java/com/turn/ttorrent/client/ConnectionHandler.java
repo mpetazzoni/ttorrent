@@ -16,17 +16,20 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.SharingPeerInfo;
+import com.turn.ttorrent.common.ConnectionUtils;
+import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -83,7 +86,7 @@ public class ConnectionHandler implements Runnable {
 	private ServerSocketChannel myServerSocketChannel;
   private InetSocketAddress address;
 
-  private Set<CommunicationListener> listeners;
+  private final Set<CommunicationListener> listeners;
   private ThreadPoolExecutor executor;
   private Thread thread;
   private volatile boolean stop;
@@ -277,20 +280,6 @@ public class ConnectionHandler implements Runnable {
     }
   }
 
-  /**
-	 * Return a human-readable representation of a connected socket myServerSocketChannel.
-   *
-	 * @param channel The socket myServerSocketChannel to represent.
-   * @return A textual representation (<em>host:port</em>) of the given
-   *         socket.
-   */
-	private String socketRepr(SocketChannel channel) {
-		Socket s = channel.socket();
-		return String.format("%s:%d%s",
-                s.getInetAddress().getHostName(),
-                s.getPort(),
-                channel.isConnected() ? "+" : "-");
-  }
 
   /**
    * Accept the next incoming connection.
@@ -307,33 +296,41 @@ public class ConnectionHandler implements Runnable {
    * the parsed peer ID.
    * </p>
    */
-  private void accept(SocketChannel client)
+  private void accept(SocketChannel clientChannel)
     throws IOException {
-    final String socketRepresentation = this.socketRepr(client);
+    final String socketRepresentation = ConnectionUtils.socketRepr(clientChannel);
     try {
       logger.debug("New incoming connection from {}, waiting for handshake...", socketRepresentation);
-      Handshake hs = this.validateHandshake(client, null);
-      logger.trace("Validated handshake from {}. Identifier: {}", socketRepresentation, hs.torrentIdentifier);
-      int sentBytes = this.sendHandshake(client, hs.getInfoHash());
+      Handshake hs = ConnectionUtils.validateHandshake(clientChannel, null);
+      if (!torrents.containsKey(hs.getHexInfoHash())) {
+        throw new ParseException("Handshake for unknow torrent " +
+                Torrent.byteArrayToHexString(hs.getInfoHash()) +
+                " from " + ConnectionUtils.socketRepr(clientChannel) + ".", hs.getPstrlen() + 9);
+      }
+
+      logger.trace("Validated handshake from {}. Identifier: {}", socketRepresentation, hs.getTorrentIdentifier());
+      int sentBytes = ConnectionUtils.sendHandshake(clientChannel, hs.getInfoHash(), id.getBytes(Torrent.BYTE_ENCODING));
       logger.trace("Replied to {} with handshake ({} bytes).", socketRepresentation, sentBytes);
 
       // Go to non-blocking mode for peer interaction
-      client.configureBlocking(false);
-      client.socket().setSoTimeout(CLIENT_KEEP_ALIVE_MINUTES * 60 * 1000);
-      this.fireNewPeerConnection(client, hs.getPeerId(), hs.getHexInfoHash());
+      clientChannel.configureBlocking(false);
+      clientChannel.socket().setSoTimeout(CLIENT_KEEP_ALIVE_MINUTES * 60 * 1000);
+      for (CommunicationListener listener : this.listeners) {
+        listener.handleNewPeerConnection(clientChannel, hs.getPeerId(), hs.getHexInfoHash());
+      }
     } catch (ParseException pe) {
       logger.info("Invalid handshake from {}: {}", socketRepresentation, pe.getMessage());
       logger.error(pe.getMessage(), pe);
       try {
-        client.close();
+        clientChannel.close();
       } catch (IOException e) {
       }
     } catch (IOException ioe) {
       logger.info("An error occured while reading an incoming " +
         "handshake: {}", ioe.getMessage());
       try {
-        if (client.isConnected()) {
-          client.close();
+        if (clientChannel.isConnected()) {
+          clientChannel.close();
         }
       } catch (IOException e) {
         // Ignore
@@ -376,95 +373,6 @@ public class ConnectionHandler implements Runnable {
   }
 
   /**
-   * Validate an expected handshake on a connection.
-   * <p/>
-   * <p>
-   * Reads an expected handshake message from the given connected socket,
-   * parses it and validates that the torrent hash_info corresponds to the
-   * torrent we're sharing, and that the peerId matches the peer ID we expect
-   * to see coming from the remote peer.
-   * </p>
-   *
-   * @param channel The connected socket channel to the remote peer.
-   * @param peerId The peer ID we expect in the handshake. If <em>null</em>,
-   *               any peer ID is accepted (this is the case for incoming connections).
-   * @return The validated handshake message object.
-   */
-	private Handshake validateHandshake(SocketChannel channel, byte[] peerId)
-    throws IOException, ParseException {
-		ByteBuffer len = ByteBuffer.allocate(1);
-		ByteBuffer data;
-
-    // Read the handshake from the wire
-		logger.trace("Reading handshake size (1 byte) from {}...", this.socketRepr(channel));
-    final int readBytes = channel.read(len);
-    if (readBytes < 1) {
-			throw new IOException("Handshake size read underrrun");
-		}
-//      logger.trace("Got {} as handshake size.", len.get());
-
-		len.rewind();
-		int pstrlen = len.get();
-
-		data = ByteBuffer.allocate(Handshake.BASE_HANDSHAKE_LENGTH + pstrlen);
-		data.put((byte) pstrlen);
-		int expected = data.remaining();
-		int read = channel.read(data);
-		if (read < expected) {
-			throw new IOException("Handshake data read underrun (" +
-				read + " < " + expected + " bytes)");
-		}
-
-    // Parse and check the handshake
-		data.rewind();
-		Handshake hs = Handshake.parse(data);
-//		if (!Arrays.equals(hs.getInfoHash(), torrents.getInfoHash())) {
-		if (!torrents.containsKey(hs.getHexInfoHash())) {
-			throw new ParseException("Handshake for unknow torrent " +
-        Torrent.byteArrayToHexString(hs.getInfoHash()) +
-					" from " + this.socketRepr(channel) + ".", pstrlen + 9);
-    }
-
-    if (peerId != null && !Arrays.equals(hs.getPeerId(), peerId)) {
-        throw new ParseException(
-          String.format("Announced peer ID %s did not match expected peer ID %s.",
-            Torrent.byteArrayToHexString(hs.getPeerId()),
-            Torrent.byteArrayToHexString(peerId)),
-          pstrlen + 29);
-    }
-
-    return hs;
-  }
-
-  /**
-   * Send our handshake message to the socket.
-   *
-	 * @param channel The socket myServerSocketChannel to the remote peer.
-   */
-	private int sendHandshake(SocketChannel channel, byte[] infoHash) throws IOException {
-      final Handshake craft = Handshake.craft(infoHash,this.id.getBytes(Torrent.BYTE_ENCODING));
-      return channel.write(craft.getData());
-  }
-
-  /**
-   * Trigger the new peer connection event on all registered listeners.
-   *
-   * @param peerId The peer ID of the connected peer.
-   */
-  private void fireNewPeerConnection(SocketChannel channel, byte[] peerId, String hexInfoHash) {
-    for (CommunicationListener listener : this.listeners) {
-      listener.handleNewPeerConnection(channel, peerId, hexInfoHash);
-    }
-  }
-
-  private void fireFailedConnection(SharingPeer peer, Throwable cause) {
-    for (CommunicationListener listener : this.listeners) {
-      listener.handleFailedConnection(peer, cause);
-    }
-  }
-
-
-  /**
    * A simple thread factory that returns appropriately named threads for
    * outbound connector threads.
    *
@@ -500,52 +408,25 @@ public class ConnectionHandler implements Runnable {
    */
   private static class ConnectorTask implements Runnable {
 
-    private final ConnectionHandler handler;
-    private final SharingPeer peer;
+    private final Set<CommunicationListener> myListeners;
+    private final Peer myPeer;
+    private TorrentHash myTorrentHash;
+    private byte[] mySelfId;
 
     private ConnectorTask(ConnectionHandler handler, SharingPeer peer) {
-      this.handler = handler;
-      this.peer = peer;
+      this.myListeners = handler.listeners;
+      this.myPeer = peer;
+      this.myTorrentHash = peer.getTorrentHash();
+      try {
+        this.mySelfId = handler.id.getBytes(Torrent.BYTE_ENCODING);
+      } catch (UnsupportedEncodingException e) {
+
+      }
     }
 
     @Override
     public void run() {
-      InetSocketAddress address =
-        new InetSocketAddress(this.peer.getIp(), this.peer.getPort());
-      SocketChannel channel = null;
-
-      try {
-        logger.info("Connecting to {}...", this.peer);
-        channel = SocketChannel.open(address);
-        while (!channel.isConnected()) {
-          Thread.sleep(10);
-        }
-
-        logger.debug("Connected. Sending handshake to {}...", this.peer);
-        channel.configureBlocking(true);
-        int sent = this.handler.sendHandshake(channel, peer.getTorrent().getInfoHash());
-        logger.debug("Sent handshake ({} bytes), waiting for response...", sent);
-        Handshake hs = this.handler.validateHandshake(channel,
-          (this.peer.hasPeerId()
-            ? this.peer.getPeerId().array()
-            : null));
-        logger.info("Handshaked with {}, peer ID is {}.",
-          this.peer, Torrent.byteArrayToHexString(hs.getPeerId()));
-
-        // Go to non-blocking mode for peer interaction
-        channel.configureBlocking(false);
-        this.handler.fireNewPeerConnection(channel, hs.getPeerId(), peer.getTorrentHexInfoHash());
-
-      } catch (Exception e) {
-        try {
-          if (channel != null && channel.isConnected()) {
-            channel.close();
-          }
-        } catch (IOException ioe) {
-          // Ignore
-        }
-        this.handler.fireFailedConnection(this.peer, e);
-      }
+      ConnectionUtils.connect(myPeer, mySelfId, myTorrentHash, myListeners);
     }
   };
 }

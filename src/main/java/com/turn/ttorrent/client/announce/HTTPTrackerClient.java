@@ -15,9 +15,9 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.http.*;
 
@@ -51,7 +51,7 @@ public class HTTPTrackerClient extends TrackerClient {
 	 *
 	 * @param peer Our own peer specification.
 	 */
-  protected HTTPTrackerClient(Peer peer, URI tracker) {
+  public HTTPTrackerClient(Peer peer, URI tracker) {
     super(peer, tracker);
 	}
 
@@ -75,12 +75,12 @@ public class HTTPTrackerClient extends TrackerClient {
      * @param torrent
      */
 	public void announce(AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, Torrent torrent) throws AnnounceException {
-      logAnnounceRequest(event, torrent);
+                       boolean inhibitEvents, TorrentInfo torrentInfo) throws AnnounceException {
+      logAnnounceRequest(event, torrentInfo);
       URL target = null;
 		try {
 			HTTPAnnounceRequestMessage request =
-            this.buildAnnounceRequest(event, torrent);
+            this.buildAnnounceRequest(event, torrentInfo);
 			target = request.buildAnnounceURL(this.tracker.toURL());
 		} catch (MalformedURLException mue) {
 			throw new AnnounceException("Invalid announce URL (" +
@@ -118,7 +118,7 @@ public class HTTPTrackerClient extends TrackerClient {
 			// Parse and handle the response
 			HTTPTrackerMessage message =
 				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
-      this.handleTrackerAnnounceResponse(message, inhibitEvents, torrent.getHexInfoHash());
+      this.handleTrackerAnnounceResponse(message, inhibitEvents, torrentInfo.getHexInfoHash());
 		} catch (IOException ioe) {
 			throw new AnnounceException("Error reading tracker response!", ioe);
 		} catch (MessageValidationException mve) {
@@ -157,16 +157,16 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @throws MessageValidationException
 	 */
 	private HTTPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, Torrent torrent)
-		throws UnsupportedEncodingException, IOException,
+    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo)
+		throws IOException,
 			MessageValidationException {
 		// Build announce request message
-      final long uploaded = torrent.getUploaded();
-      final long downloaded = torrent.getDownloaded();
-      final long left = torrent.getLeft();
+      final long uploaded = torrentInfo.getUploaded();
+      final long downloaded = torrentInfo.getDownloaded();
+      final long left = torrentInfo.getLeft();
       return HTTPAnnounceRequestMessage.craft(
-      torrent.getInfoHash(),
-          this.peer.getPeerId().array(),
+      torrentInfo.getInfoHash(),
+          this.peer.getPeerIdArray(),
           this.peer.getPort(),
           uploaded,
           downloaded,

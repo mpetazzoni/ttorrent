@@ -21,6 +21,7 @@ import com.turn.ttorrent.client.announce.AnnounceResponseListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.PeerExchange;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.SharingPeerInfo;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
@@ -773,9 +774,14 @@ public class Client implements Runnable,
    * @param cause The exception encountered when connecting with the peer.
    */
   @Override
-  public void handleFailedConnection(SharingPeer peer, Throwable cause) {
+  public void handleFailedConnection(Peer peer, Throwable cause) {
     logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
-    this.peers.remove(peer);
+    for (SharingPeer sharingPeer : peers) {
+      if (peer.getIp().equals(sharingPeer.getIp()) && peer.getPort()== sharingPeer.getPort()){
+        peers.remove(sharingPeer);
+        break; // this is safe to do, because we go out from iterator
+      }
+    }
   }
 
   /**

@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import org.slf4j.Logger;
@@ -84,9 +85,9 @@ public abstract class TrackerClient {
      * @param torrent
      */
 	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
-                                boolean inhibitEvent, Torrent torrent) throws AnnounceException;
+                                boolean inhibitEvent, TorrentInfo torrent) throws AnnounceException;
 
-  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, Torrent torrent){
+  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
       logger.info("Announcing {} to tracker with {}U/{}D/{}L bytes...",
           new Object[]{
