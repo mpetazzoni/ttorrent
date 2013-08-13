@@ -163,9 +163,9 @@ public class TrackedTorrent implements TorrentHash {
 	 * usually called by the periodic peer collector of the BitTorrent tracker.
 	 * </p>
 	 */
-	public void collectUnfreshPeers() {
+	public void collectUnfreshPeers(int expireTimeoutSec) {
 		for (TrackedPeer peer : this.peers.values()) {
-			if (!peer.isFresh()) {
+			if (!peer.isFresh(expireTimeoutSec)) {
 				this.peers.remove(peer.getHexPeerId());
 			}
 		}
@@ -258,24 +258,8 @@ public class TrackedTorrent implements TorrentHash {
 
 		int count = 0;
 		for (TrackedPeer candidate : candidates) {
-			// Collect unfresh peers, and obviously don't serve them as well.
-			if (!candidate.isFresh() ||
-				(candidate.looksLike(peer) && !candidate.equals(peer))) {
-				logger.debug("Collecting stale peer {}...", candidate);
-				this.peers.remove(candidate.getHexPeerId());
-				continue;
-			}
-
 			// Don't include the requesting peer in the answer.
 			if (peer.looksLike(candidate)) {
-				continue;
-			}
-
-			// Collect unfresh peers, and obviously don't serve them as well.
-			if (!candidate.isFresh()) {
-				logger.debug("Collecting stale peer {}...",
-					candidate.getHexPeerId());
-				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}
 

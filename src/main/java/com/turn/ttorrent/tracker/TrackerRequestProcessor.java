@@ -23,13 +23,9 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.http.*;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,10 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.simpleframework.http.Request;
-import org.simpleframework.http.Response;
 import org.simpleframework.http.Status;
-import org.simpleframework.http.core.Container;
 
 
 /**
@@ -53,19 +46,19 @@ import org.simpleframework.http.core.Container;
  * </p>
  *
  * <p>
- * The list of torrents {@link #torrents} is a map of torrent hashes to their
+ * The list of torrents {@link #myTorrentsMap} is a map of torrent hashes to their
  * corresponding Torrent objects, and is maintained by the {@link Tracker} this
- * service is part of. The TrackerService only has a reference to this map, and
+ * service is part of. The TrackerRequestProcessor only has a reference to this map, and
  * does not modify it.
  * </p>
  *
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification">BitTorrent protocol specification</a>
  */
-public class TrackerService implements Container {
+public class TrackerRequestProcessor {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(TrackerService.class);
+		LoggerFactory.getLogger(TrackerRequestProcessor.class);
 
 	/**
 	 * The list of announce request URL fields that need to be interpreted as
@@ -77,60 +70,15 @@ public class TrackerService implements Container {
 			"compact", "no_peer_id", "numwant"
 		};
 
-	private final String version;
-	private final ConcurrentMap<String, TrackedTorrent> torrents;
-  private boolean acceptForeignTorrents;
+  private boolean myAcceptForeignTorrents;
+  private int myAnnounceInterval;
 
 
 	/**
-	 * Create a new TrackerService serving the given torrents.
+	 * Create a new TrackerRequestProcessor serving the given torrents.
 	 *
-	 * @param torrents The torrents this TrackerService should serve requests
-	 * for.
 	 */
-	TrackerService(String version,
-			ConcurrentMap<String, TrackedTorrent> torrents) {
-		this.version = version;
-		this.torrents = torrents;
-	}
-
-	/**
-	 * Handle the incoming request on the tracker service.
-	 *
-	 * <p>
-	 * This makes sure the request is made to the tracker's announce URL, and
-	 * delegates handling of the request to the <em>process()</em> method after
-	 * preparing the response object.
-	 * </p>
-	 *
-	 * @param request The incoming HTTP request.
-	 * @param response The response object.
-	 */
-	public void handle(Request request, Response response) {
-		// Reject non-announce requests
-		if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
-			response.setCode(404);
-			response.setText("Not Found");
-			return;
-		}
-
-		OutputStream body = null;
-		try {
-			body = response.getOutputStream();
-			this.process(request, response, body);
-			body.flush();
-		} catch (IOException ioe) {
-			logger.warn("Error while writing response: {}!", ioe.getMessage());
-		} finally {
-			if (body != null) {
-				try {
-					body.close();
-				} catch (IOException ioe) {
-					// Ignore
-				}
-			}
-		}
-	}
+	public TrackerRequestProcessor() {}
 
 	/**
 	 * Process the announce request.
@@ -141,16 +89,10 @@ public class TrackerService implements Container {
 	 * response message and sends it back to the client.
 	 * </p>
 	 *
-	 * @param request The incoming announce request.
-	 * @param response The response object.
-	 * @param body The validated response body output stream.
 	 */
-	private void process(Request request, Response response,
-			OutputStream body) throws IOException {
+	public void process(final String uri, final String hostAddress, RequestHandler requestHandler)
+          throws IOException {
 		// Prepare the response headers.
-		response.set("Content-Type", "text/plain");
-		response.set("Server", this.version);
-		response.setDate("Date", System.currentTimeMillis());
 
 		/**
 		 * Parse the query parameters into an announce request message.
@@ -161,27 +103,23 @@ public class TrackerService implements Container {
 		 */
 		HTTPAnnounceRequestMessage announceRequest = null;
 		try {
-			announceRequest = this.parseQuery(request);
+			announceRequest = this.parseQuery(uri, hostAddress);
 		} catch (MessageValidationException mve) {
-			this.serveError(response, body, Status.BAD_REQUEST,
-				mve.getMessage());
+      serveError(Status.BAD_REQUEST, mve.getMessage(), requestHandler);
 			return;
 		}
 
 		// The requested torrent must be announced by the tracker.
-		TrackedTorrent torrent = this.torrents.get(
-			announceRequest.getHexInfoHash());
+		TrackedTorrent torrent = requestHandler.getTorrentsMap().get(announceRequest.getHexInfoHash());
 
-    if (torrent == null && this.acceptForeignTorrents) {
+    if (torrent == null && this.myAcceptForeignTorrents) {
         torrent = new TrackedTorrent(announceRequest.getInfoHash());
-        this.torrents.put(torrent.getHexInfoHash(), torrent);
+      requestHandler.getTorrentsMap().put(torrent.getHexInfoHash(), torrent);
     }
 
 		if (torrent == null) {
-			logger.warn("Requested torrent hash was: {}",
-				announceRequest.getHexInfoHash());
-			this.serveError(response, body, Status.BAD_REQUEST,
-				ErrorMessage.FailureReason.UNKNOWN_TORRENT);
+			logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
+      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
 			return;
 		}
 
@@ -200,7 +138,7 @@ public class TrackerService implements Container {
 
     if (event != null && torrent.getPeer(peerId) == null &&
   			AnnounceRequestMessage.RequestEvent.STOPPED.equals(event)) {
-      writeAnnounceResponse(response, body, torrent, null);
+      writeAnnounceResponse(torrent, null, requestHandler);
       return;
     }
 
@@ -212,8 +150,7 @@ public class TrackerService implements Container {
 		if (event != null && torrent.getPeer(peerId) == null &&
 			!(AnnounceRequestMessage.RequestEvent.STARTED.equals(event) ||
         AnnounceRequestMessage.RequestEvent.COMPLETED.equals(event))) {
-			this.serveError(response, body, Status.BAD_REQUEST,
-				ErrorMessage.FailureReason.INVALID_EVENT);
+      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
 			return;
 		}
 
@@ -229,31 +166,30 @@ public class TrackerService implements Container {
 				announceRequest.getDownloaded(),
 				announceRequest.getLeft());
 		} catch (IllegalArgumentException iae) {
-			this.serveError(response, body, Status.BAD_REQUEST,
-				ErrorMessage.FailureReason.INVALID_EVENT);
+      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
 			return;
 		}
 
 		// Craft and output the answer
-    writeAnnounceResponse(response, body, torrent, peer);
+    writeAnnounceResponse(torrent, peer, requestHandler);
 	}
 
-  private void writeAnnounceResponse(Response response, OutputStream body, TrackedTorrent torrent, TrackedPeer peer) throws IOException {
+  public void setAnnounceInterval(int announceInterval) {
+    myAnnounceInterval = announceInterval;
+  }
+
+  private void writeAnnounceResponse(TrackedTorrent torrent, TrackedPeer peer, RequestHandler requestHandler) throws IOException {
 		HTTPAnnounceResponseMessage announceResponse = null;
 		try {
 			announceResponse = HTTPAnnounceResponseMessage.craft(
-				torrent.getAnnounceInterval(),
-        TrackedTorrent.MIN_ANNOUNCE_INTERVAL_SECONDS,
-        this.version,
-				torrent.seeders(),
+				myAnnounceInterval,
+        torrent.seeders(),
 				torrent.leechers(),
         peer == null ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),
         torrent.getHexInfoHash());
-			WritableByteChannel channel = Channels.newChannel(body);
-			channel.write(announceResponse.getData());
+      requestHandler.serveResponse(Status.OK.getCode(), Status.OK.getDescription(), announceResponse.getData());
 		} catch (Exception e) {
-			this.serveError(response, body, Status.INTERNAL_SERVER_ERROR,
-				e.getMessage());
+			serveError(Status.INTERNAL_SERVER_ERROR, e.getMessage(), requestHandler);
 		}
 	}
 
@@ -275,16 +211,19 @@ public class TrackerService implements Container {
 	 * Tracker HTTP protocol.
 	 * </p>
 	 *
-	 * @param request The request.
-	 * @return The {@link AnnounceRequestMessage} representing the client's
+	 *
+   *
+   * @param uri
+   * @param hostAddress
+   * @return The {@link AnnounceRequestMessage} representing the client's
 	 * announce request.
 	 */
-	private HTTPAnnounceRequestMessage parseQuery(Request request)
+	private HTTPAnnounceRequestMessage parseQuery(final String uri, final String hostAddress)
 		throws IOException, MessageValidationException {
 		Map<String, BEValue> params = new HashMap<String, BEValue>();
 
 		try {
-			String uri = request.getAddress().toString();
+//			String uri = request.getAddress().toString();
 			for (String pair : uri.split("[?]")[1].split("&")) {
 				String[] keyval = pair.split("[=]", 2);
 				if (keyval.length == 1) {
@@ -301,7 +240,8 @@ public class TrackerService implements Container {
 		// address if the peer didn't provide it.
 		if (params.get("ip") == null) {
 			params.put("ip", new BEValue(
-				request.getClientAddress().getAddress().getHostAddress(),
+				hostAddress,
+//				request.getClientAddress().getAddress().getHostAddress(),
 				Torrent.BYTE_ENCODING));
 		}
 
@@ -309,8 +249,7 @@ public class TrackerService implements Container {
 		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
 	}
 
-	private void recordParam(Map<String, BEValue> params, String key,
-		String value) {
+	private void recordParam(Map<String, BEValue> params, String key, String value) {
 		try {
 			value = URLDecoder.decode(value, Torrent.BYTE_ENCODING);
 
@@ -337,15 +276,8 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param error The error reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
-		Status status, HTTPTrackerErrorMessage error) throws IOException {
-		response.setCode(status.getCode());
-		response.setText(status.getDescription());
-		logger.warn("Could not process announce request ({}) !",
-			error.getReason());
-
-		WritableByteChannel channel = Channels.newChannel(body);
-		channel.write(error.getData());
+	private void serveError(Status status, HTTPTrackerErrorMessage error, RequestHandler requestHandler) throws IOException {
+    requestHandler.serveResponse(status.getCode(), status.getDescription(), error.getData());
 	}
 
 	/**
@@ -356,11 +288,9 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param error The error message reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
-		Status status, String error) throws IOException {
+	private void serveError(Status status, String error, RequestHandler requestHandler) throws IOException {
 		try {
-			this.serveError(response, body, status,
-				HTTPTrackerErrorMessage.craft(error));
+			this.serveError(status, HTTPTrackerErrorMessage.craft(error), requestHandler);
 		} catch (MessageValidationException mve) {
 			logger.warn("Could not craft tracker error message!", mve);
 		}
@@ -375,12 +305,17 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param reason The failure reason reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
-		Status status, ErrorMessage.FailureReason reason) throws IOException {
-		this.serveError(response, body, status, reason.getMessage());
+	private void serveError(Status status, ErrorMessage.FailureReason reason, RequestHandler requestHandler) throws IOException {
+		this.serveError(status, reason.getMessage(), requestHandler);
 	}
 
   public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {
-    this.acceptForeignTorrents = acceptForeignTorrents;
+    this.myAcceptForeignTorrents = acceptForeignTorrents;
+  }
+
+  public static interface RequestHandler {
+    public void serveResponse(int code, String description, ByteBuffer responseData);
+
+    public ConcurrentMap<String, TrackedTorrent> getTorrentsMap();
   }
 }

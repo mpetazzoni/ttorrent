@@ -187,9 +187,9 @@ public class TrackedPeer extends Peer {
 	 * Tracker.
 	 * </p>
 	 */
-	public boolean isFresh() {
+	public boolean isFresh(int expireTimeoutSec) {
 		return (this.lastAnnounce != null &&
-				(this.lastAnnounce.getTime() + (FRESH_TIME_SECONDS * 1000) >
+				(this.lastAnnounce.getTime() + (expireTimeoutSec * 1000) >
 				 new Date().getTime()));
 	}
 

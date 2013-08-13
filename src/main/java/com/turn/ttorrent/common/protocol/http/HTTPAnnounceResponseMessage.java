@@ -197,7 +197,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @param peers
 	 */
 	public static HTTPAnnounceResponseMessage craft(int interval,
-                                                  int minInterval, String trackerId, int complete, int incomplete,
+                                                  int complete, int incomplete,
                                                   List<Peer> peers) throws IOException, UnsupportedEncodingException {
     Map<String, BEValue> response = new HashMap<String, BEValue>();
     response.put("interval", new BEValue(interval));
@@ -229,7 +229,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @param peers
 	 */
   public static HTTPAnnounceResponseMessage craft(int interval,
-                                                  int minInterval, String trackerId, int complete, int incomplete,
+                                                  int complete, int incomplete,
                                                   List<Peer> peers, String hexInfoHash) throws IOException, UnsupportedEncodingException {
 		Map<String, BEValue> response = new HashMap<String, BEValue>();
 		response.put("interval", new BEValue(interval));

@@ -192,7 +192,7 @@ public class TrackerTest{
 
   private void startTracker() throws IOException {
     this.tracker = new Tracker(6969);
-    this.tracker.start();
+    this.tracker.start(true);
   }
   private void stopTracker() {
     this.tracker.stop();

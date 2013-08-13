@@ -539,7 +539,7 @@ public class ClientTest {
 
   private void startTracker() throws IOException {
     this.tracker = new Tracker(6969);
-    this.tracker.start();
+    this.tracker.start(true);
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
