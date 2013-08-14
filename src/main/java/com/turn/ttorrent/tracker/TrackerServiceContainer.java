@@ -96,4 +96,8 @@ public class TrackerServiceContainer implements Container {
   public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {
     myRequestProcessor.setAcceptForeignTorrents(acceptForeignTorrents);
   }
+
+  public void setAnnounceInterval(int announceInterval){
+    myRequestProcessor.setAnnounceInterval(announceInterval);
+  }
 }

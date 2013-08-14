@@ -250,4 +250,8 @@ public class Tracker {
     return Collections.unmodifiableCollection(this.myTorrents.values());
   }
 
+  public void setAnnounceInterval(int announceInterval){
+    myTrackerServiceContainer.setAnnounceInterval(announceInterval);
+  }
+
 }

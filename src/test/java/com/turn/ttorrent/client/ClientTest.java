@@ -7,6 +7,9 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -539,6 +542,7 @@ public class ClientTest {
 
   private void startTracker() throws IOException {
     this.tracker = new Tracker(6969);
+    tracker.setAnnounceInterval(5);
     this.tracker.start(true);
   }
 
