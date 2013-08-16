@@ -401,14 +401,22 @@ public class Torrent {
 		return this.seeder;
 	}
 
-	/**
+  /**
 	 * Save this torrent meta-info structure into a .torrent file.
 	 *
-	 * @param output The stream to write to.
+	 * @param file The file to write to.
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
-	public void save(OutputStream output) throws IOException {
-		output.write(this.getEncoded());
+	public void save(File file) throws IOException {
+      FileOutputStream fOut = null;
+      try {
+        fOut = new FileOutputStream(file);
+        fOut.write(this.getEncoded());
+      } finally {
+        if (fOut != null){
+          fOut.close();
+        }
+      }
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
@@ -953,8 +961,8 @@ public class Torrent {
 					torrent = Torrent.create(source, announceURI, creator);
 				}
 
-				torrent.save(fos);
-			} else {
+              fos.write(torrent.getEncoded());
+            } else {
 				Torrent.load(new File(filenameValue), true);
 			}
 		} catch (Exception e) {
