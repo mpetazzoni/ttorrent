@@ -165,7 +165,7 @@
 							<transformers>
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<manifestEntries>
-										<Main-Class>com.turn.ttorrent.client.Client</Main-Class>
+										<Main-Class>com.turn.ttorrent.cli.ClientMain</Main-Class>
 									</manifestEntries>
 								</transformer>
 							</transformers>
