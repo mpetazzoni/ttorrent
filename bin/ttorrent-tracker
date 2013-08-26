@@ -15,4 +15,4 @@
 # limitations under the License.
 
 EXEFILE="${0%-tracker}"
-MAINCLASS="com.turn.ttorrent.tracker.Tracker" "${EXEFILE}" "$@"
+MAINCLASS="com.turn.ttorrent.cli.TrackerMain" "${EXEFILE}" "$@"
