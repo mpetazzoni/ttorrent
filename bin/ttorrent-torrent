@@ -15,4 +15,4 @@
 # limitations under the License.
 
 EXEFILE="${0%-torrent}"
-MAINCLASS="com.turn.ttorrent.common.Torrent" "${EXEFILE}" "$@"
+MAINCLASS="com.turn.ttorrent.cli.TorrentMain" "${EXEFILE}" "$@"
