@@ -495,17 +495,8 @@ public class Torrent {
 	 */
 	public static Torrent load(File torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
-		FileInputStream fis = null;
-		try {
-			fis = new FileInputStream(torrent);
-			byte[] data = new byte[(int)torrent.length()];
-			fis.read(data);
-			return new Torrent(data, seeder);
-		} finally {
-			if (fis != null) {
-				fis.close();
-			}
-		}
+		byte[] data = FileUtils.readFileToByteArray(torrent);
+		return new Torrent(data, seeder);
 	}
 
 	/** Torrent creation --------------------------------------------------- */
