@@ -24,7 +24,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -49,6 +48,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -396,11 +396,11 @@ public class Torrent {
 	/**
 	 * Save this torrent meta-info structure into a .torrent file.
 	 *
-	 * @param output The stream to write to.
+	 * @param file The file to write to.
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
-	public void save(OutputStream output) throws IOException {
-		output.write(this.getEncoded());
+	public void save(File file) throws IOException {
+		FileUtils.writeByteArrayToFile(file, this.getEncoded());
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {

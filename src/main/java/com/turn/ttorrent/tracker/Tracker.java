@@ -22,6 +22,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -39,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * <p>
  * The tracker usually listens on port 6969 (the standard BitTorrent tracker
  * port). Torrents must be registered directly to this tracker with the
- * {@link #announce(TrackedTorrent torrent)}</code> method.
+ * {@link #announce(Torrent torrent)}</code> method.
  * </p>
  *
  * @author mpetazzoni
@@ -193,7 +194,8 @@ public class Tracker {
 	 * different from the supplied Torrent object if the tracker already
 	 * contained a torrent with the same hash.
 	 */
-	public synchronized TrackedTorrent announce(TrackedTorrent torrent) {
+	public synchronized TrackedTorrent announce(Torrent torrent)
+			throws IOException, NoSuchAlgorithmException {
 		TrackedTorrent existing = this.torrents.get(torrent.getHexInfoHash());
 
 		if (existing != null) {
@@ -202,10 +204,16 @@ public class Tracker {
 			return existing;
 		}
 
-		this.torrents.put(torrent.getHexInfoHash(), torrent);
+		final TrackedTorrent result;
+		if (torrent instanceof TrackedTorrent) {
+			result = (TrackedTorrent)torrent;
+		} else {
+			result = new TrackedTorrent(torrent);
+		}
+		this.torrents.put(torrent.getHexInfoHash(), result);
 		logger.info("Registered new torrent for '{}' with hash {}.",
 			torrent.getName(), torrent.getHexInfoHash());
-		return torrent;
+		return result;
 	}
 
 	/**
