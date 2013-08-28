@@ -254,7 +254,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
 			return new HTTPAnnounceRequestMessage(data, infoHash,
 				new Peer(ip, port, ByteBuffer.wrap(peerId)),
-				downloaded, uploaded, left, compact, noPeerId,
+				uploaded, downloaded, left, compact, noPeerId,
 				event, numWant);
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException(

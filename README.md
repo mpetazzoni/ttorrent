@@ -82,6 +82,12 @@ Client client = new Client(
     new File("/path/to/your.torrent"),
     new File("/path/to/output/directory")));
 
+// You can optionally set download/upload rate limits
+// in kB/second. Setting a limit to 0.0 disables rate
+// limits.
+client.setMaxDownloadRate(50.0);
+client.setMaxUploadRate(50.0);
+
 // At this point, can you either call download() to download the torrent and
 // stop immediately after...
 client.download();

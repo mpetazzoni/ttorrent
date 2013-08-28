@@ -75,8 +75,6 @@ public class Announce implements Runnable {
 	 *
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our peer specification.
-	 * @param type A string representing the announce type (used in the thread
-	 * name).
 	 */
 	public Announce(SharedTorrent torrent, Peer peer) {
 		this.peer = peer;
@@ -226,7 +224,12 @@ public class Announce implements Runnable {
 				event = AnnounceRequestMessage.RequestEvent.NONE;
 			} catch (AnnounceException ae) {
 				logger.warn(ae.getMessage());
-				this.moveToNextTrackerClient();
+
+				try {
+					this.moveToNextTrackerClient();
+				} catch (AnnounceException e) {
+					logger.error("Unable to move to the next tracker client: {}", e.getMessage());
+				}
 			}
 
 			try {
@@ -281,8 +284,15 @@ public class Announce implements Runnable {
 
 	/**
 	 * Returns the current tracker client used for announces.
+	 * @throws AnnounceException When the current announce tier isn't defined
+	 *	in the torrent.
 	 */
-	public TrackerClient getCurrentTrackerClient() {
+	public TrackerClient getCurrentTrackerClient() throws AnnounceException {
+		if ((this.currentTier >= this.clients.size()) ||
+			(this.currentClient >= this.clients.get(this.currentTier).size())) {
+			throw new AnnounceException("Current tier or client isn't available");
+		}
+
 		return this.clients
 			.get(this.currentTier)
 			.get(this.currentClient);
@@ -300,8 +310,10 @@ public class Announce implements Runnable {
 	 * The index of the currently used {@link TrackerClient} is reset to 0 to
 	 * reflect this change.
 	 * </p>
+	 *
+	 * @throws AnnounceException
 	 */
-	private void promoteCurrentTrackerClient() {
+	private void promoteCurrentTrackerClient() throws AnnounceException {
 		logger.trace("Promoting current tracker client for {} " +
 			"(tier {}, position {} -> 0).",
 			new Object[] {
@@ -327,8 +339,10 @@ public class Announce implements Runnable {
 	 * By design no empty tier can be in the tracker list structure so we don't
 	 * need to check for empty tiers here.
 	 * </p>
+	 *
+	 * @throws AnnounceException
 	 */
-	private void moveToNextTrackerClient() {
+	private void moveToNextTrackerClient() throws AnnounceException {
 		int tier = this.currentTier;
 		int client = this.currentClient + 1;
 

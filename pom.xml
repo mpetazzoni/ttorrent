@@ -6,6 +6,7 @@
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
 		<version>7</version>
+		<relativePath/>
 	</parent>
 
 	<name>Java BitTorrent library</name>
@@ -17,7 +18,7 @@
 	<url>http://turn.github.com/ttorrent/</url>
 	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
-	<version>1.2</version>
+	<version>1.3-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<organization>
@@ -27,7 +28,9 @@
 
 	<scm>
 		<connection>scm:git:git://github.com/turn/ttorrent.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com/turn/ttorrent.git</developerConnection>
 		<url>http://github.com/turn/ttorrent</url>
+		<tag>HEAD</tag>
 	</scm>
 
 	<licenses>
@@ -64,6 +67,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
 	</properties>
 
 	<repositories>
@@ -127,6 +131,11 @@
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.4</version>
 				<configuration>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
 					<includes>
 						<include>**</include>
 					</includes>
@@ -144,30 +153,36 @@
 			</plugin>
 
 			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<descriptorRefs>
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-					</descriptorRefs>
-					<appendAssemblyId>false</appendAssemblyId>
-					<archive>
-						<manifest>
-							<addClasspath>false</addClasspath>
-							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-							<mainClass>com.turn.ttorrent.client.Client</mainClass>
-						</manifest>
-					</archive>
-				</configuration>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.1</version>
 				<executions>
 					<execution>
-						<id>make-my-jar-with-dependencies</id>
 						<phase>package</phase>
 						<goals>
-							<!--change assembly to single if you don't want include dependencies in jar-->
-							<goal>assembly</goal>
+							<goal>shade</goal>
 						</goals>
+						<configuration>
+							<outputFile>${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar</outputFile>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<manifestEntries>
+										<Main-Class>com.turn.ttorrent.cli.ClientMain</Main-Class>
+									</manifestEntries>
+								</transformer>
+							</transformers>
+						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.16</version>
+				<configuration>
+					<argLine>-Xmx512m</argLine>
+					<redirectTestOutputToFile>${maven.test.redirectTestOutputToFile}</redirectTestOutputToFile>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
