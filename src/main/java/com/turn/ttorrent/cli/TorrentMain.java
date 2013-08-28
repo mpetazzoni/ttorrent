@@ -150,7 +150,7 @@ public class TorrentMain {
 					torrent = Torrent.create(source, announceURI, creator);
 				}
 
-				torrent.save(fos);
+				fos.write(torrent.getEncoded());
 			} else {
 				Torrent.load(new File(filenameValue), true);
 			}
