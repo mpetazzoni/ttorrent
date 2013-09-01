@@ -1,18 +1,15 @@
 package com.turn.ttorrent;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.*;
 import java.util.*;
 
 public class TempFiles {
-  private static final File ourCurrentTempDir = FileUtil.getTempDirectory();
+  private static final File ourCurrentTempDir = FileUtils.getTempDirectory();
   private final File myCurrentTempDir;
 
-  private static Random ourRandom;
-
-  static {
-    ourRandom = new Random();
-    ourRandom.setSeed(System.currentTimeMillis());
-  }
+  private static Random ourRandom = new Random();
 
   private final List<File> myFilesToDelete = new ArrayList<File>();
   private final Thread myShutdownHook;
@@ -23,7 +20,7 @@ public class TempFiles {
     if (!myCurrentTempDir.isDirectory()) {
 
       throw new IllegalStateException("Temp directory is not a directory, was deleted by some process: " + myCurrentTempDir.getAbsolutePath() +
-          "\njava.io.tmpdir: " + FileUtil.getTempDirectory());
+          "\njava.io.tmpdir: " + FileUtils.getTempDirectory());
     }
 
     myShutdownHook = new Thread(new Runnable() {
@@ -53,12 +50,6 @@ public class TempFiles {
     file.delete();
     file.createNewFile();
     return file;
-  }
-
-  public final File createTempFile(String content) throws IOException {
-    File tempFile = createTempFile();
-    FileUtil.writeFile(tempFile, content);
-    return tempFile;
   }
 
   public final File createTempFile() throws IOException {
@@ -123,10 +114,12 @@ public class TempFiles {
   public void cleanup() {
     try {
       for (File file : myFilesToDelete) {
-        FileUtil.delete(file);
+        FileUtils.forceDelete(file);
       }
 
       myFilesToDelete.clear();
+    } catch (IOException e) {
+
     } finally {
       if (!myInsideShutdownHook) {
         Runtime.getRuntime().removeShutdownHook(myShutdownHook);

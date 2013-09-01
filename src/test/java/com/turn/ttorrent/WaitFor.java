@@ -8,25 +8,14 @@ public abstract class WaitFor {
   }
 
   protected WaitFor(long timeout) {
-    long started = System.currentTimeMillis();
+    long maxWaitMoment = System.currentTimeMillis() + timeout;
     try {
-      while(true) {
-        if (condition()) return;
-        if (System.currentTimeMillis() - started < timeout) {
-          Thread.sleep(myPollInterval);
-        } else {
-          break;
-        }
+      while(!condition() && System.currentTimeMillis() < maxWaitMoment){
+        Thread.sleep(myPollInterval);
       }
-
     } catch (InterruptedException e) {
       //NOP
     }
-  }
-
-  protected WaitFor(long timeout, long pollInterval) {
-    this(timeout);
-    myPollInterval = pollInterval;
   }
 
   protected abstract boolean condition();

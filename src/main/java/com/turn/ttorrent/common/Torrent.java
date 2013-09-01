@@ -53,6 +53,7 @@ import java.util.concurrent.Future;
 
 import jargs.gnu.CmdLineParser;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
@@ -408,15 +409,7 @@ public class Torrent {
 	 * @throws IOException If an I/O error occurs while writing the file.
 	 */
 	public void save(File file) throws IOException {
-      FileOutputStream fOut = null;
-      try {
-        fOut = new FileOutputStream(file);
-        fOut.write(this.getEncoded());
-      } finally {
-        if (fOut != null){
-          fOut.close();
-        }
-      }
+      FileUtils.writeByteArrayToFile(file, this.getEncoded());
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
