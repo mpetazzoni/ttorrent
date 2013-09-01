@@ -153,6 +153,34 @@ public class TrackerTest{
     }
   }
 
+  public void tracker_removes_peer_after_peer_shutdown() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    tracker.setAcceptForeignTorrents(true);
+    final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
+
+    Client c1 = createClient();
+    c1.share();
+    c1.addTorrent(torrent);
+
+    final Client c2 = createClient();
+    c2.share();
+    c2.addTorrent(completeTorrent("file1.jar.torrent"));
+
+    final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+    assertTrue(tt.getPeers().containsKey(c1.getPeerSpec().getHexPeerId()));
+    assertTrue(tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId()));
+
+    c2.stop();
+    new WaitFor(30*1000){
+
+      @Override
+      protected boolean condition() {
+        return !tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId());
+      }
+    };
+    assertTrue(tt.getPeers().containsKey(c1.getPeerSpec().getHexPeerId()));
+    assertFalse(tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId()));
+  }
+
 //  @Test(invocationCount = 50)
   public void tracker_accepts_torrent_from_seeder_plus_leech() throws IOException, NoSuchAlgorithmException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
@@ -193,6 +221,7 @@ public class TrackerTest{
   private void startTracker() throws IOException {
     this.tracker = new Tracker(6969);
     tracker.setAnnounceInterval(5);
+    tracker.setPeerCollectorExpireTimeout(10);
     this.tracker.start(true);
   }
   private void stopTracker() {

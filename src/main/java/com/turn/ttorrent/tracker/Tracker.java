@@ -60,7 +60,7 @@ public class Tracker {
 	/** The in-memory repository of torrents tracked. */
 	private final ConcurrentMap<String, TrackedTorrent> myTorrents;
 
-  private PeerCollectorThread collector;
+  private PeerCollectorThread myPeerCollectorThread;
 	private boolean stop;
   private String myAnnounceUrl;
   private final int myPort;
@@ -90,6 +90,7 @@ public class Tracker {
     myTorrents = torrents;
     this.myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor, myTorrents);
     this.connection = new SocketConnection(new ContainerServer(myTrackerServiceContainer));
+    myPeerCollectorThread = new PeerCollectorThread(myTorrents);
   }
 
 	/**
@@ -161,11 +162,9 @@ public class Tracker {
       return;
     }
 
-		if (startPeerCleaningThread && (this.collector == null || !this.collector.isAlive())) {
-			this.collector = new PeerCollectorThread(myTorrents);
-      collector.setTorrentExpireTimeoutSec(60);
-			this.collector.setName("peer-collector:" + myPort);
-			this.collector.start();
+		if (startPeerCleaningThread && (this.myPeerCollectorThread == null || !this.myPeerCollectorThread.isAlive())) {
+			this.myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
+			this.myPeerCollectorThread.start();
 		}
 	}
 
@@ -174,7 +173,7 @@ public class Tracker {
 	 *
 	 * <p>
 	 * This effectively closes the listening HTTP connection to terminate
-	 * the service, and interrupts the peer collector thread as well.
+	 * the service, and interrupts the peer myPeerCollectorThread thread as well.
 	 * </p>
 	 */
 	public void stop() {
@@ -187,10 +186,10 @@ public class Tracker {
 			logger.error("Could not stop the tracker: {}!", ioe.getMessage());
 		}
 
-		if (this.collector != null && this.collector.isAlive()) {
-			this.collector.interrupt();
+		if (this.myPeerCollectorThread != null && this.myPeerCollectorThread.isAlive()) {
+			this.myPeerCollectorThread.interrupt();
             try {
-                this.collector.join();
+                this.myPeerCollectorThread.join();
             } catch (InterruptedException e) {
                 //
             }
@@ -250,8 +249,15 @@ public class Tracker {
     return Collections.unmodifiableCollection(this.myTorrents.values());
   }
 
+  public TrackedTorrent getTrackedTorrent(String hash){
+    return myTorrents.get(hash);
+  }
+
   public void setAnnounceInterval(int announceInterval){
     myTrackerServiceContainer.setAnnounceInterval(announceInterval);
   }
 
+  public void setPeerCollectorExpireTimeout(int expireTimeout){
+    myPeerCollectorThread.setTorrentExpireTimeoutSec(expireTimeout);
+  }
 }
