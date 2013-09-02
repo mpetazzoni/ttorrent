@@ -1,7 +1,6 @@
 package com.turn.ttorrent.common;
 
 import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
-import junit.framework.TestCase;
 import org.apache.commons.io.FileUtils;
 import org.testng.annotations.Test;
 
