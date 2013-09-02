@@ -40,10 +40,10 @@ public class TorrentTest {
     URI announceURI = new URI("http://localhost:6969/announce");
     String createdBy = "Test2";
     final File parentDir = new File("src/test/resources/parentFiles/parentDir");
-    long creationTimeSecs = 1376051603;
+    final long creationTimeSecs = 1376051000;
     Torrent t = Torrent.create(parentDir,addFilesRecursively(parentDir), announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
     File torrentFile = new File("src/test/resources/torrents/parentDir.torrent");
-    Torrent t2 = Torrent.load(torrentFile);
+    Torrent.load(torrentFile); // try to load
     final byte[] expectedBytes = FileUtils.readFileToByteArray(torrentFile);
     final byte[] actualBytes = t.getEncoded();
     assertEquals(HexBin.encode(expectedBytes), HexBin.encode(actualBytes));
