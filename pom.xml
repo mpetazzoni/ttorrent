@@ -128,10 +128,6 @@
                 <version>2.12.3</version>
                 <configuration>
                     <argLine>-Xmx512M</argLine>
-                  <includes>
-                    <!-- Only include test classes, not test data -->
-                    <include>**/*Torrent*.class</include>
-                  </includes>
                 </configuration>
             </plugin>
 
