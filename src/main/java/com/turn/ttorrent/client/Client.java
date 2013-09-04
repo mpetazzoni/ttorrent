@@ -111,6 +111,10 @@ public class Client implements Runnable,
    * @param address The address to bind to.
    */
   public Client(InetAddress address) throws IOException {
+    this (address, null);
+  }
+
+  public Client(InetAddress address, URI defaultTrackerURI) throws IOException {
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
 
     String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
@@ -131,7 +135,7 @@ public class Client implements Runnable,
     // as well.
 
     this.announce = new Announce(this.self);
-    announce.start();
+    announce.start(defaultTrackerURI, this);
 
     logger.info("BitTorrent client [{}] started and " +
       "listening at {}:{}...",

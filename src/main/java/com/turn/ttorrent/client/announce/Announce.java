@@ -23,9 +23,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.net.UnknownServiceException;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -74,17 +72,17 @@ public class Announce implements Runnable {
    * Announce interval.
    */
   private int interval;
+  private TrackerClient myDefaultTracker;
 
   /**
    * Initialize the base announce class members for the announcer.
    *
    * @param peer Our peer specification.
    */
-  public Announce(Peer peer) {
+  public Announce(final Peer peer) {
     this.peer = peer;
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
     this.torrents = new CopyOnWriteArrayList<SharedTorrent>();
-
     this.thread = null;
   }
 
@@ -92,15 +90,24 @@ public class Announce implements Runnable {
     this.torrents.add(torrent);
     URI trackerUrl = torrent.getAnnounceList().get(0).get(0);
     TrackerClient client = this.clients.get(trackerUrl.toString());
-    if (client == null) {
-      client = this.createTrackerClient(peer, trackerUrl);
-      client.register(listener);
-      this.clients.put(trackerUrl.toString(), client);
-    }
     try {
+      if (client == null) {
+        client = createTrackerClient(peer, trackerUrl);
+        client.register(listener);
+        this.clients.put(trackerUrl.toString(), client);
+      }
       client.announce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrent);
     } catch (AnnounceException e) {
-      logger.warn("Unable to force announce torrent {} on tracker {}", torrent.getName(), client.getTrackerURI());
+      logger.warn(String.format("Unable to force announce torrent %s on tracker %s. Will announce on default tracker", torrent.getName(), String.valueOf(trackerUrl)), e );
+      if (myDefaultTracker != null && myDefaultTracker != client){
+        try {
+          myDefaultTracker.announce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrent);
+          torrent.getAnnounceList().clear();
+          torrent.getAnnounceList().add(new ArrayList<URI>(){{add(myDefaultTracker.getTrackerURI());}});
+        } catch (AnnounceException e1) {
+          logger.warn(String.format("Unable to force announce torrent %s on default tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
+        }
+      }
     }
   }
 
@@ -117,7 +124,17 @@ public class Announce implements Runnable {
   /**
    * Start the announce request thread.
    */
-  public void start() {
+  public void start(final URI defaultTrackerURI, final AnnounceResponseListener listener) {
+    if (defaultTrackerURI != null){
+      try {
+        myDefaultTracker = createTrackerClient(peer, defaultTrackerURI);
+        myDefaultTracker.register(listener);
+        this.clients.put(defaultTrackerURI.toString(), myDefaultTracker);
+      } catch (Exception e) {}
+    } else {
+      myDefaultTracker = null;
+    }
+
     this.stop = false;
     this.forceStop = false;
 
@@ -199,20 +216,20 @@ public class Announce implements Runnable {
     this.interval = 5;
 
     while (!this.stop) {
-      try {
-        logger.debug("Starting announce for {} torrents", torrents.size());
-        for (SharedTorrent torrent : this.torrents) {
+      for (SharedTorrent torrent : this.torrents) {
+        try {
+          logger.debug("Starting announce for {} torrents", torrents.size());
           TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
           if (trackerClient != null) {
             trackerClient.announce(AnnounceRequestMessage.RequestEvent.NONE, false, torrent);
           } else {
             logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
           }
+        } catch (AnnounceException ae) {
+          logger.warn(ae.getMessage());
+        } catch (Exception e) {
+          logger.warn(e.getMessage(), e);
         }
-      } catch (AnnounceException ae) {
-        logger.warn(ae.getMessage());
-      } catch (Exception e) {
-        logger.warn(e.getMessage(), e);
       }
 
       try {
