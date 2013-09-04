@@ -1,7 +1,7 @@
 package com.turn.ttorrent;
 
 public abstract class WaitFor {
-  private long myPollInterval = 100;
+  public static final long POLL_INTERVAL = 500;
 
   private boolean myResult = false;
 
@@ -10,28 +10,16 @@ public abstract class WaitFor {
   }
 
   protected WaitFor(long timeout) {
-    long started = System.currentTimeMillis();
+    long maxTime = System.currentTimeMillis() + timeout;
     try {
-      while(true) {
-        if (condition()) {
-          myResult = true;
-          return;
-        }
-        if (System.currentTimeMillis() - started < timeout) {
-          Thread.sleep(myPollInterval);
-        } else {
-          break;
-        }
+      while (System.currentTimeMillis() < maxTime && !condition()) {
+        Thread.sleep(POLL_INTERVAL);
       }
-
+      if (condition()){
+        myResult = true;
+      }
     } catch (InterruptedException e) {
-      //NOP
     }
-  }
-
-  protected WaitFor(long timeout, long pollInterval) {
-    this(timeout);
-    myPollInterval = pollInterval;
   }
 
   public boolean isMyResult() {

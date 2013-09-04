@@ -1,5 +1,7 @@
 package com.turn.ttorrent;
 
+import org.apache.commons.io.FileUtils;
+
 import java.io.*;
 import java.util.*;
 
@@ -8,7 +10,7 @@ import java.util.*;
  *         Date: 05.03.2008
  */
 public class TempFiles {
-  private static final File ourCurrentTempDir = FileUtil.getTempDirectory();
+  private static final File ourCurrentTempDir = FileUtils.getTempDirectory();
   private final File myCurrentTempDir;
 
   private static Random ourRandom;
@@ -27,7 +29,7 @@ public class TempFiles {
     if (!myCurrentTempDir.isDirectory()) {
 
       throw new IllegalStateException("Temp directory is not a directory, was deleted by some process: " + myCurrentTempDir.getAbsolutePath() +
-          "\njava.io.tmpdir: " + FileUtil.getTempDirectory());
+          "\njava.io.tmpdir: " + FileUtils.getTempDirectory());
     }
 
     myShutdownHook = new Thread(new Runnable() {
@@ -57,12 +59,6 @@ public class TempFiles {
     file.delete();
     file.createNewFile();
     return file;
-  }
-
-  public final File createTempFile(String content) throws IOException {
-    File tempFile = createTempFile();
-    FileUtil.writeFile(tempFile, content);
-    return tempFile;
   }
 
   public final File createTempFile() throws IOException {
@@ -127,7 +123,9 @@ public class TempFiles {
   public void cleanup() {
     try {
       for (File file : myFilesToDelete) {
-        FileUtil.delete(file);
+        try {
+          FileUtils.forceDelete(file);
+        } catch (IOException e) {}
       }
 
       myFilesToDelete.clear();

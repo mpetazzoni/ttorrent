@@ -94,7 +94,7 @@ public class ClientTest {
         leech.addTorrent(st2);
       }
 
-      new WaitFor(90 * 1000, 100) {
+      new WaitFor(90 * 1000) {
         @Override
         protected boolean condition() {
           return listFileNames(downloadDir).containsAll(names);
@@ -253,7 +253,7 @@ public class ClientTest {
         }
         raf.close();
       }
-      final WaitFor waitFor = new WaitFor(30 * 1000, 1000) {
+      final WaitFor waitFor = new WaitFor(30 * 1000) {
         @Override
         protected boolean condition() {
           for (Client client : clientsList) {
@@ -413,7 +413,7 @@ public class ClientTest {
     leech.addTorrent(new SharedTorrent(torrent, tempDir, false));
     leech.download();
 
-    final WaitFor waitFor = new WaitFor(timeout, 2000) {
+    final WaitFor waitFor = new WaitFor(timeout) {
       @Override
       protected boolean condition() {
         final SharedTorrent leechTorrent = leech.getTorrents().iterator().next();
@@ -429,7 +429,7 @@ public class ClientTest {
   }
 
   private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
-    final WaitFor waitFor = new WaitFor(75 * 1000, 1000) {
+    final WaitFor waitFor = new WaitFor(75 * 1000) {
       @Override
       protected boolean condition() {
         boolean retval = true;
