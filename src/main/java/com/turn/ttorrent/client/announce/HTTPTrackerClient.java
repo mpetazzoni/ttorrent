@@ -30,6 +30,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import org.slf4j.Logger;
@@ -113,7 +114,12 @@ public class HTTPTrackerClient extends TrackerClient {
 
 		try {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			baos.write(in);
+
+      byte[] buf = new byte[8192];
+      int len;
+      while ((len=in.read(buf)) > 0){
+        baos.write(buf, 0, len);
+      }
 
 			// Parse and handle the response
 			HTTPTrackerMessage message =

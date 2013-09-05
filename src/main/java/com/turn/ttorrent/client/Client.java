@@ -111,10 +111,10 @@ public class Client implements Runnable,
    * @param address The address to bind to.
    */
   public Client(InetAddress address) throws IOException {
-    this (address, null);
+    this (address, null, 60);
   }
 
-  public Client(InetAddress address, URI defaultTrackerURI) throws IOException {
+  public Client(InetAddress address, URI defaultTrackerURI, final int announceInterval) throws IOException {
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
 
     String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
@@ -134,7 +134,7 @@ public class Client implements Runnable,
     // Initialize the announce request thread, and register ourselves to it
     // as well.
 
-    this.announce = new Announce(this.self);
+    this.announce = new Announce(this.self, announceInterval);
     announce.start(defaultTrackerURI, this);
 
     logger.info("BitTorrent client [{}] started and " +
@@ -170,6 +170,7 @@ public class Client implements Runnable,
 
   public void removeTorrent(TorrentHash torrentHash) {
     this.announce.removeTorrent(torrentHash);
+
     SharedTorrent torrent = this.torrents.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
@@ -185,6 +186,10 @@ public class Client implements Runnable,
    */
   public Peer getPeerSpec() {
     return this.self;
+  }
+
+  public void setAnnounceInterval(final int announceInterval){
+    announce.setAnnounceInterval(announceInterval);
   }
 
   /**
@@ -651,7 +656,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
-    this.announce.setInterval(interval);
+//    this.announce.setInterval(interval);
     final SharedTorrent sharedTorrent = this.torrents.get(hexInfoHash);
     if (sharedTorrent != null){
       sharedTorrent.setSeedersCount(complete);

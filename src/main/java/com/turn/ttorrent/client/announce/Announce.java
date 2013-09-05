@@ -71,7 +71,7 @@ public class Announce implements Runnable {
   /**
    * Announce interval.
    */
-  private int interval;
+  private int myAnnounceInterval;
   private TrackerClient myDefaultTracker;
 
   /**
@@ -79,7 +79,8 @@ public class Announce implements Runnable {
    *
    * @param peer Our peer specification.
    */
-  public Announce(final Peer peer) {
+  public Announce(final Peer peer, final int announceInterval) {
+    myAnnounceInterval = announceInterval;
     this.peer = peer;
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
     this.torrents = new CopyOnWriteArrayList<SharedTorrent>();
@@ -96,12 +97,12 @@ public class Announce implements Runnable {
         client.register(listener);
         this.clients.put(trackerUrl.toString(), client);
       }
-      client.announce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrent);
+      client.announce(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
     } catch (AnnounceException e) {
       logger.warn(String.format("Unable to force announce torrent %s on tracker %s. Will announce on default tracker", torrent.getName(), String.valueOf(trackerUrl)), e );
       if (myDefaultTracker != null && myDefaultTracker != client){
         try {
-          myDefaultTracker.announce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrent);
+          myDefaultTracker.announce(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
           torrent.getAnnounceList().clear();
           torrent.getAnnounceList().add(new ArrayList<URI>(){{add(myDefaultTracker.getTrackerURI());}});
         } catch (AnnounceException e1) {
@@ -116,6 +117,13 @@ public class Announce implements Runnable {
     for (SharedTorrent st : this.torrents) {
       if (st.getHexInfoHash().equals(torrent.getHexInfoHash())) {
         toRemove.add(st);
+        try {
+          final URI uri = st.getAnnounceList().get(0).get(0);
+          TrackerClient client = this.clients.get(uri.toString());
+          client.announce(AnnounceRequestMessage.RequestEvent.STOPPED, true, st);
+        } catch (Exception ex){
+          logger.debug("Unable to announce stop on tracker");
+        }
       }
     }
     this.torrents.removeAll(toRemove);
@@ -149,19 +157,19 @@ public class Announce implements Runnable {
   /**
    * Set the announce interval.
    */
-  public void setInterval(int interval) {
-    if (interval <= 0) {
+  public void setAnnounceInterval(int announceInterval) {
+    if (announceInterval <= 0) {
       this.stop(true);
       return;
     }
 
-    if (this.interval == interval) {
+    if (this.myAnnounceInterval == announceInterval) {
       return;
     }
 
     logger.info("Setting announce interval to {}s per tracker request.",
-      interval);
-    this.interval = interval;
+            announceInterval);
+    this.myAnnounceInterval = announceInterval;
   }
 
   /**
@@ -213,7 +221,7 @@ public class Announce implements Runnable {
 
     // Set an initial announce interval to 5 seconds. This will be updated
     // in real-time by the tracker's responses to our announce requests.
-    this.interval = 5;
+    this.myAnnounceInterval = 5;
 
     while (!this.stop) {
       for (SharedTorrent torrent : this.torrents) {
@@ -233,7 +241,7 @@ public class Announce implements Runnable {
       }
 
       try {
-        Thread.sleep(this.interval * 1000);
+        Thread.sleep(this.myAnnounceInterval * 1000);
       } catch (InterruptedException ie) {
         // Ignore
       }
