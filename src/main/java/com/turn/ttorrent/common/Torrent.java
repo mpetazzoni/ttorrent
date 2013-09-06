@@ -241,6 +241,7 @@ public class Torrent extends Observable implements TorrentInfo {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
+		logger.info("  Torrent hash: {}", this.getHexInfoHash());
 		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
@@ -253,12 +254,6 @@ public class Torrent extends Observable implements TorrentInfo {
 
 		if (this.creationDate != null) {
 			logger.info("  Created on..: {}", this.creationDate);
-		}
-		if (this.comment != null) {
-			logger.info("  Comment.....: {}", this.comment);
-		}
-		if (this.createdBy != null) {
-			logger.info("  Created by..: {}", this.createdBy);
 		}
 
 		if (this.isMultifile()) {
@@ -425,6 +420,10 @@ public class Torrent extends Observable implements TorrentInfo {
 		return this.trackers;
 	}
 
+  public URI getAnnounce(){
+    return trackers.get(0).get(0);
+  }
+
 	/**
 	 * Returns the number of trackers for this torrent.
 	 */
@@ -504,6 +503,21 @@ public class Torrent extends Observable implements TorrentInfo {
     return hashingThreadsCount;
 	}
 
+  public Torrent createWithNewTracker(final URI newTracker){
+    trackers.clear();
+    trackers.add(Arrays.asList(newTracker));
+    try {
+      final BEValue announce = decoded.get("announce");
+      decoded.put("announce", new BEValue(newTracker.toString()));
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      BEncoder.bencode(decoded, baos);
+      return new Torrent(baos.toByteArray(), false);
+    } catch (UnsupportedEncodingException e) {
+    } catch (NoSuchAlgorithmException e) {
+    } catch (IOException e) {
+    }
+    return this;
+  }
 	/** Torrent loading ---------------------------------------------------- */
 
 	/**
@@ -673,14 +687,6 @@ public class Torrent extends Observable implements TorrentInfo {
   /*package local*/ static Torrent create(File parent, List<File> files, URI announce,
                                   List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
 			throws NoSuchAlgorithmException, InterruptedException, IOException {
-		if (files == null || files.isEmpty()) {
-			logger.info("Creating single-file torrent for {}...",
-				parent.getName());
-		} else {
-			logger.info("Creating {}-file torrent {}...",
-				files.size(), parent.getName());
-		}
-
 		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 
       if (announce != null) {
@@ -784,7 +790,7 @@ public class Torrent extends Observable implements TorrentInfo {
 	 */
 	private static String hashFile(final File file, final int pieceSize)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceSize);
+		return Torrent.hashFiles(Arrays.asList(new File[]{file}), pieceSize);
 	}
 
 	private static String hashFiles(final List<File> files, final int pieceSize)

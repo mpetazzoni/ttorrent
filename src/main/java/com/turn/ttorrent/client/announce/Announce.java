@@ -89,7 +89,7 @@ public class Announce implements Runnable {
 
   public void addTorrent(SharedTorrent torrent, AnnounceResponseListener listener) throws UnknownServiceException, UnknownHostException {
     this.torrents.add(torrent);
-    URI trackerUrl = torrent.getAnnounceList().get(0).get(0);
+    URI trackerUrl = torrent.getAnnounce();
     TrackerClient client = this.clients.get(trackerUrl.toString());
     try {
       if (client == null) {
@@ -99,16 +99,7 @@ public class Announce implements Runnable {
       }
       client.announce(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
     } catch (AnnounceException e) {
-      logger.warn(String.format("Unable to force announce torrent %s on tracker %s. Will announce on default tracker", torrent.getName(), String.valueOf(trackerUrl)), e );
-      if (myDefaultTracker != null && myDefaultTracker != client){
-        try {
-          myDefaultTracker.announce(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
-          torrent.getAnnounceList().clear();
-          torrent.getAnnounceList().add(new ArrayList<URI>(){{add(myDefaultTracker.getTrackerURI());}});
-        } catch (AnnounceException e1) {
-          logger.warn(String.format("Unable to force announce torrent %s on default tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
-        }
-      }
+      logger.warn(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
     }
   }
 
@@ -118,7 +109,7 @@ public class Announce implements Runnable {
       if (st.getHexInfoHash().equals(torrent.getHexInfoHash())) {
         toRemove.add(st);
         try {
-          final URI uri = st.getAnnounceList().get(0).get(0);
+          final URI uri = st.getAnnounce();
           TrackerClient client = this.clients.get(uri.toString());
           client.announce(AnnounceRequestMessage.RequestEvent.STOPPED, true, st);
         } catch (Exception ex){
