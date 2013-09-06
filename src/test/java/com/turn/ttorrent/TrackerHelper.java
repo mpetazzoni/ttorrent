@@ -98,7 +98,9 @@ public class TrackerHelper {
       Peer self = new Peer(new InetSocketAddress(InetAddress.getLocalHost(), 6881), ByteBuffer.wrap(id.getBytes()));
       HTTPTrackerClient trackerClient = new HTTPTrackerClient(self, trackerURI);
 
-      trackerClient.register(listener);
+      if (listener != null) {
+        trackerClient.register(listener);
+      }
       trackerClient.announce(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, false, new SimpleTorrentInfo(torrentHash));
     } catch (Exception ex) {
       ex.printStackTrace();

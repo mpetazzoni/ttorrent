@@ -18,6 +18,7 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
+import com.turn.ttorrent.client.announce.TrackerClient;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.PeerExchange;
 import com.turn.ttorrent.client.peer.SharingPeer;
@@ -216,6 +217,26 @@ public class Client implements Runnable,
       }
     }
     return null;
+  }
+
+  public boolean tryTracker(Torrent torrent){
+    try {
+      TrackerClient trackerClient = announce.getCurrentTrackerClient(torrent);
+      if (trackerClient == null) {
+        final List<List<URI>> announceList = torrent.getAnnounceList();
+        final URI firstTracker = announceList.get(0).get(0);
+        trackerClient = Announce.createTrackerClient(self, firstTracker);
+      }
+      trackerClient.announce(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, true, torrent);
+      return trackerClient.getTrackerURI() != null;
+    } catch (Exception e) {
+      return false;
+    }
+
+  }
+
+  public URI getDefaultTrackerURI(){
+    return announce.getDefaultTrackerURI();
   }
 
   /**

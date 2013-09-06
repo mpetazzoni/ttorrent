@@ -300,6 +300,10 @@ public class Announce implements Runnable {
     return this.clients.get(uris.get(0).toString());
   }
 
+  public URI getDefaultTrackerURI(){
+    return myDefaultTracker.getTrackerURI();
+  }
+
   /**
    * Stop the announce thread.
    *
