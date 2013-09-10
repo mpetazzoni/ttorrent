@@ -15,9 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -113,18 +111,20 @@ public class UDPTrackerClient extends TrackerClient {
 	/**
 	 *
      */
-	protected UDPTrackerClient(Peer peer, URI tracker)
+	protected UDPTrackerClient(Peer[] peers, URI tracker)
 		throws UnknownHostException {
-		super(peer, tracker);
+		super(peers, tracker);
 
 		/**
 		 * The UDP announce request protocol only supports IPv4
 		 *
 		 * @see http://bittorrent.org/beps/bep_0015.html#ipv6
 		 */
-		if (! (InetAddress.getByName(peer.getIp()) instanceof Inet4Address)) {
-			throw new UnsupportedAddressTypeException();
-		}
+    for (Peer peer : peers) {
+      if (! (InetAddress.getByName(peer.getIp()) instanceof Inet4Address)) {
+        throw new UnsupportedAddressTypeException();
+      }
+    }
 
 		this.address = new InetSocketAddress(
 			tracker.getHost(),
@@ -137,8 +137,8 @@ public class UDPTrackerClient extends TrackerClient {
 	}
 
 	@Override
-	public void announce(AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, TorrentInfo torrent) throws AnnounceException {
+	public void announce(final AnnounceRequestMessage.RequestEvent event,
+                       boolean inhibitEvents, final TorrentInfo torrent, final Peer peer) throws AnnounceException {
       logAnnounceRequest(event, torrent);
 
 		State state = State.CONNECT_REQUEST;
@@ -190,7 +190,7 @@ public class UDPTrackerClient extends TrackerClient {
 						break;
 
 					case ANNOUNCE_REQUEST:
-            this.send(this.buildAnnounceRequest(event, torrent).getData());
+            this.send(this.buildAnnounceRequest(event, torrent, peer).getData());
 
 						try {
 							this.handleTrackerAnnounceResponse(
@@ -261,20 +261,20 @@ public class UDPTrackerClient extends TrackerClient {
 	}
 
 	private UDPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent) {
+          final AnnounceRequestMessage.RequestEvent event, final TorrentInfo torrent, final Peer peer) {
 		return UDPAnnounceRequestMessage.craft(
 			this.connectionId,
 			transactionId,
       torrent.getInfoHash(),
-			this.peer.getPeerIdArray(),
+			peer.getPeerIdArray(),
       torrent.getDownloaded(),
       torrent.getUploaded(),
       torrent.getLeft(),
 			event,
-			this.peer.getAddress(),
+			peer.getAddress(),
 			0,
 			TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
-			this.peer.getPort());
+			peer.getPort());
 	}
 
 	/**

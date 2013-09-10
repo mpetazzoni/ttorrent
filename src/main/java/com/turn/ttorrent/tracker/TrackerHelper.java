@@ -1,4 +1,4 @@
-package com.turn.ttorrent;
+package com.turn.ttorrent.tracker;
 
 import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.client.CommunicationListener;
@@ -8,7 +8,6 @@ import com.turn.ttorrent.client.peer.MessageListener;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.stubs.SimpleTorrentInfo;
 
 import java.io.File;
 import java.net.*;
@@ -25,6 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class TrackerHelper {
 
+  public static int getSeedersCount(final Torrent torrent) {
+    return getSeedersCount(torrent.getAnnounce(), torrent.getHexInfoHash());
+  }
+
   public static int getSeedersCount(final URI trackerURI, final String torrentHash) {
     final AtomicInteger seedersCount = new AtomicInteger(0);
     queryTracker(trackerURI, torrentHash, new AnnounceResponseListener() {
@@ -35,7 +38,6 @@ public class TrackerHelper {
 
       @Override
       public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-        System.out.print("");
       }
     });
     return seedersCount.get();
@@ -91,17 +93,37 @@ public class TrackerHelper {
     return result;
   }
 
+  public static boolean tryTracker(Torrent torrent) {
+    return tryTracker(torrent.getAnnounce(), torrent);
+  }
+
+  public static boolean tryTracker(final URI trackerURI, Torrent torrent) {
+    final AtomicBoolean response = new AtomicBoolean(false);
+    queryTracker(trackerURI, torrent.getHexInfoHash(), new AnnounceResponseListener() {
+      @Override
+      public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
+        response.set(true);
+      }
+
+      @Override
+      public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
+        response.set(true);
+      }
+    });
+    return response.get();
+  }
+
   private static void queryTracker(final URI trackerURI, final String torrentHash, final AnnounceResponseListener listener) {
     try {
       String id = "Tester" + UUID.randomUUID().toString().split("-")[4];
 
       Peer self = new Peer(new InetSocketAddress(InetAddress.getLocalHost(), 6881), ByteBuffer.wrap(id.getBytes()));
-      HTTPTrackerClient trackerClient = new HTTPTrackerClient(self, trackerURI);
+      HTTPTrackerClient trackerClient = new HTTPTrackerClient(new Peer[]{self}, trackerURI);
 
       if (listener != null) {
         trackerClient.register(listener);
       }
-      trackerClient.announce(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, false, new SimpleTorrentInfo(torrentHash));
+      trackerClient.announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, false, new SimpleTorrentInfo(torrentHash));
     } catch (Exception ex) {
       ex.printStackTrace();
     }
@@ -163,7 +185,7 @@ public class TrackerHelper {
         File file = new File(args[2]);
         String hash = args[2];
         int piecesCount = 0;
-        if (file.isFile()){
+        if (file.isFile()) {
           final Torrent torrent = Torrent.load(file);
           piecesCount = torrent.getPieceCount();
           hash = torrent.getHexInfoHash();
@@ -180,7 +202,7 @@ public class TrackerHelper {
         File file = new File(args[2]);
         String hash = args[2];
         int piecesCount = 0;
-        if (file.isFile()){
+        if (file.isFile()) {
           final Torrent torrent = Torrent.load(file);
           piecesCount = torrent.getPieceCount();
           hash = torrent.getHexInfoHash();
@@ -204,6 +226,68 @@ public class TrackerHelper {
       }
     }
 
-
   }
+
+  private static class SimpleTorrentInfo implements TorrentInfo {
+
+    private final long myUploaded;
+    private final long myDownloaded;
+    private final long myLeft;
+    private final byte[] myHashBytes;
+    private final String myHashString;
+
+    public SimpleTorrentInfo(String hashString) {
+      this(0, 0, 0, HexBin.decode(hashString), hashString);
+    }
+
+    public SimpleTorrentInfo(byte[] hashBytes) {
+      this(0, 0, 0, hashBytes, HexBin.encode(hashBytes));
+    }
+
+    public SimpleTorrentInfo(long uploaded, long downloaded, long left, byte[] hashBytes, String hashString) {
+      myUploaded = uploaded;
+      myDownloaded = downloaded;
+      myLeft = left;
+      myHashBytes = hashBytes;
+      myHashString = hashString;
+    }
+
+    @Override
+    public long getUploaded() {
+      return myUploaded;
+    }
+
+    @Override
+    public long getDownloaded() {
+      return myDownloaded;
+    }
+
+    @Override
+    public long getLeft() {
+      return myLeft;
+    }
+
+    @Override
+    public int getPieceCount() {
+      return 100000;
+    }
+
+    @Override
+    public long getPieceSize(int pieceIdx) {
+      return 2 * 1024 * 1024;
+    }
+
+    @Override
+    public byte[] getInfoHash() {
+      return myHashBytes;
+    }
+
+    @Override
+    public String getHexInfoHash() {
+      return myHashString;
+    }
+  }
+
+
 }
+

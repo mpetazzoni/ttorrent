@@ -47,6 +47,8 @@ public class ClientTest {
 
   @BeforeMethod
   public void setUp() throws IOException {
+    BasicConfigurator.configure();
+    Logger.getRootLogger().setLevel(Level.INFO);
     tempFiles = new TempFiles();
     Torrent.setHashingThreadsCount(1);
     startTracker();
@@ -191,7 +193,7 @@ public class ClientTest {
     this.tracker.setAcceptForeignTorrents(true);
 
     final int pieceSize = 48*1024; // lower piece size to reduce disk usage
-    final int numSeeders = 10;
+    final int numSeeders = 8;
     final int piecesCount = numSeeders * 3 + 15;
 
     final List<Client> clientsList;

@@ -7,6 +7,7 @@ import com.turn.ttorrent.client.ClientState;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.*;
@@ -157,7 +158,7 @@ public class TrackerTest{
     tracker.setAcceptForeignTorrents(true);
     final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
 
-    Client c1 = createClient();
+    final Client c1 = createClient();
     c1.share();
     c1.addTorrent(torrent);
 
@@ -166,19 +167,50 @@ public class TrackerTest{
     c2.addTorrent(completeTorrent("file1.jar.torrent"));
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
-    assertTrue(tt.getPeers().containsKey(c1.getPeerSpec().getHexPeerId()));
-    assertTrue(tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId()));
+    assertTrackedTorrentContainPeers(tt, c1.getPeers());
+    assertTrackedTorrentContainPeers(tt, c2.getPeers());
 
     c2.stop();
     new WaitFor(30*1000){
 
       @Override
       protected boolean condition() {
-        return !tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId());
+        return tt.getPeers().size() == c1.getPeers().size();
       }
     };
-    assertTrue(tt.getPeers().containsKey(c1.getPeerSpec().getHexPeerId()));
-    assertFalse(tt.getPeers().containsKey(c2.getPeerSpec().getHexPeerId()));
+    assertTrackedTorrentContainPeers(tt, c1.getPeers());
+    assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
+  }
+  public void tracker_removes_peer_after_timeout() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    tracker.setAcceptForeignTorrents(true);
+    tracker.setPeerCollectorExpireTimeout(10);
+    tracker.stop();
+    tracker.start(true);
+    final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
+
+    final Client c1 = createClient();
+    c1.setAnnounceInterval(2);
+    c1.share();
+    c1.addTorrent(torrent);
+
+    final Client c2 = createClient();
+    c2.setAnnounceInterval(120);
+    c2.share();
+    c2.addTorrent(completeTorrent("file1.jar.torrent"));
+
+    final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+    assertTrackedTorrentContainPeers(tt, c1.getPeers());
+    assertTrackedTorrentContainPeers(tt, c2.getPeers());
+
+    new WaitFor(30*1000){
+
+      @Override
+      protected boolean condition() {
+        return tt.getPeers().size() == c1.getPeers().size();
+      }
+    };
+    assertTrackedTorrentContainPeers(tt, c1.getPeers());
+    assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
   }
 
 //  @Test(invocationCount = 50)
@@ -296,5 +328,18 @@ public class TrackerTest{
     Checksum c1 = FileUtils.checksum(f1, new CRC32());
     Checksum c2 = FileUtils.checksum(f2, new CRC32());
     assertEquals(c1.getValue(), c2.getValue());
+  }
+
+  private void assertTrackedTorrentContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers){
+    for (SharingPeer peer : peers) {
+      assertNotNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
+              String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
+    }
+  }
+  private void assertTrackedTorrentNotContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers){
+    for (SharingPeer peer : peers) {
+      assertNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
+              String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
+    }
   }
 }

@@ -55,7 +55,7 @@ public class Tracker {
 	/** Default server name and version announced by the tracker. */
 	public static final String DEFAULT_VERSION_STRING = "BitTorrent Tracker (ttorrent)";
 
-	private final Connection connection;
+	private Connection connection;
 
 	/** The in-memory repository of torrents tracked. */
 	private final ConcurrentMap<String, TrackedTorrent> myTorrents;
@@ -89,7 +89,6 @@ public class Tracker {
     this.myAnnounceUrl = announceURL;
     myTorrents = torrents;
     this.myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor, myTorrents);
-    this.connection = new SocketConnection(new ContainerServer(myTrackerServiceContainer));
     myPeerCollectorThread = new PeerCollectorThread(myTorrents);
   }
 
@@ -137,6 +136,7 @@ public class Tracker {
 	public void start(final boolean startPeerCleaningThread) throws IOException {
     logger.info("Starting BitTorrent tracker on {}...",
             getAnnounceUrl());
+    connection = new SocketConnection(new ContainerServer(myTrackerServiceContainer));
 
     List<SocketAddress> tries = new ArrayList<SocketAddress>() {{
       try {add(new InetSocketAddress(InetAddress.getByAddress(new byte[4]), myPort));} catch (Exception ex) {}
@@ -187,6 +187,9 @@ public class Tracker {
 		}
 
 		if (this.myPeerCollectorThread != null && this.myPeerCollectorThread.isAlive()) {
+      if (myPeerCollectorThread.getState() != Thread.State.NEW){
+        myPeerCollectorThread = new PeerCollectorThread(myTorrents);
+      }
 			this.myPeerCollectorThread.interrupt();
             try {
                 this.myPeerCollectorThread.join();

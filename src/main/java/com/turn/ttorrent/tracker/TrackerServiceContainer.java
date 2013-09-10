@@ -26,7 +26,8 @@ public class TrackerServiceContainer implements Container {
   private TrackerRequestProcessor myRequestProcessor;
   private ConcurrentMap<String, TrackedTorrent> myTorrents;
 
-  public TrackerServiceContainer(TrackerRequestProcessor requestProcessor, ConcurrentMap<String, TrackedTorrent> torrents) {
+  public TrackerServiceContainer(final TrackerRequestProcessor requestProcessor,
+                                 final ConcurrentMap<String, TrackedTorrent> torrents) {
     myRequestProcessor = requestProcessor;
     myTorrents = torrents;
   }

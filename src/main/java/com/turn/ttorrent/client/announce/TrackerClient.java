@@ -26,10 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public abstract class TrackerClient {
 
@@ -40,12 +37,12 @@ public abstract class TrackerClient {
     /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
-	protected final Peer peer;
+	protected final Peer[] myPeers;
 	protected final URI tracker;
 
-  public TrackerClient(Peer peer, URI tracker) {
+  public TrackerClient(final Peer[] peers, final URI tracker) {
 		this.listeners = new HashSet<AnnounceResponseListener>();
-		this.peer = peer;
+    myPeers = peers;
 		this.tracker = tracker;
 	}
 
@@ -64,6 +61,26 @@ public abstract class TrackerClient {
 	public URI getTrackerURI() {
 		return this.tracker;
 	}
+
+  public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
+                                    boolean inhibitEvent, final TorrentInfo torrent) throws AnnounceException {
+    List<String> failedPeers = null;
+    for (Peer peer : myPeers) {
+      try {
+        announce(event, inhibitEvent, torrent, peer);
+      } catch (AnnounceException e) {
+        if (failedPeers ==null){
+          failedPeers = new ArrayList<String>();
+        }
+        failedPeers.add(peer.toString());
+      }
+    }
+    if (failedPeers != null){
+      throw new AnnounceException(String.format("Unable to announce event %s for torrent %s and peers %s", new Object[]{
+              event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(failedPeers.toArray())
+      }));
+    }
+  }
 
 	/**
 	 * Build, send and process a tracker announce request.
@@ -84,8 +101,8 @@ public abstract class TrackerClient {
      * @param inhibitEvent Prevent event listeners from being notified.
      * @param torrent
      */
-	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
-                                boolean inhibitEvent, TorrentInfo torrent) throws AnnounceException;
+	protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
+                                boolean inhibitEvent, final TorrentInfo torrent, final Peer peer) throws AnnounceException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {

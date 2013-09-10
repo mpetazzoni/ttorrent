@@ -22,7 +22,6 @@ import com.turn.ttorrent.client.announce.TrackerClient;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.PeerExchange;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.client.peer.SharingPeerInfo;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
@@ -57,7 +56,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * meta-info source (either a file or a byte array, see
  * com.turn.ttorrent.SharedTorrent for how to create a SharedTorrent object).
  * Then, instantiate your Client object with this SharedTorrent and call one of
- * {@link #download} to simply download the torrent, or {@link #share} to
+ * {@link #download} to simply download the torrent, or {@link #share()} to
  * download and continue seeding for the given amount of time after the
  * download completes.
  * </p>
@@ -92,8 +91,6 @@ public class Client implements Runnable,
 
   private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
-  private Peer self;
-
   private Thread thread;
   private boolean stop;
   private long seed;
@@ -111,11 +108,11 @@ public class Client implements Runnable,
    *
    * @param address The address to bind to.
    */
-  public Client(InetAddress address) throws IOException {
-    this (address, null, 60);
+  public Client(InetAddress... address) throws IOException {
+    this(address, null, 60);
   }
 
-  public Client(InetAddress address, URI defaultTrackerURI, final int announceInterval) throws IOException {
+  public Client(InetAddress[] bindAddresses, URI defaultTrackerURI, final int announceIntervalSec) throws IOException {
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
 
     String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
@@ -123,28 +120,14 @@ public class Client implements Runnable,
 
     // Initialize the incoming connection handler and register ourselves to
     // it.
-    this.service = new ConnectionHandler(this.torrents, id, address);
+    this.service = new ConnectionHandler(this.torrents, id, bindAddresses);
     this.service.register(this);
-
-    this.self = new Peer(
-      this.service.getSocketAddress()
-        .getAddress().getHostAddress(),
-      (short) this.service.getSocketAddress().getPort(),
-      ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
     // Initialize the announce request thread, and register ourselves to it
     // as well.
 
-    this.announce = new Announce(this.self, announceInterval);
+    this.announce = new Announce(announceIntervalSec, service.getSelfPeers());
     announce.start(defaultTrackerURI, this);
-
-    logger.info("BitTorrent client [{}] started and " +
-      "listening at {}:{}...",
-      new Object[]{
-        this.self.getShortHexPeerId(),
-        this.self.getIp(),
-        this.self.getPort()
-      });
 
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
@@ -179,15 +162,14 @@ public class Client implements Runnable,
     }
   }
 
-  public InetAddress getAddress(){
-    return service.getSocketAddress().getAddress();
-  }
   /**
    * Get this client's peer specification.
    */
-  public Peer getPeerSpec() {
+/*
+  private Peer getPeerSpec() {
     return this.self;
   }
+*/
 
   public void setAnnounceInterval(final int announceInterval){
     announce.setAnnounceInterval(announceInterval);
@@ -217,22 +199,6 @@ public class Client implements Runnable,
       }
     }
     return null;
-  }
-
-  public boolean tryTracker(Torrent torrent){
-    try {
-      TrackerClient trackerClient = announce.getCurrentTrackerClient(torrent);
-      if (trackerClient == null) {
-        final List<List<URI>> announceList = torrent.getAnnounceList();
-        final URI firstTracker = announceList.get(0).get(0);
-        trackerClient = Announce.createTrackerClient(self, firstTracker);
-      }
-      trackerClient.announce(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, true, torrent);
-      return trackerClient.getTrackerURI() != null;
-    } catch (Exception e) {
-      return false;
-    }
-
   }
 
   public URI getDefaultTrackerURI(){
@@ -272,8 +238,7 @@ public class Client implements Runnable,
 
     if (this.thread == null || !this.thread.isAlive()) {
       this.thread = new Thread(this);
-      this.thread.setName("bt-client(" +
-        this.self.getShortHexPeerId() + ")");
+      this.thread.setName("bt-client");
       this.thread.start();
     }
   }
@@ -294,6 +259,7 @@ public class Client implements Runnable,
    */
   public void stop(boolean wait) {
     this.stop = true;
+    service.stop();
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
@@ -301,7 +267,6 @@ public class Client implements Runnable,
           this.waitForCompletion();
       }
     }
-
       this.thread = null;
   }
 
@@ -402,12 +367,6 @@ public class Client implements Runnable,
     logger.debug("Stopping BitTorrent client connection service " +
       "and announce threads...");
     this.service.stop();
-    try {
-      this.service.close();
-    } catch (IOException ioe) {
-      logger.warn("Error while releasing bound channel: {}!",
-              ioe.getMessage(), ioe);
-    }
 
 
     // Close all peer connections
@@ -677,7 +636,6 @@ public class Client implements Runnable,
    */
   @Override
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
-//    this.announce.setInterval(interval);
     final SharedTorrent sharedTorrent = this.torrents.get(hexInfoHash);
     if (sharedTorrent != null){
       sharedTorrent.setSeedersCount(complete);
@@ -900,11 +858,9 @@ public class Client implements Runnable,
 
         try {
           this.announce.getCurrentTrackerClient(torrent)
-            .announce(TrackerMessage
-              .AnnounceRequestMessage
-              .RequestEvent.COMPLETED, true, torrent);
-        } catch (AnnounceException ae) {
-          logger.debug("Error announcing completion event to tracker: {}", ae.getMessage());
+                  .announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.COMPLETED, true, torrent);
+        } catch (AnnounceException e) {
+          logger.info("unable to announce", e);
         }
 
         torrent.setClientState(ClientState.SEEDING);

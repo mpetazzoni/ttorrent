@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.http.*;
@@ -30,7 +29,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import org.slf4j.Logger;
@@ -52,8 +50,8 @@ public class HTTPTrackerClient extends TrackerClient {
 	 *
 	 * @param peer Our own peer specification.
 	 */
-  public HTTPTrackerClient(Peer peer, URI tracker) {
-    super(peer, tracker);
+  public HTTPTrackerClient(Peer[] peers, URI tracker) {
+    super(peers, tracker);
 	}
 
 	/**
@@ -73,15 +71,15 @@ public class HTTPTrackerClient extends TrackerClient {
      * @param event The announce event type (can be AnnounceEvent.NONE for
      * periodic updates).
      * @param inhibitEvents Prevent event listeners from being notified.
-     * @param torrent
+     * @param torrentInfo
      */
-	public void announce(AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, TorrentInfo torrentInfo) throws AnnounceException {
+	public void announce(final AnnounceRequestMessage.RequestEvent event,
+                       boolean inhibitEvents, final TorrentInfo torrentInfo, final Peer peer) throws AnnounceException {
       logAnnounceRequest(event, torrentInfo);
       URL target = null;
 		try {
 			HTTPAnnounceRequestMessage request =
-            this.buildAnnounceRequest(event, torrentInfo);
+            this.buildAnnounceRequest(event, torrentInfo, peer);
 			target = request.buildAnnounceURL(this.tracker.toURL());
 		} catch (MalformedURLException mue) {
 			throw new AnnounceException("Invalid announce URL (" +
@@ -163,7 +161,7 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @throws MessageValidationException
 	 */
 	private HTTPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo)
+    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer)
 		throws IOException,
 			MessageValidationException {
 		// Build announce request message
@@ -172,13 +170,13 @@ public class HTTPTrackerClient extends TrackerClient {
       final long left = torrentInfo.getLeft();
       return HTTPAnnounceRequestMessage.craft(
       torrentInfo.getInfoHash(),
-          this.peer.getPeerIdArray(),
-          this.peer.getPort(),
+          peer.getPeerIdArray(),
+          peer.getPort(),
           uploaded,
           downloaded,
           left,
           true, false, event,
-          this.peer.getIp(),
+          peer.getIp(),
           AnnounceRequestMessage.DEFAULT_NUM_WANT);
     }
 }

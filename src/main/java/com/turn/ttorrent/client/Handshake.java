@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentHash;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -27,7 +28,7 @@ import java.text.ParseException;
  *
  * @author mpetazzoni
  */
-public class Handshake {
+public class Handshake implements TorrentHash {
 
 	public static final String BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol";
 	public static final int BASE_HANDSHAKE_LENGTH = 49;
