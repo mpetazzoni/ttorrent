@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,16 +310,12 @@ public class ConnectionHandler implements Runnable {
 		} catch (ParseException pe) {
 			logger.info("Invalid handshake from {}: {}",
 				this.socketRepr(client), pe.getMessage());
-			try { client.close(); } catch (IOException e) { }
+			IOUtils.closeQuietly(client);
 		} catch (IOException ioe) {
 			logger.warn("An error occured while reading an incoming " +
 					"handshake: {}", ioe.getMessage());
-			try {
-				if (client.isConnected()) {
-					client.close();
-				}
-			} catch (IOException e) {
-				// Ignore
+			if (client.isConnected()) {
+				IOUtils.closeQuietly(client);
 			}
 		}
 	}
@@ -456,7 +453,7 @@ public class ConnectionHandler implements Runnable {
 			t.setName("bt-connect-" + ++this.number);
 			return t;
 		}
-	};
+	}
 
 
 	/**
@@ -510,15 +507,11 @@ public class ConnectionHandler implements Runnable {
 				channel.configureBlocking(false);
 				this.handler.fireNewPeerConnection(channel, hs.getPeerId());
 			} catch (Exception e) {
-				try {
-					if (channel != null && channel.isConnected()) {
-						channel.close();
-					}
-				} catch (IOException ioe) {
-					// Ignore
+				if (channel != null && channel.isConnected()) {
+					IOUtils.closeQuietly(channel);
 				}
 				this.handler.fireFailedConnection(this.peer, e);
 			}
 		}
-	};
+	}
 }

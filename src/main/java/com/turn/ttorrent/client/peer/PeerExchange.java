@@ -33,6 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,11 +179,7 @@ class PeerExchange {
 		this.stop = true;
 
 		if (this.channel.isConnected()) {
-			try {
-				this.channel.close();
-			} catch (IOException ioe) {
-				// Ignore
-			}
+			IOUtils.closeQuietly(this.channel);
 		}
 
 		logger.debug("Peer exchange with {} closed.", this.peer);
