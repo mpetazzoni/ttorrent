@@ -20,7 +20,6 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -33,6 +32,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -297,16 +297,7 @@ public class TrackedTorrent extends Torrent {
 	 */
 	public static TrackedTorrent load(File torrent) throws IOException,
 		NoSuchAlgorithmException {
-		FileInputStream fis = null;
-		try {
-			fis = new FileInputStream(torrent);
-			byte[] data = new byte[(int)torrent.length()];
-			fis.read(data);
-			return new TrackedTorrent(data);
-		} finally {
-			if (fis != null) {
-				fis.close();
-			}
-		}
+		byte[] data = FileUtils.readFileToByteArray(torrent);
+		return new TrackedTorrent(data);
 	}
 }

@@ -19,13 +19,13 @@ import com.turn.ttorrent.common.Torrent;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.Arrays;
 
 import jargs.gnu.CmdLineParser;
+import org.apache.commons.io.IOUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
@@ -158,11 +158,8 @@ public class TorrentMain {
 			logger.error("{}", e.getMessage(), e);
 			System.exit(2);
 		} finally {
-			if (fos != null && fos != System.out) {
-				try {
-					fos.close();
-				} catch (IOException ioe) {
-				}
+			if (fos != System.out) {
+				IOUtils.closeQuietly(fos);
 			}
 		}
 	}
