@@ -187,7 +187,11 @@ public class FileStorage implements TorrentByteStorage {
           this.raf.close();
           FileUtils.moveFile(this.current, this.target);
         } catch (Exception ex) {
-          logger.error("An error occured while moving file to its final location", ex);
+          logger.error("An error occurred while moving file to its final location", ex);
+          if (this.target.exists()){
+            throw new IOException("Was unable to delete existing file " + target.getAbsolutePath(), ex);
+          }
+          FileUtils.copyFile(this.current, this.target);
         }
 
 		logger.debug("Re-opening torrent byte storage at {}.",

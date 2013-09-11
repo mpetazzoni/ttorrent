@@ -143,7 +143,7 @@ public class Client implements Runnable,
     this.torrents.put(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
-    if (torrent.isComplete()) {
+    if (torrent.isFinished()) {
       torrent.setClientState(ClientState.SEEDING);
     } else {
       torrent.setClientState(ClientState.SHARING);
@@ -294,13 +294,14 @@ public class Client implements Runnable,
   public void downloadUninterruptibly(SharedTorrent torrent, long downloadTimeoutSeconds) throws IOException, InterruptedException {
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
-    long startTime = System.currentTimeMillis();
-    while (!torrent.isComplete() &&
+    final long maxTime = System.currentTimeMillis() + downloadTimeoutSeconds * 1000;
+    while (torrent.getClientState() != ClientState.SEEDING &&
+            torrent.getClientState() != ClientState.ERROR &&
         (torrent.getSeedersCount() > 0 || torrent.getLastAnnounceTime() < 0) &&
-        (System.currentTimeMillis() - startTime <= downloadTimeoutSeconds*1000)){
+        (System.currentTimeMillis() <= maxTime)){
       Thread.sleep(100);
     }
-    if (!torrent.isComplete()) {
+    if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
       removeTorrent(torrent);
       throw new IOException("Unable to download torrent completely - no full seeder or timed out");
     }
@@ -836,24 +837,13 @@ public class Client implements Runnable,
           remote.send(have);
         }
       } else {
-        logger.debug("Downloaded piece#{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
+        logger.debug("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
         peer.getPoorlyAvailablePieces().set(piece.getIndex());
       }
 
       if (torrent.isComplete()) {
           logger.info("Download of {} complete.", torrent.getName());
 
-          // Cancel all remaining outstanding requests
-          //TODO: rework this in case of multi-torrent client
-/*
-          for (SharingPeer remote : this.connected.values()) {
-              if (remote.isDownloading()) {
-                  int requests = remote.cancelPendingRequests().size();
-                  logger.info("Cancelled {} remaining pending requests on {}.",
-                          requests, remote);
-              }
-          }
-*/
         torrent.finish();
 
         try {
@@ -863,7 +853,6 @@ public class Client implements Runnable,
           logger.info("unable to announce", e);
         }
 
-        torrent.setClientState(ClientState.SEEDING);
         if (seed == 0) {
           peer.unbind(false);
           this.announce.removeTorrent(torrent);

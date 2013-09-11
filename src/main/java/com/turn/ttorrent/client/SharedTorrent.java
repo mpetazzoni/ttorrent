@@ -407,8 +407,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     executor.shutdown();
     while (!executor.isTerminated()) {
       if (this.stop) {
-        throw new InterruptedException("Torrent data analysis " +
-          "interrupted.");
+        throw new InterruptedException("Torrent data analysis interrupted.");
       }
 
       Thread.sleep(10);
@@ -578,7 +577,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       throw new IllegalStateException("Torrent download is not complete!");
     }
 
-    this.bucket.finish();
+    try {
+      this.bucket.finish();
+    } catch (IOException ex){
+      clientState = ClientState.ERROR;
+      throw ex;
+    }
+
+    clientState = ClientState.SEEDING;
   }
 
   public synchronized boolean isFinished() {
