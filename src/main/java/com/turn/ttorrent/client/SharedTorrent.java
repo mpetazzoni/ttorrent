@@ -25,7 +25,6 @@ import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,6 +43,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -240,10 +240,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public static SharedTorrent fromFile(File source, File parent)
 		throws IOException, NoSuchAlgorithmException {
-		FileInputStream fis = new FileInputStream(source);
-		byte[] data = new byte[(int)source.length()];
-		fis.read(data);
-		fis.close();
+		byte[] data = FileUtils.readFileToByteArray(source);
 		return new SharedTorrent(data, parent);
 	}
 
