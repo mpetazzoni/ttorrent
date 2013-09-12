@@ -347,8 +347,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
 				new Object[] { this.getName(), threads, nPieces });
 			for (int idx=0; idx<nPieces; idx++) {
-				byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
-				this.piecesHashes.get(hash);
 
 				// The last piece may be shorter than the torrent's global piece
 				// length. Let's make sure we get the right piece length in any
@@ -358,8 +356,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					this.bucket.size() - off,
 					this.pieceLength);
 
-				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-					this.isSeeder());
+				this.pieces[idx] = new Piece(this, idx, len);
 
 				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
 				results.add(executor.submit(hasher));
@@ -861,4 +858,25 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	@Override
 	public synchronized void handleIOException(SharingPeer peer,
 			IOException ioe) { /* Do nothing */ }
+	
+	
+	/**
+	 * For accessing from Piece.
+	 * @return
+	 */
+	TorrentByteStorage getBucket() {
+		return bucket;
+	}
+	
+	/**
+	 * For accessing from Piece.
+	 * @return
+	 */
+	int getPieceLength() {
+		return pieceLength;
+	}
+	
+	ByteBuffer getPiecesHashes() {
+		return piecesHashes;
+	}
 }

@@ -410,6 +410,12 @@ public class Torrent {
 		return md.digest();
 	}
 
+	public static byte[] hash(ByteBuffer data) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("SHA-1");
+		md.update(data);
+		return md.digest();
+	}
+
 	/**
 	 * Convert a byte string to a string containing an hexadecimal
 	 * representation of the original data.
