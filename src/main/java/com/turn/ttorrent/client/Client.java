@@ -89,7 +89,7 @@ public class Client implements Runnable,
    */
   private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
-  private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+  public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
   private Thread thread;
   private boolean stop;
@@ -115,12 +115,9 @@ public class Client implements Runnable,
   public Client(InetAddress[] bindAddresses, URI defaultTrackerURI, final int announceIntervalSec) throws IOException {
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
 
-    String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
-      .toString().split("-")[4];
-
     // Initialize the incoming connection handler and register ourselves to
     // it.
-    this.service = new ConnectionHandler(this.torrents, id, bindAddresses);
+    this.service = new ConnectionHandler(this.torrents, bindAddresses);
     this.service.register(this);
 
     // Initialize the announce request thread, and register ourselves to it
@@ -134,6 +131,10 @@ public class Client implements Runnable,
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
+    if (torrent.getSize() == 0){
+      // we don't seed zero-size files
+      return;
+    }
     torrent.init();
     if (!torrent.isInitialized()) {
       torrent.close();
@@ -362,6 +363,7 @@ public class Client implements Runnable,
         Thread.sleep(Client.UNCHOKING_FREQUENCY * 1000);
       } catch (InterruptedException ie) {
         logger.trace("BitTorrent main loop interrupted.");
+        break;
       }
     }
 
@@ -652,7 +654,8 @@ public class Client implements Runnable,
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.debug("Got {} peer(s) for {} in tracker response", peers.size(), hexInfoHash);
+    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+            Arrays.toString(peers.toArray()), hexInfoHash});
 
     if (!this.service.isAlive()) {
       logger.info("Connection handler service is not available.");

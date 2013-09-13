@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -17,6 +18,7 @@ import java.nio.channels.SocketChannel;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -94,7 +96,7 @@ public class ConnectionUtils {
     return channel.write(craft.getData());
   }
 
-  public static SocketChannel connect(Peer peerInfo, byte[] selfPeerId, TorrentHash torrentHash, Collection<CommunicationListener> listeners){
+  public static SocketChannel connect(Peer peerInfo, Map<InetAddress, byte[]> selfIdCandidates, TorrentHash torrentHash, Collection<CommunicationListener> listeners){
     InetSocketAddress address =
             new InetSocketAddress(peerInfo.getIp(), peerInfo.getPort());
     SocketChannel channel = null;
@@ -108,6 +110,15 @@ public class ConnectionUtils {
 
       logger.debug("Connected. Sending handshake to {}...", peerInfo);
       channel.configureBlocking(true);
+      final byte[] socketBytes = channel.socket().getLocalAddress().getAddress();
+      byte[] selfPeerId = new byte[20];
+      for (InetAddress inetAddress : selfIdCandidates.keySet()) {
+        final byte[] candidateBytes = inetAddress.getAddress();
+        if (Arrays.equals(socketBytes, candidateBytes)){
+          logger.info("Local address: " + inetAddress);
+          selfPeerId = selfIdCandidates.get(inetAddress);
+        }
+      }
       int sent = sendHandshake(channel, torrentHash.getInfoHash(), selfPeerId);
       logger.debug("Sent handshake ({} bytes), waiting for response...", sent);
       Handshake hs = validateHandshake(channel,peerInfo.getPeerIdArray());

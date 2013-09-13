@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
+import java.util.UUID;
 
 /**
  * @author Sergey.Pak
@@ -41,13 +42,12 @@ public class SingleAddressConnectionHandler implements Runnable  {
   private Thread mySelfThread=null;
 
   public SingleAddressConnectionHandler(final InetAddress bindAddress,
-                                        final String id,
                                         final TorrentConnectionListener connectionListener) throws IOException {
     // Bind to the first available port in the range
     // [PORT_RANGE_START; PORT_RANGE_END].
     myConnectionListener = connectionListener;
+    final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
     myIdBytes = id.getBytes(Torrent.BYTE_ENCODING);
-
 
     for (int port = PORT_RANGE_START;
          port <= PORT_RANGE_END;

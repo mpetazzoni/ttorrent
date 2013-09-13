@@ -87,8 +87,15 @@ public class TrackerHelper {
         }
       };
       String id = "Tester" + UUID.randomUUID().toString().split("-")[4];
+      try {
+        final InetAddress localHost = InetAddress.getLocalHost();
+        final HashMap<InetAddress, byte[]> selfIdCandidates = new HashMap<InetAddress, byte[]>();
+        selfIdCandidates.put(localHost, id.getBytes());
+        ConnectionUtils.connect(peer, selfIdCandidates, createTorrentHashObj(torrentHash), Arrays.asList(listener));
+      } catch (UnknownHostException e) {
+        e.printStackTrace();
+      }
 
-      ConnectionUtils.connect(peer, id.getBytes(), createTorrentHashObj(torrentHash), Arrays.asList(listener));
     }
     return result;
   }
@@ -178,7 +185,7 @@ public class TrackerHelper {
   }
 
   public static void main(String[] args) throws URISyntaxException {
-//    org.apache.log4j.BasicConfigurator.configure();
+    org.apache.log4j.BasicConfigurator.configure();
     String command = args[0];
     if (command.equals(HelperCommands.seeders.name())) {
       try {

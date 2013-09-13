@@ -18,20 +18,14 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
-import org.apache.log4j.helpers.CountingQuietWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.*;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 
 
@@ -79,7 +73,6 @@ public class ConnectionHandler implements TorrentConnectionListener{
 
   private final ConcurrentMap<String, SharedTorrent> torrents;
   private final List<SingleAddressConnectionHandler> myAddressHandlers;
-  private String id;
 
   private final Set<CommunicationListener> listeners;
   private ThreadPoolExecutor executor;
@@ -94,19 +87,17 @@ public class ConnectionHandler implements TorrentConnectionListener{
    * </p>
    *
    * @param torrents The torrents shared by this client.
-   * @param id       This client's peer ID.
    * @param addresses  The address to bind to.
    * @throws IOException When the service can't be started because no port in
    *                     the defined range is available or usable.
    */
-  ConnectionHandler(ConcurrentMap<String, SharedTorrent> torrents, String id, InetAddress[] addresses)
+  ConnectionHandler(ConcurrentMap<String, SharedTorrent> torrents, InetAddress[] addresses)
     throws IOException {
     this.torrents = torrents;
-    this.id = id;
 
     myAddressHandlers = new ArrayList<SingleAddressConnectionHandler>();
     for (InetAddress addr : addresses) {
-      myAddressHandlers.add(new SingleAddressConnectionHandler(addr, id, this));
+      myAddressHandlers.add(new SingleAddressConnectionHandler(addr, this));
     }
 
     this.listeners = new HashSet<CommunicationListener>();
@@ -261,24 +252,23 @@ public class ConnectionHandler implements TorrentConnectionListener{
   private static class ConnectorTask implements Runnable {
 
     private final Set<CommunicationListener> myListeners;
-    private final Peer myPeer;
+    private final Peer myConnectPeer;
     private TorrentHash myTorrentHash;
-    private byte[] mySelfId;
+    private Map<InetAddress, byte[]> mySelfIdCandidates;
 
-    private ConnectorTask(ConnectionHandler handler, SharingPeer peer) {
+    private ConnectorTask(ConnectionHandler handler, SharingPeer connectPeer) {
       this.myListeners = handler.listeners;
-      this.myPeer = peer;
-      this.myTorrentHash = peer.getTorrentHash();
-      try {
-        this.mySelfId = handler.id.getBytes(Torrent.BYTE_ENCODING);
-      } catch (UnsupportedEncodingException e) {
-
+      this.myConnectPeer = connectPeer;
+      this.myTorrentHash = connectPeer.getTorrentHash();
+      mySelfIdCandidates = new HashMap<InetAddress, byte[]>();
+      for (Peer selfPeer : handler.getSelfPeers()) {
+        mySelfIdCandidates.put(selfPeer.getAddress(), selfPeer.getPeerIdArray());
       }
     }
 
     @Override
     public void run() {
-      ConnectionUtils.connect(myPeer, mySelfId, myTorrentHash, myListeners);
+      ConnectionUtils.connect(myConnectPeer, mySelfIdCandidates, myTorrentHash, myListeners);
     }
   };
 }

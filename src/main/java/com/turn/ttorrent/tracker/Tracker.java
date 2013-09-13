@@ -71,7 +71,6 @@ public class Tracker {
 	/**
 	 * Create a new BitTorrent tracker listening at the given address.
 	 *
-	 * @param version A version string served in the HTTP headers
 	 * @throws IOException Throws an <em>IOException</em> if the tracker
 	 * cannot be initialized.
 	 */
@@ -161,9 +160,12 @@ public class Tracker {
       stop();
       return;
     }
+		if (startPeerCleaningThread) {
+      if (this.myPeerCollectorThread == null || !this.myPeerCollectorThread.isAlive() || myPeerCollectorThread.getState() != Thread.State.NEW){
+        myPeerCollectorThread = new PeerCollectorThread(myTorrents);
+      }
 
-		if (startPeerCleaningThread && (this.myPeerCollectorThread == null || !this.myPeerCollectorThread.isAlive())) {
-			this.myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
+      this.myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
 			this.myPeerCollectorThread.start();
 		}
 	}
@@ -187,9 +189,6 @@ public class Tracker {
 		}
 
 		if (this.myPeerCollectorThread != null && this.myPeerCollectorThread.isAlive()) {
-      if (myPeerCollectorThread.getState() != Thread.State.NEW){
-        myPeerCollectorThread = new PeerCollectorThread(myTorrents);
-      }
 			this.myPeerCollectorThread.interrupt();
             try {
                 this.myPeerCollectorThread.join();

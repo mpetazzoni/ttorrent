@@ -48,7 +48,7 @@ public class HTTPTrackerClient extends TrackerClient {
 	/**
 	 * Create a new HTTP announcer for the given torrent.
 	 *
-	 * @param peer Our own peer specification.
+	 * @param peers Our own peer specification.
 	 */
   public HTTPTrackerClient(Peer[] peers, URI tracker) {
     super(peers, tracker);
@@ -96,7 +96,9 @@ public class HTTPTrackerClient extends TrackerClient {
 		InputStream in = null;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
-			in = conn.getInputStream();
+      conn.setConnectTimeout(2);
+      conn.setReadTimeout(2);
+      in = conn.getInputStream();
 		} catch (IOException ioe) {
 			if (conn != null) {
 				in = conn.getErrorStream();
