@@ -64,26 +64,32 @@ public class FileStorage implements TorrentByteStorage {
 
 	}
 
-  public void open() throws IOException {
+  public void open(final boolean seeder) throws IOException {
     try {
       myLock.writeLock().lock();
-    this.partial = new File(this.target.getAbsolutePath() +
-      TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+      if (seeder) {
+        if (!target.exists()){
+          throw new IOException("Target file " + target.getAbsolutePath() + " doesn't exist.");
+        }
+        this.current = this.target;
+      } else {
+        this.partial = new File(this.target.getAbsolutePath() +
+                TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
-    if (this.partial.exists()) {
-      logger.debug("Partial download found at {}. Continuing...",
-        this.partial.getAbsolutePath());
-      this.current = this.partial;
-    } else if (!this.target.exists()) {
-      logger.debug("Downloading new file to {}...",
-        this.partial.getAbsolutePath());
-      this.current = this.partial;
-    } else {
-      logger.debug("Using existing file {}.",
-        this.target.getAbsolutePath());
-      this.current = this.target;
-    }
-
+        if (this.partial.exists()) {
+          logger.debug("Partial download found at {}. Continuing...",
+                  this.partial.getAbsolutePath());
+          this.current = this.partial;
+        } else if (!this.target.exists()) {
+          logger.debug("Downloading new file to {}...",
+                  this.partial.getAbsolutePath());
+          this.current = this.partial;
+        } else {
+          logger.debug("Using existing file {}.",
+                  this.target.getAbsolutePath());
+          this.current = this.target;
+        }
+      }
 
       this.raf = new RandomAccessFile(this.current, "rw");
 

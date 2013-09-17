@@ -96,6 +96,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
+  private TorrentStateListener myStateListener = null;
+
   private volatile ClientState clientState = ClientState.WAITING;
 
   private boolean multiThreadHash;
@@ -252,11 +254,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     logger.debug("Opening file channel for {}. Downloaders: {}", getName(), myDownloaders.size());
     try {
       if (myDownloaders.size() == 0) {
-        this.bucket.open();
+        this.bucket.open(clientState == ClientState.SEEDING);
       }
     } catch (IOException e) {
       logger.error("IO error when opening channel to torrent data", e);
-      clientState = ClientState.ERROR;
+      setClientState(ClientState.ERROR);
     }
   }
 
@@ -309,6 +311,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     myLastAnnounceTime = lastAnnounceTime;
   }
 
+  public void setTorrentStateListener(final TorrentStateListener listener){
+    myStateListener = listener;
+  }
+
   /**
    * Tells whether this torrent has been fully initialized yet.
    */
@@ -338,7 +344,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * </p>
    */
   public synchronized void init() throws InterruptedException, IOException {
-    clientState = ClientState.VALIDATING;
+    setClientState(ClientState.VALIDATING);
 
     if (this.isInitialized()) {
       throw new IllegalStateException("Torrent was already initialized!");
@@ -580,11 +586,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     try {
       this.bucket.finish();
     } catch (IOException ex){
-      clientState = ClientState.ERROR;
+      setClientState(ClientState.ERROR);
       throw ex;
     }
 
-    clientState = ClientState.SEEDING;
+    setClientState(ClientState.SEEDING);
   }
 
   public synchronized boolean isFinished() {
@@ -597,6 +603,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   public void setClientState(ClientState clientState) {
     this.clientState = clientState;
+    if (myStateListener != null) {
+      myStateListener.torrentStateChanged(clientState, this);
+    }
   }
 
   /**

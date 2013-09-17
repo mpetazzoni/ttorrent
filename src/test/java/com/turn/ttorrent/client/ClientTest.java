@@ -216,8 +216,61 @@ public class ClientTest {
     }
   }
 
-  public void testDelete(){
+  public void testDelete() throws IOException, InterruptedException, NoSuchAlgorithmException, URISyntaxException {
+    this.tracker.setAcceptForeignTorrents(true);
 
+    final File srcDir = tempFiles.createTempDir();
+    final File downloadDir = tempFiles.createTempDir();
+    final File downloadDir2 = tempFiles.createTempDir();
+
+    Client seeder = createClient();
+    seeder.share();
+
+
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+    final Set<String> names = new HashSet<String>();
+    File tempFile = tempFiles.createTempFile(513 * 1024);
+    final File srcFile = new File(srcDir, tempFile.getName());
+    assertTrue(tempFile.renameTo(srcFile));
+
+    Torrent torrent = Torrent.create(srcFile, announceURI, "Test");
+    File torrentFile = new File(srcFile.getParentFile(), srcFile.getName() + ".torrent");
+    torrent.save(torrentFile);
+    names.add(srcFile.getName());
+    seeder.addTorrent(new SharedTorrent(torrent, srcFile.getParentFile(), false));
+
+
+    Client leech1 = createClient();
+    leech1.share();
+    SharedTorrent sharedTorrent = SharedTorrent.fromFile(torrentFile, downloadDir, true);
+    leech1.addTorrent(sharedTorrent);
+
+    new WaitFor(15 * 1000) {
+      @Override
+      protected boolean condition() {
+        return listFileNames(downloadDir).contains(srcFile.getName());
+      }
+    };
+
+    assertTrue(listFileNames(downloadDir).contains(srcFile.getName()));
+
+    leech1.stop();
+    leech1=null;
+
+    srcFile.delete();
+
+    Client leech2 = createClient();
+    leech2.share();
+    SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir2, true);
+    leech2.addTorrent(st2);
+
+    Thread.sleep(10 * 1000); // the file no longer exists. Stop seeding and announce that to tracker
+    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+    assertEquals(0, seeder.getTorrents().size());
+    for (SharingPeer peer : seeder.getPeers()) {
+      assertFalse(trackedTorrent.getPeers().keySet().contains(peer.getTorrentHexInfoHash()));
+    }
   }
 
   //  @Test(invocationCount = 50)

@@ -64,7 +64,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author mpetazzoni
  */
 public class Client implements Runnable,
-  AnnounceResponseListener, CommunicationListener, PeerActivityListener {
+  AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
 
   protected static final Logger logger =
     LoggerFactory.getLogger(Client.class);
@@ -149,6 +149,7 @@ public class Client implements Runnable,
     } else {
       torrent.setClientState(ClientState.SHARING);
     }
+    torrent.setTorrentStateListener(this);
 
     this.announce.addTorrent(torrent, this);
   }
@@ -886,6 +887,13 @@ public class Client implements Runnable,
   @Override
   public void handleNewPeerConnected(SharingPeer peer) {
     //do nothing
+  }
+
+  @Override
+  public void torrentStateChanged(ClientState newState, SharedTorrent torrent) {
+    if (newState.equals(ClientState.ERROR)){
+      removeTorrent(torrent);
+    }
   }
 
 

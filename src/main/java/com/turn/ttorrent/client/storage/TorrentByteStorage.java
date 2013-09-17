@@ -39,7 +39,7 @@ public interface TorrentByteStorage {
 
 	public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
-  public void open() throws IOException;
+  public void open(boolean seeder) throws IOException;
 
 	/**
 	 * Returns the total size of the torrent storage.
