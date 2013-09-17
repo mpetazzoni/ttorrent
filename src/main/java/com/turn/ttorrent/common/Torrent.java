@@ -26,13 +26,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -49,6 +47,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,11 +129,8 @@ public class Torrent {
 	 * @param seeder Whether we'll be seeding for this torrent or not.
 	 * @throws IOException When the info dictionary can't be read or
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
-	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
-	 * available.
 	 */
-	public Torrent(byte[] torrent, boolean seeder)
-		throws IOException, NoSuchAlgorithmException {
+	public Torrent(byte[] torrent, boolean seeder) throws IOException {
 		this.encoded = torrent;
 		this.seeder = seeder;
 
@@ -404,10 +401,8 @@ public class Torrent {
 		output.write(this.getEncoded());
 	}
 
-	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
-		MessageDigest md = MessageDigest.getInstance("SHA-1");
-		md.update(data);
-		return md.digest();
+	public static byte[] hash(byte[] data) {
+		return DigestUtils.sha1(data);
 	}
 
 	/**
@@ -417,8 +412,7 @@ public class Torrent {
 	 * @param bytes The byte array to convert.
 	 */
 	public static String byteArrayToHexString(byte[] bytes) {
-		BigInteger bi = new BigInteger(1, bytes);
-		return String.format("%0" + (bytes.length << 1) + "X", bi);
+		return new String(Hex.encodeHex(bytes, false));
 	}
 
 	/**
@@ -477,10 +471,8 @@ public class Torrent {
 	 * @param torrent The abstract {@link File} object representing the
 	 * <tt>.torrent</tt> file to load.
 	 * @throws IOException When the torrent file cannot be read.
-	 * @throws NoSuchAlgorithmException
 	 */
-	public static Torrent load(File torrent)
-		throws IOException, NoSuchAlgorithmException {
+	public static Torrent load(File torrent) throws IOException {
 		return Torrent.load(torrent, false);
 	}
 
@@ -492,10 +484,9 @@ public class Torrent {
 	 * @param seeder Whether we are a seeder for this torrent or not (disables
 	 * local data validation).
 	 * @throws IOException When the torrent file cannot be read.
-	 * @throws NoSuchAlgorithmException
 	 */
 	public static Torrent load(File torrent, boolean seeder)
-		throws IOException, NoSuchAlgorithmException {
+		throws IOException {
 		byte[] data = FileUtils.readFileToByteArray(torrent);
 		return new Torrent(data, seeder);
 	}
@@ -517,7 +508,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
-		throws NoSuchAlgorithmException, InterruptedException, IOException {
+		throws InterruptedException, IOException {
 		return Torrent.create(source, null, announce, null, createdBy);
 	}
 
@@ -539,8 +530,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	public static Torrent create(File parent, List<File> files, URI announce,
-		String createdBy) throws NoSuchAlgorithmException,
-		   InterruptedException, IOException {
+		String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(parent, files, announce, null, createdBy);
 	}
 
@@ -560,8 +550,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	public static Torrent create(File source, List<List<URI>> announceList,
-			String createdBy) throws NoSuchAlgorithmException,
-			InterruptedException, IOException {
+			String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(source, null, null, announceList, createdBy);
 	}
 	
@@ -585,7 +574,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, List<File> files,
 			List<List<URI>> announceList, String createdBy)
-			throws NoSuchAlgorithmException, InterruptedException, IOException {
+			throws InterruptedException, IOException {
 		return Torrent.create(source, files, null, announceList, createdBy);
 	}
 	
@@ -610,7 +599,7 @@ public class Torrent {
 	 */
 	private static Torrent create(File parent, List<File> files, URI announce,
 			List<List<URI>> announceList, String createdBy)
-			throws NoSuchAlgorithmException, InterruptedException, IOException {
+			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
 				parent.getName());
@@ -687,9 +676,8 @@ public class Torrent {
 		private final MessageDigest md;
 		private final ByteBuffer data;
 
-		CallableChunkHasher(ByteBuffer buffer)
-			throws NoSuchAlgorithmException {
-			this.md = MessageDigest.getInstance("SHA-1");
+		CallableChunkHasher(ByteBuffer buffer) {
+			this.md = DigestUtils.getSha1Digest();
 
 			this.data = ByteBuffer.allocate(buffer.remaining());
 			buffer.mark();
@@ -722,12 +710,12 @@ public class Torrent {
 	 * @param file The file to hash.
 	 */
 	private static String hashFile(File file)
-		throws NoSuchAlgorithmException, InterruptedException, IOException {
+		throws InterruptedException, IOException {
 		return Torrent.hashFiles(Arrays.asList(new File[] { file }));
 	}
 
 	private static String hashFiles(List<File> files)
-		throws NoSuchAlgorithmException, InterruptedException, IOException {
+		throws InterruptedException, IOException {
 		int threads = getHashingThreadsCount();
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
 		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);

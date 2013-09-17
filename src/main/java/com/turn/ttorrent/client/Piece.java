@@ -21,7 +21,6 @@ import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
 
@@ -159,16 +158,10 @@ public class Piece implements Comparable<Piece> {
 		logger.trace("Validating {}...", this);
 		this.valid = false;
 
-		try {
-			// TODO: remove cast to int when large ByteBuffer support is
-			// implemented in Java.
-			ByteBuffer buffer = this._read(0, this.length);
-			byte[] data = new byte[(int)this.length];
-			buffer.get(data);
-			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
-		} catch (NoSuchAlgorithmException nsae) {
-			logger.error("{}", nsae);
-		}
+		ByteBuffer buffer = this._read(0, this.length);
+		byte[] data = new byte[(int)this.length];
+		buffer.get(data);
+		this.valid = Arrays.equals(Torrent.hash(data), this.hash);
 
 		return this.isValid();
 	}
