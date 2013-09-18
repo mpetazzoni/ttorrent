@@ -102,13 +102,13 @@ public class ConnectionUtils {
     SocketChannel channel = null;
 
     try {
-      logger.info("Connecting to {}...", peerInfo);
+      logger.debug("Connecting to {}...", peerInfo);
       channel = SocketChannel.open(address);
       while (!channel.isConnected()) {
         Thread.sleep(10);
       }
 
-      logger.debug("Connected. Sending handshake to {}...", peerInfo);
+      logger.trace("Connected. Sending handshake to {}...", peerInfo);
       channel.configureBlocking(true);
       final byte[] socketBytes = channel.socket().getLocalAddress().getAddress();
       byte[] selfPeerId = new byte[20];
@@ -120,9 +120,9 @@ public class ConnectionUtils {
         }
       }
       int sent = sendHandshake(channel, torrentHash.getInfoHash(), selfPeerId);
-      logger.debug("Sent handshake ({} bytes), waiting for response...", sent);
+      logger.trace("Sent handshake ({} bytes), waiting for response...", sent);
       Handshake hs = validateHandshake(channel,peerInfo.getPeerIdArray());
-      logger.info("Handshaked with {}, peer ID is {}.",
+      logger.debug("Handshaked with {}, peer ID is {}.",
               peerInfo, Torrent.byteArrayToHexString(hs.getPeerId()));
 
       // Go to non-blocking mode for peer interaction
@@ -132,7 +132,7 @@ public class ConnectionUtils {
       }
 
     } catch (Exception e) {
-      logger.info("Connection error", e);
+      logger.debug("Connection error", e);
       try {
         if (channel != null && channel.isConnected()) {
           channel.close();
@@ -186,7 +186,7 @@ public class ConnectionUtils {
 
     int pstrlen = buffer.getInt(0);
     if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen > buffer.capacity()){
-      logger.warn("Proposed limit of {} is larger than capacity of {}",
+      logger.debug("Proposed limit of {} is larger than capacity of {}",
               PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen, buffer.capacity() );
     }
     buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
@@ -206,7 +206,7 @@ public class ConnectionUtils {
         listener.handleMessage(message);
       }
     } catch (ParseException pe) {
-      logger.warn("{}", pe.getMessage());
+      logger.debug("{}", pe.getMessage());
     }
     return false;
   }

@@ -10,9 +10,11 @@ import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,18 +47,7 @@ public class TrackerHelper {
 
   public static Map<Peer, BitSet> getPeersAndAvailablePieces(final URI trackerURI, final String torrentHash) {
     final Map<Peer, BitSet> result = new HashMap<Peer, BitSet>();
-    final List<Peer> foundPeers = new ArrayList<Peer>();
-    queryTracker(trackerURI, torrentHash, new AnnounceResponseListener() {
-      @Override
-      public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
-      }
-
-      @Override
-      public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-        foundPeers.addAll(peers);
-      }
-    });
-
+    final List<Peer> foundPeers = getPeers(trackerURI, torrentHash);
 
     for (final Peer peer : foundPeers) {
       final AtomicBoolean stop = new AtomicBoolean(false);
@@ -98,6 +89,23 @@ public class TrackerHelper {
 
     }
     return result;
+  }
+
+  public static List<Peer> getPeers(final URI trackerURI, final String torrentHash){
+    final Map<Peer, BitSet> result = new HashMap<Peer, BitSet>();
+    final List<Peer> foundPeers = new ArrayList<Peer>();
+    queryTracker(trackerURI, torrentHash, new AnnounceResponseListener() {
+      @Override
+      public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
+      }
+
+      @Override
+      public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
+        foundPeers.addAll(peers);
+      }
+
+    });
+    return foundPeers;
   }
 
   public static boolean tryTracker(Torrent torrent) {
@@ -181,58 +189,79 @@ public class TrackerHelper {
 
   private static enum HelperCommands {
     seeders,
-    pieces
+    pieces,
+    peers
   }
 
   public static void main(String[] args) throws URISyntaxException {
     org.apache.log4j.BasicConfigurator.configure();
-    String command = args[0];
-    if (command.equals(HelperCommands.seeders.name())) {
-      try {
-        File file = new File(args[2]);
-        String hash = args[2];
-        int piecesCount = 0;
-        if (file.isFile()) {
-          final Torrent torrent = Torrent.load(file);
-          piecesCount = torrent.getPieceCount();
-          hash = torrent.getHexInfoHash();
+//    String comm = ;
+    final HelperCommands command = HelperCommands.valueOf(args[0]);
+    switch (command){
+      case peers:
+        try {
+          String hash = getTorrentHash(args[2]);
+          System.out.printf("Attempting to get seeders count for tracker %s and torrent hash %s %n", args[1], hash);
+          final List<Peer> peers = getPeers(new URI(args[1]), hash);
+          for (Peer peer : peers) {
+            System.out.println(peer);
+          }
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          System.out.printf("Bad usage: java -jar torrent.jar seeders <tracker_uri> <torrent hash | path to torrent file> %n");
         }
-        System.out.printf("Attempting to get seeders count for tracker %s and torrent hash %s %n", args[1], hash);
-        System.out.println(getSeedersCount(new URI(args[1]), hash));
-      } catch (Exception ex) {
-        ex.printStackTrace();
-        System.out.printf("Bad usage: java -jar torrent.jar seeders <tracker_uri> <torrent hash | path to torrent file> %n");
-      }
-    } else if (command.equals(HelperCommands.pieces.name())) {
-      try {
+        break;
+      case pieces:
+        try {
 //      final Map<Peer, BitSet> availablePieces = getPeersAndAvailablePieces(new URI("http://172.20.200.59:6969/announce"), "A36E6DCA1B7A0CF99BDFFAB7F765E86008D35659");
-        File file = new File(args[2]);
-        String hash = args[2];
-        int piecesCount = 0;
-        if (file.isFile()) {
-          final Torrent torrent = Torrent.load(file);
-          piecesCount = torrent.getPieceCount();
-          hash = torrent.getHexInfoHash();
+          File file = new File(args[2]);
+          String hash = args[2];
+          int piecesCount = 0;
+          if (file.isFile()) {
+            final Torrent torrent = Torrent.load(file);
+            piecesCount = torrent.getPieceCount();
+            hash = torrent.getHexInfoHash();
+          }
+          System.out.printf("Attempting to get data for tracker %s and torrent hash %s %n", args[1], hash);
+          final Map<Peer, BitSet> availablePieces = getPeersAndAvailablePieces(new URI(args[1]), hash);
+          for (Map.Entry<Peer, BitSet> entry : availablePieces.entrySet()) {
+            final BitSet bitfield = entry.getValue();
+            final int truePiecesCount = piecesCount == 0 ? bitfield.size() : piecesCount;
+            final BitSet reverse = new BitSet(truePiecesCount);
+            reverse.set(0, truePiecesCount - 1, true);
+            reverse.andNot(bitfield);
+            final boolean lessThanHalf = bitfield.size() > bitfield.cardinality() * 2;
+            System.out.printf("Peer %s has %d out of %d pieces.\n%s pieces: %s\n",
+                    entry.getKey().toString(), bitfield.cardinality(), truePiecesCount, lessThanHalf ? "Available" : "Missing",
+                    lessThanHalf ? bitfield.toString() : reverse.toString());
+          }
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          System.out.printf("Bad usage: java -jar torrent.jar pieces <tracker_uri> <torrent hash | path to torrent file> %n");
         }
-        System.out.printf("Attempting to get data for tracker %s and torrent hash %s %n", args[1], hash);
-        final Map<Peer, BitSet> availablePieces = getPeersAndAvailablePieces(new URI(args[1]), hash);
-        for (Map.Entry<Peer, BitSet> entry : availablePieces.entrySet()) {
-          final BitSet bitfield = entry.getValue();
-          final int truePiecesCount = piecesCount == 0 ? bitfield.size() : piecesCount;
-          final BitSet reverse = new BitSet(truePiecesCount);
-          reverse.set(0, truePiecesCount - 1, true);
-          reverse.andNot(bitfield);
-          final boolean lessThanHalf = bitfield.size() > bitfield.cardinality() * 2;
-          System.out.printf("Peer %s has %d out of %d pieces.\n%s pieces: %s\n",
-                  entry.getKey().toString(), bitfield.cardinality(), truePiecesCount, lessThanHalf ? "Available" : "Missing",
-                  lessThanHalf ? bitfield.toString() : reverse.toString());
+        break;
+      case seeders:
+        try {
+          String hash = getTorrentHash(args[2]);
+          System.out.printf("Attempting to get seeders count for tracker %s and torrent hash %s %n", args[1], hash);
+          System.out.println(getSeedersCount(new URI(args[1]), hash));
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          System.out.printf("Bad usage: java -jar torrent.jar seeders <tracker_uri> <torrent hash | path to torrent file> %n");
         }
-      } catch (Exception ex) {
-        ex.printStackTrace();
-        System.out.printf("Bad usage: java -jar torrent.jar pieces <tracker_uri> <torrent hash | path to torrent file> %n");
-      }
+        break;
     }
 
+  }
+
+  private static String getTorrentHash(String arg) throws IOException, NoSuchAlgorithmException {
+    File file = new File(arg);
+    String hash = arg;
+    if (file.isFile()) {
+      final Torrent torrent = Torrent.load(file);
+      hash = torrent.getHexInfoHash();
+    }
+    return hash;
   }
 
   private static class SimpleTorrentInfo implements TorrentInfo {

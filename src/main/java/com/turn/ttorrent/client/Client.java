@@ -103,6 +103,11 @@ public class Client implements Runnable,
 
   private Random random;
 
+  public Client(){
+    this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
+    this.peers = new CopyOnWriteArrayList<SharingPeer>();
+  }
+
   /**
    * Initialize the BitTorrent client.
    *
@@ -113,8 +118,7 @@ public class Client implements Runnable,
   }
 
   public Client(InetAddress[] bindAddresses, URI defaultTrackerURI, final int announceIntervalSec) throws IOException {
-    this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
-
+    this();
     // Initialize the incoming connection handler and register ourselves to
     // it.
     this.service = new ConnectionHandler(this.torrents, bindAddresses);
@@ -126,7 +130,6 @@ public class Client implements Runnable,
     this.announce = new Announce(announceIntervalSec, service.getSelfPeers());
     announce.start(defaultTrackerURI, this);
 
-    this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
   }
 
