@@ -70,7 +70,7 @@ public class TrackerRequestProcessor {
 			"compact", "no_peer_id", "numwant"
 		};
 
-  private boolean myAcceptForeignTorrents;
+  private boolean myAcceptForeignTorrents=true; //default to true
   private int myAnnounceInterval = 60; //default value
 
 
