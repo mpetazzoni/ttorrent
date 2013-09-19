@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
@@ -38,9 +39,17 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
 	public static HTTPTrackerMessage parse(ByteBuffer data)
 		throws IOException, MessageValidationException {
 		BEValue decoded = BDecoder.bdecode(data);
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
+    if (decoded == null) {
+      StringBuilder msg = new StringBuilder();
+      try {
+        final byte[] array = data.array();
+        if (array != null && array.length > 0) {
+          msg.append("decoded hex message: " + HexBin.encode(array));
+        } else {
+          msg.append("message is null");
+        }
+      } catch (Throwable t){}
+			throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: " + msg.toString());
 		}
 
 		Map<String, BEValue> params = decoded.getMap();
