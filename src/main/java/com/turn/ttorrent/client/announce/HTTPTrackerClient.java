@@ -97,8 +97,8 @@ public class HTTPTrackerClient extends TrackerClient {
 		InputStream in = null;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
-      conn.setConnectTimeout(5000);
-      conn.setReadTimeout(5000);
+      conn.setConnectTimeout(10000);
+      conn.setReadTimeout(10000);
       in = conn.getInputStream();
 		} catch (IOException ioe) {
 			if (conn != null) {
