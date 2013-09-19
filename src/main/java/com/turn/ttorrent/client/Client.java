@@ -556,11 +556,11 @@ public class Client implements Runnable,
         if (peer.isChoking()) {
           if (peer.isInterested()) {
             downloaders++;
+            peer.unchoke();
+            continue;
           }
 
-          peer.unchoke();
         }
-        continue;
       }
       // Choke everybody else
       choked.add(peer);
@@ -805,6 +805,15 @@ public class Client implements Runnable,
         for (SharingPeer remote : getConnectedPeers()) {
           remote.send(have);
         }
+
+        BitSet completed = new BitSet();
+        completed.or(torrent.getCompletedPieces());
+        completed.and(peer.getAvailablePieces());
+        if (completed.equals(peer.getAvailablePieces())){
+          // disconnect when have no interested pieces;
+          peer.unbind(false);
+        }
+
       } else {
         logger.debug("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
         peer.getPoorlyAvailablePieces().set(piece.getIndex());

@@ -363,10 +363,10 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
 
     downloadAndStop(torrent, 15*1000, createClient());
-    Thread.sleep(2*1000);
+    Thread.sleep(2 * 1000);
     assertTrue(dwnlFile.exists() && dwnlFile.isFile());
-    dwnlFile.delete();
-    assertFalse(dwnlFile.exists());
+    final boolean delete = dwnlFile.delete();
+    assertTrue(delete && !dwnlFile.exists());
   }
 
   public void download_many_times() throws InterruptedException, NoSuchAlgorithmException, IOException {
