@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,7 +53,7 @@ public class Announce implements Runnable {
   protected static final Logger logger =
     LoggerFactory.getLogger(Announce.class);
 
-  private Peer[] peers;
+  private List<Peer> myPeers;
 
   /**
    * The tiers of tracker clients matching the tracker URIs defined in the
@@ -82,6 +83,7 @@ public class Announce implements Runnable {
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
     this.torrents = new CopyOnWriteArrayList<SharedTorrent>();
     this.thread = null;
+    myPeers = new CopyOnWriteArrayList<Peer>();
   }
 
   public void addTorrent(SharedTorrent torrent, AnnounceResponseListener listener) throws UnknownServiceException, UnknownHostException {
@@ -90,7 +92,7 @@ public class Announce implements Runnable {
     TrackerClient client = this.clients.get(trackerUrl.toString());
     try {
       if (client == null) {
-        client = createTrackerClient(peers, trackerUrl);
+        client = createTrackerClient(myPeers, trackerUrl);
         client.register(listener);
         this.clients.put(trackerUrl.toString(), client);
       }
@@ -122,10 +124,10 @@ public class Announce implements Runnable {
    */
   public void start(final URI defaultTrackerURI, final AnnounceResponseListener listener, final Peer[] peers, final int announceInterval) {
     myAnnounceInterval = announceInterval;
-    this.peers = peers;
+    myPeers.addAll(Arrays.asList(peers));
     if (defaultTrackerURI != null){
       try {
-        myDefaultTracker = createTrackerClient(peers, defaultTrackerURI);
+        myDefaultTracker = createTrackerClient(myPeers, defaultTrackerURI);
         myDefaultTracker.register(listener);
         this.clients.put(defaultTrackerURI.toString(), myDefaultTracker);
       } catch (Exception e) {}
@@ -208,6 +210,7 @@ public class Announce implements Runnable {
   public void run() {
     logger.info("Starting announce loop...");
 
+
     while (!this.stop && !Thread.interrupted()) {
       logger.debug("Starting announce for {} torrents", torrents.size());
       for (SharedTorrent torrent : this.torrents) {
@@ -263,7 +266,7 @@ public class Announce implements Runnable {
    * @throws UnknownHostException    If the tracker address is invalid.
    * @throws UnknownServiceException If the tracker protocol is not supported.
    */
-  public static TrackerClient createTrackerClient(Peer[] peers, URI tracker) throws UnknownHostException, UnknownServiceException {
+  public static TrackerClient createTrackerClient(List<Peer> peers, URI tracker) throws UnknownHostException, UnknownServiceException {
     String scheme = tracker.getScheme();
 
     if ("http".equals(scheme) || "https".equals(scheme)) {

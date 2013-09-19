@@ -37,10 +37,10 @@ public abstract class TrackerClient {
     /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
-	protected final Peer[] myPeers;
+	protected final List<Peer> myPeers;
 	protected final URI tracker;
 
-  public TrackerClient(final Peer[] peers, final URI tracker) {
+  public TrackerClient(final List<Peer> peers, final URI tracker) {
 		this.listeners = new HashSet<AnnounceResponseListener>();
     myPeers = peers;
 		this.tracker = tracker;

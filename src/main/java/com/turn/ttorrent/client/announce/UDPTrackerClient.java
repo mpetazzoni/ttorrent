@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import org.slf4j.Logger;
@@ -111,7 +112,7 @@ public class UDPTrackerClient extends TrackerClient {
 	/**
 	 *
      */
-	protected UDPTrackerClient(Peer[] peers, URI tracker)
+	protected UDPTrackerClient(List<Peer> peers, URI tracker)
 		throws UnknownHostException {
 		super(peers, tracker);
 

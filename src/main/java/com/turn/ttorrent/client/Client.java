@@ -98,6 +98,7 @@ public class Client implements Runnable,
   private final ConcurrentMap<String, SharedTorrent> torrents;
 
   private Random random;
+  private boolean myStarted = false;
 
   public Client(){
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
@@ -202,6 +203,7 @@ public class Client implements Runnable,
       this.thread.setName("bt-client");
       this.thread.start();
     }
+    myStarted = true;
   }
   /**
    * Immediately but gracefully stop this client.
@@ -219,6 +221,8 @@ public class Client implements Runnable,
    */
   public void stop(boolean wait) {
     this.stop = true;
+    if (!myStarted)
+      return;
     service.stop();
 
     if (this.thread != null && this.thread.isAlive()) {
@@ -605,6 +609,7 @@ public class Client implements Runnable,
       sharedTorrent.setSeedersCount(complete);
       sharedTorrent.setLastAnnounceTime(System.currentTimeMillis());
     }
+    setAnnounceInterval(interval);
   }
 
   /**

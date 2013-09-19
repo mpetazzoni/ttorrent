@@ -28,6 +28,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
@@ -50,7 +51,7 @@ public class HTTPTrackerClient extends TrackerClient {
 	 *
 	 * @param peers Our own peer specification.
 	 */
-  public HTTPTrackerClient(Peer[] peers, URI tracker) {
+  public HTTPTrackerClient(List<Peer> peers, URI tracker) {
     super(peers, tracker);
 	}
 

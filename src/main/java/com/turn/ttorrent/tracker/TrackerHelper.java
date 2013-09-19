@@ -133,7 +133,7 @@ public class TrackerHelper {
       String id = "Tester" + UUID.randomUUID().toString().split("-")[4];
 
       Peer self = new Peer(new InetSocketAddress(InetAddress.getLocalHost(), 6881), ByteBuffer.wrap(id.getBytes()));
-      HTTPTrackerClient trackerClient = new HTTPTrackerClient(new Peer[]{self}, trackerURI);
+      HTTPTrackerClient trackerClient = new HTTPTrackerClient(Arrays.asList(self), trackerURI);
 
       if (listener != null) {
         trackerClient.register(listener);
