@@ -69,6 +69,7 @@ public abstract class TrackerClient {
       try {
         announce(event, inhibitEvent, torrent, peer);
       } catch (AnnounceException e) {
+        logger.info("Announce problem", e);
         if (failedPeers ==null){
           failedPeers = new ArrayList<String>();
         }

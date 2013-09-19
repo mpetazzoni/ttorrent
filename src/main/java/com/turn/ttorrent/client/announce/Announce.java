@@ -52,7 +52,7 @@ public class Announce implements Runnable {
   protected static final Logger logger =
     LoggerFactory.getLogger(Announce.class);
 
-  private final Peer[] peers;
+  private Peer[] peers;
 
   /**
    * The tiers of tracker clients matching the tracker URIs defined in the
@@ -77,11 +77,8 @@ public class Announce implements Runnable {
   /**
    * Initialize the base announce class members for the announcer.
    *
-   * @param peers Our peer specification.
    */
-  public Announce(final int announceInterval, final Peer[] peers) {
-    myAnnounceInterval = announceInterval;
-    this.peers = peers;
+  public Announce() {
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
     this.torrents = new CopyOnWriteArrayList<SharedTorrent>();
     this.thread = null;
@@ -123,7 +120,9 @@ public class Announce implements Runnable {
   /**
    * Start the announce request thread.
    */
-  public void start(final URI defaultTrackerURI, final AnnounceResponseListener listener) {
+  public void start(final URI defaultTrackerURI, final AnnounceResponseListener listener, final Peer[] peers, final int announceInterval) {
+    myAnnounceInterval = announceInterval;
+    this.peers = peers;
     if (defaultTrackerURI != null){
       try {
         myDefaultTracker = createTrackerClient(peers, defaultTrackerURI);
@@ -209,14 +208,13 @@ public class Announce implements Runnable {
   public void run() {
     logger.info("Starting announce loop...");
 
-    // Set an initial announce interval to 5 seconds. This will be updated
-    // in real-time by the tracker's responses to our announce requests.
-    this.myAnnounceInterval = 5;
-
-    while (!this.stop) {
+    while (!this.stop && !Thread.interrupted()) {
+      logger.debug("Starting announce for {} torrents", torrents.size());
       for (SharedTorrent torrent : this.torrents) {
+        if (this.stop || Thread.interrupted()){
+          break;
+        }
         try {
-          logger.debug("Starting announce for {} torrents", torrents.size());
           TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
           if (trackerClient != null) {
             trackerClient.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.NONE, false, torrent);
@@ -246,12 +244,13 @@ public class Announce implements Runnable {
         // Ignore
       }
 
-      for (SharedTorrent torrent : this.torrents) {
-        try {
-          this.getCurrentTrackerClient(torrent).announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
-        } catch (AnnounceException e) {
-          logger.info("Can't announce", e);
+      try {
+        for (SharedTorrent torrent : this.torrents) {
+            this.getCurrentTrackerClient(torrent).announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
         }
+      } catch (AnnounceException e) {
+        logger.info("Can't announce stop", e);
+        // don't try to announce all. Stop after first error, assuming tracker is already unavailable
       }
     }
   }

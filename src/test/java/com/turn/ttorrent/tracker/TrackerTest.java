@@ -92,9 +92,9 @@ public class TrackerTest{
     leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
 
     try {
-      seeder.share();
+      seeder.start(InetAddress.getLocalHost());
 
-      leech.download();
+      leech.start(InetAddress.getLocalHost());
 
       waitForFileInDir(downloadDir, "file1.jar");
       assertFilesEqual(new File(TEST_RESOURCES + "/parentFiles/file1.jar"), new File(downloadDir, "file1.jar"));
@@ -110,7 +110,7 @@ public class TrackerTest{
     seeder.addTorrent(completeTorrent("file1.jar.torrent"));
 
     try {
-      seeder.share();
+      seeder.start(InetAddress.getLocalHost());
 
       waitForSeeder(seeder.getTorrents().iterator().next().getInfoHash());
 
@@ -136,7 +136,7 @@ public class TrackerTest{
     leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
 
     try {
-      leech.download();
+      leech.start(InetAddress.getLocalHost());
 
       waitForPeers(1);
 
@@ -159,11 +159,11 @@ public class TrackerTest{
     final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
 
     final Client c1 = createClient();
-    c1.share();
+    c1.start(InetAddress.getLocalHost());
     c1.addTorrent(torrent);
 
     final Client c2 = createClient();
-    c2.share();
+    c2.start(InetAddress.getLocalHost());
     c2.addTorrent(completeTorrent("file1.jar.torrent"));
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
@@ -190,12 +190,12 @@ public class TrackerTest{
 
     final Client c1 = createClient();
     c1.setAnnounceInterval(2);
-    c1.share();
+    c1.start(InetAddress.getLocalHost());
     c1.addTorrent(torrent);
 
     final Client c2 = createClient();
     c2.setAnnounceInterval(120);
-    c2.share();
+    c2.start(InetAddress.getLocalHost());
     c2.addTorrent(completeTorrent("file1.jar.torrent"));
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
@@ -226,8 +226,8 @@ public class TrackerTest{
     leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
 
     try {
-      seeder.share();
-      leech.download();
+      seeder.start(InetAddress.getLocalHost());
+      leech.start(InetAddress.getLocalHost());
 
       waitForFileInDir(downloadDir, "file1.jar");
     } finally {
@@ -270,7 +270,7 @@ public class TrackerTest{
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
-    final Client client = new Client(InetAddress.getLocalHost());
+    final Client client = new Client();
     clientList.add(client);
     return client;
   }

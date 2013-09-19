@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
@@ -55,10 +56,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * simple to use. First, initialize a ShareTorrent object from a torrent
  * meta-info source (either a file or a byte array, see
  * com.turn.ttorrent.SharedTorrent for how to create a SharedTorrent object).
- * Then, instantiate your Client object with this SharedTorrent and call one of
- * {@link #download} to simply download the torrent, or {@link #share()} to
- * download and continue seeding for the given amount of time after the
- * download completes.
  * </p>
  *
  * @author mpetazzoni
@@ -93,7 +90,6 @@ public class Client implements Runnable,
 
   private Thread thread;
   private boolean stop;
-  private long seed;
 
   private ConnectionHandler service;
   private final Collection<SharingPeer> peers;
@@ -106,31 +102,8 @@ public class Client implements Runnable,
   public Client(){
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
-  }
-
-  /**
-   * Initialize the BitTorrent client.
-   *
-   * @param address The address to bind to.
-   */
-  public Client(InetAddress... address) throws IOException {
-    this(address, null, 60);
-  }
-
-  public Client(InetAddress[] bindAddresses, URI defaultTrackerURI, final int announceIntervalSec) throws IOException {
-    this();
-    // Initialize the incoming connection handler and register ourselves to
-    // it.
-    this.service = new ConnectionHandler(this.torrents, bindAddresses);
-    this.service.register(this);
-
-    // Initialize the announce request thread, and register ourselves to it
-    // as well.
-
-    this.announce = new Announce(announceIntervalSec, service.getSelfPeers());
-    announce.start(defaultTrackerURI, this);
-
     this.random = new Random(System.currentTimeMillis());
+    this.announce = new Announce();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -166,15 +139,6 @@ public class Client implements Runnable,
       torrent.close();
     }
   }
-
-  /**
-   * Get this client's peer specification.
-   */
-/*
-  private Peer getPeerSpec() {
-    return this.self;
-  }
-*/
 
   public void setAnnounceInterval(final int announceInterval){
     announce.setAnnounceInterval(announceInterval);
@@ -217,28 +181,20 @@ public class Client implements Runnable,
     return new HashSet<SharingPeer>(this.peers);
   }
 
-  /**
-   * Download the torrent without seeding after completion.
-   */
-  public void download() {
-    this.share(0);
+  public void start(final InetAddress... bindAddresses) throws IOException {
+    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
   }
-
-  /**
-   * Download and share this client's torrent until interrupted.
-   */
-  public void share() {
-    this.share(-1);
+  public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
+    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
+  public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
+    this.service = new ConnectionHandler(this.torrents, bindAddresses);
+    this.service.register(this);
 
-  /**
-   * Download and share this client's torrents.
-   *
-   * @param seed Seed time in seconds after the download is complete. Pass
-   *             <code>0</code> to immediately stop after downloading.
-   */
-  public synchronized void share(int seed) {
-    this.seed = seed;
+    // Initialize the announce request thread, and register ourselves to it
+    // as well.
+
+    announce.start(defaultTrackerURI, this, service.getSelfPeers(), announceIntervalSec);
     this.stop = false;
 
     if (this.thread == null || !this.thread.isAlive()) {
@@ -247,7 +203,6 @@ public class Client implements Runnable,
       this.thread.start();
     }
   }
-
   /**
    * Immediately but gracefully stop this client.
    */
@@ -531,9 +486,11 @@ public class Client implements Runnable,
    *         the download or upload rate we get from them.
    */
   private Comparator<SharingPeer> getPeerRateComparator() {
+/*
     if (this.seed == 0) {
       return new SharingPeer.ULRateComparator();
     }
+*/
 
     return new SharingPeer.DLRateComparator();
   }
@@ -860,10 +817,12 @@ public class Client implements Runnable,
           logger.info("unable to announce", e);
         }
 
+/*
         if (seed == 0) {
           peer.unbind(false);
           this.announce.removeTorrent(torrent);
         }
+*/
       }
     }
   }

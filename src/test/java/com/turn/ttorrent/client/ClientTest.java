@@ -62,7 +62,7 @@ public class ClientTest {
     final File downloadDir = tempFiles.createTempDir();
 
     Client seeder = createClient();
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
     Client leech = null;
 
 
@@ -89,7 +89,7 @@ public class ClientTest {
         seeder.addTorrent(st1);
       }
       leech = createClient();
-      leech.share();
+      leech.start(InetAddress.getLocalHost());
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
         SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);
@@ -141,8 +141,8 @@ public class ClientTest {
     leech.addTorrent(SharedTorrent.fromFile(torrentFile, downloadDir, true));
 
     try {
-      seeder.share();
-      leech.download();
+      seeder.start(InetAddress.getLocalHost());
+      leech.start(InetAddress.getLocalHost());
 
       waitForFileInDir(downloadDir, tempFile.getName());
       assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
@@ -173,7 +173,7 @@ public class ClientTest {
       for (int i = 0; i < numSeeders; i++) {
         Client client = seeders.get(i);
         client.addTorrent(SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false));
-        client.share();
+        client.start(InetAddress.getLocalHost());
       }
 
       waitForPeers(numSeeders);
@@ -224,7 +224,7 @@ public class ClientTest {
     final File downloadDir2 = tempFiles.createTempDir();
 
     Client seeder = createClient();
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
 
 
     URL announce = new URL("http://127.0.0.1:6969/announce");
@@ -242,7 +242,7 @@ public class ClientTest {
 
 
     Client leech1 = createClient();
-    leech1.share();
+    leech1.start(InetAddress.getLocalHost());
     SharedTorrent sharedTorrent = SharedTorrent.fromFile(torrentFile, downloadDir, true);
     leech1.addTorrent(sharedTorrent);
 
@@ -261,7 +261,7 @@ public class ClientTest {
     srcFile.delete();
 
     Client leech2 = createClient();
-    leech2.share();
+    leech2.start(InetAddress.getLocalHost());
     SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir2, true);
     leech2.addTorrent(st2);
 
@@ -360,7 +360,7 @@ public class ClientTest {
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
 
     downloadAndStop(torrent, 15*1000, createClient());
     Thread.sleep(2*1000);
@@ -377,7 +377,7 @@ public class ClientTest {
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
 
     for(int i=0; i<5; i++) {
       downloadAndStop(torrent, 20*1000, createClient());
@@ -393,11 +393,11 @@ public class ClientTest {
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
 
     for(int i=0; i<5; i++) {
       final AtomicInteger interrupts = new AtomicInteger(0);
-      final Client leech = new Client(InetAddress.getLocalHost()){
+      final Client leech = new Client(){
         @Override
         public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
           super.handlePieceCompleted(peer, piece);
@@ -420,10 +420,10 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
     Client leecher = createClient();
-    leecher.share();
+    leecher.start(InetAddress.getLocalHost());
     final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     leecher.downloadUninterruptibly(st, 10);
 
@@ -438,9 +438,9 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
-    seeder.share();
+    seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    final Client leecher = new Client(InetAddress.getLocalHost()){
+    final Client leecher = new Client(){
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         super.handlePieceCompleted(peer, piece);
@@ -450,7 +450,7 @@ public class ClientTest {
       }
     };
     clientList.add(leecher);
-    leecher.share();
+    leecher.start(InetAddress.getLocalHost());
     final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     try {
       leecher.downloadUninterruptibly(st, 20);
@@ -466,7 +466,7 @@ public class ClientTest {
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final File tempDir = tempFiles.createTempDir();
     leech.addTorrent(new SharedTorrent(torrent, tempDir, false));
-    leech.download();
+    leech.start(InetAddress.getLocalHost());
 
     final WaitFor waitFor = new WaitFor(timeout) {
       @Override
@@ -537,7 +537,7 @@ public class ClientTest {
       Client client = createClient();
       clientList.add(client);
       client.addTorrent(new SharedTorrent(torrent, baseDir, false));
-      client.share();
+      client.start(InetAddress.getLocalHost());
     }
   }
 
@@ -602,7 +602,7 @@ public class ClientTest {
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
-    final Client client = new Client(InetAddress.getLocalHost());
+    final Client client = new Client();
     clientList.add(client);
     return client;
   }
