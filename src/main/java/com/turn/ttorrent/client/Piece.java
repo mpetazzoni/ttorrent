@@ -276,15 +276,11 @@ public class Piece implements Comparable<Piece> {
 	 * @param other The piece to compare with, should not be <em>null</em>.
 	 */
 	public int compareTo(Piece other) {
-		if (this == other) {
-			return 0;
+		int retval = Integer.compare(this.seen, other.seen);
+		if (retval == 0) {
+			retval = Integer.compare(this.index, other.index);
 		}
-
-		if (this.seen < other.seen) {
-			return -1;
-		} else {
-			return 1;
-		}
+		return retval;
 	}
 
 	/**
