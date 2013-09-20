@@ -45,6 +45,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 	private final List<FileStorage> files;
 	private final long size;
+  private volatile boolean myIsOpen;
 
 	/**
 	 * Initialize a new multi-file torrent byte storage.
@@ -62,10 +63,12 @@ public class FileCollectionStorage implements TorrentByteStorage {
 			"({} total byte(s)).", files.size(), size);
 	}
 
-  public void open(final boolean seeder) throws IOException {
+  public synchronized void open(final boolean seeder) throws IOException {
     for (FileStorage file : files) {
-      file.open(seeder);
+      if (!file.isOpen())
+        file.open(seeder);
     }
+    myIsOpen = true;
   }
 
 	@Override
@@ -111,14 +114,15 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	}
 
 	@Override
-	public void close() throws IOException {
+	public synchronized void close() throws IOException {
 		for (FileStorage file : this.files) {
 			file.close();
 		}
-	}
+    myIsOpen = false;
+  }
 
 	@Override
-	public void finish() throws IOException {
+	public synchronized void finish() throws IOException {
 		for (FileStorage file : this.files) {
 			file.finish();
 		}

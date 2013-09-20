@@ -53,6 +53,7 @@ public class FileStorage implements TorrentByteStorage {
 	private RandomAccessFile raf;
   private FileChannel channel;
 	private File current;
+  private boolean myIsOpen = false;
 
   private final ReadWriteLock myLock = new ReentrantReadWriteLock();
 
@@ -96,11 +97,10 @@ public class FileStorage implements TorrentByteStorage {
 
     // Set the file length to the appropriate size, eventually truncating
     // or extending the file if it already exists with a different size.
-
+      myIsOpen  = true;
     this.channel = raf.getChannel();
 
-    logger.debug("Opened byte storage file at {} " +
-      "({}+{} byte(s)).",
+    logger.debug("Opened byte storage file at {} ({}+{} byte(s)).",
       new Object[] {
         this.current.getAbsolutePath(),
         this.offset,
@@ -161,11 +161,12 @@ public class FileStorage implements TorrentByteStorage {
 	public void close() throws IOException {
       try {
         myLock.writeLock().lock();
-		logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
-		if (this.channel.isOpen()) {
-			this.channel.force(true);
-		}
-		this.raf.close();
+        logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
+        if (this.channel.isOpen()) {
+          this.channel.force(true);
+        }
+        this.raf.close();
+        myIsOpen = false;
       } finally {
         myLock.writeLock().unlock();
       }
@@ -200,15 +201,10 @@ public class FileStorage implements TorrentByteStorage {
           FileUtils.copyFile(this.current, this.target);
         }
 
-		logger.debug("Re-opening torrent byte storage at {}.",
-				this.target.getAbsolutePath());
-
-		this.raf = new RandomAccessFile(this.target, "rw");
-		this.raf.setLength(this.size);
-		this.channel = this.raf.getChannel();
 		this.current = this.target;
 
 		FileUtils.deleteQuietly(this.partial);
+        myIsOpen = false;
 		logger.info("Moved torrent data from {} to {}.",
 			this.partial.getName(),
 			this.target.getName());
@@ -216,6 +212,15 @@ public class FileStorage implements TorrentByteStorage {
         myLock.writeLock().unlock();
       }
     }
+
+  public boolean isOpen(){
+    try{
+      myLock.readLock().lock();
+      return myIsOpen;
+    } finally {
+      myLock.readLock().unlock();
+    }
+  }
 
 	@Override
 	public boolean isFinished() {

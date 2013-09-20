@@ -227,7 +227,7 @@ public class SingleAddressConnectionHandler implements Runnable  {
       Handshake hs = ConnectionUtils.validateHandshake(clientChannel, null);
 
       if (!myConnectionListener.hasTorrent(hs)) {
-        throw new ParseException("Handshake for unknow torrent " +
+        throw new ParseException("Handshake for unknown torrent " +
                 Torrent.byteArrayToHexString(hs.getInfoHash()) +
                 " from " + ConnectionUtils.socketRepr(clientChannel) + ".", hs.getPstrlen() + 9);
       }

@@ -170,47 +170,10 @@ public class Piece implements Comparable<Piece> {
 			buffer.get(data);
       final byte[] calculatedHash = Torrent.hash(data);
       this.valid = Arrays.equals(calculatedHash, this.hash);
-      if (torrent != null && piece != null){
-        final File file;
-        if (torrent.getParentFile().isDirectory()) {
-          file = new File(torrent.getParentFile(), String.format("%d.txt", piece.getIndex()));
-        } else {
-          file = new File(torrent.getParentFile().getCanonicalFile().getParentFile(), String.format("%s.%d.txt", torrent.getName(), piece.getIndex()));
-        }
-        if (!valid) {
-          logger.debug("Piece {} invalid. Expected hash {} when actual is {}", new Object[]{
-            piece.getIndex(), HexBin.encode(hash), HexBin.encode(calculatedHash)});
-          //saving data:
-          FileOutputStream fOut = new FileOutputStream(file);
-          fOut.write(data);
-          fOut.close();
-        } else {
-          if (file.exists()){
-            File correctFile;
-            if (torrent.getParentFile().isDirectory()) {
-              correctFile = new File(torrent.getParentFile(), String.format("%d.correct.txt", piece.getIndex()));
-            } else {
-              correctFile = new File(torrent.getParentFile().getCanonicalFile().getParentFile(), String.format("%s.%d.correct.txt", torrent.getName(), piece.getIndex()));
-            }
-            FileOutputStream fOut = new FileOutputStream(correctFile);
-            fOut.write(data);
-            fOut.close();
-          }
-        }
-      }
-
 		} catch (NoSuchAlgorithmException nsae) {
 			logger.error("{}", nsae);
 		}
 
-/*
-    if (valid){
-      System.out.println("Valid");
-    } else {
-      System.out.println("Invalid");
-    }
-*/
-    logger.trace("Validation of {} {}", this, this.isValid() ? "succeeded" : "failed");
 		return this.isValid();
 	}
 
