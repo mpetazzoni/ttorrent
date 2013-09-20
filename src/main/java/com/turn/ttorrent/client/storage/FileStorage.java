@@ -72,6 +72,7 @@ public class FileStorage implements TorrentByteStorage {
           throw new IOException("Target file " + target.getAbsolutePath() + " doesn't exist.");
         }
         this.current = this.target;
+        this.raf = new RandomAccessFile(this.current, "r");
       } else {
         this.partial = new File(this.target.getAbsolutePath() +
                 TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
@@ -89,13 +90,12 @@ public class FileStorage implements TorrentByteStorage {
                   this.target.getAbsolutePath());
           this.current = this.target;
         }
+        this.raf = new RandomAccessFile(this.current, "rw");
+        this.raf.setLength(this.size);
       }
-
-      this.raf = new RandomAccessFile(this.current, "rw");
 
     // Set the file length to the appropriate size, eventually truncating
     // or extending the file if it already exists with a different size.
-    this.raf.setLength(this.size);
 
     this.channel = raf.getChannel();
 

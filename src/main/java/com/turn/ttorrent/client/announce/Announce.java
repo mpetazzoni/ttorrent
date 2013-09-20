@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.client.ClientState;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
@@ -96,7 +97,11 @@ public class Announce implements Runnable {
         client.register(listener);
         this.clients.put(trackerUrl.toString(), client);
       }
-      client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
+      if (torrent.getClientState() == ClientState.SEEDING){
+        client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.COMPLETED, true, torrent);
+      } else {
+        client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
+      }
     } catch (AnnounceException e) {
       logger.warn(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
     }
@@ -220,7 +225,7 @@ public class Announce implements Runnable {
         try {
           TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
           if (trackerClient != null) {
-            trackerClient.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.NONE, false, torrent);
+            trackerClient.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.NONE, torrent.isFinished(), torrent);
           } else {
             logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
           }

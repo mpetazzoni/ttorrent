@@ -556,11 +556,10 @@ public class Client implements Runnable,
         if (peer.isChoking()) {
           if (peer.isInterested()) {
             downloaders++;
-            peer.unchoke();
-            continue;
           }
-
+          peer.unchoke();
         }
+        continue;
       }
       // Choke everybody else
       choked.add(peer);

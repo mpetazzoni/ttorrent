@@ -506,7 +506,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   @Override
   public synchronized void handleMessage(PeerMessage msg) {
-    logger.trace("Received msg {} from {}", msg.getType(), this);
+//    logger.trace("Received msg {} from {}", msg.getType(), this);
     switch (msg.getType()) {
       case KEEP_ALIVE:
         // Nothing to do, we're keeping the connection open anyways.
@@ -582,8 +582,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         // is a violation of the BitTorrent protocol. In these
         // situation, terminate the connection.
         if (this.isChoking() || !rp.isValid()) {
-          logger.warn("Peer {} violated protocol, " +
-            "terminating exchange.", this);
+          logger.warn("Peer {} violated protocol, terminating exchange.", this);
           this.unbind(true);
           break;
         }
