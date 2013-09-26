@@ -31,9 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 
 /**
@@ -71,7 +69,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   private static final Logger logger =
     LoggerFactory.getLogger(SharingPeer.class);
-  private static final int MAX_PIPELINED_REQUESTS = 5;
+  private static final int MAX_PIPELINED_REQUESTS = 500;
   private final Object availablePiecesLock;
   private volatile boolean choking;
   private volatile boolean interesting;
@@ -80,10 +78,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private SharedTorrent torrent;
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
-  private Piece requestedPiece;
-  private int lastRequestedOffset;
+  private final ConcurrentMap<Piece, Integer> myRequestedPieces;
+//  private int lastRequestedOffset;
 
-  private BlockingQueue<PeerMessage.RequestMessage> requests;
+  private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
 
   private PeerExchange exchange = null;
@@ -118,9 +116,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.requestsLock = new Object();
     this.exchangeLock = new Object();
     this.availablePiecesLock = new Object();
+    this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
+    myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
 
     this.reset();
-    this.requestedPiece = null;
   }
 
   /**
@@ -156,8 +155,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.interesting = false;
       this.choked = true;
       this.interested = false;
-      this.requests = null;
-      this.lastRequestedOffset = 0;
+      this.myRequestedPieces.clear();
       this.downloading = false;
     }
 
@@ -248,8 +246,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   /**
    * Returns the currently requested piece, if any.
    */
-  public Piece getRequestedPiece() {
-    return this.requestedPiece;
+  public Set<Piece> getRequestedPiece() {
+    return myRequestedPieces.keySet();
   }
 
   /**
@@ -337,7 +335,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
 
     this.firePeerDisconnected();
-    this.requestedPiece = null;
+    myRequestedPieces.clear();
   }
 
   /**
@@ -374,27 +372,20 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param piece The piece chosen to be downloaded from this peer.
    */
-  public synchronized void downloadPiece(Piece piece)
+  public synchronized void downloadPiece(final Piece piece){
+    downloadPiece(piece, false);
+  }
+
+  public synchronized void downloadPiece(final Piece piece, boolean force)
     throws IllegalStateException {
-    if (this.isDownloading()) {
-      logger.warn("Trying to download a piece #{} while previous download not completed:\n {}",
-        piece.getIndex(), Arrays.toString(requests.toArray()));
-      int b = 2;
-      while (isDownloading() && b == 2) {
-        try {
-          Thread.sleep(100);
-
-        } catch (InterruptedException e) {
-        }
-      }
-      throw new IllegalStateException("Hello");
+    if (!myRequestedPieces.containsKey(piece) || force) {
+      myRequestedPieces.put(piece, 0);
     }
+    this.requestNextBlocksForPiece(piece);
+  }
 
-    this.requests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(
-      SharingPeer.MAX_PIPELINED_REQUESTS);
-    this.requestedPiece = piece;
-    this.lastRequestedOffset = 0;
-    this.requestNextBlocks();
+  public boolean isPieceDownloading(final Piece piece){
+    return myRequestedPieces.get(piece) != null;
   }
 
   public synchronized boolean isDownloading() {
@@ -408,31 +399,21 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * Re-fill the pipeline to get download the next blocks from the peer.
    * </p>
    */
-  private void requestNextBlocks() {
+  private void requestNextBlocksForPiece(final Piece piece) {
     synchronized (this.requestsLock) {
-      if (this.requests == null || this.requestedPiece == null) {
-        // If we've been taken out of a piece download context it means our
-        // outgoing requests have been cancelled. Don't enqueue new
-        // requests until a proper piece download context is
-        // re-established.
-        return;
-      }
-
-      while (this.requests.remainingCapacity() > 0 &&
-        this.lastRequestedOffset < this.requestedPiece.size()) {
+      while ( myRequestedPieces.get(piece) < piece.size()) {
+        final int lastRequestedOffset = myRequestedPieces.get(piece);
         PeerMessage.RequestMessage request = PeerMessage.RequestMessage
-          .craft(
-            this.requestedPiece.getIndex(),
-            this.lastRequestedOffset,
-            Math.min(
-              (int) (this.requestedPiece.size() -
-                this.lastRequestedOffset),
+          .craft(piece.getIndex(),lastRequestedOffset,
+            Math.min((int) (piece.size() - lastRequestedOffset),
               PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
-        this.requests.add(request);
+        removeBlockRequest(piece.getIndex(), lastRequestedOffset);
+        myRequests.add(request);
+//        logger.debug("---------Queue size: " + myRequests.size());
         this.send(request);
-        this.lastRequestedOffset += request.getLength();
+        myRequestedPieces.put(piece, request.getLength() + lastRequestedOffset);
       }
-      this.downloading = this.requests.size() > 0;
+      this.downloading = myRequests.size() > 0;
     }
   }
 
@@ -446,23 +427,18 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * requests.
    * </p>
    *
-   * @param message The PIECE message received.
+   * @param pieceIdx The piece index of PIECE message received.
+   * @param offset The offset of PIECE message received.
    */
-  private void removeBlockRequest(
-    PeerMessage.PieceMessage message) {
+  private void removeBlockRequest(final int pieceIdx, final int offset) {
     synchronized (this.requestsLock) {
-      if (this.requests == null) {
-        return;
-      }
-
-      for (PeerMessage.RequestMessage request : this.requests) {
-        if (request.getPiece() == message.getPiece() &&
-          request.getOffset() == message.getOffset()) {
-          this.requests.remove(request);
+      for (PeerMessage.RequestMessage request : myRequests) {
+        if (request.getPiece() == pieceIdx && request.getOffset() == offset) {
+          myRequests.remove(request);
           break;
         }
       }
-      this.downloading = this.requests.size() > 0;
+      this.downloading = myRequests.size() > 0;
     }
   }
 
@@ -480,22 +456,41 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * </p>
    */
   public Set<PeerMessage.RequestMessage> cancelPendingRequests() {
+    return cancelPendingRequests(null);
+  }
+
+  public Set<PeerMessage.RequestMessage> cancelPendingRequests(final Piece piece) {
     synchronized (this.requestsLock) {
-      Set<PeerMessage.RequestMessage> requests =
+      Set<PeerMessage.RequestMessage> cancelled =
         new HashSet<PeerMessage.RequestMessage>();
 
-      if (this.requests != null) {
-        for (PeerMessage.RequestMessage request : this.requests) {
+      for (PeerMessage.RequestMessage request : myRequests) {
+        if (piece == null || piece.getIndex() == request.getPiece()) {
           this.send(PeerMessage.CancelMessage.craft(request.getPiece(),
-            request.getOffset(), request.getLength()));
-          requests.add(request);
+                  request.getOffset(), request.getLength()));
+          cancelled.add(request);
         }
-
-        this.requests = null;
-        this.downloading = false;
       }
 
-      return requests;
+      myRequests.removeAll(cancelled);
+      this.downloading = myRequests.size() > 0;
+
+      return cancelled;
+    }
+  }
+
+  public Set<PeerMessage.RequestMessage> getRemainingRequestedPieces(final Piece piece){
+    synchronized (this.requestsLock) {
+      Set<PeerMessage.RequestMessage> pieceParts =
+              new HashSet<PeerMessage.RequestMessage>();
+
+      for (PeerMessage.RequestMessage request : myRequests) {
+        if (piece.getIndex() == request.getPiece()) {
+          pieceParts.add(request);
+        }
+      }
+
+      return pieceParts;
     }
   }
 
@@ -634,14 +629,13 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
         // Remove the corresponding request from the request queue to
         //  make room for next block requests.
-        this.removeBlockRequest(piece);
+        this.removeBlockRequest(piece.getPiece(), piece.getOffset());
         this.download.add(piece.getBlock().capacity());
 
         try {
           synchronized (p) {
             if (p.isValid()) {
-              this.requestedPiece = null;
-              this.cancelPendingRequests();
+              this.cancelPendingRequests(p);
               this.firePeerReady();
               logger.debug("Discarding block for already completed " + p);
               break;
@@ -653,20 +647,20 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             // length is 0, it means the piece has been entirely
             // downloaded. In this case, we have nothing to save, but
             // we should validate the piece.
-            if (requests==null || requests.size() == 0) {
+            if (getRemainingRequestedPieces(p).size() == 0) {
               p.finish();
               p.validate(torrent, p);
               this.firePieceCompleted(p);
-              this.requestedPiece = null;
+              myRequestedPieces.remove(p);
               this.firePeerReady();
             } else {
               if (piece.getOffset() + piece.getBlock().capacity()
                 == p.size()) { // final request reached
-                for (PeerMessage.RequestMessage requestMessage : requests) {
+                for (PeerMessage.RequestMessage requestMessage : getRemainingRequestedPieces(p)) {
                   send(requestMessage);
                 }
               } else {
-                this.requestNextBlocks();
+                this.requestNextBlocksForPiece(p);
               }
             }
           }
@@ -731,7 +725,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private void fireBitfieldAvailabity() {
     for (PeerActivityListener listener : this.listeners) {
       listener.handleBitfieldAvailability(this,
-        this.getAvailablePieces());
+              this.getAvailablePieces());
     }
   }
 
@@ -836,6 +830,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return exchange.getChannel();
   }
 
+  public int getDownloadingPiecesCount(){
+    return myRequestedPieces.size();
+  }
   @Override
   public TorrentHash getTorrentHash() {
     return torrent;

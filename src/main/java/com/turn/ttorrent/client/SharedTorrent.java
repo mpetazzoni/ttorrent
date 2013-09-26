@@ -653,10 +653,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   @Override
   public synchronized void handlePeerChoked(SharingPeer peer) {
-    Piece piece = peer.getRequestedPiece();
+    Set<Piece> pieces = peer.getRequestedPiece();
 
-    if (piece != null) {
-      this.requestedPieces.set(piece.getIndex(), false);
+    if (pieces.size()>0) {
+      for (Piece piece : pieces) {
+        this.requestedPieces.set(piece.getIndex(), false);
+      }
     }
 
     logger.trace("Peer {} choked, we now have {} outstanding " +
@@ -680,72 +682,67 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   @Override
   public synchronized void handlePeerReady(SharingPeer peer) {
-    BitSet interesting = peer.getAvailablePieces();
+    boolean endGameMode = false;
+    int requestedPiecesCount = 0;
+    final BitSet interesting = peer.getAvailablePieces();
     interesting.andNot(this.completedPieces);
     interesting.andNot(this.requestedPieces);
 //    interesting.andNot(peer.getPoorlyAvailablePieces());
 
-    logger.trace("Peer {} is ready and has {} interesting piece(s).",
-      peer, interesting.cardinality());
+    do {
+      logger.trace("Peer {} is ready and has {} interesting piece(s).",
+              peer, interesting.cardinality());
 
-		// If we didn't find interesting pieces, we need to check if we're in
-		// an end-game situation. If yes, we request an already requested piece
-		// to try to speed up the end.
+      // If we didn't find interesting pieces, we need to check if we're in
+      // an end-game situation. If yes, we request an already requested piece
+      // to try to speed up the end.
       if (interesting.cardinality() == 0) {
-          interesting = peer.getAvailablePieces();
-          interesting.andNot(this.completedPieces);
-          if (interesting.cardinality() == 0) {
-              logger.trace("No interesting piece from {}!", peer);
-              return;
-          }
+        interesting.or(this.requestedPieces);
+        if (interesting.cardinality() == 0) {
+          logger.trace("No interesting piece from {}!", peer);
+          return;
+        }
 
-          if (this.completedPieces.cardinality() <
-                  ENG_GAME_COMPLETION_RATIO * this.pieces.length) {
-              logger.trace("Not far along enough to warrant end-game mode.");
-              return;
-          }
-
-          logger.trace("Possible end-game, we're about to request a piece " +
-                  "that was already requested from another peer.");
+        if (this.completedPieces.cardinality() <
+                ENG_GAME_COMPLETION_RATIO * this.pieces.length) {
+          logger.trace("Not far along enough to warrant end-game mode.");
+          return;
+        }
+        endGameMode = true;
+        logger.trace("Possible end-game, we're about to request a piece " +
+                "that was already requested from another peer.");
       }
       List<Piece> rarest = new ArrayList<Piece>();
       for (Integer pieceIdx : this.rarest) {
-          rarest.add(this.pieces[pieceIdx]);
+        rarest.add(this.pieces[pieceIdx]);
       }
       Collections.sort(rarest);
       ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
       synchronized (this.rarest) {
-          for (Piece piece : rarest) {
-              if (interesting.get(piece.getIndex())) {
-                  choice.add(piece);
-                  if (choice.size() >= RAREST_PIECE_JITTER) {
-                      break;
-                  }
-              }
+        for (Piece piece : rarest) {
+          if (interesting.get(piece.getIndex())) {
+            choice.add(piece);
+            if (choice.size() >= RAREST_PIECE_JITTER) {
+              break;
+            }
           }
+        }
       }
 
-      /*
-Exception in thread "bt-recv(..623464, SharedTorrent{[test-447119754.tmp]})" java.lang.IllegalArgumentException: n must be positive
-	at java.util.Random.nextInt(Random.java:250)
-	at com.turn.ttorrent.client.SharedTorrent.handlePeerReady(SharedTorrent.java:680)
-	at com.turn.ttorrent.client.peer.SharingPeer.firePeerReady(SharingPeer.java:694)
-	at com.turn.ttorrent.client.peer.SharingPeer.handleMessage(SharingPeer.java:509)
-	at com.turn.ttorrent.client.peer.PeerExchange$IncomingThread.run(PeerExchange.java:249)
-	      * */
-    Piece chosen = choice.get(this.random.nextInt(
-      Math.min(choice.size(),
-        SharedTorrent.RAREST_PIECE_JITTER)));
-    this.requestedPieces.set(chosen.getIndex());
-    logger.trace("Requesting {} from {}, we now have {} " +
-      " outstanding request(s): {}.",
-      new Object[]{
-        chosen,
-        peer,
-        this.requestedPieces.cardinality(),
-        this.requestedPieces
-      });
-    peer.downloadPiece(chosen);
+
+      Piece chosen = choice.get(this.random.nextInt(Math.min(choice.size(), SharedTorrent.RAREST_PIECE_JITTER)));
+      this.requestedPieces.set(chosen.getIndex());
+      logger.trace("Requesting {} from {}, we now have {} " +
+              " outstanding request(s): {}.",
+              new Object[]{chosen, peer,
+                      this.requestedPieces.cardinality(),
+                      this.requestedPieces
+              });
+      peer.downloadPiece(chosen, endGameMode);
+      interesting.clear(chosen.getIndex());
+      //stop requesting if in endGameMode
+      if (endGameMode) return;
+    } while (peer.getDownloadingPiecesCount() < Math.min(10, interesting.cardinality()));
   }
 
   /**
@@ -898,9 +895,11 @@ Exception in thread "bt-recv(..623464, SharedTorrent{[test-447119754.tmp]})" jav
       this.rarest.add(i);
     }
 
-    Piece requested = peer.getRequestedPiece();
+    Set<Piece> requested = peer.getRequestedPiece();
     if (requested != null) {
-      this.requestedPieces.set(requested.getIndex(), false);
+      for (Piece piece : requested) {
+        this.requestedPieces.set(piece.getIndex(), false);
+      }
     }
 
     myDownloaders.remove(peer);
