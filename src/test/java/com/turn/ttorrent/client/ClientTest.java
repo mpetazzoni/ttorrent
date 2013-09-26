@@ -508,7 +508,7 @@ public class ClientTest {
         }
       }
     });
-    leecher.downloadUninterruptibly(st, 6000);
+    leecher.downloadUninterruptibly(st, 60);
 
 /*
     seeder.start(InetAddress.getLocalHost());
