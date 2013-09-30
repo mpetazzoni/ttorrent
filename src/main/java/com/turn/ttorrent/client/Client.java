@@ -255,19 +255,37 @@ public class Client implements Runnable,
     return t != null && t.isComplete();
   }
 
-  public void downloadUninterruptibly(SharedTorrent torrent, long downloadTimeoutSeconds) throws IOException, InterruptedException {
+  public void downloadUninterruptibly(final SharedTorrent torrent,
+                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException {
+    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1);
+  }
+
+  public void downloadUninterruptibly(final SharedTorrent torrent,
+                                      final long downloadTimeoutSeconds,
+                                      final int minSeedersCount) throws IOException, InterruptedException {
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     final long maxTime = System.currentTimeMillis() + downloadTimeoutSeconds * 1000;
+    int seedersCount = torrent.getSeedersCount();
     while (torrent.getClientState() != ClientState.SEEDING &&
             torrent.getClientState() != ClientState.ERROR &&
-        (torrent.getSeedersCount() > 0 || torrent.getLastAnnounceTime() < 0) &&
+        ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
         (System.currentTimeMillis() <= maxTime)){
       Thread.sleep(100);
     }
     if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
       removeTorrent(torrent);
-      throw new IOException("Unable to download torrent completely - no full seeder or timed out");
+      final String errorMsg;
+      if (System.currentTimeMillis() > maxTime){
+        errorMsg = String.format("Timed out (%d seconds elapsed)", downloadTimeoutSeconds);
+      } else if (seedersCount < minSeedersCount) {
+        errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
+      } else if (torrent.getClientState() == ClientState.ERROR){
+        errorMsg = String.format("Torrent state is ERROR");
+      } else {
+        errorMsg = "Unknown error";
+      }
+      throw new IOException("Unable to download torrent completely - " + errorMsg);
     }
   }
 
