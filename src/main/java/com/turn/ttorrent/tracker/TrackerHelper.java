@@ -139,7 +139,7 @@ public class TrackerHelper {
       if (listener != null) {
         trackerClient.register(listener);
       }
-      trackerClient.announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.NONE, false, new SimpleTorrentInfo(torrentHash));
+      trackerClient.announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.STOPPED, false, new SimpleTorrentInfo(torrentHash));
     } catch (Exception ex) {
       ex.printStackTrace();
     }
