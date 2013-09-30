@@ -92,11 +92,12 @@ public class TrackerHelper {
   }
 
   public static List<Peer> getPeers(final URI trackerURI, final String torrentHash){
-    final Map<Peer, BitSet> result = new HashMap<Peer, BitSet>();
     final List<Peer> foundPeers = new ArrayList<Peer>();
     queryTracker(trackerURI, torrentHash, new AnnounceResponseListener() {
       @Override
       public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
+        System.out.printf("interval %d, complete %d, incomplete %d, hex %s%n",
+                interval,complete, incomplete, hexInfoHash);
       }
 
       @Override
@@ -273,11 +274,11 @@ public class TrackerHelper {
     private final String myHashString;
 
     public SimpleTorrentInfo(String hashString) {
-      this(0, 0, 0, HexBin.decode(hashString), hashString);
+      this(0, 0, 1, HexBin.decode(hashString), hashString);
     }
 
     public SimpleTorrentInfo(byte[] hashBytes) {
-      this(0, 0, 0, hashBytes, HexBin.encode(hashBytes));
+      this(0, 0, 1, hashBytes, HexBin.encode(hashBytes));
     }
 
     public SimpleTorrentInfo(long uploaded, long downloaded, long left, byte[] hashBytes, String hashString) {
