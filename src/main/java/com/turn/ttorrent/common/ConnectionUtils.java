@@ -167,9 +167,20 @@ public class ConnectionUtils {
     buffer.rewind();
     buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
 
-    if (channel.read(buffer) < 0) {
+    final int read = channel.read(buffer);
+    if (read < 0) {
       throw new EOFException(
               "Reached end-of-stream while reading size header");
+    }
+
+    if (read==0){
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException ie) {
+        // Ignore and move along.
+      }
+
+      return true;
     }
 
     // Keep reading bytes until the length field has been read

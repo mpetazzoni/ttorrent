@@ -170,9 +170,6 @@ public abstract class TrackerClient {
 				message.getType().name() + "!");
 		}
 
-		if (inhibitEvents) {
-			return;
-		}
 
 		AnnounceResponseMessage response =
 			(AnnounceResponseMessage)message;
@@ -182,6 +179,10 @@ public abstract class TrackerClient {
                         response.getIncomplete(),
                         response.getInterval(),
       hexInfoHash);
+
+    if (inhibitEvents) {
+      return;
+    }
 
 		this.fireDiscoveredPeersEvent(
       response.getPeers(),

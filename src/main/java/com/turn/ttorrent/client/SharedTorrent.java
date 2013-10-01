@@ -653,7 +653,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   @Override
   public synchronized void handlePeerChoked(SharingPeer peer) {
-    Set<Piece> pieces = peer.getRequestedPiece();
+    Set<Piece> pieces = peer.getRequestedPieces();
 
     if (pieces.size()>0) {
       for (Piece piece : pieces) {
@@ -690,8 +690,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 //    interesting.andNot(peer.getPoorlyAvailablePieces());
 
     do {
+      if (!peer.isConnected()){
+        break;
+      }
       logger.trace("Peer {} is ready and has {} interesting piece(s).",
               peer, interesting.cardinality());
+
+      logger.trace("Currently requested pieces from {} : {}", peer, requestedPieces);
 
       // If we didn't find interesting pieces, we need to check if we're in
       // an end-game situation. If yes, we request an already requested piece
@@ -895,7 +900,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       this.rarest.add(i);
     }
 
-    Set<Piece> requested = peer.getRequestedPiece();
+    Set<Piece> requested = peer.getRequestedPieces();
     if (requested != null) {
       for (Piece piece : requested) {
         this.requestedPieces.set(piece.getIndex(), false);

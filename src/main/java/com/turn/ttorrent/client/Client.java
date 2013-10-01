@@ -289,6 +289,14 @@ public class Client implements Runnable,
     }
   }
 
+  private void pingPeers(final SharedTorrent torrent){
+    for (SharingPeer sharingPeer : peers) {
+      if (sharingPeer.getTorrent().getHexInfoHash().equals(torrent.getHexInfoHash())){
+        torrent.handlePeerReady(sharingPeer);
+      }
+    }
+  }
+
   /**
    * Main client loop.
    * <p/>
@@ -860,7 +868,7 @@ public class Client implements Runnable,
 
   @Override
   public void handlePeerDisconnected(SharingPeer peer) {
-    peer.reset();
+    final SharedTorrent peerTorrent = peer.getTorrent();
     this.peers.remove(peer);
     logger.debug("Peer {} disconnected, [{}/{}].",
       new Object[]{
@@ -868,6 +876,7 @@ public class Client implements Runnable,
         getConnectedPeers().size(),
         this.peers.size()
       });
+    pingPeers(peerTorrent);
   }
 
   @Override

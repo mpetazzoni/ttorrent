@@ -246,7 +246,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   /**
    * Returns the currently requested piece, if any.
    */
-  public Set<Piece> getRequestedPiece() {
+  public Set<Piece> getRequestedPieces() {
     return myRequestedPieces.keySet();
   }
 
@@ -335,7 +335,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
 
     this.firePeerDisconnected();
-    myRequestedPieces.clear();
+    reset();
   }
 
   /**
@@ -376,10 +376,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     downloadPiece(piece, false);
   }
 
-  public synchronized void downloadPiece(final Piece piece, boolean force)
+  public void downloadPiece(final Piece piece, boolean force)
     throws IllegalStateException {
-    if (!myRequestedPieces.containsKey(piece) || force) {
-      myRequestedPieces.put(piece, 0);
+    synchronized (this.requestsLock) {
+      if (!myRequestedPieces.containsKey(piece) || force) {
+        myRequestedPieces.put(piece, 0);
+      }
     }
     this.requestNextBlocksForPiece(piece);
   }

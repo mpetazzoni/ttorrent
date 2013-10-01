@@ -388,22 +388,22 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
 
     for(int i=0; i<5; i++) {
-      downloadAndStop(torrent, 20*1000, createClient());
-      Thread.sleep(5*1000);
+      downloadAndStop(torrent, 250*1000, createClient());
+      Thread.sleep(3*1000);
     }
   }
 
+  @Test (invocationCount = 5)
   public void download_io_error() throws InterruptedException, NoSuchAlgorithmException, IOException{
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
 
-    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 14);
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
     seeder.start(InetAddress.getLocalHost());
 
-    for(int i=0; i<5; i++) {
       final AtomicInteger interrupts = new AtomicInteger(0);
       final Client leech = new Client(){
         @Override
@@ -418,7 +418,6 @@ public class ClientTest {
       clientList.add(leech);
       downloadAndStop(torrent, 45 * 1000, leech);
       Thread.sleep(2*1000);
-    }
 
   }
 
