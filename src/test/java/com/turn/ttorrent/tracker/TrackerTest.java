@@ -262,10 +262,10 @@ public class TrackerTest{
 
   @AfterMethod
   protected void tearDown() throws Exception {
-    stopTracker();
     for (Client client : clientList) {
       client.stop();
     }
+    stopTracker();
     tempFiles.cleanup();
   }
 

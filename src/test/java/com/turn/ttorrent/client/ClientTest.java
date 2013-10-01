@@ -52,7 +52,6 @@ public class ClientTest {
   public ClientTest(){
     BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.INFO);
-    Logger.getRootLogger().addAppender(new FileAppender());
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -679,10 +678,10 @@ public class ClientTest {
 
   @AfterMethod
   protected void tearDown() throws Exception {
-    stopTracker();
     for (Client client : clientList) {
       client.stop();
     }
+    stopTracker();
     tempFiles.cleanup();
   }
 
