@@ -103,6 +103,8 @@ public class ClientMain {
 		s.println("  -s,--seed SECONDS          Time to seed after downloading (default: infinitely).");
 		s.println("  -d,--max-download KB/SEC   Max download rate (default: unlimited).");
 		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: unlimited).");
+        s.println("  -p,--prefix PREFIX         BitTorrent client prefix.");
+        s.println("  -a,--agent AGENT           BitTorrent announce user-agent.");
 		s.println();
 	}
 
@@ -120,6 +122,8 @@ public class ClientMain {
 		CmdLineParser.Option seedTime = parser.addIntegerOption('s', "seed");
 		CmdLineParser.Option maxUpload = parser.addDoubleOption('u', "max-upload");
 		CmdLineParser.Option maxDownload = parser.addDoubleOption('d', "max-download");
+        CmdLineParser.Option prefix = parser.addStringOption('p', "prefix");
+        CmdLineParser.Option userAgent = parser.addStringOption('a', "agent");
 
 		try {
 			parser.parse(args);
@@ -151,6 +155,8 @@ public class ClientMain {
 
 		try {
 			Client c = new Client(
+                Client.USER_AGENT,
+                Client.BITTORRENT_ID_PREFIX,
 				getIPv4Address(ifaceValue),
 				SharedTorrent.fromFile(
 					new File(otherArgs[0]),

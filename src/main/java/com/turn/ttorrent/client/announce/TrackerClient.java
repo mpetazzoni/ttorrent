@@ -34,12 +34,14 @@ public abstract class TrackerClient {
 	protected final SharedTorrent torrent;
 	protected final Peer peer;
 	protected final URI tracker;
+    protected final String userAgent;
 
-	public TrackerClient(SharedTorrent torrent, Peer peer, URI tracker) {
+	public TrackerClient(String userAgent, SharedTorrent torrent, Peer peer, URI tracker) {
 		this.listeners = new HashSet<AnnounceResponseListener>();
 		this.torrent = torrent;
 		this.peer = peer;
 		this.tracker = tracker;
+        this.userAgent = userAgent;
 	}
 
 	/**

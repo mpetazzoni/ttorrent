@@ -96,7 +96,8 @@ public class Client extends Observable implements Runnable,
 		DONE;
 	};
 
-	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+	public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+    public static final String USER_AGENT = "TTorrent/1.3";
 
 	private SharedTorrent torrent;
 	private ClientState state;
@@ -113,18 +114,43 @@ public class Client extends Observable implements Runnable,
 
 	private Random random;
 
+    /**
+     * Initialize the BitTorrent client.
+     *
+     * @param address The address to bind to.
+     * @param torrent The torrent to download and share.
+     */
+    public Client(InetAddress address, SharedTorrent torrent)
+            throws UnknownHostException, IOException {
+        this(Client.BITTORRENT_ID_PREFIX, address, torrent);
+    }
+
+    /**
+     * Initialize the BitTorrent client.
+     *
+     * @param peerIdPrefix BitTorrent peer ID prefix, used during handshake
+     * @param address The address to bind to.
+     * @param torrent The torrent to download and share.
+     */
+    public Client(String peerIdPrefix, InetAddress address, SharedTorrent torrent)
+            throws UnknownHostException, IOException {
+        this(USER_AGENT, peerIdPrefix, address, torrent);
+    }
+
 	/**
 	 * Initialize the BitTorrent client.
 	 *
+     * @param userAgent User agent string for tracker announcement
+     * @param peerIdPrefix BitTorrent peer ID prefix, used during handshake
 	 * @param address The address to bind to.
 	 * @param torrent The torrent to download and share.
 	 */
-	public Client(InetAddress address, SharedTorrent torrent)
+	public Client(String peerIdPrefix, String userAgent, InetAddress address, SharedTorrent torrent)
 		throws UnknownHostException, IOException {
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
-		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
+		String id = peerIdPrefix + UUID.randomUUID()
 			.toString().split("-")[4];
 
 		// Initialize the incoming connection handler and register ourselves to
@@ -140,7 +166,7 @@ public class Client extends Observable implements Runnable,
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
-		this.announce = new Announce(this.torrent, this.self);
+		this.announce = new Announce(userAgent, this.torrent, this.self);
 		this.announce.register(this);
 
 		logger.info("BitTorrent client [{}] for {} started and " +

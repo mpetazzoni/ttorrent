@@ -48,12 +48,13 @@ public class HTTPTrackerClient extends TrackerClient {
 	/**
 	 * Create a new HTTP announcer for the given torrent.
 	 *
+     * @param userAgent User agent string used in the announcement
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our own peer specification.
 	 */
-	protected HTTPTrackerClient(SharedTorrent torrent, Peer peer,
+	protected HTTPTrackerClient(String userAgent, SharedTorrent torrent, Peer peer,
 		URI tracker) {
-		super(torrent, peer, tracker);
+		super(userAgent, torrent, peer, tracker);
 	}
 
 	/**
@@ -105,6 +106,7 @@ public class HTTPTrackerClient extends TrackerClient {
 		InputStream in = null;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
+            conn.setRequestProperty("User-Agent", this.userAgent);
 			in = conn.getInputStream();
 		} catch (IOException ioe) {
 			if (conn != null) {

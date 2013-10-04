@@ -73,10 +73,11 @@ public class Announce implements Runnable {
 	/**
 	 * Initialize the base announce class members for the announcer.
 	 *
+     * @param userAgent User agent string used in the tracker announcement
 	 * @param torrent The torrent we're announcing about.
 	 * @param peer Our peer specification.
 	 */
-	public Announce(SharedTorrent torrent, Peer peer) {
+	public Announce(String userAgent, SharedTorrent torrent, Peer peer) {
 		this.peer = peer;
 		this.clients = new ArrayList<List<TrackerClient>>();
 		this.allClients = new HashSet<TrackerClient>();
@@ -89,8 +90,8 @@ public class Announce implements Runnable {
 			ArrayList<TrackerClient> tierClients = new ArrayList<TrackerClient>();
 			for (URI tracker : tier) {
 				try {
-					TrackerClient client = this.createTrackerClient(torrent,
-						peer, tracker);
+					TrackerClient client = this.createTrackerClient(userAgent,
+                            torrent, peer, tracker);
 
 					tierClients.add(client);
 					this.allClients.add(client);
@@ -262,20 +263,21 @@ public class Announce implements Runnable {
 	/**
 	 * Create a {@link TrackerClient} annoucing to the given tracker address.
 	 *
+     * @param userAgent User agent string for the announcement
 	 * @param torrent The torrent the tracker client will be announcing for.
 	 * @param peer The peer the tracker client will announce on behalf of.
 	 * @param tracker The tracker address as a {@link URI}.
 	 * @throws UnknownHostException If the tracker address is invalid.
 	 * @throws UnknownServiceException If the tracker protocol is not supported.
 	 */
-	private TrackerClient createTrackerClient(SharedTorrent torrent, Peer peer,
+	private TrackerClient createTrackerClient(String userAgent, SharedTorrent torrent, Peer peer,
 		URI tracker) throws UnknownHostException, UnknownServiceException {
 		String scheme = tracker.getScheme();
 
 		if ("http".equals(scheme) || "https".equals(scheme)) {
-			return new HTTPTrackerClient(torrent, peer, tracker);
+			return new HTTPTrackerClient(userAgent, torrent, peer, tracker);
 		} else if ("udp".equals(scheme)) {
-			return new UDPTrackerClient(torrent, peer, tracker);
+			return new UDPTrackerClient(userAgent, torrent, peer, tracker);
 		}
 
 		throw new UnknownServiceException(
