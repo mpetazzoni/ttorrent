@@ -96,8 +96,8 @@ public class Client extends Observable implements Runnable,
 		DONE;
 	};
 
-	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
-    private static final String USER_AGENT = "TTorrent/1.3";
+	public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+    public static final String USER_AGENT = "TTorrent/1.3";
 
 	private SharedTorrent torrent;
 	private ClientState state;
