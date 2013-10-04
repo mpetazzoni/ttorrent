@@ -735,7 +735,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       }
 
 
-      Piece chosen = choice.get(this.random.nextInt(Math.min(choice.size(), SharedTorrent.RAREST_PIECE_JITTER)));
+
+      final int min = Math.min(choice.size(), SharedTorrent.RAREST_PIECE_JITTER);
+      if (min==0)
+        return;
+      Piece chosen = choice.get(this.random.nextInt(min));
       this.requestedPieces.set(chosen.getIndex());
       logger.trace("Requesting {} from {}, we now have {} " +
               " outstanding request(s): {}.",

@@ -92,6 +92,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final Object requestsLock, exchangeLock;
 
   private volatile Future connectTask;
+  private volatile boolean isStopped = false;
 
   public SharingPeer(Peer peer, SharedTorrent torrent){
     this(peer.getIp(), peer.getPort(), peer.getPeerId(), torrent);
@@ -314,6 +315,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param force Force unbind without sending cancel requests.
    */
   public void unbind(boolean force) {
+    isStopped = true;
     if (!force) {
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
@@ -504,6 +506,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public synchronized void handleMessage(PeerMessage msg) {
 //    logger.trace("Received msg {} from {}", msg.getType(), this);
+    if (isStopped)
+      return;
     switch (msg.getType()) {
       case KEEP_ALIVE:
         // Nothing to do, we're keeping the connection open anyways.
