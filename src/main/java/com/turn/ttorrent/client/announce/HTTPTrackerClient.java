@@ -105,6 +105,7 @@ public class HTTPTrackerClient extends TrackerClient {
 		InputStream in = null;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
+            conn.setRequestProperty("User-Agent", "Transmission/2.77");
 			in = conn.getInputStream();
 		} catch (IOException ioe) {
 			if (conn != null) {
