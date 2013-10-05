@@ -70,4 +70,4 @@ if [ -z "$MAINCLASS" ] ; then
 else
     CPARG="-cp $CPARG $MAINCLASS"
 fi
-exec java $CPARG "$@"
+exec java -Dhttp.agent="Transmission/2.77" $CPARG "$@"

@@ -18,7 +18,7 @@
 	<url>http://turn.github.com/ttorrent/</url>
 	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
-	<version>1.3</version>
+	<version>1.3-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<organization>
