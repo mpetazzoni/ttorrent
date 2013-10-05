@@ -13,8 +13,16 @@
 /.project
 /.settings
 
+# Ignore any Intellij IDEA project files
+*.iml
+.idea
+
 # Ignore common editor swap files
 *.swp
 *.bak
 *~
 *~
+
+# Ignore developer test files, etc.
+dev
+
