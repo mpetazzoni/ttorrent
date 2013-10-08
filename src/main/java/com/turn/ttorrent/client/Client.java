@@ -23,9 +23,7 @@ import com.turn.ttorrent.client.announce.TrackerClient;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.PeerExchange;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.slf4j.Logger;
@@ -40,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A pure-java BitTorrent client.
@@ -98,6 +97,7 @@ public class Client implements Runnable,
   private final ConcurrentMap<String, SharedTorrent> torrents;
 
   private Random random;
+  private static CleanupProcessor myCleanupProcessor = new CleanupProcessor();
   private boolean myStarted = false;
 
   public Client(){
@@ -262,12 +262,13 @@ public class Client implements Runnable,
 
   public void downloadUninterruptibly(final SharedTorrent torrent,
                                       final long downloadTimeoutSeconds) throws IOException, InterruptedException {
-    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1);
+    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1, new AtomicBoolean(false));
   }
 
   public void downloadUninterruptibly(final SharedTorrent torrent,
                                       final long downloadTimeoutSeconds,
-                                      final int minSeedersCount) throws IOException, InterruptedException {
+                                      final int minSeedersCount,
+                                      final AtomicBoolean isInterrupted) throws IOException, InterruptedException {
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     final long maxTime = System.currentTimeMillis() + downloadTimeoutSeconds * 1000;
@@ -276,6 +277,8 @@ public class Client implements Runnable,
             torrent.getClientState() != ClientState.ERROR &&
         ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
         (System.currentTimeMillis() <= maxTime)){
+      if (Thread.currentThread().isInterrupted() || isInterrupted.get())
+        throw new InterruptedException("Download of "+torrent.getName()+" was interrupted");
       Thread.sleep(100);
     }
     if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
@@ -954,4 +957,14 @@ public class Client implements Runnable,
 
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
+
+  public static CleanupProcessor cleanupProcessor() {
+    return myCleanupProcessor;
+  }
+
+  static {
+    final Thread cleanupThread = new Thread(myCleanupProcessor);
+    cleanupThread.setName("cleanup-thread");
+    cleanupThread.start();
+  }
 }

@@ -51,14 +51,18 @@ public class TorrentTest {
   public void testFilenames() throws IOException, NoSuchAlgorithmException {
     File torrentFile = new File("src/test/resources/torrents/parentDir.torrent");
     Torrent t2 = Torrent.load(torrentFile);
-    final List<String> filenames = t2.getFilenames();
+    final List<String> tmpFileNames = t2.getFilenames();
+    final List<String> normalizedFilenames = new ArrayList<String>(tmpFileNames.size());
+    for (String filename : tmpFileNames) {
+      normalizedFilenames.add(filename.replaceAll("\\\\", "/"));
+    }
     String[] expectedFilenames = new String[]
-    {"parentDir\\AccuRevCommon.jar",
-     "parentDir\\commons-io-cio2.5_3.jar",
-     "parentDir\\commons-io-cio2.5_3.jar.link",
-     "parentDir\\inDir\\application.wadl",
-     "parentDir\\storage.version"};
-    assertEqualsNoOrder(filenames.toArray(new String[filenames.size()]), expectedFilenames);
+    {"parentDir/AccuRevCommon.jar",
+     "parentDir/commons-io-cio2.5_3.jar",
+     "parentDir/commons-io-cio2.5_3.jar.link",
+     "parentDir/inDir/application.wadl",
+     "parentDir/storage.version"};
+    assertEqualsNoOrder(normalizedFilenames.toArray(new String[normalizedFilenames.size()]), expectedFilenames);
     System.out.println();
   }
 

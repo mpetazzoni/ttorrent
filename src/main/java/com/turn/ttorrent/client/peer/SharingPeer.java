@@ -15,8 +15,10 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.Cleanable;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -65,11 +67,12 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
+public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo, Cleanable {
 
-  private static final Logger logger =
-    LoggerFactory.getLogger(SharingPeer.class);
-  private static final int MAX_PIPELINED_REQUESTS = 500;
+  private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
+  private static final int MAX_PIPELINED_REQUESTS = 100;
+  private static final long MAX_REQUEST_TIMEOUT = 20*1000;
+
   private final Object availablePiecesLock;
   private volatile boolean choking;
   private volatile boolean interesting;
@@ -119,8 +122,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.availablePiecesLock = new Object();
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
-
     this.reset();
+    Client.cleanupProcessor().registerCleanable(this);
   }
 
   /**
@@ -842,6 +845,15 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public TorrentHash getTorrentHash() {
     return torrent;
+  }
+
+  @Override
+  public void cleanUp() {
+    for (PeerMessage.RequestMessage request : myRequests) {
+      if (System.currentTimeMillis() - request.getSendTime() > MAX_REQUEST_TIMEOUT){
+        send(request);
+      }
+    }
   }
 
   /**

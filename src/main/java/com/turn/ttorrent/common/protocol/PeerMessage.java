@@ -468,6 +468,7 @@ public abstract class PeerMessage {
 		private int piece;
 		private int offset;
 		private int length;
+    private long mySendTime;
 
 		private RequestMessage(ByteBuffer buffer, int piece,
 				int offset, int length) {
@@ -475,6 +476,7 @@ public abstract class PeerMessage {
 			this.piece = piece;
 			this.offset = offset;
 			this.length = length;
+      mySendTime = System.currentTimeMillis();
 		}
 
 		public int getPiece() {
@@ -489,7 +491,15 @@ public abstract class PeerMessage {
 			return this.length;
 		}
 
-		@Override
+    public long getSendTime() {
+      return mySendTime;
+    }
+
+    public void renew(){
+      mySendTime = System.currentTimeMillis();
+    }
+
+    @Override
 		public RequestMessage validate(TorrentInfo torrent)
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&

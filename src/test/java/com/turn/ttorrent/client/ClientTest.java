@@ -61,6 +61,8 @@ public class ClientTest {
     startTracker();
   }
 
+
+  @Test(invocationCount = 30)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
     int numFiles = 50;
     this.tracker.setAcceptForeignTorrents(true);
@@ -106,7 +108,21 @@ public class ClientTest {
       new WaitFor(90 * 1000) {
         @Override
         protected boolean condition() {
-          return listFileNames(downloadDir).containsAll(names);
+
+          final Set<String> strings = listFileNames(downloadDir);
+          int count = 0;
+          final List<String> partItems = new ArrayList<String>();
+          for (String s : strings) {
+            if (s.endsWith(".part")){
+              count++;
+              partItems.add(s);
+            }
+          }
+          if (count < 5){
+
+            System.err.printf("Count: %d. Items: %s%n", count, Arrays.toString(partItems.toArray()));
+          }
+          return strings.containsAll(names);
         }
       };
 
@@ -523,7 +539,7 @@ public class ClientTest {
   public void interrupt_download() throws IOException, InterruptedException, NoSuchAlgorithmException {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
-    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 240);
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 60);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     seeder.start(InetAddress.getLocalHost());
@@ -546,7 +562,7 @@ public class ClientTest {
       }
     };
     th.start();
-    Thread.sleep(2000);
+    Thread.sleep(200);
     th.interrupt();
 
     assertTrue(st.getClientState() != ClientState.SEEDING);
