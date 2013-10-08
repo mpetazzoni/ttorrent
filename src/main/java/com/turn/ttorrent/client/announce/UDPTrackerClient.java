@@ -139,7 +139,7 @@ public class UDPTrackerClient extends TrackerClient {
 
 	@Override
 	public void announce(final AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, final TorrentInfo torrent, final Peer peer) throws AnnounceException {
+                       boolean inhibitEvents, final TorrentInfo torrent, final List<Peer> peers) throws AnnounceException {
       logAnnounceRequest(event, torrent);
 
 		State state = State.CONNECT_REQUEST;
@@ -191,7 +191,9 @@ public class UDPTrackerClient extends TrackerClient {
 						break;
 
 					case ANNOUNCE_REQUEST:
-            this.send(this.buildAnnounceRequest(event, torrent, peer).getData());
+            for (Peer peer : peers) {
+              this.send(this.buildAnnounceRequest(event, torrent, peer).getData());
+            }
 
 						try {
 							this.handleTrackerAnnounceResponse(
@@ -235,7 +237,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 *
 	 * <p>
 	 * Verifies the transaction ID of the message before passing it over to
-	 * {@link Announce#handleTrackerAnnounceResponse()}.
+	 * {@link Announce#()}.
 	 * </p>
 	 *
 	 * @param message The message received from the tracker in response to the

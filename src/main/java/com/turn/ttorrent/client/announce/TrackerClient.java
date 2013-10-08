@@ -64,21 +64,11 @@ public abstract class TrackerClient {
 
   public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
                                     boolean inhibitEvent, final TorrentInfo torrent) throws AnnounceException {
-    List<String> failedPeers = null;
-    for (Peer peer : myPeers) {
-      try {
-        announce(event, inhibitEvent, torrent, peer);
-      } catch (AnnounceException e) {
-        logger.info("Announce problem", e);
-        if (failedPeers ==null){
-          failedPeers = new ArrayList<String>();
-        }
-        failedPeers.add(peer.toString());
-      }
-    }
-    if (failedPeers != null){
+    try {
+      announce(event, inhibitEvent, torrent, myPeers);
+    } catch (AnnounceException e) {
       throw new AnnounceException(String.format("Unable to announce event %s for torrent %s and peers %s", new Object[]{
-              event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(failedPeers.toArray())
+              event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myPeers.toArray())
       }));
     }
   }
@@ -103,7 +93,7 @@ public abstract class TrackerClient {
      * @param torrent
      */
 	protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
-                                boolean inhibitEvent, final TorrentInfo torrent, final Peer peer) throws AnnounceException;
+                                boolean inhibitEvent, final TorrentInfo torrent, final List<Peer> peer) throws AnnounceException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {

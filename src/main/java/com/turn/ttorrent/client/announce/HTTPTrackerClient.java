@@ -28,8 +28,10 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import org.slf4j.Logger;
@@ -75,46 +77,56 @@ public class HTTPTrackerClient extends TrackerClient {
      * @param torrentInfo
      */
 	public void announce(final AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, final TorrentInfo torrentInfo, final Peer peer) throws AnnounceException {
-      logAnnounceRequest(event, torrentInfo);
-      URL target = null;
-		try {
-			HTTPAnnounceRequestMessage request =
-            this.buildAnnounceRequest(event, torrentInfo, peer);
-			target = request.buildAnnounceURL(this.tracker.toURL());
-		} catch (MalformedURLException mue) {
-			throw new AnnounceException("Invalid announce URL (" +
-				mue.getMessage() + ")", mue);
-		} catch (MessageValidationException mve) {
-			throw new AnnounceException("Announce request creation violated " +
-				"expected protocol (" + mve.getMessage() + ")", mve);
-		} catch (IOException ioe) {
-			throw new AnnounceException("Error building announce request (" +
-				ioe.getMessage() + ")", ioe);
-		}
+                       boolean inhibitEvents, final TorrentInfo torrentInfo, final List<Peer> peers) throws AnnounceException {
+    logAnnounceRequest(event, torrentInfo);
 
-		HttpURLConnection conn = null;
-		InputStream in = null;
-		try {
-			conn = (HttpURLConnection)target.openConnection();
+    List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
+    for (final Peer peer : peers) {
+      try {
+        HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
+        URL target = request.buildAnnounceURL(this.tracker.toURL());
+        trackerResponses.add(sendAnnounce(target));
+      } catch (MalformedURLException mue) {
+        throw new AnnounceException("Invalid announce URL (" +
+                mue.getMessage() + ")", mue);
+      } catch (MessageValidationException mve) {
+        throw new AnnounceException("Announce request creation violated " +
+                "expected protocol (" + mve.getMessage() + ")", mve);
+      } catch (IOException ioe) {
+        throw new AnnounceException("Error building announce request (" +
+                ioe.getMessage() + ")", ioe);
+      }
+    }
+    // we process only first request:
+    if (trackerResponses.size() > 0) {
+      final HTTPTrackerMessage message = trackerResponses.get(0);
+      this.handleTrackerAnnounceResponse(message, inhibitEvents, torrentInfo.getHexInfoHash());
+    }
+  }
+
+  private HTTPTrackerMessage sendAnnounce(final URL url) throws AnnounceException {
+    HttpURLConnection conn = null;
+    InputStream in = null;
+    try {
+      conn = (HttpURLConnection)url.openConnection();
       conn.setConnectTimeout(10000);
       conn.setReadTimeout(10000);
       in = conn.getInputStream();
-		} catch (IOException ioe) {
-			if (conn != null) {
-				in = conn.getErrorStream();
-			}
-		}
+    } catch (IOException ioe) {
+      if (conn != null) {
+        in = conn.getErrorStream();
+      }
+    }
 
-		// At this point if the input stream is null it means we have neither a
-		// response body nor an error stream from the server. No point in going
-		// any further.
-		if (in == null) {
-			throw new AnnounceException("No response or unreachable tracker!");
-		}
+    // At this point if the input stream is null it means we have neither a
+    // response body nor an error stream from the server. No point in going
+    // any further.
+    if (in == null) {
+      throw new AnnounceException("No response or unreachable tracker!");
+    }
 
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try {
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
       byte[] buf = new byte[8192];
       int len;
@@ -122,35 +134,33 @@ public class HTTPTrackerClient extends TrackerClient {
         baos.write(buf, 0, len);
       }
 
-			// Parse and handle the response
-			HTTPTrackerMessage message =
-				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
-      this.handleTrackerAnnounceResponse(message, inhibitEvents, torrentInfo.getHexInfoHash());
-		} catch (IOException ioe) {
-			throw new AnnounceException("Error reading tracker response!", ioe);
-		} catch (MessageValidationException mve) {
-			throw new AnnounceException("Tracker message violates expected " +
-				"protocol (" + mve.getMessage() + ")", mve);
-		} finally {
-			// Make sure we close everything down at the end to avoid resource
-			// leaks.
-			try {
-				in.close();
-			} catch (IOException ioe) {
-				logger.warn("Problem ensuring error stream closed!", ioe);
-			}
+      // Parse and handle the response
+      return HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
+    } catch (IOException ioe) {
+      throw new AnnounceException("Error reading tracker response!", ioe);
+    } catch (MessageValidationException mve) {
+      throw new AnnounceException("Tracker message violates expected " +
+              "protocol (" + mve.getMessage() + ")", mve);
+    } finally {
+      // Make sure we close everything down at the end to avoid resource
+      // leaks.
+      try {
+        in.close();
+      } catch (IOException ioe) {
+        logger.warn("Problem ensuring error stream closed!", ioe);
+      }
 
-			// This means trying to close the error stream as well.
-			InputStream err = conn.getErrorStream();
-			if (err != null) {
-				try {
-					err.close();
-				} catch (IOException ioe) {
-					logger.warn("Problem ensuring error stream closed!", ioe);
-				}
-			}
-		}
-	}
+      // This means trying to close the error stream as well.
+      InputStream err = conn.getErrorStream();
+      if (err != null) {
+        try {
+          err.close();
+        } catch (IOException ioe) {
+          logger.warn("Problem ensuring error stream closed!", ioe);
+        }
+      }
+    }
+  }
 
 	/**
 	 * Build the announce request tracker message.

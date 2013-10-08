@@ -196,13 +196,8 @@ public class ConnectionHandler implements TorrentConnectionListener{
       throw new IllegalStateException(
         "Connection handler is not accepting new peers at this time!");
     }
-
-    Future curTask = peer.getConnectTask();
-    if (executor.getQueue().size() > 0) return;
-
     Future connectTask = this.executor.submit(new ConnectorTask(this, peer));
     peer.setConnectTask(connectTask);
-
   }
 
   @Override

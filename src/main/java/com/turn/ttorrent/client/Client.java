@@ -188,6 +188,11 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
     start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
+
+  public Peer[] getSelfPeers() {
+    return service.getSelfPeers();
+  }
+
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(this.torrents, bindAddresses);
     this.service.register(this);
@@ -413,6 +418,7 @@ public class Client implements Runnable,
       numConnected++;
     }
 
+/*
     for (SharedTorrent torrent : this.torrents.values()) {
       logger.debug("[{}]{} {}/{} (Downloaded {} bytes) pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
         new Object[]{
@@ -430,7 +436,8 @@ public class Client implements Runnable,
           String.format("%.2f", ul / 1024.0),
         });
     }
-    logger.debug("Downloaded bytes: {}", PeerExchange.readBytes);
+*/
+//    logger.debug("Downloaded bytes: {}", PeerExchange.readBytes);
 
   }
 
@@ -818,17 +825,20 @@ public class Client implements Runnable,
         // might be called before the torrent's piece completion
         // handler is.
         torrent.markCompleted(piece);
-        logger.debug("Completed download of {}, now has {}/{} pieces.",
+        logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
           new Object[]{
             piece,
+            peer,
             torrent.getCompletedPieces().cardinality(),
             torrent.getPieceCount()
           });
 
         // Send a HAVE message to all connected peers
         PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
+        final String torrentHash = torrent.getHexInfoHash();
         for (SharingPeer remote : getConnectedPeers()) {
-          remote.send(have);
+          if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
+            remote.send(have);
         }
 
         BitSet completed = new BitSet();
