@@ -51,7 +51,7 @@ public class TorrentTest {
   }
 
   public void testFilenames() throws IOException, NoSuchAlgorithmException {
-    File torrentFile = new File("src/test/resources/torrents/parentDir.torrent");
+    File torrentFile = new File("src/test/resources/torrents/parentDir.win.torrent");
     Torrent t2 = Torrent.load(torrentFile);
     final List<String> tmpFileNames = t2.getFilenames();
     final List<String> normalizedFilenames = new ArrayList<String>(tmpFileNames.size());
