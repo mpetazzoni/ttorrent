@@ -160,6 +160,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.choked = true;
       this.interested = false;
       this.myRequestedPieces.clear();
+      this.myRequests.clear();
       this.downloading = false;
     }
 
@@ -341,6 +342,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     this.firePeerDisconnected();
     reset();
+    Client.cleanupProcessor().unregisterCleanable(this);
   }
 
   /**

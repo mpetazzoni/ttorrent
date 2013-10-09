@@ -41,11 +41,13 @@ public class TorrentTest {
     final File parentDir = new File("src/test/resources/parentFiles/parentDir");
     final long creationTimeSecs = 1376051000;
     Torrent t = Torrent.create(parentDir,addFilesRecursively(parentDir), announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
-    File torrentFile = new File("src/test/resources/torrents/parentDir.torrent");
-    Torrent.load(torrentFile); // try to load
-    final byte[] expectedBytes = FileUtils.readFileToByteArray(torrentFile);
+    File torrentFileWin = new File("src/test/resources/torrents/parentDir.win.torrent");
+    File torrentFileLinux = new File("src/test/resources/torrents/parentDir.linux.torrent");
+    final byte[] expectedBytesWin = FileUtils.readFileToByteArray(torrentFileWin);
+    final byte[] expectedBytesLinux = FileUtils.readFileToByteArray(torrentFileLinux);
     final byte[] actualBytes = t.getEncoded();
-    assertEquals(HexBin.encode(expectedBytes), HexBin.encode(actualBytes));
+
+    assertTrue(HexBin.encode(expectedBytesWin).equals(HexBin.encode(actualBytes)) || HexBin.encode(expectedBytesLinux).equals(HexBin.encode(actualBytes)));
   }
 
   public void testFilenames() throws IOException, NoSuchAlgorithmException {

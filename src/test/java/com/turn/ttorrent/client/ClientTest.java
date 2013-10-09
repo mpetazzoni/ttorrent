@@ -49,7 +49,7 @@ public class ClientTest {
   public ClientTest(){
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
-    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
+    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
     Logger.getRootLogger().setLevel(Level.DEBUG);
     Torrent.setHashingThreadsCount(1);
   }
@@ -61,7 +61,7 @@ public class ClientTest {
   }
 
 
-  @Test(invocationCount = 10)
+//  @Test(invocationCount = 50)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
     int numFiles = 50;
     this.tracker.setAcceptForeignTorrents(true);
@@ -561,6 +561,12 @@ public class ClientTest {
     th.start();
     Thread.sleep(1000);
     th.interrupt();
+    new WaitFor(10*1000){
+      @Override
+      protected boolean condition() {
+        return !th.isAlive();
+      }
+    };
 
     assertTrue(st.getClientState() != ClientState.SEEDING);
     assertTrue(interrupted.get());
