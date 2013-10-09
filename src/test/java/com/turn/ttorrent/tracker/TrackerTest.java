@@ -46,15 +46,6 @@ public class TrackerTest{
 
   @BeforeMethod
   protected void setUp() throws Exception {
-/*
-    final Logger rootLogger = RootLogger.getRootLogger();
-    rootLogger.removeAllAppenders();
-    rootLogger.setLevel(Level.ALL);
-    myLogfile = String.format("test-%d.txt", System.currentTimeMillis());
-    final Layout layout = new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN);
-    final FileAppender newAppender = new FileAppender(layout, myLogfile);
-    rootLogger.addAppender(newAppender);
-*/
     tempFiles = new TempFiles();
     Torrent.setHashingThreadsCount(1);
     startTracker();

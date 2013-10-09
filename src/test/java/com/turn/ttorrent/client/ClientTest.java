@@ -407,7 +407,6 @@ public class ClientTest {
     }
   }
 
-  @Test (invocationCount = 5)
   public void download_io_error() throws InterruptedException, NoSuchAlgorithmException, IOException{
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
@@ -432,7 +431,6 @@ public class ClientTest {
       clientList.add(leech);
       downloadAndStop(torrent, 45 * 1000, leech);
       Thread.sleep(2*1000);
-
   }
 
   public void download_uninterruptibly_positive() throws InterruptedException, NoSuchAlgorithmException, IOException {
