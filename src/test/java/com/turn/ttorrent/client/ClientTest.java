@@ -7,10 +7,7 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
+import org.apache.log4j.*;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -50,8 +47,10 @@ public class ClientTest {
   private TempFiles tempFiles;
 
   public ClientTest(){
-    BasicConfigurator.configure();
-    Logger.getRootLogger().setLevel(Level.INFO);
+    if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
+      return;
+    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
+    Logger.getRootLogger().setLevel(Level.DEBUG);
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -62,7 +61,7 @@ public class ClientTest {
   }
 
 
-  @Test(invocationCount = 5)
+  @Test(invocationCount = 10)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
     int numFiles = 50;
     this.tracker.setAcceptForeignTorrents(true);
@@ -562,7 +561,7 @@ public class ClientTest {
       }
     };
     th.start();
-    Thread.sleep(200);
+    Thread.sleep(1000);
     th.interrupt();
 
     assertTrue(st.getClientState() != ClientState.SEEDING);

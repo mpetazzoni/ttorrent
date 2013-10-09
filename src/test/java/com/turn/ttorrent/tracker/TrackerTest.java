@@ -37,8 +37,11 @@ public class TrackerTest{
 
 
   public  TrackerTest(){
-    org.apache.log4j.BasicConfigurator.configure();
-    Logger.getRootLogger().setLevel(Level.INFO);
+    if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
+      return;
+    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
+    Logger.getRootLogger().setLevel(Level.DEBUG);
+    Torrent.setHashingThreadsCount(1);
   }
 
   @BeforeMethod
