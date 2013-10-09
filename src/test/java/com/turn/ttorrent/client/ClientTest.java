@@ -201,7 +201,7 @@ public class ClientTest {
       waitForPeers(numSeeders);
 
       Collection<TrackedTorrent> torrents = this.tracker.getTrackedTorrents();
-      assertEquals(1, torrents.size());
+      assertEquals(torrents.size(), 1);
       assertEquals(numSeeders, torrents.iterator().next().seeders());
     } finally {
       for (Client client : seeders) {

@@ -587,8 +587,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         // Similarly, if the peer requests a piece we don't have, it
         // is a violation of the BitTorrent protocol. In these
         // situation, terminate the connection.
-        if (this.isChoking() || !rp.isValid()) {
-          logger.warn("Peer {} violated protocol, terminating exchange.", this);
+        if (!rp.isValid()) {
+          logger.warn("Peer {} violated protocol, terminating exchange: " + this.isChoking() + " " + rp.isValid(), this);
           this.unbind(true);
           break;
         }
