@@ -62,7 +62,7 @@ public class ClientTest {
   }
 
 
-  @Test(invocationCount = 30)
+  @Test(invocationCount = 5)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
     int numFiles = 50;
     this.tracker.setAcceptForeignTorrents(true);
@@ -105,7 +105,7 @@ public class ClientTest {
         leech.addTorrent(st2);
       }
 
-      new WaitFor(90 * 1000) {
+      new WaitFor(60 * 1000) {
         @Override
         protected boolean condition() {
 
