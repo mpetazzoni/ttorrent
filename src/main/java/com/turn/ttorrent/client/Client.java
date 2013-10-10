@@ -737,12 +737,12 @@ public class Client implements Runnable,
           return;
         }
 
+        peer.register(peer.getTorrent());
         peer.register(this);
         peer.bind(channel);
         peers.add(peer);
       }
 
-      peer.register(peer.getTorrent());
       logger.debug("New peer connection with {} [{}/{}].",
         new Object[]{
           peer,
