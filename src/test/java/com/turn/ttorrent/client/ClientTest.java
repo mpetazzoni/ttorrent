@@ -50,7 +50,7 @@ public class ClientTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.DEBUG);
+    Logger.getRootLogger().setLevel(Level.TRACE);
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -277,10 +277,10 @@ public class ClientTest {
 
     assertTrue(listFileNames(downloadDir).contains(srcFile.getName()));
 
-    leech1.stop();
+    leech1.stop(true);
     leech1=null;
 
-    srcFile.delete();
+    assertTrue(srcFile.delete());
 
     Client leech2 = createClient();
     leech2.start(InetAddress.getLocalHost());

@@ -251,7 +251,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   private synchronized void openFileChannelIfNecessary(){
-    logger.debug("Opening file channel for {}. Downloaders: {}", getName(), myDownloaders.size());
+    logger.debug("Opening file channel for {}. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     try {
       if (myDownloaders.size() == 0) {
         this.bucket.open(clientState == ClientState.SEEDING);
@@ -263,8 +263,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
+    logger.debug("Closing file  channel for {} if necessary. Downloaders: {}",getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     if (this.myDownloaders.size() == 0) {
-      logger.debug("Closing file channel for {}. Downloaders: {}", getName(), myDownloaders.size());
       this.bucket.close();
     }
   }

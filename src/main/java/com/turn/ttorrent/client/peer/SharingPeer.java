@@ -134,7 +134,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   public void register(PeerActivityListener listener) {
     this.listeners.add(listener);
-    firePeerConnected();
   }
 
   public Rate getDLRate() {
@@ -279,7 +278,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   public synchronized void bind(SocketChannel channel) throws SocketException {
 //    this.unbind(true);
-
+    firePeerConnected();
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel);
       this.exchange.register(this);
