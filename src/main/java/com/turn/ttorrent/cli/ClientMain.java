@@ -72,8 +72,12 @@ public class ClientMain {
 		throws SocketException, UnsupportedAddressTypeException,
 		UnknownHostException {
 		if (iface != null) {
-			Enumeration<InetAddress> addresses =
-				NetworkInterface.getByName(iface).getInetAddresses();
+            NetworkInterface networkInterface = NetworkInterface.getByName(iface);
+            if(networkInterface==null){
+                networkInterface = NetworkInterface.getByInetAddress(InetAddress.getByName(iface));
+            }
+            Enumeration<InetAddress> addresses =
+				networkInterface.getInetAddresses();
 			while (addresses.hasMoreElements()) {
 				InetAddress addr = addresses.nextElement();
 				if (addr instanceof Inet4Address) {
@@ -99,7 +103,7 @@ public class ClientMain {
 		s.println("Available options:");
 		s.println("  -h,--help                  Show this help and exit.");
 		s.println("  -o,--output DIR            Read/write data to directory DIR.");
-		s.println("  -i,--iface IFACE           Bind to interface IFACE.");
+		s.println("  -i,--iface IFACE           Bind to interface IFACE. (specify interface name or IP address)");
 		s.println("  -s,--seed SECONDS          Time to seed after downloading (default: infinitely).");
 		s.println("  -d,--max-download KB/SEC   Max download rate (default: unlimited).");
 		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: unlimited).");
