@@ -114,6 +114,7 @@ public class Torrent {
 	private final String comment;
 	private final String createdBy;
 	private final String name;
+    private final boolean privateTorrent;
 	private final long size;
 	protected final List<TorrentFile> files;
 
@@ -208,6 +209,7 @@ public class Torrent {
 			? this.decoded.get("created by").getString()
 			: null;
 		this.name = this.decoded_info.get("name").getString();
+        this.privateTorrent = this.decoded_info.containsKey("private") && (this.decoded_info.get("private").getInt() == 1);
 
 		this.files = new LinkedList<TorrentFile>();
 
@@ -261,6 +263,9 @@ public class Torrent {
 		if (this.createdBy != null) {
 			logger.info("  Created by..: {}", this.createdBy);
 		}
+        if (this.isPrivateTorrent()) {
+            logger.info("  Torrent is marked as private.");
+        }
 
 		if (this.isMultifile()) {
 			logger.info("  Found {} file(s) in multi-file torrent structure.",
@@ -310,7 +315,14 @@ public class Torrent {
 		return this.createdBy;
 	}
 
-	/**
+    /**
+     * Tells whether this torrent is marked as a private torrent or not
+     */
+    public boolean isPrivateTorrent() {
+        return this.privateTorrent;
+    }
+
+    /**
 	 * Get the total size of this torrent.
 	 */
 	public long getSize() {
@@ -509,7 +521,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException {
-		return Torrent.create(source, null, announce, null, createdBy);
+		return Torrent.create(source, null, announce, null, createdBy, false);
 	}
 
 	/**
@@ -531,7 +543,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(parent, files, announce, null, createdBy);
+		return Torrent.create(parent, files, announce, null, createdBy, false);
 	}
 
 	/**
@@ -551,7 +563,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(source, null, null, announceList, createdBy);
+		return Torrent.create(source, null, null, announceList, createdBy, false);
 	}
 	
 	/**
@@ -575,7 +587,7 @@ public class Torrent {
 	public static Torrent create(File source, List<File> files,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
-		return Torrent.create(source, files, null, announceList, createdBy);
+		return Torrent.create(source, files, null, announceList, createdBy, false);
 	}
 	
 	/**
@@ -596,9 +608,10 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
+     * @param privateTorrent Whether this is a private torrent or not.
 	 */
-	private static Torrent create(File parent, List<File> files, URI announce,
-			List<List<URI>> announceList, String createdBy)
+	public static Torrent create(File parent, List<File> files, URI announce,
+			List<List<URI>> announceList, String createdBy, boolean privateTorrent)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -631,6 +644,9 @@ public class Torrent {
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
 		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+        if(privateTorrent){
+            info.put("private", new BEValue(1));
+        }
 
 		if (files == null || files.isEmpty()) {
 			info.put("length", new BEValue(parent.length()));
