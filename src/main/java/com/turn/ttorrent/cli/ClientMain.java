@@ -49,13 +49,19 @@ public class ClientMain {
 	private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
 	/**
-	 * Returns a usable {@link Inet4Address} for the given interface name.
+	 * Returns a usable {@link Inet4Address} for the given interface name or
+     * interface IP address
 	 *
 	 * <p>
 	 * If an interface name is given, return the first usable IPv4 address for
 	 * that interface. If no interface name is given or if that interface
 	 * doesn't have an IPv4 address, return's localhost address (if IPv4).
 	 * </p>
+     *
+     * <p>
+     * The <code>iface</code> param can also be an IP address in which case the interface
+     * with that IP address will be selected.
+     * </p>
 	 *
 	 * <p>
 	 * It is understood this makes the client IPv4 only, but it is important to
@@ -63,7 +69,7 @@ public class ClientMain {
 	 * trackers and UDP tracker support) are IPv4-only anyway.
 	 * </p>
 	 *
-	 * @param iface The network interface name.
+	 * @param iface The network interface name or IP address
 	 * @return A usable IPv4 address as a {@link Inet4Address}.
 	 * @throws UnsupportedAddressTypeException If no IPv4 address was available
 	 * to bind on.
