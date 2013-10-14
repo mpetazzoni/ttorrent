@@ -50,7 +50,7 @@ public class ClientTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.TRACE);
+    Logger.getRootLogger().setLevel(Level.DEBUG);
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -480,6 +480,36 @@ public class ClientTest {
 
   }
 
+  public void download_uninterruptibly_timeout() throws InterruptedException, NoSuchAlgorithmException, IOException  {
+    tracker.setAcceptForeignTorrents(true);
+    Client seeder = createClient();
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+
+    seeder.start(InetAddress.getLocalHost());
+    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    final AtomicInteger piecesDownloaded = new AtomicInteger(0);
+    Client leecher = new Client(){
+      @Override
+      public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
+        piecesDownloaded.incrementAndGet();
+        try {
+          Thread.sleep(piecesDownloaded.get()*500);
+        } catch (InterruptedException e) {
+
+        }
+      }
+    };
+    clientList.add(leecher);
+    leecher.start(InetAddress.getLocalHost());
+    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
+    try {
+      leecher.downloadUninterruptibly(st, 5);
+      fail("Must fail, because file wasn't downloaded completely");
+    } catch (IOException ex){
+      assertEquals(st.getClientState(),ClientState.DONE);
+    }
+  }
 
   public void peer_dies_during_download() throws InterruptedException, NoSuchAlgorithmException, IOException {
     tracker.setAnnounceInterval(5);

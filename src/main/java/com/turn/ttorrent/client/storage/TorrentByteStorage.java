@@ -106,4 +106,10 @@ public interface TorrentByteStorage {
 	 * Tells whether this byte storage has been finalized.
 	 */
 	public boolean isFinished();
+
+  /**
+   * Indicated whether bucket is closed and safe to delete or other operations
+   * @return
+   */
+  public boolean isClosed();
 }

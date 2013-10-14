@@ -226,4 +226,14 @@ public class FileStorage implements TorrentByteStorage {
 	public boolean isFinished() {
 		return this.current.equals(this.target);
 	}
+
+  @Override
+  public boolean isClosed() {
+    try{
+      myLock.readLock().lock();
+      return !myIsOpen && (channel==null || !channel.isOpen());
+    } finally {
+      myLock.readLock().unlock();
+    }
+  }
 }

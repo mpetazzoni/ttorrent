@@ -139,6 +139,16 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		return true;
 	}
 
+  @Override
+  public boolean isClosed() {
+    for (FileStorage file : files){
+      if (!file.isClosed()){
+        return false;
+      }
+    }
+    return true;
+  }
+
 	/**
 	 * File operation details holder.
 	 *

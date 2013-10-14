@@ -97,7 +97,7 @@ public abstract class TrackerClient {
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
-      logger.info("Announcing {} to tracker with {}U/{}D/{}L bytes...",
+      logger.debug("Announcing {} to tracker with {}U/{}D/{}L bytes...",
           new Object[]{
               this.formatAnnounceEvent(event),
               torrent.getUploaded(),

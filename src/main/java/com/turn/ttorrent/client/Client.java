@@ -266,26 +266,31 @@ public class Client implements Runnable,
   }
 
   public void downloadUninterruptibly(final SharedTorrent torrent,
-                                      final long downloadTimeoutSeconds,
+                                      final long idleTimeoutSec,
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted) throws IOException, InterruptedException {
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
-    final long maxTime = System.currentTimeMillis() + downloadTimeoutSeconds * 1000;
     int seedersCount = torrent.getSeedersCount();
+    long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
+    long currentDownloaded = torrent.getDownloaded();
     while (torrent.getClientState() != ClientState.SEEDING &&
             torrent.getClientState() != ClientState.ERROR &&
         ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
-        (System.currentTimeMillis() <= maxTime)){
+            (System.currentTimeMillis() <= maxIdleTime)) {
       if (Thread.currentThread().isInterrupted() || isInterrupted.get())
         throw new InterruptedException("Download of "+torrent.getName()+" was interrupted");
+      if (currentDownloaded < torrent.getDownloaded()){
+        currentDownloaded = torrent.getDownloaded();
+        maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
+      }
       Thread.sleep(100);
     }
     if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
       removeTorrent(torrent);
       final String errorMsg;
-      if (System.currentTimeMillis() > maxTime){
-        errorMsg = String.format("Timed out (%d seconds elapsed)", downloadTimeoutSeconds);
+      if (System.currentTimeMillis() > maxIdleTime){
+        errorMsg = String.format("Timed out (%d seconds elapsed)", idleTimeoutSec);
       } else if (seedersCount < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
       } else if (torrent.getClientState() == ClientState.ERROR){
@@ -655,7 +660,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+    logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
     if (!this.service.isAlive()) {
