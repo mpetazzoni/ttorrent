@@ -15,12 +15,15 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.common.Cleanable;
+import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.slf4j.Logger;
@@ -51,7 +54,7 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharedTorrent extends Torrent implements PeerActivityListener {
+public class SharedTorrent extends Torrent implements PeerActivityListener, Cleanable {
 
   private static final Logger logger =
     LoggerFactory.getLogger(SharedTorrent.class);
@@ -103,6 +106,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private boolean multiThreadHash;
 
   private File parentFile;
+
+  private volatile long myLastClose = System.currentTimeMillis();
+
+  private static long myUnloadTimeout = 1000*86400; // keep torrents loaded for 1 day
 
   /**
    * Create a new shared torrent from a base Torrent object.
@@ -188,8 +195,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     String parentPath = parent.getCanonicalPath();
 
     try {
-      this.pieceLength = this.decoded_info.get("piece length").getInt();
-      this.piecesHashes = ByteBuffer.wrap(this.decoded_info.get("pieces")
+      final Map<String,BEValue> decodedInfo = getDecodedInfo();
+      this.pieceLength = decodedInfo.get("piece length").getInt();
+      this.piecesHashes = ByteBuffer.wrap(decodedInfo.get("pieces")
         .getBytes());
 
       if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
@@ -266,6 +274,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     logger.debug("Closing file  channel for {} if necessary. Downloaders: {}",getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     if (this.myDownloaders.size() == 0) {
       this.bucket.close();
+      myLastClose = System.currentTimeMillis();
     }
   }
 
@@ -329,6 +338,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     this.stop = true;
   }
 
+  public synchronized void unloadPieces(){
+    // do this only for completed torrents
+    if (clientState != ClientState.SEEDING || myDownloaders.size() > 0 && !bucket.isClosed()){
+      return;
+    }
+    initialized = false;
+    this.pieces = new Piece[0];
+  }
+
   /**
    * Build this torrent's pieces array.
    * <p/>
@@ -369,6 +387,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.completedPieces.cardinality(),
         this.pieces.length
       });
+
+    Client.cleanupProcessor().registerCleanable(this);
     this.initialized = true;
   }
 
@@ -940,7 +960,20 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
                                              IOException ioe) { /* Do nothing */ }
 
   @Override
-  public void handleNewPeerConnected(SharingPeer peer){
+  public synchronized void handleNewPeerConnected(SharingPeer peer){
+    if (!isInitialized()){
+      try {
+        init();
+      } catch (InterruptedException e) {
+        logger.info("Interrupted init", e);
+        peer.unbind(true);
+        return;
+      } catch (IOException e) {
+        logger.debug("IOE during init", e);
+        peer.unbind(true);
+        return;
+      }
+    }
     openFileChannelIfNecessary();
     if (clientState != ClientState.ERROR) {
       myDownloaders.add(peer);
@@ -953,4 +986,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
           Arrays.toString(getFilenames().toArray()) +
           "}";
     }
+
+  @Override
+  public void cleanUp() {
+    if ((System.currentTimeMillis() - myLastClose) > myUnloadTimeout){
+      unloadPieces();
+    }
+  }
+
+  public static void setUnloadTimeout(final int unloadTimeout){
+    myUnloadTimeout = unloadTimeout;
+  }
 }

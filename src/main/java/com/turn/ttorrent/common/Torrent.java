@@ -94,9 +94,9 @@ public class Torrent extends Observable implements TorrentInfo {
 
 
 	protected final byte[] encoded;
-	protected final byte[] encoded_info;
-	protected final Map<String, BEValue> decoded;
-	protected final Map<String, BEValue> decoded_info;
+//	protected final byte[] encoded_info;
+//	protected final Map<String, BEValue> decoded;
+//	protected final Map<String, BEValue> decoded_info;
 
 	private final byte[] info_hash;
 	private final String hex_info_hash;
@@ -128,19 +128,18 @@ public class Torrent extends Observable implements TorrentInfo {
 	 * @throws NoSuchAlgorithmException If the SHA-1 algorithm is not
 	 * available.
 	 */
-	public Torrent(byte[] torrent, boolean seeder)
+	public Torrent(final byte[] torrent, final boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
-		this.encoded = torrent;
 		this.seeder = seeder;
+    encoded = torrent;
 
-		this.decoded = BDecoder.bdecode(
-				new ByteArrayInputStream(this.encoded)).getMap();
+    final Map<String, BEValue> decoded = getDecoded();
 
-		this.decoded_info = this.decoded.get("info").getMap();
+    final Map<String, BEValue> decoded_info = decoded.get("info").getMap();
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		BEncoder.bencode(this.decoded_info, baos);
-		this.encoded_info = baos.toByteArray();
-		this.info_hash = Torrent.hash(this.encoded_info);
+		BEncoder.bencode(decoded_info, baos);
+		byte[] encoded_info = baos.toByteArray();
+		this.info_hash = Torrent.hash(encoded_info);
 		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
 
 		/**
@@ -160,8 +159,8 @@ public class Torrent extends Observable implements TorrentInfo {
 			this.trackers = new ArrayList<List<URI>>();
 			this.allTrackers = new HashSet<URI>();
 
-			if (this.decoded.containsKey("announce-list")) {
-				List<BEValue> tiers = this.decoded.get("announce-list").getList();
+			if (decoded.containsKey("announce-list")) {
+				List<BEValue> tiers = decoded.get("announce-list").getList();
 				for (BEValue tv : tiers) {
 					List<BEValue> trackers = tv.getList();
 					if (trackers.isEmpty()) {
@@ -184,8 +183,8 @@ public class Torrent extends Observable implements TorrentInfo {
 						this.trackers.add(tier);
 					}
 				}
-			} else if (this.decoded.containsKey("announce")) {
-				URI tracker = new URI(this.decoded.get("announce").getString());
+			} else if (decoded.containsKey("announce")) {
+				URI tracker = new URI(decoded.get("announce").getString());
 				this.allTrackers.add(tracker);
 
 				// Build a single-tier announce list.
@@ -197,22 +196,22 @@ public class Torrent extends Observable implements TorrentInfo {
 			throw new IOException(use);
 		}
 
-		this.creationDate = this.decoded.containsKey("creation date")
-			? new Date(this.decoded.get("creation date").getLong() * 1000)
+		this.creationDate = decoded.containsKey("creation date")
+			? new Date(decoded.get("creation date").getLong() * 1000)
 			: null;
-		this.comment = this.decoded.containsKey("comment")
-			? this.decoded.get("comment").getString()
+		this.comment = decoded.containsKey("comment")
+			? decoded.get("comment").getString()
 			: null;
-		this.createdBy = this.decoded.containsKey("created by")
-			? this.decoded.get("created by").getString()
+		this.createdBy = decoded.containsKey("created by")
+			? decoded.get("created by").getString()
 			: null;
-		this.name = this.decoded_info.get("name").getString();
+		this.name = decoded_info.get("name").getString();
 
 		this.files = new LinkedList<TorrentFile>();
 
 		// Parse multi-file torrent file information structure.
-		if (this.decoded_info.containsKey("files")) {
-			for (BEValue file : this.decoded_info.get("files").getList()) {
+		if (decoded_info.containsKey("files")) {
+			for (BEValue file : decoded_info.get("files").getList()) {
 				Map<String, BEValue> fileInfo = file.getMap();
 				StringBuilder path = new StringBuilder();
 				for (BEValue pathElement : fileInfo.get("path").getList()) {
@@ -228,7 +227,7 @@ public class Torrent extends Observable implements TorrentInfo {
 			// directly the name of the file.
 			this.files.add(new TorrentFile(
 				new File(this.name),
-				this.decoded_info.get("length").getLong()));
+				decoded_info.get("length").getLong()));
 		}
 
 		// Calculate the total size of this torrent from its files' sizes.
@@ -238,26 +237,26 @@ public class Torrent extends Observable implements TorrentInfo {
 		}
 		this.size = size;
 
-		logger.info("{}-file torrent information:",
+		logger.debug("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
-		logger.info("  Torrent name: {}", this.name);
-		logger.info("  Torrent hash: {}", this.getHexInfoHash());
-		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
+		logger.debug("  Torrent name: {}", this.name);
+		logger.debug("  Torrent hash: {}", this.getHexInfoHash());
+		logger.debug("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
 			for (int j=0; j < tier.size(); j++) {
-				logger.info("    {}{}",
+				logger.debug("    {}{}",
 					(j == 0 ? String.format("%2d. ", i+1) : "    "),
 					tier.get(j));
 			}
 		}
 
 		if (this.creationDate != null) {
-			logger.info("  Created on..: {}", this.creationDate);
+			logger.debug("  Created on..: {}", this.creationDate);
 		}
 
 		if (this.isMultifile()) {
-			logger.info("  Found {} file(s) in multi-file torrent structure.",
+			logger.debug("  Found {} file(s) in multi-file torrent structure.",
 				this.files.size());
 			int i = 0;
 			for (TorrentFile file : this.files) {
@@ -270,13 +269,13 @@ public class Torrent extends Observable implements TorrentInfo {
 			}
 		}
 
-		logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
-			(this.size / this.decoded_info.get("piece length").getInt()) + 1,
-			this.decoded_info.get("piece length").getInt());
-		logger.info("  Total size..: {} byte(s)",
+		logger.debug("  Pieces......: {} piece(s) ({} byte(s)/piece)",
+            (this.size / decoded_info.get("piece length").getInt()) + 1,
+            decoded_info.get("piece length").getInt());
+		logger.debug("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
 
-    myPieceLength = this.decoded_info.get("piece length").getInt();
+    myPieceLength = decoded_info.get("piece length").getInt();
     myPieceCount = (int) (Math.ceil(
             (double) this.getSize() / myPieceLength));
 	}
@@ -413,6 +412,20 @@ public class Torrent extends Observable implements TorrentInfo {
 		return this.encoded;
 	}
 
+  protected byte[] getEncodedInfo() throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    BEncoder.bencode(getDecodedInfo(), baos);
+    return baos.toByteArray();
+  }
+
+  protected Map<String, BEValue> getDecoded() throws IOException {
+    return BDecoder.bdecode(new ByteArrayInputStream(encoded)).getMap();
+  }
+
+  protected Map<String, BEValue> getDecodedInfo() throws IOException{
+    return getDecoded().get("info").getMap();
+  }
+
 	/**
 	 * Return the trackers for this torrent.
 	 */
@@ -507,7 +520,7 @@ public class Torrent extends Observable implements TorrentInfo {
     trackers.clear();
     trackers.add(Arrays.asList(newTracker));
     try {
-      final BEValue announce = decoded.get("announce");
+      final Map<String, BEValue> decoded = getDecoded();
       decoded.put("announce", new BEValue(newTracker.toString()));
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       BEncoder.bencode(decoded, baos);
@@ -808,7 +821,7 @@ public class Torrent extends Observable implements TorrentInfo {
 
 		long start = System.nanoTime();
 		for (File file : files) {
-      logger.info("Analyzing local data for {} with {} threads...",
+      logger.debug("Analyzing local data for {} with {} threads...",
         file.getName(), getHashingThreadsCount());
 
 			length += file.length();

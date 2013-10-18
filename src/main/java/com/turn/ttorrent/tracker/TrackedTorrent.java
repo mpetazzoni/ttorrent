@@ -26,10 +26,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -106,7 +103,6 @@ public class TrackedTorrent implements TorrentHash {
 	 * @param peer The new Peer involved with this torrent.
 	 */
 	public void addPeer(TrackedPeer peer) {
-    logger.info("Added tracker peer {}:{}", peer.getIp(), peer.getPort());
 		this.peers.put(peer.getHexPeerId(), peer);
 	}
 

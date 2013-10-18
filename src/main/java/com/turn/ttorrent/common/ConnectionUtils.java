@@ -117,6 +117,7 @@ public class ConnectionUtils {
         if (Arrays.equals(socketBytes, candidateBytes)){
           logger.info("Local address: " + inetAddress);
           selfPeerId = selfIdCandidates.get(inetAddress);
+          break;
         }
       }
       int sent = sendHandshake(channel, torrentHash.getInfoHash(), selfPeerId);
