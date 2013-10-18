@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -176,6 +177,10 @@ public class TrackerRequestProcessor {
 
   public void setAnnounceInterval(int announceInterval) {
     myAnnounceInterval = announceInterval;
+  }
+
+  public int getAnnounceInterval() {
+    return myAnnounceInterval;
   }
 
   private void writeAnnounceResponse(TrackedTorrent torrent, TrackedPeer peer, RequestHandler requestHandler) throws IOException {

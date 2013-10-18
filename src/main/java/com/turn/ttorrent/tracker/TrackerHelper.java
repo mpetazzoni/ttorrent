@@ -141,7 +141,7 @@ public class TrackerHelper {
       }
       trackerClient.announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.STOPPED, false, new SimpleTorrentInfo(torrentHash));
     } catch (Exception ex) {
-      ex.printStackTrace();
+
     }
   }
 

@@ -866,7 +866,7 @@ public class Client implements Runnable,
           this.announce.getCurrentTrackerClient(torrent)
                   .announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.COMPLETED, true, torrent);
         } catch (AnnounceException e) {
-          logger.info("unable to announce", e);
+          logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
         }
 
 /*
