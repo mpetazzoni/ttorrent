@@ -140,7 +140,7 @@ License version 2.0. See COPYING file for more details.
 Authors and contributors
 ------------------------
 
-* Maxime Petazzoni <<mpetazzoni@turn.com>> (Platform Engineer at Turn, Inc)  
+* Maxime Petazzoni <<maxime.petazzoni@bulix.org>> (Software Engineer at SignalFuse, Inc)  
   Original author, main developer and maintainer
 * David Giffin <<david@etsy.com>>  
   Contributed parallel hashing and multi-file torrent support.

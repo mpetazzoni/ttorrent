@@ -49,10 +49,10 @@
 		<developer>
 			<id>mpetazzoni</id>
 			<name>Maxime Petazzoni</name>
-			<email>mpetazzoni@turn.com</email>
+			<email>maxime.petazzoni@bulix.org</email>
 			<url>http://www.bulix.org</url>
-			<organization>Turn, Inc</organization>
-			<organizationUrl>http://www.turn.com</organizationUrl>
+			<organization>SignalFuse, Inc</organization>
+			<organizationUrl>http://www.signalfuse.com</organizationUrl>
 			<roles>
 				<role>maintainer</role>
 				<role>architect</role>
