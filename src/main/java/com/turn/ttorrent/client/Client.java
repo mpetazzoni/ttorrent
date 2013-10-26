@@ -158,6 +158,51 @@ public class Client extends Observable implements Runnable,
 	}
 
 	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param address The address to bind to.
+	 * @param torrent The torrent to download and share.
+	 * @param clientId The 12-character ASCII ID of this client.
+	 */
+	public Client(InetAddress address, SharedTorrent torrent, String clientId)
+		throws UnknownHostException, IOException {
+		this.torrent = torrent;
+		this.state = ClientState.WAITING;
+
+		if (clientId.length() != 12) { throw new IOException("Invalid client ID - must be 12 ASCII characters"); }
+		String id = Client.BITTORRENT_ID_PREFIX + clientId;
+
+		// Initialize the incoming connection handler and register ourselves to
+		// it.
+		this.service = new ConnectionHandler(this.torrent, id, address);
+		this.service.register(this);
+
+		this.self = new Peer(
+			this.service.getSocketAddress()
+				.getAddress().getHostAddress(),
+			(short)this.service.getSocketAddress().getPort(),
+			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
+
+		// Initialize the announce request thread, and register ourselves to it
+		// as well.
+		this.announce = new Announce(this.torrent, this.self);
+		this.announce.register(this);
+
+		logger.info("BitTorrent client [{}] for {} started and " +
+			"listening at {}:{}...",
+			new Object[] {
+				this.self.getShortHexPeerId(),
+				this.torrent.getName(),
+				this.self.getIp(),
+				this.self.getPort()
+			});
+
+		this.peers = new ConcurrentHashMap<String, SharingPeer>();
+		this.connected = new ConcurrentHashMap<String, SharingPeer>();
+		this.random = new Random(System.currentTimeMillis());
+	}
+
+	/**
 	 * Set the maximum download rate (in kB/second) for this
 	 * torrent. A setting of <= 0.0 disables rate limiting.
 	 *
