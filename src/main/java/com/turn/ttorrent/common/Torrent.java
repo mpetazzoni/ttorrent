@@ -75,7 +75,7 @@ public class Torrent {
 	private static final Logger logger =
 		LoggerFactory.getLogger(Torrent.class);
 
-	/** Torrent file piece length (in bytes), we use 512 kB. */
+	/** Default torrent file piece length (in bytes), we use 512 kB. */
 	private static final int PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
@@ -513,12 +513,8 @@ public class Torrent {
 	}
 	public static Torrent create(File source, URI announce, String createdBy, String comment)
 			throws InterruptedException, IOException {
-			return Torrent.create(source, null, announce, null, createdBy, comment, Torrent.PIECE_LENGTH);
-		}
-	public static Torrent create(File source, URI announce, String createdBy, String comment, int pieceLength)
-			throws InterruptedException, IOException {
-			return Torrent.create(source, null, announce, null, createdBy, comment, pieceLength);
-		}
+			return Torrent.create(source, null, announce, null, createdBy, comment);
+	}
 
 	/**
 	 * Create a {@link Torrent} object for a set of files.
@@ -589,7 +585,7 @@ public class Torrent {
 	private static Torrent create(File parent, List<File> files, URI announce,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
-		return Torrent.create(parent, files, announce, announceList, createdBy, null, Torrent.PIECE_LENGTH);
+		return Torrent.create(parent, files, announce, announceList, createdBy, null);
 	}
 	/**
 	 * Helper method to create a {@link Torrent} object for a set of files.
@@ -611,7 +607,7 @@ public class Torrent {
 	 * torrent's creator.
 	 */
 	private static Torrent create(File parent, List<File> files, URI announce,
-			List<List<URI>> announceList, String createdBy, String comment, int pieceLength)
+			List<List<URI>> announceList, String createdBy, String comment)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
