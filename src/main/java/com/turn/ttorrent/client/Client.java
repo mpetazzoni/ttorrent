@@ -140,6 +140,15 @@ public class Client implements Runnable,
       torrent.close();
     }
   }
+  public void removeAndDeleteTorrent(TorrentHash torrentHash) {
+    this.announce.removeTorrent(torrentHash);
+
+    SharedTorrent torrent = this.torrents.remove(torrentHash.getHexInfoHash());
+    if (torrent != null) {
+      torrent.setClientState(ClientState.DONE);
+      torrent.delete();
+    }
+  }
 
   public void setAnnounceInterval(final int announceInterval){
     announce.setAnnounceInterval(announceInterval);
@@ -287,7 +296,7 @@ public class Client implements Runnable,
       Thread.sleep(100);
     }
     if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
-      removeTorrent(torrent);
+      removeAndDeleteTorrent(torrent);
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime){
         errorMsg = String.format("Timed out (%d seconds elapsed)", idleTimeoutSec);

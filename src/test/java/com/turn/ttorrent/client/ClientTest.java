@@ -470,12 +470,15 @@ public class ClientTest {
     };
     clientList.add(leecher);
     leecher.start(InetAddress.getLocalHost());
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
+    final File destDir = tempFiles.createTempDir();
+    final SharedTorrent st = new SharedTorrent(torrent, destDir, true);
     try {
-      leecher.downloadUninterruptibly(st, 20);
+      leecher.downloadUninterruptibly(st, 5);
       fail("Must fail, because file wasn't downloaded completely");
     } catch (IOException ex){
       assertEquals(st.getClientState(),ClientState.DONE);
+      // ensure .part was deleted:
+      assertEquals(0, destDir.list().length);
     }
 
   }

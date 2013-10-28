@@ -149,7 +149,14 @@ public class FileCollectionStorage implements TorrentByteStorage {
     return true;
   }
 
-	/**
+  @Override
+  public void delete() throws IOException {
+    for (FileStorage file : files) {
+      file.delete();
+    }
+  }
+
+  /**
 	 * File operation details holder.
 	 *
 	 * <p>

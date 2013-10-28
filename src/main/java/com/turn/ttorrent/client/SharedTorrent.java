@@ -500,6 +500,16 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
     }
   }
 
+  public synchronized void delete() {
+    logger.trace("Closing and deleting torrent data", getName());
+    try {
+      this.bucket.delete();
+    } catch (IOException ioe) {
+      logger.error("Error deleting torrent byte storage: {}",
+        ioe.getMessage());
+    }
+  }
+
   /**
    * Retrieve a piece object by index.
    *

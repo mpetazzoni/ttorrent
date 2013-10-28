@@ -236,4 +236,10 @@ public class FileStorage implements TorrentByteStorage {
       myLock.readLock().unlock();
     }
   }
+
+  @Override
+  public void delete() throws IOException {
+    close();
+    current.delete();
+  }
 }

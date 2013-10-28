@@ -112,4 +112,9 @@ public interface TorrentByteStorage {
    * @return
    */
   public boolean isClosed();
+
+  /**
+   * Delete byte storage information
+   */
+  public void delete() throws IOException;
 }
