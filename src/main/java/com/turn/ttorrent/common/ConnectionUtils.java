@@ -176,7 +176,7 @@ public class ConnectionUtils {
 
     if (read==0){
       try {
-        Thread.sleep(50);
+        Thread.sleep(10);
       } catch (InterruptedException ie) {
         // Ignore and move along.
       }
@@ -187,12 +187,6 @@ public class ConnectionUtils {
     // Keep reading bytes until the length field has been read
     // entirely.
     if (buffer.hasRemaining()) {
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException ie) {
-        // Ignore and move along.
-      }
-
       return true;
     }
 
