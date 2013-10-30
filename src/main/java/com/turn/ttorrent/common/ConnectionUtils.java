@@ -188,7 +188,7 @@ public class ConnectionUtils {
     // entirely.
     if (buffer.hasRemaining()) {
       try {
-        Thread.sleep(1);
+        Thread.sleep(10);
       } catch (InterruptedException ie) {
         // Ignore and move along.
       }
