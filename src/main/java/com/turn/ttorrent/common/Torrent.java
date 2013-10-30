@@ -861,7 +861,7 @@ public class Torrent extends Observable implements TorrentInfo {
 		// complete.
 		executor.shutdown();
 		while (!executor.isTerminated()) {
-			Thread.sleep(10);
+			Thread.sleep(50);
 		}
 		long elapsed = System.nanoTime() - start;
 

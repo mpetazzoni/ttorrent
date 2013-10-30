@@ -220,7 +220,7 @@ public class PeerExchange {
 			try {
 				while (!stop) {
           ConnectionUtils.readAndHandleMessage(buffer, channel, stop, torrent, listeners);
-          Thread.sleep(10);
+          Thread.sleep(50);
         }
 			} catch (Exception ioe) {
               logger.debug("Exception", ioe);

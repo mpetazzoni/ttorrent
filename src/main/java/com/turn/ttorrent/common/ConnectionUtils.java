@@ -105,7 +105,7 @@ public class ConnectionUtils {
       logger.debug("Connecting to {}...", peerInfo);
       channel = SocketChannel.open(address);
       while (!channel.isConnected()) {
-        Thread.sleep(10);
+        Thread.sleep(50);
       }
 
       logger.trace("Connected. Sending handshake to {}...", peerInfo);
@@ -176,7 +176,7 @@ public class ConnectionUtils {
 
     if (read==0){
       try {
-        Thread.sleep(10);
+        Thread.sleep(50);
       } catch (InterruptedException ie) {
         // Ignore and move along.
       }
@@ -188,7 +188,7 @@ public class ConnectionUtils {
     // entirely.
     if (buffer.hasRemaining()) {
       try {
-        Thread.sleep(10);
+        Thread.sleep(50);
       } catch (InterruptedException ie) {
         // Ignore and move along.
       }
