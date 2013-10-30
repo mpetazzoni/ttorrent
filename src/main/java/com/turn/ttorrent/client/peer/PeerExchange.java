@@ -25,7 +25,6 @@ import java.lang.InterruptedException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.text.ParseException;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -74,7 +73,7 @@ public class PeerExchange {
 	private static final Logger logger =
 		LoggerFactory.getLogger(PeerExchange.class);
 
-	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
+	private static final int KEEP_ALIVE_IDLE_SECONDS = 30;
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
@@ -188,6 +187,7 @@ public class PeerExchange {
 			try {
 				this.channel.close();
 			} catch (IOException ioe) {
+        ioe.printStackTrace();
 				// Ignore
 			}
 		}
@@ -245,9 +245,8 @@ public class PeerExchange {
 	 * </p>
 	 *
 	 * <p>
-	 * If no message is available for KEEP_ALIVE_IDLE_MINUTES minutes, it will
-	 * automatically send a keep-alive message to the remote peer to keep the
-	 * connection active.
+	 * If no message is available for KEEP_ALIVE_IDLE_SECONDS seconds, it will
+	 * close the connection.
 	 * </p>
 	 *
 	 * @author mpetazzoni
@@ -263,15 +262,11 @@ public class PeerExchange {
 					try {
 						// Wait for two minutes for a message to send
 						PeerMessage message = sendQueue.poll(
-								PeerExchange.KEEP_ALIVE_IDLE_MINUTES,
-								TimeUnit.MINUTES);
+								PeerExchange.KEEP_ALIVE_IDLE_SECONDS,
+								TimeUnit.SECONDS);
 
 						if (message == null) {
-							if (stop) {
 								return;
-							}
-
-							message = PeerMessage.KeepAliveMessage.craft();
 						}
 
 						logger.trace("Sending {} to {}", message, peer);
