@@ -378,11 +378,6 @@ public class Client implements Runnable,
       }
     }
 
-    logger.debug("Stopping BitTorrent client connection service " +
-      "and announce threads...");
-    this.service.stop();
-
-
     // Close all peer connections
     logger.debug("Closing all remaining peer connections...");
     for (SharingPeer peer : this.peers) {

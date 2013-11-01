@@ -128,6 +128,7 @@ public class SingleAddressConnectionHandler implements Runnable  {
       } catch (InterruptedException ie) {
         Thread.currentThread().interrupt();
       }
+      mySelfThread = null;
     }
     try {
       myServerSocketChannel.close();
@@ -135,7 +136,6 @@ public class SingleAddressConnectionHandler implements Runnable  {
 
     }
 
-    mySelfThread = null;
   }
 
   /**
