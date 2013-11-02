@@ -103,7 +103,8 @@ public class Announce implements Runnable {
         client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
       }
     } catch (AnnounceException e) {
-      logger.warn(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
+      logger.info(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getName(), String.valueOf(trackerUrl)));
+      logger.debug(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getName(), String.valueOf(trackerUrl)), e );
     }
   }
 
@@ -230,7 +231,8 @@ public class Announce implements Runnable {
             logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
           }
         } catch (Exception e) {
-          logger.warn(e.getMessage(), e);
+          logger.info(e.getMessage());
+          logger.debug(e.getMessage(), e);
         }
       }
 
@@ -257,7 +259,8 @@ public class Announce implements Runnable {
             this.getCurrentTrackerClient(torrent).announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
         }
       } catch (AnnounceException e) {
-        logger.info("Can't announce stop", e);
+        logger.info("Can't announce stop: " + e.getMessage());
+        logger.debug("Can't announce stop", e);
         // don't try to announce all. Stop after first error, assuming tracker is already unavailable
       }
     }

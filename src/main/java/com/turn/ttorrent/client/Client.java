@@ -759,7 +759,7 @@ public class Client implements Runnable,
           this.peers.size()
         });
     } catch (Exception e) {
-      logger.warn("Could not handle new peer connection " +
+      logger.info("Could not handle new peer connection " +
         "with {}: {}", peer, e.getMessage());
     }
   }

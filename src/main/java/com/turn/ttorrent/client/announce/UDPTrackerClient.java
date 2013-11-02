@@ -340,8 +340,7 @@ public class UDPTrackerClient extends TrackerClient {
 				data.capacity(),
 				this.address));
 		} catch (IOException ioe) {
-			logger.warn("Error sending datagram packet to tracker at {}: {}.",
-				this.address, ioe.getMessage());
+			logger.info("Error sending datagram packet to tracker at {}: {}.", this.address, ioe.getMessage());
 		}
 	}
 

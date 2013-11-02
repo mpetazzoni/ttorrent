@@ -946,7 +946,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
     try {
         closeFileChannelIfNecessary();
     } catch (IOException e) {
-      logger.warn("I/O error on attempt to close file storage: " + e.toString());
+      logger.info("I/O error on attempt to close file storage: " + e.toString());
     }
 
     logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
@@ -979,7 +979,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
         peer.unbind(true);
         return;
       } catch (IOException e) {
-        logger.debug("IOE during init", e);
+        logger.info("IOE during init", e);
         peer.unbind(true);
         return;
       }

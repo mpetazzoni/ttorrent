@@ -81,7 +81,7 @@ public class TrackerServiceContainer implements Container {
               });
       body.flush();
     } catch (IOException ioe) {
-      logger.warn("Error while writing response: {}!", ioe.getMessage());
+      logger.info("Error while writing response: {}!", ioe.getMessage());
     } finally {
       if (body != null) {
         try {

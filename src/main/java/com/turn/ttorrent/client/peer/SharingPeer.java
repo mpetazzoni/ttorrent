@@ -361,7 +361,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (this.isConnected()) {
       this.exchange.send(message);
     } else {
-      logger.warn("Attempting to send a message to non-connected peer {}!", this);
+      logger.info("Attempting to send a message to non-connected peer {}!", this);
     }
   }
 
@@ -596,8 +596,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
         if (request.getLength() >
           PeerMessage.RequestMessage.MAX_REQUEST_SIZE) {
-          logger.warn("Peer {} requested a block too big, " +
-            "terminating exchange.", this);
+          logger.warn("Peer {} requested a block too big, terminating exchange.", this);
           this.unbind(true);
           break;
         }

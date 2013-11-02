@@ -147,7 +147,8 @@ public class HTTPTrackerClient extends TrackerClient {
       try {
         in.close();
       } catch (IOException ioe) {
-        logger.warn("Problem ensuring error stream closed!", ioe);
+        logger.info("Problem ensuring error stream closed!");
+        logger.debug("Problem ensuring error stream closed!", ioe);
       }
 
       // This means trying to close the error stream as well.
@@ -156,7 +157,8 @@ public class HTTPTrackerClient extends TrackerClient {
         try {
           err.close();
         } catch (IOException ioe) {
-          logger.warn("Problem ensuring error stream closed!", ioe);
+          logger.info("Problem ensuring error stream closed!");
+          logger.debug("Problem ensuring error stream closed!", ioe);
         }
       }
     }

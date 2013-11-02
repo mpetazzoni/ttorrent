@@ -72,7 +72,7 @@ public class SingleAddressConnectionHandler implements Runnable  {
         break;
       } catch (IOException ioe) {
         // Ignore, try next port
-        logger.warn("Could not bind to {}, trying next port...", tryAddress);
+        logger.info("Could not bind to {}, trying next port...", tryAddress);
       }
     }
 

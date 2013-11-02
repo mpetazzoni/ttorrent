@@ -160,6 +160,7 @@ public class ConnectionHandler implements TorrentConnectionListener{
         handler.close();
       } catch (IOException ioe) {
         logger.warn("Error while releasing bound channel: {}!", ioe.getMessage(), ioe);
+        logger.debug("Error while releasing bound channel: {}!", ioe.getMessage());
       }
     }
   }
