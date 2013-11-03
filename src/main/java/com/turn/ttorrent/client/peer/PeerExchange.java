@@ -264,8 +264,13 @@ class PeerExchange {
 	private class IncomingThread extends RateLimitThread {
 		private long read(Selector selector, ByteBuffer buffer) throws IOException {
 			long size = 0;
-			if (selector.select() == 0 || !buffer.hasRemaining()) return size;
-			Iterator it = selector.selectedKeys().iterator();
+			Set<SelectionKey> selected = selector.selectedKeys();
+			while (!stop && selected.isEmpty()) {
+				if (!buffer.hasRemaining()) return size;
+				int n = selector.select(1000L);
+				if (n > 0) selected = selector.selectedKeys();
+			}
+			Iterator it = selected.iterator();
 			while (it.hasNext()) {
 				SelectionKey key = (SelectionKey) it.next();
 				if (key.isReadable()) {
