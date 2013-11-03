@@ -25,10 +25,13 @@ import java.lang.InterruptedException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.text.ParseException;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -259,42 +262,58 @@ class PeerExchange {
 	 * @author mpetazzoni
 	 */
 	private class IncomingThread extends RateLimitThread {
+		private long read(Selector selector, ByteBuffer buffer) throws IOException {
+			long size = 0;
+			Set<SelectionKey> selected = selector.selectedKeys();
+			while (!stop && selected.isEmpty()) {
+				if (!buffer.hasRemaining()) return size;
+				int n = selector.select(1000L);
+				if (n > 0) selected = selector.selectedKeys();
+			}
+			Iterator it = selected.iterator();
+			while (it.hasNext()) {
+				SelectionKey key = (SelectionKey) it.next();
+				if (key.isReadable()) {
+					int read = ((SocketChannel) key.channel()).read(buffer);
+					size += read;
+					if (read < 0) throw new IOException("Unexpected end-of-stream while reading");
+				}
+				it.remove();
+			}
+			return size;
+		}
+
+		private void handleIOE(IOException ioe) {
+			logger.debug("Could not read message from {}: {}",
+						 peer,
+						 ioe.getMessage() != null
+						 ? ioe.getMessage()
+						 : ioe.getClass().getName());
+			peer.unbind(true);
+		}
 
 		@Override
 		public void run() {
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1*1024*1024);
+			Selector selector = null;
 
 			try {
+				selector = Selector.open();
+				channel.register(selector, SelectionKey.OP_READ);
+
 				while (!stop) {
 					buffer.rewind();
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
 
 					// Keep reading bytes until the length field has been read
 					// entirely.
-					while (!stop && buffer.hasRemaining()) {
-						if (channel.read(buffer) < 0) {
-							throw new EOFException(
-								"Reached end-of-stream while reading size header");
-						}
-						try {
-							Thread.sleep(1);
-						} catch (InterruptedException ie) {
-							// Ignore and move along.
-						}
-					}
+					while (!stop && buffer.hasRemaining()) read(selector, buffer);
 
 					int pstrlen = buffer.getInt(0);
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
 					long size = 0;
-					while (!stop && buffer.hasRemaining()) {
-						int read = channel.read(buffer);
-						size += read;
-						if (read < 0) {
-							throw new EOFException(
-								"Reached end-of-stream while reading message");
-						}
-					}
+					while (!stop && buffer.hasRemaining()) size += read(selector, buffer);
 
 					buffer.rewind();
 
@@ -303,23 +322,22 @@ class PeerExchange {
 						logger.trace("Received {} from {}", message, peer);
 
 						// Wait if needed to reach configured download rate.
-						this.rateLimit(PeerExchange.this.torrent.getMaxDownloadRate(),
-							size, message);
+						this.rateLimit(PeerExchange.this.torrent.getMaxDownloadRate(), size, message);
 
-						for (MessageListener listener : listeners) {
+						for (MessageListener listener : listeners)
 							listener.handleMessage(message);
-						}
 					} catch (ParseException pe) {
 						logger.warn("{}", pe.getMessage());
 					}
 				}
 			} catch (IOException ioe) {
-				logger.debug("Could not read message from {}: {}",
-					peer,
-					ioe.getMessage() != null
-						? ioe.getMessage()
-						: ioe.getClass().getName());
-				peer.unbind(true);
+				handleIOE(ioe);
+			} finally {
+				try {
+					if (selector != null) selector.close();
+				} catch (IOException ioe) {
+					handleIOE(ioe);
+				}
 			}
 		}
 	}
