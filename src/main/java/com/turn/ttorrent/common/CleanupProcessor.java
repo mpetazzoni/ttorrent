@@ -16,7 +16,6 @@
 
 package com.turn.ttorrent.common;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -52,5 +51,15 @@ public class CleanupProcessor implements  Runnable{
 
   public void unregisterCleanable(final Cleanable cleanable){
     myCleanables.remove(cleanable);
+  }
+
+  public void iterateCleanables(CleanableAction act){
+    for (Cleanable cleanable : myCleanables) {
+      act.action(cleanable);
+    }
+  }
+
+  public static interface CleanableAction {
+    public void action(Cleanable cleanable);
   }
 }

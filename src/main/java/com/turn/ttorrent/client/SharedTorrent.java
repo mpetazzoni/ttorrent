@@ -23,7 +23,6 @@ import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.common.Cleanable;
-import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.slf4j.Logger;
@@ -492,6 +491,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
 
   public synchronized void close() {
     logger.trace("Closing torrent", getName());
+    Client.cleanupProcessor().unregisterCleanable(this);
     try {
       this.bucket.close();
     } catch (IOException ioe) {
@@ -503,6 +503,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
   public synchronized void delete() {
     logger.trace("Closing and deleting torrent data", getName());
     try {
+      close();
       this.bucket.delete();
     } catch (IOException ioe) {
       logger.error("Error deleting torrent byte storage: {}",

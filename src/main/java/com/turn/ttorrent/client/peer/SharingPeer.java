@@ -27,10 +27,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
@@ -123,7 +121,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
     this.reset();
-    Client.cleanupProcessor().registerCleanable(this);
   }
 
   /**
@@ -277,7 +274,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param channel The connected socket channel for this peer.
    */
   public synchronized void bind(SocketChannel channel) throws SocketException {
-//    this.unbind(true);
+    Client.cleanupProcessor().registerCleanable(this);
     firePeerConnected();
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel);
@@ -321,6 +318,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (isStopped)
       return;
     isStopped = true;
+    Client.cleanupProcessor().unregisterCleanable(this);
     if (!force) {
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
@@ -343,7 +341,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     this.firePeerDisconnected();
     reset();
-    Client.cleanupProcessor().unregisterCleanable(this);
   }
 
   /**
@@ -854,6 +851,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     for (PeerMessage.RequestMessage request : myRequests) {
       if (System.currentTimeMillis() - request.getSendTime() > MAX_REQUEST_TIMEOUT){
         send(request);
+        request.renew();
       }
     }
   }

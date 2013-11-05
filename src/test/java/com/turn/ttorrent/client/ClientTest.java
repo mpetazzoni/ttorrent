@@ -3,6 +3,8 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.Cleanable;
+import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
@@ -605,6 +607,67 @@ public class ClientTest {
     assertTrue(interrupted.get());
   }
 
+  public void test_cleanables_removed() throws InterruptedException, NoSuchAlgorithmException, IOException {
+    final Client seeder = createAndStartClient();
+    final Client leech1 = createAndStartClient();
+    final Client leech2 = createAndStartClient();
+
+    final File seederFolder = tempFiles.createTempDir();
+    final File leech1Folder = tempFiles.createTempDir();
+    final File leech2Folder = tempFiles.createTempDir();
+    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    for (int i=0; i< 15; i++){
+      final File tempFile = tempFiles.createTempFile(524289);
+      final File seedFile = new File(seederFolder, tempFile.getName());
+      tempFile.renameTo(seedFile);
+      final Torrent torrent = Torrent.create(seedFile, tracker.getAnnounceURI(), "hello");
+      seeder.addTorrent(new SharedTorrent(torrent, seederFolder, true, true));
+
+      leech1.downloadUninterruptibly(new SharedTorrent(torrent, leech1Folder, true), 5);
+      leech2.downloadUninterruptibly(new SharedTorrent(torrent, leech2Folder, true), 5);
+      executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+
+          }
+          seeder.removeAndDeleteTorrent(torrent);
+          leech1.removeTorrent(torrent);
+          leech2.removeTorrent(torrent);
+        }
+      });
+    }
+    new WaitFor(30*1000){
+      @Override
+      protected boolean condition() {
+        final Map<Class, AtomicInteger> cleanablesCount = new HashMap<Class, AtomicInteger>(){{
+          put(SharingPeer.class, new AtomicInteger(0));
+          put(SharedTorrent.class, new AtomicInteger(0));
+        }};
+        Client.cleanupProcessor().iterateCleanables(new CleanupProcessor.CleanableAction() {
+          @Override
+          public void action(Cleanable cleanable) {
+            cleanablesCount.get(cleanable.getClass()).incrementAndGet();
+          }
+        });
+        return (cleanablesCount.get(SharedTorrent.class).get() == 0 ) && (cleanablesCount.get(SharingPeer.class).get() < 5);
+      }
+    };
+    final Map<Class, AtomicInteger> cleanablesCount = new HashMap<Class, AtomicInteger>();
+    cleanablesCount.put(SharingPeer.class, new AtomicInteger(0));
+    cleanablesCount.put(SharedTorrent.class, new AtomicInteger(0));
+    Client.cleanupProcessor().iterateCleanables(new CleanupProcessor.CleanableAction() {
+      @Override
+      public void action(Cleanable cleanable) {
+        cleanablesCount.get(cleanable.getClass()).incrementAndGet();
+      }
+    });
+    assertTrue(cleanablesCount.get(SharingPeer.class).get() < 5);
+    assertTrue(cleanablesCount.get(SharedTorrent.class).get() == 0);
+  }
+
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final File tempDir = tempFiles.createTempDir();
     leech.addTorrent(new SharedTorrent(torrent, tempDir, false));
@@ -743,6 +806,11 @@ public class ClientTest {
     this.tracker.start(true);
   }
 
+  private Client createAndStartClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    Client client = createClient();
+    client.start(InetAddress.getLocalHost());
+    return client;
+  }
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
     final Client client = new Client();
     clientList.add(client);
