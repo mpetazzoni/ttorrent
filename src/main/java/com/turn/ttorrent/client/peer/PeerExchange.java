@@ -165,7 +165,9 @@ public class PeerExchange {
 	 */
 	public void send(PeerMessage message) {
 		try {
-			this.sendQueue.put(message);
+      if (!sendQueue.contains(message)) {
+			  this.sendQueue.put(message);
+      }
 		} catch (InterruptedException ie) {
 			// Ignore, our send queue will only block if it contains
 			// MAX_INTEGER messages, in which case we're already in big
@@ -223,16 +225,14 @@ public class PeerExchange {
           Thread.sleep(10);
         }
 			} catch (Exception ioe) {
-              logger.debug("Exception", ioe);
-              peer.unbind(true);
-
-              logger.debug("Could not read message from {}: {}",
-					peer,
-					ioe.getMessage() != null
-						? ioe.getMessage()
-						: ioe.getClass().getName());
-			}
-		}
+        logger.debug("Could not read message from {}: {}", peer,
+                ioe.getMessage() != null
+                        ? ioe.getMessage()
+                        : ioe.getClass().getName());
+      } finally {
+        peer.unbind(true);
+      }
+    }
 	}
 
 
