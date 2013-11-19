@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -47,7 +49,9 @@ import org.apache.commons.io.input.AutoCloseInputStream;
  */
 public class BDecoder {
 
-	// The InputStream to BDecode.
+  protected static final Logger logger = LoggerFactory.getLogger(BDecoder.class);
+
+  // The InputStream to BDecode.
 	private final InputStream in;
 
 	// The last indicator read.
@@ -308,6 +312,7 @@ public class BDecoder {
 	 * returned byte[] will be reused when this method is called again.
 	 */
 	private byte[] read(int length) throws IOException {
+    try {
 		byte[] result = new byte[length];
 
 		int read = 0;
@@ -319,6 +324,10 @@ public class BDecoder {
 			read += i;
 		}
 
-		return result;
+		  return result;
+    } catch (OutOfMemoryError err){
+      logger.error("OOME while reading or allocating " + length + " bytes.", err);
+      throw err;
+    }
 	}
 }

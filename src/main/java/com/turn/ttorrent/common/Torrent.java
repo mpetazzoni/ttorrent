@@ -563,6 +563,7 @@ public class Torrent extends Observable implements TorrentInfo {
 	 */
   public static Torrent load(File torrent, boolean seeder)
 		throws IOException, NoSuchAlgorithmException {
+    try {
 		FileInputStream fis = null;
 		try {
 			fis = new FileInputStream(torrent);
@@ -574,6 +575,10 @@ public class Torrent extends Observable implements TorrentInfo {
 				fis.close();
 			}
 		}
+    } catch (OutOfMemoryError err){
+      logger.error(String.format("An error while reading torrent file %s. Seeder: %s", torrent.getAbsolutePath(), seeder), err);
+      throw err;
+    }
 	}
 
 	/** Torrent creation --------------------------------------------------- */
