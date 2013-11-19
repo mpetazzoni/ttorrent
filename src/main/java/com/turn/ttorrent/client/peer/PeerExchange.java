@@ -217,7 +217,7 @@ public class PeerExchange {
 
 		@Override
 		public void run() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(2*1024*1024);
+			ByteBuffer buffer = ByteBuffer.allocate(2*1024*1024);
 
 			try {
 				while (!stop) {

@@ -216,7 +216,7 @@ public abstract class PeerMessage {
 		}
 
 		public static KeepAliveMessage craft() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + KeepAliveMessage.BASE_SIZE);
 			buffer.putInt(KeepAliveMessage.BASE_SIZE);
 			return new KeepAliveMessage(buffer);
@@ -243,7 +243,7 @@ public abstract class PeerMessage {
 		}
 
 		public static ChokeMessage craft() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + ChokeMessage.BASE_SIZE);
 			buffer.putInt(ChokeMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.CHOKE.getTypeByte());
@@ -271,7 +271,7 @@ public abstract class PeerMessage {
 		}
 
 		public static UnchokeMessage craft() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + UnchokeMessage.BASE_SIZE);
 			buffer.putInt(UnchokeMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.UNCHOKE.getTypeByte());
@@ -299,7 +299,7 @@ public abstract class PeerMessage {
 		}
 
 		public static InterestedMessage craft() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + InterestedMessage.BASE_SIZE);
 			buffer.putInt(InterestedMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.INTERESTED.getTypeByte());
@@ -327,7 +327,7 @@ public abstract class PeerMessage {
 		}
 
 		public static NotInterestedMessage craft() {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + NotInterestedMessage.BASE_SIZE);
 			buffer.putInt(NotInterestedMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.NOT_INTERESTED.getTypeByte());
@@ -372,7 +372,7 @@ public abstract class PeerMessage {
 		}
 
 		public static HaveMessage craft(int piece) {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + HaveMessage.BASE_SIZE);
 			buffer.putInt(HaveMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.HAVE.getTypeByte());
@@ -437,7 +437,7 @@ public abstract class PeerMessage {
 				bitfield[i/8] |= 1 << (7 -(i % 8));
 			}
 
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + BitfieldMessage.BASE_SIZE + bitfield.length);
 			buffer.putInt(BitfieldMessage.BASE_SIZE + bitfield.length);
 			buffer.put(PeerMessage.Type.BITFIELD.getTypeByte());
@@ -521,7 +521,7 @@ public abstract class PeerMessage {
 		}
 
 		public static RequestMessage craft(int piece, int offset, int length) {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + RequestMessage.BASE_SIZE);
 			buffer.putInt(RequestMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.REQUEST.getTypeByte());
@@ -593,7 +593,7 @@ public abstract class PeerMessage {
 
 		public static PieceMessage craft(int piece, int offset,
 				ByteBuffer block) {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + PieceMessage.BASE_SIZE + block.capacity());
 			buffer.putInt(PieceMessage.BASE_SIZE + block.capacity());
 			buffer.put(PeerMessage.Type.PIECE.getTypeByte());
@@ -664,7 +664,7 @@ public abstract class PeerMessage {
 		}
 
 		public static CancelMessage craft(int piece, int offset, int length) {
-			ByteBuffer buffer = ByteBuffer.allocateDirect(
+			ByteBuffer buffer = ByteBuffer.allocate(
 				MESSAGE_LENGTH_FIELD_SIZE + CancelMessage.BASE_SIZE);
 			buffer.putInt(CancelMessage.BASE_SIZE);
 			buffer.put(PeerMessage.Type.CANCEL.getTypeByte());
