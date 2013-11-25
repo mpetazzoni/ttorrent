@@ -851,12 +851,15 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   @Override
   public void cleanUp() {
+    // temporary ignore until I figure out how to handle this in more robust way.
+/*
     for (PeerMessage.RequestMessage request : myRequests) {
       if (System.currentTimeMillis() - request.getSendTime() > MAX_REQUEST_TIMEOUT){
         send(request);
         request.renew();
       }
     }
+*/
   }
 
   /**
