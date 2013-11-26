@@ -147,7 +147,7 @@ Authors and contributors
 * Thomas Zink <<thomas.zink@uni-konstanz.de>>  
   Fixed a piece length computation issue when the total torrent size is an
   exact multiple of the piece size.
-* Johan Parent <<parent_johan@yahoo.com>>  
+* Johan Parent <<parent\_johan@yahoo.com>>  
   Fixed a bug in unfresh peer collection and issues on download completion on
   Windows platforms.
 * Dmitriy Dumanskiy  
