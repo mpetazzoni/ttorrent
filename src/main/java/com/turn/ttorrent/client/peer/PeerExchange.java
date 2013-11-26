@@ -262,28 +262,44 @@ class PeerExchange {
 	 * @author mpetazzoni
 	 */
 	private class IncomingThread extends RateLimitThread {
+
+		/**
+		 * Read data from the incoming channel of the socket using a {@link
+		 * Selector}.
+		 *
+		 * @param selector The socket selector into which the peer socket has
+		 *	been inserted.
+		 * @param buffer A {@link ByteBuffer} to put the read data into.
+		 * @return The number of bytes read.
+		 */
 		private long read(Selector selector, ByteBuffer buffer) throws IOException {
+			if (selector.select() == 0 || !buffer.hasRemaining()) {
+				return 0;
+			}
+
 			long size = 0;
-			if (selector.select() == 0 || !buffer.hasRemaining()) return size;
 			Iterator it = selector.selectedKeys().iterator();
 			while (it.hasNext()) {
 				SelectionKey key = (SelectionKey) it.next();
 				if (key.isReadable()) {
 					int read = ((SocketChannel) key.channel()).read(buffer);
+					if (read < 0) {
+						throw new IOException("Unexpected end-of-stream while reading");
+					}
 					size += read;
-					if (read < 0) throw new IOException("Unexpected end-of-stream while reading");
 				}
 				it.remove();
 			}
+
 			return size;
 		}
 
 		private void handleIOE(IOException ioe) {
 			logger.debug("Could not read message from {}: {}",
-						 peer,
-						 ioe.getMessage() != null
-						 ? ioe.getMessage()
-						 : ioe.getClass().getName());
+				peer,
+				ioe.getMessage() != null
+					? ioe.getMessage()
+					: ioe.getClass().getName());
 			peer.unbind(true);
 		}
 
@@ -302,13 +318,18 @@ class PeerExchange {
 
 					// Keep reading bytes until the length field has been read
 					// entirely.
-					while (!stop && buffer.hasRemaining()) read(selector, buffer);
+					while (!stop && buffer.hasRemaining()) {
+						this.read(selector, buffer);
+					}
 
+					// Reset the buffer limit to the expected message size.
 					int pstrlen = buffer.getInt(0);
 					buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + pstrlen);
 
 					long size = 0;
-					while (!stop && buffer.hasRemaining()) size += read(selector, buffer);
+					while (!stop && buffer.hasRemaining()) {
+						size += this.read(selector, buffer);
+					}
 
 					buffer.rewind();
 
@@ -317,7 +338,9 @@ class PeerExchange {
 						logger.trace("Received {} from {}", message, peer);
 
 						// Wait if needed to reach configured download rate.
-						this.rateLimit(PeerExchange.this.torrent.getMaxDownloadRate(), size, message);
+						this.rateLimit(
+							PeerExchange.this.torrent.getMaxDownloadRate(),
+							size, message);
 
 						for (MessageListener listener : listeners)
 							listener.handleMessage(message);
@@ -326,12 +349,14 @@ class PeerExchange {
 					}
 				}
 			} catch (IOException ioe) {
-				handleIOE(ioe);
+				this.handleIOE(ioe);
 			} finally {
 				try {
-					if (selector != null) selector.close();
+					if (selector != null) {
+						selector.close();
+					}
 				} catch (IOException ioe) {
-					handleIOE(ioe);
+					this.handleIOE(ioe);
 				}
 			}
 		}
