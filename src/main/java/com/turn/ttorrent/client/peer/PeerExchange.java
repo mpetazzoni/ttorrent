@@ -102,7 +102,7 @@ public class PeerExchange {
 		this.channel = channel;
 
 		this.listeners = new HashSet<MessageListener>();
-		this.sendQueue = new LinkedBlockingQueue<PeerMessage>();
+		this.sendQueue = new LinkedBlockingQueue<PeerMessage>(110); // do not allow more than 110 entries
 
 		if (!this.peer.hasPeerId()) {
 			throw new IllegalStateException("Peer does not have a " +
@@ -165,7 +165,7 @@ public class PeerExchange {
 	 */
 	public void send(PeerMessage message) {
 		try {
-      if (!sendQueue.contains(message)) {
+      if (!stop && !sendQueue.contains(message)) {
 			  this.sendQueue.put(message);
       }
 		} catch (InterruptedException ie) {
@@ -184,7 +184,7 @@ public class PeerExchange {
 	 */
 	public void close() {
 		this.stop = true;
-
+    sendQueue.clear();
 		if (this.channel.isConnected()) {
 			try {
 				this.channel.close();
