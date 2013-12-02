@@ -275,7 +275,7 @@ public class PeerExchange {
 							}
 						}
 					} catch (InterruptedException ie) {
-						// Ignore and potentially terminate
+            stop = true;
             break;
 					}
 				}

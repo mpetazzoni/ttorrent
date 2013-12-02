@@ -252,6 +252,7 @@ public class Announce implements Runnable {
         Thread.sleep(500);
       } catch (InterruptedException ie) {
         // Ignore
+        return;
       }
 
       try {

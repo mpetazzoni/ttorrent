@@ -178,7 +178,7 @@ public class ConnectionUtils {
       try {
         Thread.sleep(10);
       } catch (InterruptedException ie) {
-        // Ignore and move along.
+        throw new IOException("Interrupt", ie);
       }
 
       return true;
