@@ -102,7 +102,7 @@ public class PeerExchange {
 		this.channel = channel;
 
 		this.listeners = new HashSet<MessageListener>();
-		this.sendQueue = new LinkedBlockingQueue<PeerMessage>(110); // do not allow more than 110 entries
+		this.sendQueue = new LinkedBlockingQueue<PeerMessage>(150); // do not allow more than 110 entries
 
 		if (!this.peer.hasPeerId()) {
 			throw new IllegalStateException("Peer does not have a " +
@@ -164,16 +164,12 @@ public class PeerExchange {
 	 * @param message The message object to send.
 	 */
 	public void send(PeerMessage message) {
-		try {
-      if (!stop && !sendQueue.contains(message)) {
-			  this.sendQueue.put(message);
+    if (!stop && !sendQueue.contains(message)) {
+      if (!sendQueue.offer(message)){
+        throw new RuntimeException("Send queue overloaded. Throwing an exception...");
       }
-		} catch (InterruptedException ie) {
-			// Ignore, our send queue will only block if it contains
-			// MAX_INTEGER messages, in which case we're already in big
-			// trouble, and we'd have to be interrupted, too.
-		}
-	}
+    }
+  }
 
 	/**
 	 * Close and stop the peer exchange.
