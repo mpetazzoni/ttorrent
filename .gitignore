@@ -3,6 +3,7 @@
 
 # Ignore build output
 /build/*
+/release.properties
 
 # Ignore Javadoc output
 /doc/*
