@@ -17,14 +17,14 @@
 	<url>http://mpetazzoni.github.io/ttorrent/</url>
 	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
-	<version>1.4</version>
+	<version>1.5-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<scm>
 		<connection>scm:git:git://github.com/mpetazzoni/ttorrent.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/mpetazzoni/ttorrent.git</developerConnection>
 		<url>http://github.com/mpetazzoni/ttorrent</url>
-		<tag>ttorrent-1.4</tag>
+		<tag>master</tag>
 	</scm>
 
 	<licenses>
