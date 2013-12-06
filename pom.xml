@@ -1,12 +1,11 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
 		<version>7</version>
-		<relativePath/>
+		<relativePath />
 	</parent>
 
 	<name>Java BitTorrent library</name>
@@ -18,14 +17,14 @@
 	<url>http://mpetazzoni.github.io/ttorrent/</url>
 	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
-	<version>1.4-SNAPSHOT</version>
+	<version>1.4</version>
 	<packaging>jar</packaging>
 
 	<scm>
 		<connection>scm:git:git://github.com/mpetazzoni/ttorrent.git</connection>
 		<developerConnection>scm:git:ssh://git@github.com/mpetazzoni/ttorrent.git</developerConnection>
 		<url>http://github.com/mpetazzoni/ttorrent</url>
-		<tag>master</tag>
+		<tag>ttorrent-1.4</tag>
 	</scm>
 
 	<licenses>
