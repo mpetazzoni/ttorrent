@@ -67,6 +67,22 @@ usage message on the console when invoked with the ``-h`` command-line flag.
 
 ### As a library
 
+To use ``ttorrent`` is a library in your project, all you need is to
+declare the dependency on the latest version of ``ttorrent``. For
+example, if you use Maven, add the following in your POM's dependencies
+section:
+
+```xml
+  <dependencies>
+    ...
+    <dependency>
+      <groupId>com.turn</groupId>
+      <artifactId>ttorrent</groupId>
+      <version>1.4</version>
+    </dependency>
+  </dependencies>
+```
+
 *Thanks to Anatoli Vladev for the code examples in #16.*
 
 #### Client code
