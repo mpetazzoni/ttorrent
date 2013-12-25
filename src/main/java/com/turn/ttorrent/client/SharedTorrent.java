@@ -141,7 +141,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
 		throws FileNotFoundException, IOException {
-		this(torrent.getEncoded(), destDir, seeder);
+		this(null, torrent.getEncoded(), destDir, seeder);
 	}
 
 	/**
@@ -156,7 +156,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File destDir)
 		throws FileNotFoundException, IOException {
-		this(torrent, destDir, false);
+		this(null, torrent, destDir, false);
 	}
 
 	/**
@@ -170,15 +170,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException If the torrent file cannot be read or decoded.
 	 */
-	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
+	public SharedTorrent(TorrentByteStorage bucket, byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException {
 		super(torrent, seeder);
-
-		if (parent == null || !parent.isDirectory()) {
-			throw new IllegalArgumentException("Invalid parent directory!");
-		}
-
-		String parentPath = parent.getCanonicalPath();
 
 		try {
 			this.pieceLength = this.decoded_info.get("piece length").getInt();
@@ -195,21 +189,32 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					"Error reading torrent meta-info fields!");
 		}
 
-		List<FileStorage> files = new LinkedList<FileStorage>();
-		long offset = 0L;
-		for (Torrent.TorrentFile file : this.files) {
-			File actual = new File(parent, file.file.getPath());
+        if (bucket == null) {
+            if (parent == null || !parent.isDirectory()) {
+                throw new IllegalArgumentException("Invalid parent directory!");
+            }
 
-			if (!actual.getCanonicalPath().startsWith(parentPath)) {
-				throw new SecurityException("Torrent file path attempted " +
-					"to break directory jail!");
-			}
+            String parentPath = parent.getCanonicalPath();
 
-			actual.getParentFile().mkdirs();
-			files.add(new FileStorage(actual, offset, file.size));
-			offset += file.size;
-		}
-		this.bucket = new FileCollectionStorage(files, this.getSize());
+            List<FileStorage> files = new LinkedList<FileStorage>();
+            long offset = 0L;
+            for (Torrent.TorrentFile file : this.files) {
+                File actual = new File(parent, file.file.getPath());
+
+                if (!actual.getCanonicalPath().startsWith(parentPath)) {
+                    throw new SecurityException("Torrent file path attempted " +
+                        "to break directory jail!");
+                }
+
+                actual.getParentFile().mkdirs();
+                files.add(new FileStorage(actual, offset, file.size));
+                offset += file.size;
+            }
+            this.bucket = new FileCollectionStorage(files, this.getSize());
+        }
+        else {
+            this.bucket = bucket;
+        }
 
 		this.random = new Random(System.currentTimeMillis());
 		this.stop = false;
