@@ -15,15 +15,17 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
 
+import java.util.concurrent.CountDownLatch;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,9 +161,9 @@ public class Piece implements Comparable<Piece> {
 		this.valid = false;
 
 		ByteBuffer buffer = this._read(0, this.length);
-		byte[] data = new byte[(int)this.length];
-		buffer.get(data);
-		this.valid = Arrays.equals(Torrent.hash(data), this.hash);
+		MessageDigest digest = DigestUtils.getSha1Digest();
+		digest.update(buffer);
+		this.valid = Arrays.equals(digest.digest(), this.hash);
 
 		return this.isValid();
 	}
@@ -193,9 +195,8 @@ public class Piece implements Comparable<Piece> {
 		// TODO: remove cast to int when large ByteBuffer support is
 		// implemented in Java.
 		ByteBuffer buffer = ByteBuffer.allocate((int)length);
-		int bytes = this.bucket.read(buffer, this.offset + offset);
-		buffer.rewind();
-		buffer.limit(bytes >= 0 ? bytes : 0);
+		this.bucket.read(buffer, this.offset + offset);
+		buffer.flip();
 		return buffer;
 	}
 
@@ -221,7 +222,7 @@ public class Piece implements Comparable<Piece> {
 	 */
 	public ByteBuffer read(long offset, int length)
 		throws IllegalArgumentException, IllegalStateException, IOException {
-		if (!this.valid) {
+		if (!isValid()) {
 			throw new IllegalStateException("Attempting to read an " +
 					"known-to-be invalid piece!");
 		}
@@ -263,6 +264,7 @@ public class Piece implements Comparable<Piece> {
 	/**
 	 * Return a human-readable representation of this piece.
 	 */
+    @Override
 	public String toString() {
 		return String.format("piece#%4d%s",
 			this.index,
@@ -275,6 +277,7 @@ public class Piece implements Comparable<Piece> {
 	 *
 	 * @param other The piece to compare with, should not be <em>null</em>.
 	 */
+    @Override
 	public int compareTo(Piece other) {
 		if (this.seen != other.seen) {
 			return this.seen < other.seen ? -1 : 1;
@@ -296,18 +299,25 @@ public class Piece implements Comparable<Piece> {
 	 *
 	 * @author mpetazzoni
 	 */
-	public static class CallableHasher implements Callable<Piece> {
+	public static class Validator implements Runnable {
 
 		private final Piece piece;
+		private final CountDownLatch latch;
 
-		public CallableHasher(Piece piece) {
+		public Validator(Piece piece, CountDownLatch latch) {
 			this.piece = piece;
+			this.latch = latch;
 		}
 
 		@Override
-		public Piece call() throws IOException {
-			this.piece.validate();
-			return this.piece;
+		public void run() {
+			try {
+				this.piece.validate();
+			} catch (Exception e) {
+				logger.error("Failed validation of " + this, e);
+			} finally {
+				latch.countDown();
+			}
 		}
 	}
 }

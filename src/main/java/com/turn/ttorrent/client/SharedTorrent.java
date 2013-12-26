@@ -18,12 +18,12 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
+import com.turn.ttorrent.common.TorrentCreator;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,11 +37,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -331,7 +329,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
 
-		int threads = getHashingThreadsCount();
 		int nPieces = (int) (Math.ceil(
 				(double)this.getSize() / this.pieceLength));
 		int step = 10;
@@ -340,53 +337,47 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.completedPieces = new BitSet(nPieces);
 		this.piecesHashes.clear();
 
-		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		List<Future<Piece>> results = new LinkedList<Future<Piece>>();
+		ThreadPoolExecutor executor = TorrentCreator.newExecutor();
+		CountDownLatch latch = new CountDownLatch(nPieces);
 
 		try {
-			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
-				new Object[] { this.getName(), threads, nPieces });
-			for (int idx=0; idx<nPieces; idx++) {
+			logger.info("Analyzing local data for {} ({} pieces)...",
+				new Object[] { this.getName(), nPieces });
+			for (int piece = 0; piece < nPieces; piece++) {
 				byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 				this.piecesHashes.get(hash);
 
 				// The last piece may be shorter than the torrent's global piece
 				// length. Let's make sure we get the right piece length in any
 				// situation.
-				long off = ((long)idx) * this.pieceLength;
+				long off = ((long)piece) * this.pieceLength;
 				long len = Math.min(
 					this.bucket.size() - off,
 					this.pieceLength);
 
-				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
+				this.pieces[piece] = new Piece(this.bucket, piece, off, len, hash,
 					this.isSeeder());
 
-				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
-				results.add(executor.submit(hasher));
+				executor.execute(new Piece.Validator(this.pieces[piece], latch));
 
-				if (results.size() >= threads) {
-					this.validatePieces(results);
-				}
-
-				if (idx / (float)nPieces * 100f > step) {
+				if (piece / (float)nPieces * 100f > step) {
 					logger.info("  ... {}% complete", step);
 					step += 10;
 				}
 			}
 
-			this.validatePieces(results);
+			latch.await();
+
+			for (Piece piece : pieces) {
+				if (piece.isValid()) {
+					this.completedPieces.set(piece.getIndex());
+					this.left -= piece.size();
+				}
+			}
 		} finally {
 			// Request orderly executor shutdown and wait for hashing tasks to
 			// complete.
 			executor.shutdown();
-			while (!executor.isTerminated()) {
-				if (this.stop) {
-					throw new InterruptedException("Torrent data analysis " +
-						"interrupted.");
-				}
-
-				Thread.sleep(10);
-			}
 		}
 
 		logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
@@ -399,28 +390,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.pieces.length
 			});
 		this.initialized = true;
-	}
-
-	/**
-	 * Process the pieces enqueued for hash validation so far.
-	 *
-	 * @param results The list of {@link Future}s of pieces to process.
-	 */
-	private void validatePieces(List<Future<Piece>> results)
-			throws IOException {
-		try {
-			for (Future<Piece> task : results) {
-				Piece piece = task.get();
-				if (this.pieces[piece.getIndex()].isValid()) {
-					this.completedPieces.set(piece.getIndex());
-					this.left -= piece.size();
-				}
-			}
-
-			results.clear();
-		} catch (Exception e) {
-			throw new IOException("Error while hashing a torrent piece!", e);
-		}
 	}
 
 
