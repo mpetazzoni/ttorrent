@@ -76,7 +76,7 @@ public class Torrent {
 		LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int PIECE_LENGTH = 512 * 1024;
+	public static final int PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
 
@@ -509,7 +509,10 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException {
-		return Torrent.create(source, null, announce, null, createdBy);
+        TorrentCreator creator = new TorrentCreator(source);
+        creator.setAnnounce(announce);
+        creator.setCreatedBy(createdBy);
+        return creator.create();
 	}
 
 	/**
@@ -531,7 +534,11 @@ public class Torrent {
 	 */
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(parent, files, announce, null, createdBy);
+        TorrentCreator creator = new TorrentCreator(parent);
+        creator.setFiles(files);
+        creator.setAnnounce(announce);
+        creator.setCreatedBy(createdBy);
+        return creator.create();
 	}
 
 	/**
@@ -551,7 +558,10 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(source, null, null, announceList, createdBy);
+        TorrentCreator creator = new TorrentCreator(source);
+        creator.setAnnounce(announceList);
+        creator.setCreatedBy(createdBy);
+        return creator.create();
 	}
 	
 	/**
@@ -575,243 +585,10 @@ public class Torrent {
 	public static Torrent create(File source, List<File> files,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
-		return Torrent.create(source, files, null, announceList, createdBy);
-	}
-	
-	/**
-	 * Helper method to create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param parent The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	private static Torrent create(File parent, List<File> files, URI announce,
-			List<List<URI>> announceList, String createdBy)
-			throws InterruptedException, IOException {
-		if (files == null || files.isEmpty()) {
-			logger.info("Creating single-file torrent for {}...",
-				parent.getName());
-		} else {
-			logger.info("Creating {}-file torrent {}...",
-				files.size(), parent.getName());
-		}
-
-		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-
-		if (announce != null) {
-			torrent.put("announce", new BEValue(announce.toString()));
-		}
-		if (announceList != null) {
-			List<BEValue> tiers = new LinkedList<BEValue>();
-			for (List<URI> trackers : announceList) {
-				List<BEValue> tierInfo = new LinkedList<BEValue>();
-				for (URI trackerURI : trackers) {
-					tierInfo.add(new BEValue(trackerURI.toString()));
-				}
-				tiers.add(new BEValue(tierInfo));
-			}
-			torrent.put("announce-list", new BEValue(tiers));
-		}
-		
-		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
-		torrent.put("created by", new BEValue(createdBy));
-
-		Map<String, BEValue> info = new TreeMap<String, BEValue>();
-		info.put("name", new BEValue(parent.getName()));
-		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
-
-		if (files == null || files.isEmpty()) {
-			info.put("length", new BEValue(parent.length()));
-			info.put("pieces", new BEValue(Torrent.hashFile(parent),
-				Torrent.BYTE_ENCODING));
-		} else {
-			List<BEValue> fileInfo = new LinkedList<BEValue>();
-			for (File file : files) {
-				Map<String, BEValue> fileMap = new HashMap<String, BEValue>();
-				fileMap.put("length", new BEValue(file.length()));
-
-				LinkedList<BEValue> filePath = new LinkedList<BEValue>();
-				while (file != null) {
-					if (file.equals(parent)) {
-						break;
-					}
-
-					filePath.addFirst(new BEValue(file.getName()));
-					file = file.getParentFile();
-				}
-
-				fileMap.put("path", new BEValue(filePath));
-				fileInfo.add(new BEValue(fileMap));
-			}
-			info.put("files", new BEValue(fileInfo));
-			info.put("pieces", new BEValue(Torrent.hashFiles(files),
-				Torrent.BYTE_ENCODING));
-		}
-		torrent.put("info", new BEValue(info));
-
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		BEncoder.bencode(new BEValue(torrent), baos);
-		return new Torrent(baos.toByteArray(), true);
-	}
-
-	/**
-	 * A {@link Callable} to hash a data chunk.
-	 *
-	 * @author mpetazzoni
-	 */
-	private static class CallableChunkHasher implements Callable<String> {
-
-		private final MessageDigest md;
-		private final ByteBuffer data;
-
-		CallableChunkHasher(ByteBuffer buffer) {
-			this.md = DigestUtils.getSha1Digest();
-
-			this.data = ByteBuffer.allocate(buffer.remaining());
-			buffer.mark();
-			this.data.put(buffer);
-			this.data.clear();
-			buffer.reset();
-		}
-
-		@Override
-		public String call() throws UnsupportedEncodingException {
-			this.md.reset();
-			this.md.update(this.data.array());
-			return new String(md.digest(), Torrent.BYTE_ENCODING);
-		}
-	}
-
-	/**
-	 * Return the concatenation of the SHA-1 hashes of a file's pieces.
-	 *
-	 * <p>
-	 * Hashes the given file piece by piece using the default Torrent piece
-	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
-	 * these hashes, as a string.
-	 * </p>
-	 *
-	 * <p>
-	 * This is used for creating Torrent meta-info structures from a file.
-	 * </p>
-	 *
-	 * @param file The file to hash.
-	 */
-	private static String hashFile(File file)
-		throws InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }));
-	}
-
-	private static String hashFiles(List<File> files)
-		throws InterruptedException, IOException {
-		int threads = getHashingThreadsCount();
-		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
-		List<Future<String>> results = new LinkedList<Future<String>>();
-		StringBuilder hashes = new StringBuilder();
-
-		long length = 0L;
-		int pieces = 0;
-
-		long start = System.nanoTime();
-		for (File file : files) {
-			logger.info("Hashing data from {} with {} threads ({} pieces)...",
-				new Object[] {
-					file.getName(),
-					threads,
-					(int) (Math.ceil(
-						(double)file.length() / Torrent.PIECE_LENGTH))
-				});
-
-			length += file.length();
-
-			FileInputStream fis = new FileInputStream(file);
-			FileChannel channel = fis.getChannel();
-			int step = 10;
-
-			try {
-				while (channel.read(buffer) > 0) {
-					if (buffer.remaining() == 0) {
-						buffer.clear();
-						results.add(executor.submit(new CallableChunkHasher(buffer)));
-					}
-
-					if (results.size() >= threads) {
-						pieces += accumulateHashes(hashes, results);
-					}
-
-					if (channel.position() / (double)channel.size() * 100f > step) {
-						logger.info("  ... {}% complete", step);
-						step += 10;
-					}
-				}
-			} finally {
-				channel.close();
-				fis.close();
-			}
-		}
-
-		// Hash the last bit, if any
-		if (buffer.position() > 0) {
-			buffer.limit(buffer.position());
-			buffer.position(0);
-			results.add(executor.submit(new CallableChunkHasher(buffer)));
-		}
-
-		pieces += accumulateHashes(hashes, results);
-
-		// Request orderly executor shutdown and wait for hashing tasks to
-		// complete.
-		executor.shutdown();
-		while (!executor.isTerminated()) {
-			Thread.sleep(10);
-		}
-		long elapsed = System.nanoTime() - start;
-
-		int expectedPieces = (int) (Math.ceil(
-				(double)length / Torrent.PIECE_LENGTH));
-		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
-			new Object[] {
-				files.size(),
-				length,
-				pieces,
-				expectedPieces,
-				String.format("%.1f", elapsed/1e6),
-			});
-
-		return hashes.toString();
-	}
-
-	/**
-	 * Accumulate the piece hashes into a given {@link StringBuilder}.
-	 *
-	 * @param hashes The {@link StringBuilder} to append hashes to.
-	 * @param results The list of {@link Future}s that will yield the piece
-	 *	hashes.
-	 */
-	private static int accumulateHashes(StringBuilder hashes,
-			List<Future<String>> results) throws InterruptedException, IOException {
-		try {
-			int pieces = results.size();
-			for (Future<String> chunk : results) {
-				hashes.append(chunk.get());
-			}
-			results.clear();
-			return pieces;
-		} catch (ExecutionException ee) {
-			throw new IOException("Error while hashing the torrent data!", ee);
-		}
+        TorrentCreator creator = new TorrentCreator(source);
+        creator.setFiles(files);
+        creator.setAnnounce(announceList);
+        creator.setCreatedBy(createdBy);
+        return creator.create();
 	}
 }
