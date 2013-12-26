@@ -258,7 +258,7 @@ public class TorrentCreator {
         public void run() {
             try {
                 MessageDigest digest = TorrentCreator.this.digest.get();
-                digest.update(this.data.array());
+                digest.update(this.data);
                 System.arraycopy(digest.digest(), 0, out, piece * Torrent.PIECE_HASH_SIZE, Torrent.PIECE_HASH_SIZE);
             } finally {
                 latch.countDown();
@@ -281,7 +281,7 @@ public class TorrentCreator {
      *
      * @param file The file to hash.
      */
-    private byte[] hashFiles(List<File> files, long nbytes)
+    public /* for testing */ byte[] hashFiles(List<File> files, long nbytes)
             throws InterruptedException, IOException {
         int npieces = (int) Math.ceil((double) nbytes / Torrent.PIECE_LENGTH);
         byte[] out = new byte[Torrent.PIECE_HASH_SIZE * npieces];
