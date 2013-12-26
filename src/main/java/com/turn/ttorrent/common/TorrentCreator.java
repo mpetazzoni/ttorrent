@@ -236,18 +236,18 @@ public class TorrentCreator {
     }
 
     /**
-     * A {@link Callable} to hash a data chunk.
+     * A {@link Runnable} to hash a data chunk.
      *
      * @author mpetazzoni
      */
-    private class CallableChunkHasher implements Runnable {
+    private class ChunkHasher implements Runnable {
 
         private final byte[] out;
         private final int piece;
         private final CountDownLatch latch;
         private final ByteBuffer data;
 
-        CallableChunkHasher(byte[] out, int piece, CountDownLatch latch, ByteBuffer data) {
+        ChunkHasher(byte[] out, int piece, CountDownLatch latch, ByteBuffer data) {
             this.out = out;
             this.piece = piece;
             this.latch = latch;
@@ -305,7 +305,7 @@ public class TorrentCreator {
                 while (channel.read(buffer) > 0) {
                     if (buffer.remaining() == 0) {
                         buffer.flip();
-                        executor.execute(new CallableChunkHasher(out, piece, latch, buffer));
+                        executor.execute(new ChunkHasher(out, piece, latch, buffer));
                         buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
                         piece++;
                     }
@@ -324,7 +324,7 @@ public class TorrentCreator {
         // Hash the last bit, if any
         if (buffer.position() > 0) {
             buffer.flip();
-            executor.execute(new CallableChunkHasher(out, piece, latch, buffer));
+            executor.execute(new ChunkHasher(out, piece, latch, buffer));
             piece++;
         }
 
