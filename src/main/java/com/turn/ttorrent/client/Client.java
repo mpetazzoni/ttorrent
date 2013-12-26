@@ -320,98 +320,92 @@ public class Client extends Observable implements Runnable,
 	public void run() {
 		// First, analyze the torrent's local data.
 		try {
-			this.setState(ClientState.VALIDATING);
-			this.torrent.init();
-		} catch (IOException ioe) {
-			logger.warn("Error while initializing torrent data: {}!",
-				ioe.getMessage(), ioe);
-		} catch (InterruptedException ie) {
-			logger.warn("Client was interrupted during initialization. " +
-					"Aborting right away.");
-		} finally {
-			if (!this.torrent.isInitialized()) {
-				try {
-					this.service.close();
-				} catch (IOException ioe) {
-					logger.warn("Error while releasing bound channel: {}!",
-						ioe.getMessage(), ioe);
-				}
-
+			try {
+				this.setState(ClientState.VALIDATING);
+				this.torrent.init();
+			} catch (IOException ioe) {
+				logger.warn("Error while initializing torrent data: {}!",
+					ioe.getMessage(), ioe);
 				this.setState(ClientState.ERROR);
-				this.torrent.close();
+				return;
+			} catch (InterruptedException ie) {
+				logger.warn("Client was interrupted during initialization. " +
+						"Aborting right away.");
+				this.setState(ClientState.ERROR);
 				return;
 			}
-		}
 
-		// Initial completion test
-		if (this.torrent.isComplete()) {
-			this.seed();
-		} else {
-			this.setState(ClientState.SHARING);
-		}
+			// Initial completion test
+			if (this.torrent.isComplete()) {
+				this.seed();
+			} else {
+				this.setState(ClientState.SHARING);
+			}
 
-		// Detect early stop
-		if (this.stop) {
-			logger.info("Download is complete and no seeding was requested.");
-			this.finish();
-			return;
-		}
+			// Detect early stop
+			if (this.stop) {
+				logger.info("Download is complete and no seeding was requested.");
+				this.finish();
+				return;
+			}
 
-		this.announce.start();
-		this.service.start();
+			this.announce.start();
+			this.service.start();
 
-		int optimisticIterations = 0;
-		int rateComputationIterations = 0;
+			int optimisticIterations = 0;
+			int rateComputationIterations = 0;
 
-		while (!this.stop) {
-			optimisticIterations =
-				(optimisticIterations == 0 ?
-				 Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
-				 optimisticIterations - 1);
+			while (!this.stop) {
+				optimisticIterations =
+					(optimisticIterations == 0 ?
+					 Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
+					 optimisticIterations - 1);
 
-			rateComputationIterations =
-				(rateComputationIterations == 0 ?
-				 Client.RATE_COMPUTATION_ITERATIONS :
-				 rateComputationIterations - 1);
+				rateComputationIterations =
+					(rateComputationIterations == 0 ?
+					 Client.RATE_COMPUTATION_ITERATIONS :
+					 rateComputationIterations - 1);
 
-			try {
-				this.unchokePeers(optimisticIterations == 0);
-				this.info();
-				if (rateComputationIterations == 0) {
-					this.resetPeerRates();
+				try {
+					this.unchokePeers(optimisticIterations == 0);
+					this.info();
+					if (rateComputationIterations == 0) {
+						this.resetPeerRates();
+					}
+				} catch (Exception e) {
+					logger.error("An exception occurred during the BitTorrent " +
+							"client main loop execution!", e);
 				}
-			} catch (Exception e) {
-				logger.error("An exception occurred during the BitTorrent " +
-						"client main loop execution!", e);
+
+				try {
+					Thread.sleep(Client.UNCHOKING_FREQUENCY*1000);
+				} catch (InterruptedException ie) {
+					logger.trace("BitTorrent main loop interrupted.");
+				}
 			}
 
+		} finally {
+			logger.debug("Stopping BitTorrent client connection service " +
+					"and announce threads...");
+
+			this.service.stop();
 			try {
-				Thread.sleep(Client.UNCHOKING_FREQUENCY*1000);
-			} catch (InterruptedException ie) {
-				logger.trace("BitTorrent main loop interrupted.");
+				this.service.close();
+			} catch (IOException ioe) {
+				logger.warn("Error while releasing bound channel: {}!",
+					ioe.getMessage(), ioe);
 			}
+
+			this.announce.stop();
+
+			// Close all peer connections
+			logger.debug("Closing all remaining peer connections...");
+			for (SharingPeer peer : this.connected.values()) {
+				peer.unbind(true);
+			}
+
+			this.finish();
 		}
-
-		logger.debug("Stopping BitTorrent client connection service " +
-				"and announce threads...");
-
-		this.service.stop();
-		try {
-			this.service.close();
-		} catch (IOException ioe) {
-			logger.warn("Error while releasing bound channel: {}!",
-				ioe.getMessage(), ioe);
-		}
-
-		this.announce.stop();
-
-		// Close all peer connections
-		logger.debug("Closing all remaining peer connections...");
-		for (SharingPeer peer : this.connected.values()) {
-			peer.unbind(true);
-		}
-
-		this.finish();
 	}
 
 	/**
