@@ -24,8 +24,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Tracked torrents are torrent for which we don't expect to have data files
@@ -53,20 +52,15 @@ import org.slf4j.LoggerFactory;
 public class TrackedTorrent extends Torrent {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(TrackedTorrent.class);
-
+			LoggerFactory.getLogger(TrackedTorrent.class);
 	/** Minimum announce interval requested from peers, in seconds. */
 	public static final int MIN_ANNOUNCE_INTERVAL_SECONDS = 5;
-
 	/** Default number of peers included in a tracker response. */
 	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
-
 	/** Default announce interval requested from peers, in seconds. */
 	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 10;
-
 	private int answerPeers;
 	private int announceInterval;
-
 	/** Peers currently exchanging on this torrent. */
 	private ConcurrentMap<String, TrackedPeer> peers;
 
@@ -159,8 +153,9 @@ public class TrackedTorrent extends Torrent {
 	 * </p>
 	 */
 	public void collectUnfreshPeers() {
+		long now = System.currentTimeMillis();
 		for (TrackedPeer peer : this.peers.values()) {
-			if (!peer.isFresh()) {
+			if (!peer.isFresh(now)) {
 				this.peers.remove(peer.getHexPeerId());
 			}
 		}
@@ -206,8 +201,8 @@ public class TrackedTorrent extends Torrent {
 	 * @return The peer that sent us the announce request.
 	 */
 	public TrackedPeer update(RequestEvent event, ByteBuffer peerId,
-		String hexPeerId, String ip, int port, long uploaded, long downloaded,
-		long left) throws UnsupportedEncodingException {
+			String hexPeerId, String ip, int port, long uploaded, long downloaded,
+			long left) throws UnsupportedEncodingException {
 		TrackedPeer peer;
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 
@@ -241,42 +236,34 @@ public class TrackedTorrent extends Torrent {
 	 * @return A list of peers we can include in an announce response.
 	 */
 	public List<Peer> getSomePeers(TrackedPeer peer) {
-		List<Peer> peers = new LinkedList<Peer>();
+		List<Peer> peers = new ArrayList<Peer>(this.answerPeers);
 
 		// Extract answerPeers random peers
 		List<TrackedPeer> candidates =
-			new LinkedList<TrackedPeer>(this.peers.values());
+				new ArrayList<TrackedPeer>(this.peers.values());
 		Collections.shuffle(candidates);
 
-		int count = 0;
+		long now = System.currentTimeMillis();
 		for (TrackedPeer candidate : candidates) {
 			// Collect unfresh peers, and obviously don't serve them as well.
-			if (!candidate.isFresh() ||
-				(candidate.looksLike(peer) && !candidate.equals(peer))) {
-				logger.debug("Collecting stale peer {}...", candidate);
+			if (!candidate.isFresh(now)) {
+				logger.debug("Collecting stale peer {}...", candidate.getHexPeerId());
 				this.peers.remove(candidate.getHexPeerId());
 				continue;
 			}
 
 			// Don't include the requesting peer in the answer.
 			if (peer.looksLike(candidate)) {
+				if (!peer.equals(candidate)) {
+					logger.debug("Collecting superceded peer {}...", candidate.getHexPeerId());
+					this.peers.remove(candidate.getHexPeerId());
+				}
 				continue;
-			}
-
-			// Collect unfresh peers, and obviously don't serve them as well.
-			if (!candidate.isFresh()) {
-				logger.debug("Collecting stale peer {}...",
-					candidate.getHexPeerId());
-				this.peers.remove(candidate.getHexPeerId());
-				continue;
-			}
-
-			// Only serve at most ANSWER_NUM_PEERS peers
-			if (count++ > this.answerPeers) {
-				break;
 			}
 
 			peers.add(candidate);
+			if (peers.size() >= this.answerPeers)
+				break;
 		}
 
 		return peers;
