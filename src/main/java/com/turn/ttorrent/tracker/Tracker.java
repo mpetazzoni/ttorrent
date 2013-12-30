@@ -23,11 +23,11 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collection;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 import org.slf4j.Logger;
@@ -47,27 +47,21 @@ import org.slf4j.LoggerFactory;
 public class Tracker {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(Tracker.class);
-
+			LoggerFactory.getLogger(Tracker.class);
 	/** Request path handled by the tracker announce request handler. */
 	public static final String ANNOUNCE_URL = "/announce";
-
 	/** Default tracker listening port (BitTorrent's default is 6969). */
 	public static final int DEFAULT_TRACKER_PORT = 6969;
-
 	/** Default server name and version announced by the tracker. */
 	public static final String DEFAULT_VERSION_STRING =
-		"BitTorrent Tracker (ttorrent)";
-
-	private final Connection connection;
+			"BitTorrent Tracker (ttorrent)";
+	private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
 	private final InetSocketAddress address;
-
+	private final String version;
 	/** The in-memory repository of torrents tracked. */
-	private final ConcurrentMap<String, TrackedTorrent> torrents;
-
-	private Thread tracker;
-	private Thread collector;
-	private boolean stop;
+	private final ConcurrentMap<String, TrackedTorrent> torrents = new ConcurrentHashMap<String, TrackedTorrent>();
+	private Connection connection;
+	private ScheduledExecutorService scheduler;
 
 	/**
 	 * Create a new BitTorrent tracker listening at the given address on the
@@ -79,7 +73,7 @@ public class Tracker {
 	 */
 	public Tracker(InetAddress address) throws IOException {
 		this(new InetSocketAddress(address, DEFAULT_TRACKER_PORT),
-			DEFAULT_VERSION_STRING);
+				DEFAULT_VERSION_STRING);
 	}
 
 	/**
@@ -102,12 +96,9 @@ public class Tracker {
 	 * cannot be initialized.
 	 */
 	public Tracker(InetSocketAddress address, String version)
-		throws IOException {
+			throws IOException {
 		this.address = address;
-
-		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
-		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
+		this.version = version;
 	}
 
 	/**
@@ -120,9 +111,9 @@ public class Tracker {
 	public URL getAnnounceUrl() {
 		try {
 			return new URL("http",
-				this.address.getAddress().getCanonicalHostName(),
-				this.address.getPort(),
-				Tracker.ANNOUNCE_URL);
+					this.address.getAddress().getCanonicalHostName(),
+					this.address.getPort(),
+					Tracker.ANNOUNCE_URL);
 		} catch (MalformedURLException mue) {
 			logger.error("Could not build tracker URL: {}!", mue, mue);
 		}
@@ -133,17 +124,25 @@ public class Tracker {
 	/**
 	 * Start the tracker thread.
 	 */
-	public void start() {
-		if (this.tracker == null || !this.tracker.isAlive()) {
-			this.tracker = new TrackerThread();
-			this.tracker.setName("tracker:" + this.address.getPort());
-			this.tracker.start();
+	public void start() throws IOException {
+		URL announceUrl = getAnnounceUrl();
+		logger.info("Starting BitTorrent tracker on {}...", announceUrl);
+
+		if (this.connection == null) {
+			// Creates a thread via: SocketConnection
+			// -> ListenerManager -> Listener
+			// -> DirectReactor -> ActionDistributor -> Daemon
+			this.connection = new SocketConnection(
+					new TrackerService(version, this.torrents));
+			this.connection.connect(address);
 		}
 
-		if (this.collector == null || !this.collector.isAlive()) {
-			this.collector = new PeerCollectorThread();
-			this.collector.setName("peer-collector:" + this.address.getPort());
-			this.collector.start();
+		if (this.scheduler == null || this.scheduler.isShutdown()) {
+			this.scheduler = new ScheduledThreadPoolExecutor(1);
+			this.scheduler.scheduleWithFixedDelay(new PeerCollector(),
+					PEER_COLLECTION_FREQUENCY_SECONDS,
+					PEER_COLLECTION_FREQUENCY_SECONDS,
+					TimeUnit.SECONDS);
 		}
 	}
 
@@ -155,26 +154,24 @@ public class Tracker {
 	 * the service, and interrupts the peer collector thread as well.
 	 * </p>
 	 */
-	public void stop() {
-		this.stop = true;
-
-		try {
+	public void stop() throws IOException {
+		if (this.connection != null) {
 			this.connection.close();
-			logger.info("BitTorrent tracker closed.");
-		} catch (IOException ioe) {
-			logger.error("Could not stop the tracker: {}!", ioe.getMessage());
+			this.connection = null;
 		}
 
-		if (this.collector != null && this.collector.isAlive()) {
-			this.collector.interrupt();
-			logger.info("Peer collection terminated.");
+		if (this.scheduler != null) {
+			this.scheduler.shutdownNow();
+			this.scheduler = null;
 		}
+
+		logger.info("BitTorrent tracker closed.");
 	}
 
 	/**
 	 * Returns the list of tracker's torrents
 	 */
-	public Collection<TrackedTorrent> getTrackedTorrents() {
+	public Collection<? extends TrackedTorrent> getTrackedTorrents() {
 		return torrents.values();
 	}
 
@@ -197,14 +194,14 @@ public class Tracker {
 		TrackedTorrent existing = this.torrents.get(torrent.getHexInfoHash());
 
 		if (existing != null) {
-			logger.warn("Tracker already announced torrent for '{}' " +
-				"with hash {}.", existing.getName(), existing.getHexInfoHash());
+			logger.warn("Tracker already announced torrent for '{}' "
+					+ "with hash {}.", existing.getName(), existing.getHexInfoHash());
 			return existing;
 		}
 
 		this.torrents.put(torrent.getHexInfoHash(), torrent);
 		logger.info("Registered new torrent for '{}' with hash {}.",
-			torrent.getName(), torrent.getHexInfoHash());
+				torrent.getName(), torrent.getHexInfoHash());
 		return torrent;
 	}
 
@@ -232,87 +229,44 @@ public class Tracker {
 			return;
 		}
 
-		new Timer().schedule(new TorrentRemoveTimer(this, torrent), delay);
+		scheduler.schedule(new TorrentRemover(torrent), delay, TimeUnit.SECONDS);
 	}
 
 	/**
-	 * Timer task for removing a torrent from a tracker.
+	 * Runnable for removing a torrent from a tracker.
 	 *
 	 * <p>
-	 * This task can be used to stop announcing a torrent after a certain delay
-	 * through a Timer.
+	 * This task can be used to stop announcing a torrent after a certain delay.
 	 * </p>
 	 */
-	private static class TorrentRemoveTimer extends TimerTask {
+	private class TorrentRemover implements Runnable {
 
-		private Tracker tracker;
-		private Torrent torrent;
+		private final Torrent torrent;
 
-		TorrentRemoveTimer(Tracker tracker, Torrent torrent) {
-			this.tracker = tracker;
+		TorrentRemover(Torrent torrent) {
 			this.torrent = torrent;
 		}
 
 		@Override
 		public void run() {
-			this.tracker.remove(torrent);
+			remove(torrent);
 		}
 	}
 
 	/**
-	 * The main tracker thread.
+	 * The unfresh peer collector.
 	 *
 	 * <p>
-	 * The core of the BitTorrent tracker run by the controller is the
-	 * SimpleFramework HTTP service listening on the configured address. It can
-	 * be stopped with the <em>stop()</em> method, which closes the listening
-	 * socket.
-	 * </p>
-	 */
-	private class TrackerThread extends Thread {
-
-		@Override
-		public void run() {
-			logger.info("Starting BitTorrent tracker on {}...",
-				getAnnounceUrl());
-
-			try {
-				connection.connect(address);
-			} catch (IOException ioe) {
-				logger.error("Could not start the tracker: {}!", ioe.getMessage());
-				Tracker.this.stop();
-			}
-		}
-	}
-
-	/**
-	 * The unfresh peer collector thread.
-	 *
-	 * <p>
-	 * Every PEER_COLLECTION_FREQUENCY_SECONDS, this thread will collect
+	 * Every PEER_COLLECTION_FREQUENCY_SECONDS, this runnable will collect
 	 * unfresh peers from all announced torrents.
 	 * </p>
 	 */
-	private class PeerCollectorThread extends Thread {
-
-		private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
+	private class PeerCollector implements Runnable {
 
 		@Override
 		public void run() {
-			logger.info("Starting tracker peer collection for tracker at {}...",
-				getAnnounceUrl());
-
-			while (!stop) {
-				for (TrackedTorrent torrent : torrents.values()) {
-					torrent.collectUnfreshPeers();
-				}
-
-				try {
-					Thread.sleep(PeerCollectorThread
-							.PEER_COLLECTION_FREQUENCY_SECONDS * 1000);
-				} catch (InterruptedException ie) {
-					// Ignore
-				}
+			for (TrackedTorrent torrent : torrents.values()) {
+				torrent.collectUnfreshPeers();
 			}
 		}
 	}
