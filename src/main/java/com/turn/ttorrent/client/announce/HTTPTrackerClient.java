@@ -29,6 +29,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import org.slf4j.Logger;
@@ -101,22 +102,25 @@ public class HTTPTrackerClient extends TrackerClient {
 				ioe.getMessage() + ")", ioe);
 		}
 
-		HttpURLConnection conn = null;
-		InputStream in = null;
+		// The tracker may return valid BEncoded data even if the status code
+		// was not a 2xx code. On the other hand, it may return garbage.
+		HttpURLConnection conn;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
-			in = conn.getInputStream();
 		} catch (IOException ioe) {
-			if (conn != null) {
-				in = conn.getErrorStream();
-			}
+			throw new AnnounceException("Failed to connect to " + target, ioe);
 		}
 
-		// At this point if the input stream is null it means we have neither a
-		// response body nor an error stream from the server. No point in going
-		// any further.
-		if (in == null) {
-			throw new AnnounceException("No response or unreachable tracker for " + target);
+		InputStream in;
+		try {
+			in = conn.getInputStream();
+		} catch (IOException e) {
+			// At this point if the input stream is null it means we have neither a
+			// response body nor an error stream from the server. No point in going
+			// any further.
+			in = conn.getErrorStream();
+			if (in == null)
+				throw new AnnounceException("Failed to read data from " + target, e);
 		}
 
 		try {
@@ -133,23 +137,8 @@ public class HTTPTrackerClient extends TrackerClient {
 			throw new AnnounceException("Tracker message violates expected " +
 				"protocol (" + mve.getMessage() + ")", mve);
 		} finally {
-			// Make sure we close everything down at the end to avoid resource
-			// leaks.
-			try {
-				in.close();
-			} catch (IOException ioe) {
-				logger.warn("Problem ensuring error stream closed!", ioe);
-			}
-
-			// This means trying to close the error stream as well.
-			InputStream err = conn.getErrorStream();
-			if (err != null) {
-				try {
-					err.close();
-				} catch (IOException ioe) {
-					logger.warn("Problem ensuring error stream closed!", ioe);
-				}
-			}
+			IOUtils.closeQuietly(in);
+			conn.disconnect();
 		}
 	}
 
