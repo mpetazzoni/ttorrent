@@ -90,7 +90,9 @@ public class TrackedPeer extends Peer {
 	};
 
 	private PeerState state;
-	private Date lastAnnounce;
+	private long lastAnnounce = System.currentTimeMillis();
+	// We need a happen-before relationship for multiple threads.
+	private final Object lock = new Object();
 
 	/**
 	 * Instantiate a new tracked peer for the given torrent.
@@ -107,7 +109,6 @@ public class TrackedPeer extends Peer {
 
 		// Instantiated peers start in the UNKNOWN state.
 		this.state = PeerState.UNKNOWN;
-		this.lastAnnounce = null;
 
 		this.uploaded = 0;
 		this.downloaded = 0;
@@ -142,11 +143,13 @@ public class TrackedPeer extends Peer {
 				});
 		}
 
-		this.state = state;
-		this.lastAnnounce = new Date();
-		this.uploaded = uploaded;
-		this.downloaded = downloaded;
-		this.left = left;
+		synchronized (lock) {
+			this.state = state;
+			this.lastAnnounce = System.currentTimeMillis();
+			this.uploaded = uploaded;
+			this.downloaded = downloaded;
+			this.left = left;
+		}
 	}
 
 	/**
@@ -187,10 +190,11 @@ public class TrackedPeer extends Peer {
 	 * Tracker.
 	 * </p>
 	 */
-	public boolean isFresh() {
-		return (this.lastAnnounce != null &&
-				(this.lastAnnounce.getTime() + (FRESH_TIME_SECONDS * 1000) >
-				 new Date().getTime()));
+	public boolean isFresh(long now) {
+		synchronized (lock) {
+			return (this.lastAnnounce > 0 &&
+					(this.lastAnnounce + (FRESH_TIME_SECONDS * 1000) > now));
+		}
 	}
 
 	/**
