@@ -116,7 +116,7 @@ public class HTTPTrackerClient extends TrackerClient {
 		// response body nor an error stream from the server. No point in going
 		// any further.
 		if (in == null) {
-			throw new AnnounceException("No response or unreachable tracker!");
+			throw new AnnounceException("No response or unreachable tracker for " + target);
 		}
 
 		try {
