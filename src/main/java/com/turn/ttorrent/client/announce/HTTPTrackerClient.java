@@ -1,11 +1,11 @@
-/**
- * Copyright (C) 2012 Turn, Inc.
+/*
+ * Copyright 2014 shevek.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,158 +15,192 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.bcodec.StreamBDecoder;
+import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
-import com.turn.ttorrent.common.protocol.http.*;
-
+import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPTrackerErrorMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
-import java.nio.ByteBuffer;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-
+import java.net.URISyntaxException;
+import java.util.Map;
+import javax.annotation.CheckForNull;
+import javax.annotation.CheckForSigned;
+import javax.annotation.Nonnull;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Announcer for HTTP trackers.
  *
- * @author mpetazzoni
- * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Tracker_Request_Parameters">BitTorrent tracker request specification</a>
+ * @author shevek
  */
 public class HTTPTrackerClient extends TrackerClient {
 
-	protected static final Logger logger =
-		LoggerFactory.getLogger(HTTPTrackerClient.class);
+    protected static final Logger logger =
+            LoggerFactory.getLogger(HTTPTrackerClient.class);
+    private CloseableHttpAsyncClient httpclient;
 
-	/**
-	 * Create a new HTTP announcer for the given torrent.
-	 *
-	 * @param torrent The torrent we're announcing about.
-	 * @param peer Our own peer specification.
-	 */
-	protected HTTPTrackerClient(SharedTorrent torrent, Peer peer,
-		URI tracker) {
-		super(torrent, peer, tracker);
-	}
+    public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Peer peer) {
+        super(environment, peer);
+    }
 
-	/**
-	 * Build, send and process a tracker announce request.
-	 *
-	 * <p>
-	 * This function first builds an announce request for the specified event
-	 * with all the required parameters. Then, the request is made to the
-	 * tracker and the response analyzed.
-	 * </p>
-	 *
-	 * <p>
-	 * All registered {@link AnnounceResponseListener} objects are then fired
-	 * with the decoded payload.
-	 * </p>
-	 *
-	 * @param event The announce event type (can be AnnounceEvent.NONE for
-	 * periodic updates).
-	 * @param inhibitEvents Prevent event listeners from being notified.
-	 */
-	@Override
-	public void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvents) throws AnnounceException {
-		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
-			new Object[] {
-				this.formatAnnounceEvent(event),
-				this.torrent.getUploaded(),
-				this.torrent.getDownloaded(),
-				this.torrent.getLeft()
-			});
+    @Override
+    public void start() throws Exception {
+        super.start();
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setSocketTimeout(3000)
+                .setConnectTimeout(3000)
+                .build();
+        httpclient = HttpAsyncClients.custom()
+                .setDefaultRequestConfig(requestConfig)
+                .build();
+        httpclient.start();
+    }
 
-		URL target = null;
-		try {
-			HTTPAnnounceRequestMessage request =
-				this.buildAnnounceRequest(event);
-			target = request.buildAnnounceURL(this.tracker.toURL());
-		} catch (MalformedURLException mue) {
-			throw new AnnounceException("Invalid announce URL (" +
-				mue.getMessage() + ")", mue);
-		} catch (MessageValidationException mve) {
-			throw new AnnounceException("Announce request creation violated " +
-				"expected protocol (" + mve.getMessage() + ")", mve);
-		} catch (IOException ioe) {
-			throw new AnnounceException("Error building announce request (" +
-				ioe.getMessage() + ")", ioe);
-		}
+    @Override
+    public void stop() throws Exception {
+        httpclient.close();
+        httpclient = null;
+        super.stop();
+    }
 
-		// The tracker may return valid BEncoded data even if the status code
-		// was not a 2xx code. On the other hand, it may return garbage.
-		HttpURLConnection conn;
-		try {
-			conn = (HttpURLConnection)target.openConnection();
-		} catch (IOException ioe) {
-			throw new AnnounceException("Failed to connect to " + target, ioe);
-		}
+    private class HttpResponseCallback implements FutureCallback<HttpResponse> {
 
-		InputStream in;
-		try {
-			in = conn.getInputStream();
-		} catch (IOException e) {
-			// At this point if the input stream is null it means we have neither a
-			// response body nor an error stream from the server. No point in going
-			// any further.
-			in = conn.getErrorStream();
-			if (in == null)
-				throw new AnnounceException("Failed to read data from " + target, e);
-		}
+        private final AnnounceResponseListener listener;
+        private final HttpUriRequest request;
+        private final URI tracker;
 
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			baos.write(in);
+        public HttpResponseCallback(AnnounceResponseListener listener, HttpUriRequest request, URI tracker) {
+            this.listener = listener;
+            this.request = request;
+            this.tracker = tracker;
+        }
 
-			// Parse and handle the response
-			HTTPTrackerMessage message =
-				HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
-			this.handleTrackerAnnounceResponse(message, inhibitEvents);
-		} catch (IOException ioe) {
-			throw new AnnounceException("Error reading tracker response!", ioe);
-		} catch (MessageValidationException mve) {
-			throw new AnnounceException("Tracker message violates expected " +
-				"protocol (" + mve.getMessage() + ")", mve);
-		} finally {
-			IOUtils.closeQuietly(in);
-			conn.disconnect();
-		}
-	}
+        @Override
+        public void completed(final HttpResponse response) {
+            System.out.println(request.getRequestLine() + "->" + response.getStatusLine());
+            try {
+                HTTPTrackerMessage message = toMessage(response, -1);
+                handleTrackerAnnounceResponse(listener, tracker, message, false);
+            } catch (Exception e) {
+                failed(e);
+            }
+        }
 
-	/**
-	 * Build the announce request tracker message.
-	 *
-	 * @param event The announce event (can be <tt>NONE</tt> or <em>null</em>)
-	 * @return Returns an instance of a {@link HTTPAnnounceRequestMessage}
-	 * that can be used to generate the fully qualified announce URL, with
-	 * parameters, to make the announce request.
-	 * @throws UnsupportedEncodingException
-	 * @throws IOException
-	 * @throws MessageValidationException
-	 */
-	private HTTPAnnounceRequestMessage buildAnnounceRequest(
-		AnnounceRequestMessage.RequestEvent event)
-		throws UnsupportedEncodingException, IOException,
-			MessageValidationException {
-		// Build announce request message
-		return HTTPAnnounceRequestMessage.craft(
-				this.torrent.getInfoHash(),
-				this.peer.getPeerId().array(),
-				this.peer.getPort(),
-				this.torrent.getUploaded(),
-				this.torrent.getDownloaded(),
-				this.torrent.getLeft(),
-				true, false, event,
-				this.peer.getIp(),
-				AnnounceRequestMessage.DEFAULT_NUM_WANT);
-	}
+        @Override
+        public void failed(final Exception e) {
+            System.out.println(request.getRequestLine() + "->" + e);
+        }
+
+        @Override
+        public void cancelled() {
+            System.out.println(request.getRequestLine() + " cancelled");
+        }
+    }
+
+    /**
+     * Build, send and process a tracker announce request.
+     *
+     * <p>
+     * This function first builds an announce request for the specified event
+     * with all the required parameters. Then, the request is made to the
+     * tracker and the response analyzed.
+     * </p>
+     *
+     * <p>
+     * All registered {@link AnnounceResponseListener} objects are then fired
+     * with the decoded payload.
+     * </p>
+     *
+     * @param event The announce event type (can be AnnounceEvent.NONE for
+     * periodic updates).
+     * @param inhibitEvents Prevent event listeners from being notified.
+     */
+    @Override
+    public void announce(
+            AnnounceResponseListener listener,
+            SharedTorrent torrent,
+            URI tracker,
+            AnnounceRequestMessage.RequestEvent event,
+            boolean inhibitEvents) throws AnnounceException {
+        logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
+                new Object[]{
+            TrackerClient.formatAnnounceEvent(event),
+            torrent.getUploaded(),
+            torrent.getDownloaded(),
+            torrent.getLeft()
+        });
+
+        try {
+            HTTPAnnounceRequestMessage message =
+                    new HTTPAnnounceRequestMessage(
+                    torrent.getInfoHash(), peer,
+                    torrent.getUploaded(), torrent.getDownloaded(), torrent.getLeft(),
+                    true, false, event, AnnounceRequestMessage.DEFAULT_NUM_WANT);
+            URI target = message.toURI(tracker);
+            HttpGet request = new HttpGet(target);
+            HttpResponseCallback callback = new HttpResponseCallback(listener, request, tracker);
+            httpclient.execute(request, callback);
+        } catch (URISyntaxException mue) {
+            throw new AnnounceException("Invalid announce URI ("
+                    + mue.getMessage() + ")", mue);
+        } catch (IOException ioe) {
+            throw new AnnounceException("Error building announce request ("
+                    + ioe.getMessage() + ")", ioe);
+        }
+    }
+
+    // The tracker may return valid BEncoded data even if the status code
+    // was not a 2xx code. On the other hand, it may return garbage.
+    @CheckForNull
+    public static HTTPTrackerMessage toMessage(@Nonnull HttpResponse response, @CheckForSigned long maxContentLength)
+            throws IOException {
+        HttpEntity entity = response.getEntity();
+        if (entity == null) // Usually 204-no-content, etc.
+            return null;
+        try {
+            if (maxContentLength >= 0) {
+                long contentLength = entity.getContentLength();
+                if (contentLength >= 0)
+                    if (contentLength > maxContentLength)
+                        throw new IllegalArgumentException("ContentLength was too big: " + contentLength + ": " + response);
+            }
+
+            InputStream in = entity.getContent();
+            if (in == null)
+                return null;
+            StreamBDecoder decoder = new StreamBDecoder(in);
+            BEValue value = decoder.bdecodeMap();
+            Map<String, BEValue> params = value.getMap();
+            // TODO: "warning message"
+            if (params.containsKey("failure reason"))
+                return HTTPTrackerErrorMessage.fromBEValue(params);
+            else
+                return HTTPAnnounceResponseMessage.fromBEValue(params);
+        } catch (InvalidBEncodingException e) {
+            throw new IOException("Failed to parse response " + response, e);
+        } catch (TrackerMessage.MessageValidationException e) {
+            throw new IOException("Failed to parse response " + response, e);
+        } finally {
+            EntityUtils.consumeQuietly(entity);
+        }
+    }
 }

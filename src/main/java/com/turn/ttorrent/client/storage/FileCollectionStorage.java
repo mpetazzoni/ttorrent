@@ -63,11 +63,6 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	}
 
 	@Override
-	public long size() {
-		return this.size;
-	}
-
-	@Override
 	public int read(ByteBuffer buffer, long offset) throws IOException {
 		int requested = buffer.remaining();
 		int bytes = 0;

@@ -17,9 +17,9 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.common.Peer;
 
+import java.net.URI;
 import java.util.EventListener;
 import java.util.List;
-
 
 /**
  * EventListener interface for objects that want to receive tracker responses.
@@ -28,21 +28,22 @@ import java.util.List;
  */
 public interface AnnounceResponseListener extends EventListener {
 
-	/**
-	 * Handle an announce response event.
-	 *
-	 * @param interval The announce interval requested by the tracker.
-	 * @param complete The number of seeders on this torrent.
-	 * @param incomplete The number of leechers on this torrent.
-	 */
-	public void handleAnnounceResponse(int interval, int complete,
-		int incomplete);
+    public void handleAnnounceFailed(URI uri);
 
-	/**
-	 * Handle the discovery of new peers.
-	 *
-	 * @param peers The list of peers discovered (from the announce response or
-	 * any other means like DHT/PEX, etc.).
-	 */
-	public void handleDiscoveredPeers(List<Peer> peers);
+    /**
+     * Handle an announce response event.
+     *
+     * @param interval The announce interval requested by the tracker.
+     * @param complete The number of seeders on this torrent.
+     * @param incomplete The number of leechers on this torrent.
+     */
+    public void handleAnnounceResponse(URI tracker, int interval, int complete, int incomplete);
+
+    /**
+     * Handle the discovery of new peers.
+     *
+     * @param peers The list of peers discovered (from the announce response or
+     * any other means like DHT/PEX, etc.).
+     */
+    public void handleDiscoveredPeers(URI tracker, List<Peer> peers);
 }

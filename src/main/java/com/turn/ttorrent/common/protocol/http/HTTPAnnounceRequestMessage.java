@@ -15,23 +15,18 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
-
+import javax.annotation.Nonnull;
 
 /**
  * The announce request message for the HTTP tracker protocol.
@@ -46,255 +41,166 @@ import java.util.Map;
  * @author mpetazzoni
  */
 public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
-	implements AnnounceRequestMessage {
+        implements AnnounceRequestMessage {
 
-	private final byte[] infoHash;
-	private final Peer peer;
-	private final long uploaded;
-	private final long downloaded;
-	private final long left;
-	private final boolean compact;
-	private final boolean noPeerId;
-	private final RequestEvent event;
-	private final int numWant;
+    private final byte[] infoHash;
+    private final Peer peer;
+    private final long uploaded;
+    private final long downloaded;
+    private final long left;
+    private final boolean compact;
+    private final boolean noPeerId;
+    private final RequestEvent event;
+    private final int numWant;
 
-	private HTTPAnnounceRequestMessage(ByteBuffer data,
-		byte[] infoHash, Peer peer, long uploaded, long downloaded,
-		long left, boolean compact, boolean noPeerId, RequestEvent event,
-		int numWant) {
-		super(Type.ANNOUNCE_REQUEST, data);
-		this.infoHash = infoHash;
-		this.peer = peer;
-		this.downloaded = downloaded;
-		this.uploaded = uploaded;
-		this.left = left;
-		this.compact = compact;
-		this.noPeerId = noPeerId;
-		this.event = event;
-		this.numWant = numWant;
-	}
+    public HTTPAnnounceRequestMessage(
+            byte[] infoHash, Peer peer,
+            long uploaded, long downloaded, long left,
+            boolean compact, boolean noPeerId, RequestEvent event, int numWant) {
+        super(Type.ANNOUNCE_REQUEST);
+        this.infoHash = infoHash;
+        this.peer = peer;
+        this.downloaded = downloaded;
+        this.uploaded = uploaded;
+        this.left = left;
+        this.compact = compact;
+        this.noPeerId = noPeerId;
+        this.event = event;
+        this.numWant = numWant;
+    }
 
-	@Override
-	public byte[] getInfoHash() {
-		return this.infoHash;
-	}
+    @Override
+    public byte[] getInfoHash() {
+        return this.infoHash;
+    }
 
-	@Override
-	public String getHexInfoHash() {
-		return Torrent.byteArrayToHexString(this.infoHash);
-	}
+    @Override
+    public String getHexInfoHash() {
+        return Torrent.byteArrayToHexString(this.infoHash);
+    }
 
-	@Override
-	public byte[] getPeerId() {
-		return this.peer.getPeerId().array();
-	}
+    @Override
+    public Peer getPeer() {
+        return peer;
+    }
 
-	@Override
-	public String getHexPeerId() {
-		return this.peer.getHexPeerId();
-	}
+    @Override
+    public long getUploaded() {
+        return this.uploaded;
+    }
 
-	@Override
-	public int getPort() {
-		return this.peer.getPort();
-	}
+    @Override
+    public long getDownloaded() {
+        return this.downloaded;
+    }
 
-	@Override
-	public long getUploaded() {
-		return this.uploaded;
-	}
+    @Override
+    public long getLeft() {
+        return this.left;
+    }
 
-	@Override
-	public long getDownloaded() {
-		return this.downloaded;
-	}
+    @Override
+    public boolean getCompact() {
+        return this.compact;
+    }
 
-	@Override
-	public long getLeft() {
-		return this.left;
-	}
+    @Override
+    public boolean getNoPeerIds() {
+        return this.noPeerId;
+    }
 
-	@Override
-	public boolean getCompact() {
-		return this.compact;
-	}
+    @Override
+    public RequestEvent getEvent() {
+        return this.event;
+    }
 
-	@Override
-	public boolean getNoPeerIds() {
-		return this.noPeerId;
-	}
+    @Override
+    public int getNumWant() {
+        return this.numWant;
+    }
 
-	@Override
-	public RequestEvent getEvent() {
-		return this.event;
-	}
+    @Nonnull
+    private String toUrlString(@Nonnull byte[] data) throws UnsupportedEncodingException {
+        String text = new String(data, Torrent.BYTE_ENCODING);
+        return URLEncoder.encode(text, Torrent.BYTE_ENCODING_NAME);
+    }
 
-	@Override
-	public String getIp() {
-		return this.peer.getIp();
-	}
+    /**
+     * Build the announce request URL for the given tracker announce URL.
+     *
+     * @param trackerAnnounceURL The tracker's announce URL.
+     * @return The URL object representing the announce request URL.
+     */
+    public URI toURI(URI trackerAnnounceURL)
+            throws UnsupportedEncodingException, URISyntaxException {
+        String base = trackerAnnounceURL.toString();
+        StringBuilder url = new StringBuilder(base);
+        url.append(base.contains("?") ? "&" : "?")
+                .append("info_hash=").append(toUrlString(getInfoHash()))
+                .append("&peer_id=").append(toUrlString(getPeer().getPeerId()))
+                .append("&port=").append(getPeer().getPort())
+                .append("&uploaded=").append(getUploaded())
+                .append("&downloaded=").append(getDownloaded())
+                .append("&left=").append(getLeft())
+                .append("&compact=").append(getCompact() ? 1 : 0)
+                .append("&no_peer_id=").append(getNoPeerIds() ? 1 : 0);
 
-	@Override
-	public int getNumWant() {
-		return this.numWant;
-	}
+        if (getEvent() != null
+                && !RequestEvent.NONE.equals(getEvent())) {
+            url.append("&event=").append(getEvent().getEventName());
+        }
 
-	/**
-	 * Build the announce request URL for the given tracker announce URL.
-	 *
-	 * @param trackerAnnounceURL The tracker's announce URL.
-	 * @return The URL object representing the announce request URL.
-	 */
-	public URL buildAnnounceURL(URL trackerAnnounceURL)
-		throws UnsupportedEncodingException, MalformedURLException {
-		String base = trackerAnnounceURL.toString();
-		StringBuilder url = new StringBuilder(base);
-		url.append(base.contains("?") ? "&" : "?")
-			.append("info_hash=")
-			.append(URLEncoder.encode(
-				new String(this.getInfoHash(), Torrent.BYTE_ENCODING),
-				Torrent.BYTE_ENCODING))
-			.append("&peer_id=")
-			.append(URLEncoder.encode(
-				new String(this.getPeerId(), Torrent.BYTE_ENCODING),
-				Torrent.BYTE_ENCODING))
-			.append("&port=").append(this.getPort())
-			.append("&uploaded=").append(this.getUploaded())
-			.append("&downloaded=").append(this.getDownloaded())
-			.append("&left=").append(this.getLeft())
-			.append("&compact=").append(this.getCompact() ? 1 : 0)
-			.append("&no_peer_id=").append(this.getNoPeerIds() ? 1 : 0);
+        String ip = getPeer().getAddress().getAddress().getHostAddress();
+        if (ip != null)
+            url.append("&ip=").append(ip);
 
-		if (this.getEvent() != null &&
-			!RequestEvent.NONE.equals(this.getEvent())) {
-			url.append("&event=").append(this.getEvent().getEventName());
-		}
+        if (getNumWant() != AnnounceRequestMessage.DEFAULT_NUM_WANT)
+            url.append("&numwant=").append(getNumWant());
 
-		if (this.getIp() != null) {
-			url.append("&ip=").append(this.getIp());
-		}
+        return new URI(url.toString());
+    }
 
-		return new URL(url.toString());
-	}
+    public static HTTPAnnounceRequestMessage fromParams(Map<String, String> params)
+            throws IOException, MessageValidationException {
 
-	public static HTTPAnnounceRequestMessage parse(ByteBuffer data)
-		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
-		}
+        byte[] infoHash = toBytes(params, "info_hash", ErrorMessage.FailureReason.MISSING_HASH);
+        byte[] peerId = toBytes(params, "peer_id", ErrorMessage.FailureReason.MISSING_PEER_ID);
+        int port = toInt(params, "port", -1, ErrorMessage.FailureReason.MISSING_PORT);
 
-		Map<String, BEValue> params = decoded.getMap();
+        // Default 'uploaded' and 'downloaded' to 0 if the client does
+        // not provide it (although it should, according to the spec).
+        long uploaded = toLong(params, "uploaded", 0, null);
+        long downloaded = toLong(params, "downloaded", 0, null);
+        // Default 'left' to -1 to avoid peers entering the COMPLETED
+        // state when they don't provide the 'left' parameter.
+        long left = toLong(params, "left", -1, null);
 
-		if (!params.containsKey("info_hash")) {
-			throw new MessageValidationException(
-				ErrorMessage.FailureReason.MISSING_HASH.getMessage());
-		}
+        boolean compact = toBoolean(params, "compact");
+        boolean noPeerId = toBoolean(params, "no_peer_id");
 
-		if (!params.containsKey("peer_id")) {
-			throw new MessageValidationException(
-				ErrorMessage.FailureReason.MISSING_PEER_ID.getMessage());
-		}
+        int numWant = toInt(params, "numwant", AnnounceRequestMessage.DEFAULT_NUM_WANT, null);
+        String ip = toString(params, "ip", null);
 
-		if (!params.containsKey("port")) {
-			throw new MessageValidationException(
-				ErrorMessage.FailureReason.MISSING_PORT.getMessage());
-		}
+        RequestEvent event = RequestEvent.NONE;
+        if (params.containsKey("event")) {
+            event = RequestEvent.getByName(params.get("event"));
+        }
 
-		try {
-			byte[] infoHash = params.get("info_hash").getBytes();
-			byte[] peerId = params.get("peer_id").getBytes();
-			int port = params.get("port").getInt();
+        InetSocketAddress address = new InetSocketAddress(ip, port);
+        return new HTTPAnnounceRequestMessage(infoHash,
+                new Peer(address, peerId),
+                uploaded, downloaded, left, compact, noPeerId,
+                event, numWant);
+    }
 
-			// Default 'uploaded' and 'downloaded' to 0 if the client does
-			// not provide it (although it should, according to the spec).
-			long uploaded = 0;
-			if (params.containsKey("uploaded")) {
-				uploaded = params.get("uploaded").getLong();
-			}
-
-			long downloaded = 0;
-			if (params.containsKey("downloaded")) {
-				downloaded = params.get("downloaded").getLong();
-			}
-
-			// Default 'left' to -1 to avoid peers entering the COMPLETED
-			// state when they don't provide the 'left' parameter.
-			long left = -1;
-			if (params.containsKey("left")) {
-				left = params.get("left").getLong();
-			}
-
-			boolean compact = false;
-			if (params.containsKey("compact")) {
-				compact = params.get("compact").getInt() == 1;
-			}
-
-			boolean noPeerId = false;
-			if (params.containsKey("no_peer_id")) {
-				noPeerId = params.get("no_peer_id").getInt() == 1;
-			}
-
-			int numWant = AnnounceRequestMessage.DEFAULT_NUM_WANT;
-			if (params.containsKey("numwant")) {
-				numWant = params.get("numwant").getInt();
-			}
-
-			String ip = null;
-			if (params.containsKey("ip")) {
-				ip = params.get("ip").getString(Torrent.BYTE_ENCODING);
-			}
-
-			RequestEvent event = RequestEvent.NONE;
-			if (params.containsKey("event")) {
-				event = RequestEvent.getByName(params.get("event")
-					.getString(Torrent.BYTE_ENCODING));
-			}
-
-			return new HTTPAnnounceRequestMessage(data, infoHash,
-				new Peer(ip, port, ByteBuffer.wrap(peerId)),
-				uploaded, downloaded, left, compact, noPeerId,
-				event, numWant);
-		} catch (InvalidBEncodingException ibee) {
-			throw new MessageValidationException(
-				"Invalid HTTP tracker request!", ibee);
-		}
-	}
-
-	public static HTTPAnnounceRequestMessage craft(byte[] infoHash,
-		byte[] peerId, int port, long uploaded, long downloaded, long left,
-		boolean compact, boolean noPeerId, RequestEvent event,
-		String ip, int numWant)
-		throws IOException, MessageValidationException,
-			UnsupportedEncodingException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
-		params.put("info_hash", new BEValue(infoHash));
-		params.put("peer_id", new BEValue(peerId));
-		params.put("port", new BEValue(port));
-		params.put("uploaded", new BEValue(uploaded));
-		params.put("downloaded", new BEValue(downloaded));
-		params.put("left", new BEValue(left));
-		params.put("compact", new BEValue(compact ? 1 : 0));
-		params.put("no_peer_id", new BEValue(noPeerId ? 1 : 0));
-
-		if (event != null) {
-			params.put("event",
-				new BEValue(event.getEventName(), Torrent.BYTE_ENCODING));
-		}
-
-		if (ip != null) {
-			params.put("ip",
-				new BEValue(ip, Torrent.BYTE_ENCODING));
-		}
-
-		if (numWant != AnnounceRequestMessage.DEFAULT_NUM_WANT) {
-			params.put("numwant", new BEValue(numWant));
-		}
-
-		return new HTTPAnnounceRequestMessage(
-			BEncoder.bencode(params),
-			infoHash, new Peer(ip, port, ByteBuffer.wrap(peerId)),
-			uploaded, downloaded, left, compact, noPeerId, event, numWant);
-	}
+    public static HTTPAnnounceRequestMessage craft(byte[] infoHash,
+            byte[] peerId, int port, long uploaded, long downloaded, long left,
+            boolean compact, boolean noPeerId, RequestEvent event,
+            String ip, int numWant)
+            throws IOException, MessageValidationException, UnsupportedEncodingException {
+        InetSocketAddress address = new InetSocketAddress(ip, port);
+        return new HTTPAnnounceRequestMessage(
+                infoHash, new Peer(address, peerId),
+                uploaded, downloaded, left, compact, noPeerId, event, numWant);
+    }
 }

@@ -15,40 +15,31 @@
  */
 package com.turn.ttorrent.common;
 
-import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import com.turn.ttorrent.bcodec.BytesBDecoder;
+import com.turn.ttorrent.bcodec.BytesBEncoder;
+import com.turn.ttorrent.bcodec.StreamBEncoder;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
+import javax.annotation.WillNotClose;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,523 +63,352 @@ import org.slf4j.LoggerFactory;
  */
 public class Torrent {
 
-	private static final Logger logger =
-		LoggerFactory.getLogger(Torrent.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(Torrent.class);
+    /** Torrent file piece length (in bytes), we use 512 kB. */
+    public static final int PIECE_LENGTH = 512 * 1024;
+    public static final int PIECE_HASH_SIZE = 20;
+    /** The query parameters encoding when parsing byte strings. */
+    public static final Charset BYTE_ENCODING = Charsets.ISO_8859_1;
+    public static final String BYTE_ENCODING_NAME = BYTE_ENCODING.name();
 
-	/** Torrent file piece length (in bytes), we use 512 kB. */
-	public static final int PIECE_LENGTH = 512 * 1024;
+    /**
+     *
+     * @author dgiffin
+     * @author mpetazzoni
+     */
+    public static class TorrentFile {
 
-	public static final int PIECE_HASH_SIZE = 20;
+        public final File file;
+        public final long size;
 
-	/** The query parameters encoding when parsing byte strings. */
-	public static final String BYTE_ENCODING = "ISO-8859-1";
+        public TorrentFile(File file, long size) {
+            this.file = file;
+            this.size = size;
+        }
+    }
+    private final Map<String, BEValue> decoded;
+    private final Map<String, BEValue> decoded_info;
+    private final byte[] info_hash;
+    private final List<List<URI>> trackers = new ArrayList<List<URI>>();
+    private final long creationTime;
+    private final String comment;
+    private final String createdBy;
+    private final String name;
+    private final long size;
+    private final List<TorrentFile> files = new ArrayList<TorrentFile>();
+    private final int pieceLength;
+    private final byte[] piecesHashes;
 
-	/**
-	 *
-	 * @author dgiffin
-	 * @author mpetazzoni
-	 */
-	public static class TorrentFile {
+    /**
+     * Load a torrent from the given torrent file.
+     *
+     * @param torrent The abstract {@link File} object representing the
+     * <tt>.torrent</tt> file to load.
+     * @throws IOException When the torrent file cannot be read.
+     */
+    public Torrent(File torrent) throws IOException, URISyntaxException {
+        this(FileUtils.readFileToByteArray(torrent));
+    }
 
-		public final File file;
-		public final long size;
+    /**
+     * Create a new torrent from meta-info binary data.
+     *
+     * Parses the meta-info data (which should be B-encoded as described in the
+     * BitTorrent specification) and create a Torrent object from it.
+     *
+     * @param torrent The meta-info byte data.
+     * @throws IOException When the info dictionary can't be read or
+     * encoded and hashed back to create the torrent's SHA-1 hash.
+     */
+    public Torrent(@Nonnull byte[] torrent) throws IOException, URISyntaxException {
+        this(new BytesBDecoder(torrent).bdecodeMap().getMap());
+    }
 
-		public TorrentFile(File file, long size) {
-			this.file = file;
-			this.size = size;
-		}
-	}
+    public Torrent(@Nonnull Map<String, BEValue> torrent) throws IOException, URISyntaxException {
+        this.decoded = torrent;
+        this.decoded_info = this.decoded.get("info").getMap();
+
+        BytesBEncoder encoder = new BytesBEncoder();
+        encoder.bencode(decoded_info);
+        this.info_hash = Torrent.hash(encoder.toByteArray());
+
+        /**
+         * Parses the announce information from the decoded meta-info
+         * structure.
+         *
+         * <p>
+         * If the torrent doesn't define an announce-list, use the mandatory
+         * announce field value as the single tracker in a single announce
+         * tier.  Otherwise, the announce-list must be parsed and the trackers
+         * from each tier extracted.
+         * </p>
+         *
+         * @see <a href="http://bittorrent.org/beps/bep_0012.html">BitTorrent BEP#0012 "Multitracker Metadata Extension"</a>
+         */
+        Set<URI> allTrackers = new HashSet<URI>();
+
+        if (this.decoded.containsKey("announce-list")) {
+            List<BEValue> in_tiers = this.decoded.get("announce-list").getList();
+            for (BEValue in_tier_bvalue : in_tiers) {
+                List<BEValue> in_tier = in_tier_bvalue.getList();
+                if (in_tier.isEmpty())
+                    continue;
+
+                List<URI> out_tier = new ArrayList<URI>();
+                for (BEValue in_tracker : in_tier) {
+                    URI uri = new URI(in_tracker.getString());
+
+                    // Make sure we're not adding duplicate trackers.
+                    if (!allTrackers.contains(uri)) {
+                        out_tier.add(uri);
+                        allTrackers.add(uri);
+                    }
+                }
+
+                // Only add the tier if it's not empty.
+                if (!out_tier.isEmpty())
+                    this.trackers.add(out_tier);
+            }
+        } else if (this.decoded.containsKey("announce")) {
+            URI tracker = new URI(this.decoded.get("announce").getString());
+            // Build a single-tier announce list.
+            this.trackers.add(Arrays.asList(tracker));
+        }
+
+        this.creationTime = this.decoded.containsKey("creation date")
+                ? this.decoded.get("creation date").getLong() * 1000
+                : -1L;
+        this.comment = this.decoded.containsKey("comment")
+                ? this.decoded.get("comment").getString()
+                : null;
+        this.createdBy = this.decoded.containsKey("created by")
+                ? this.decoded.get("created by").getString()
+                : null;
+        this.name = this.decoded_info.get("name").getString();
+
+        // Parse multi-file torrent file information structure.
+        if (this.decoded_info.containsKey("files")) {
+            for (BEValue file : this.decoded_info.get("files").getList()) {
+                Map<String, BEValue> fileInfo = file.getMap();
+                StringBuilder path = new StringBuilder();
+                for (BEValue pathElement : fileInfo.get("path").getList()) {
+                    path.append(File.separator)
+                            .append(pathElement.getString());
+                }
+                this.files.add(new TorrentFile(
+                        new File(this.name, path.toString()),
+                        fileInfo.get("length").getLong()));
+            }
+        } else {
+            // For single-file torrents, the name of the torrent is
+            // directly the name of the file.
+            this.files.add(new TorrentFile(
+                    new File(this.name),
+                    this.decoded_info.get("length").getLong()));
+        }
+
+        // Calculate the total size of this torrent from its files' sizes.
+        long size = 0;
+        for (TorrentFile file : this.files)
+            size += file.size;
+        this.size = size;
+
+        this.pieceLength = this.decoded_info.get("piece length").getInt();
+        this.piecesHashes = this.decoded_info.get("pieces").getBytes();
+
+        if (this.piecesHashes.length / Torrent.PIECE_HASH_SIZE
+                * (long) this.pieceLength < this.size) {
+            throw new IllegalArgumentException("Torrent size does not "
+                    + "match the number of pieces and the piece size!");
+        }
 
 
-	protected final byte[] encoded;
-	protected final byte[] encoded_info;
-	protected final Map<String, BEValue> decoded;
-	protected final Map<String, BEValue> decoded_info;
+        logger.info("{}-file torrent information:",
+                this.isMultifile() ? "Multi" : "Single");
+        logger.info("  Torrent name: {}", this.name);
+        logger.info("  Announced at:" + (trackers.isEmpty() ? " Seems to be trackerless" : ""));
+        for (int i = 0; i < this.trackers.size(); i++) {
+            List<URI> tier = this.trackers.get(i);
+            for (int j = 0; j < tier.size(); j++) {
+                logger.info("    {}{}",
+                        (j == 0 ? String.format("%2d. ", i + 1) : "    "),
+                        tier.get(j));
+            }
+        }
 
-	private final byte[] info_hash;
-	private final String hex_info_hash;
+        if (this.creationTime > 0)
+            logger.info("  Created on..: {}", new Date(this.creationTime));
+        if (this.comment != null)
+            logger.info("  Comment.....: {}", this.comment);
+        if (this.createdBy != null)
+            logger.info("  Created by..: {}", this.createdBy);
 
-	private final List<List<URI>> trackers;
-	private final Set<URI> allTrackers;
-	private final Date creationDate;
-	private final String comment;
-	private final String createdBy;
-	private final String name;
-	private final long size;
-	protected final List<TorrentFile> files;
+        if (this.isMultifile()) {
+            logger.info("  Found {} file(s) in multi-file torrent structure.",
+                    this.files.size());
+            int i = 0;
+            for (TorrentFile file : this.files) {
+                logger.debug("    {}. {} ({} byte(s))",
+                        new Object[]{
+                    String.format("%2d", ++i),
+                    file.file.getPath(),
+                    String.format("%,d", file.size)
+                });
+            }
+        }
 
-	private final boolean seeder;
+        logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
+                (this.size / this.decoded_info.get("piece length").getInt()) + 1,
+                this.decoded_info.get("piece length").getInt());
+        logger.info("  Total size..: {} byte(s)",
+                String.format("%,d", this.size));
+    }
 
-	/**
-	 * Create a new torrent from meta-info binary data.
-	 *
-	 * Parses the meta-info data (which should be B-encoded as described in the
-	 * BitTorrent specification) and create a Torrent object from it.
-	 *
-	 * @param torrent The meta-info byte data.
-	 * @param seeder Whether we'll be seeding for this torrent or not.
-	 * @throws IOException When the info dictionary can't be read or
-	 * encoded and hashed back to create the torrent's SHA-1 hash.
-	 */
-	public Torrent(byte[] torrent, boolean seeder) throws IOException {
-		this.encoded = torrent;
-		this.seeder = seeder;
+    /**
+     * Get this torrent's name.
+     *
+     * <p>
+     * For a single-file torrent, this is usually the name of the file. For a
+     * multi-file torrent, this is usually the name of a top-level directory
+     * containing those files.
+     * </p>
+     */
+    public String getName() {
+        return this.name;
+    }
 
-		this.decoded = BDecoder.bdecode(
-				new ByteArrayInputStream(this.encoded)).getMap();
+    /**
+     * Get this torrent's comment string.
+     */
+    public String getComment() {
+        return this.comment;
+    }
 
-		this.decoded_info = this.decoded.get("info").getMap();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		BEncoder.bencode(this.decoded_info, baos);
-		this.encoded_info = baos.toByteArray();
-		this.info_hash = Torrent.hash(this.encoded_info);
-		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+    /**
+     * Get this torrent's creator (user, software, whatever...).
+     */
+    public String getCreatedBy() {
+        return this.createdBy;
+    }
 
-		/**
-		 * Parses the announce information from the decoded meta-info
-		 * structure.
-		 *
-		 * <p>
-		 * If the torrent doesn't define an announce-list, use the mandatory
-		 * announce field value as the single tracker in a single announce
-		 * tier.  Otherwise, the announce-list must be parsed and the trackers
-		 * from each tier extracted.
-		 * </p>
-		 *
-		 * @see <a href="http://bittorrent.org/beps/bep_0012.html">BitTorrent BEP#0012 "Multitracker Metadata Extension"</a>
-		 */
-		try {
-			this.trackers = new ArrayList<List<URI>>();
-			this.allTrackers = new HashSet<URI>();
+    /**
+     * Get the total size of this torrent.
+     */
+    public long getSize() {
+        return this.size;
+    }
 
-			if (this.decoded.containsKey("announce-list")) {
-				List<BEValue> tiers = this.decoded.get("announce-list").getList();
-				for (BEValue tv : tiers) {
-					List<BEValue> trackers = tv.getList();
-					if (trackers.isEmpty()) {
-						continue;
-					}
+    public List<TorrentFile> getFiles() {
+        return files;
+    }
 
-					List<URI> tier = new ArrayList<URI>();
-					for (BEValue tracker : trackers) {
-						URI uri = new URI(tracker.getString());
+    /**
+     * Get the file names from this torrent.
+     *
+     * @return The list of relative filenames of all the files described in
+     * this torrent.
+     */
+    public List<String> getFilenames() {
+        List<String> filenames = new ArrayList<String>(files.size());
+        for (TorrentFile file : this.files)
+            filenames.add(file.file.getPath());
+        return filenames;
+    }
 
-						// Make sure we're not adding duplicate trackers.
-						if (!this.allTrackers.contains(uri)) {
-							tier.add(uri);
-							this.allTrackers.add(uri);
-						}
-					}
+    @Nonnegative
+    public int getPieceCount() {
+        return (int) (Math.ceil((double) getSize() / getPieceLength()));
+    }
 
-					// Only add the tier if it's not empty.
-					if (!tier.isEmpty()) {
-						this.trackers.add(tier);
-					}
-				}
-			} else if (this.decoded.containsKey("announce")) {
-				URI tracker = new URI(this.decoded.get("announce").getString());
-				this.allTrackers.add(tracker);
+    @Nonnegative
+    public int getPieceLength() {
+        return pieceLength;
+    }
 
-				// Build a single-tier announce list.
-				List<URI> tier = new ArrayList<URI>();
-				tier.add(tracker);
-				this.trackers.add(tier);
-			}
-		} catch (URISyntaxException use) {
-			throw new IOException(use);
-		}
+    @Nonnull
+    public byte[] getPiecesHashes() {
+        return piecesHashes;
+    }
 
-		this.creationDate = this.decoded.containsKey("creation date")
-			? new Date(this.decoded.get("creation date").getLong() * 1000)
-			: null;
-		this.comment = this.decoded.containsKey("comment")
-			? this.decoded.get("comment").getString()
-			: null;
-		this.createdBy = this.decoded.containsKey("created by")
-			? this.decoded.get("created by").getString()
-			: null;
-		this.name = this.decoded_info.get("name").getString();
+    /**
+     * Tells whether this torrent is multi-file or not.
+     */
+    public boolean isMultifile() {
+        return this.files.size() > 1;
+    }
 
-		this.files = new LinkedList<TorrentFile>();
+    /**
+     * Return the hash of the B-encoded meta-info structure of this torrent.
+     */
+    @Nonnull
+    public byte[] getInfoHash() {
+        return this.info_hash;
+    }
 
-		// Parse multi-file torrent file information structure.
-		if (this.decoded_info.containsKey("files")) {
-			for (BEValue file : this.decoded_info.get("files").getList()) {
-				Map<String, BEValue> fileInfo = file.getMap();
-				StringBuilder path = new StringBuilder();
-				for (BEValue pathElement : fileInfo.get("path").getList()) {
-					path.append(File.separator)
-						.append(pathElement.getString());
-				}
-				this.files.add(new TorrentFile(
-					new File(this.name, path.toString()),
-					fileInfo.get("length").getLong()));
-			}
-		} else {
-			// For single-file torrents, the name of the torrent is
-			// directly the name of the file.
-			this.files.add(new TorrentFile(
-				new File(this.name),
-				this.decoded_info.get("length").getLong()));
-		}
+    /**
+     * Get this torrent's info hash (as an hexadecimal-coded string).
+     */
+    @Nonnull
+    public String getHexInfoHash() {
+        return Torrent.byteArrayToHexString(this.info_hash);
+    }
 
-		// Calculate the total size of this torrent from its files' sizes.
-		long size = 0;
-		for (TorrentFile file : this.files) {
-			size += file.size;
-		}
-		this.size = size;
+    /**
+     * Return the trackers for this torrent.
+     */
+    @Nonnull
+    public List<List<URI>> getAnnounceList() {
+        return this.trackers;
+    }
 
-		logger.info("{}-file torrent information:",
-			this.isMultifile() ? "Multi" : "Single");
-		logger.info("  Torrent name: {}", this.name);
-		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
-		for (int i=0; i < this.trackers.size(); i++) {
-			List<URI> tier = this.trackers.get(i);
-			for (int j=0; j < tier.size(); j++) {
-				logger.info("    {}{}",
-					(j == 0 ? String.format("%2d. ", i+1) : "    "),
-					tier.get(j));
-			}
-		}
+    /**
+     * Returns the number of trackers for this torrent.
+     */
+    @Nonnegative
+    public int getTrackerCount() {
+        int count = 0;
+        for (List<URI> tier : getAnnounceList())
+            count += tier.size();
+        return count;
+    }
 
-		if (this.creationDate != null) {
-			logger.info("  Created on..: {}", this.creationDate);
-		}
-		if (this.comment != null) {
-			logger.info("  Comment.....: {}", this.comment);
-		}
-		if (this.createdBy != null) {
-			logger.info("  Created by..: {}", this.createdBy);
-		}
+    /**
+     * Save this torrent meta-info structure into a .torrent file.
+     *
+     * @param output The stream to write to.
+     * @throws IOException If an I/O error occurs while writing the file.
+     */
+    public void save(@Nonnull @WillNotClose OutputStream output) throws IOException {
+        StreamBEncoder encoder = new StreamBEncoder(output);
+        encoder.bencode(decoded);
+        output.flush();
+    }
 
-		if (this.isMultifile()) {
-			logger.info("  Found {} file(s) in multi-file torrent structure.",
-				this.files.size());
-			int i = 0;
-			for (TorrentFile file : this.files) {
-				logger.debug("    {}. {} ({} byte(s))",
-					new Object[] {
-						String.format("%2d", ++i),
-						file.file.getPath(),
-						String.format("%,d", file.size)
-					});
-			}
-		}
+    /**
+     * Return a human-readable representation of this torrent object.
+     *
+     * <p>
+     * The torrent's name is used.
+     * </p>
+     */
+    @Override
+    public String toString() {
+        return this.getName();
+    }
 
-		logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
-			(this.size / this.decoded_info.get("piece length").getInt()) + 1,
-			this.decoded_info.get("piece length").getInt());
-		logger.info("  Total size..: {} byte(s)",
-			String.format("%,d", this.size));
-	}
+    public static byte[] hash(byte[] data) {
+        return DigestUtils.sha1(data);
+    }
 
-	/**
-	 * Get this torrent's name.
-	 *
-	 * <p>
-	 * For a single-file torrent, this is usually the name of the file. For a
-	 * multi-file torrent, this is usually the name of a top-level directory
-	 * containing those files.
-	 * </p>
-	 */
-	public String getName() {
-		return this.name;
-	}
-
-	/**
-	 * Get this torrent's comment string.
-	 */
-	public String getComment() {
-		return this.comment;
-	}
-
-	/**
-	 * Get this torrent's creator (user, software, whatever...).
-	 */
-	public String getCreatedBy() {
-		return this.createdBy;
-	}
-
-	/**
-	 * Get the total size of this torrent.
-	 */
-	public long getSize() {
-		return this.size;
-	}
-
-	/**
-	 * Get the file names from this torrent.
-	 *
-	 * @return The list of relative filenames of all the files described in
-	 * this torrent.
-	 */
-	public List<String> getFilenames() {
-		List<String> filenames = new LinkedList<String>();
-		for (TorrentFile file : this.files) {
-			filenames.add(file.file.getPath());
-		}
-		return filenames;
-	}
-
-	/**
-	 * Tells whether this torrent is multi-file or not.
-	 */
-	public boolean isMultifile() {
-		return this.files.size() > 1;
-	}
-
-	/**
-	 * Return the hash of the B-encoded meta-info structure of this torrent.
-	 */
-	public byte[] getInfoHash() {
-		return this.info_hash;
-	}
-
-	/**
-	 * Get this torrent's info hash (as an hexadecimal-coded string).
-	 */
-	public String getHexInfoHash() {
-		return this.hex_info_hash;
-	}
-
-	/**
-	 * Return a human-readable representation of this torrent object.
-	 *
-	 * <p>
-	 * The torrent's name is used.
-	 * </p>
-	 */
-	public String toString() {
-		return this.getName();
-	}
-
-	/**
-	 * Return the B-encoded meta-info of this torrent.
-	 */
-	public byte[] getEncoded() {
-		return this.encoded;
-	}
-
-	/**
-	 * Return the trackers for this torrent.
-	 */
-	public List<List<URI>> getAnnounceList() {
-		return this.trackers;
-	}
-
-	/**
-	 * Returns the number of trackers for this torrent.
-	 */
-	public int getTrackerCount() {
-		return this.allTrackers.size();
-	}
-
-	/**
-	 * Tells whether we were an initial seeder for this torrent.
-	 */
-	public boolean isSeeder() {
-		return this.seeder;
-	}
-
-	/**
-	 * Save this torrent meta-info structure into a .torrent file.
-	 *
-	 * @param output The stream to write to.
-	 * @throws IOException If an I/O error occurs while writing the file.
-	 */
-	public void save(OutputStream output) throws IOException {
-		output.write(this.getEncoded());
-	}
-
-	public static byte[] hash(byte[] data) {
-		return DigestUtils.sha1(data);
-	}
-
-	/**
-	 * Convert a byte string to a string containing an hexadecimal
-	 * representation of the original data.
-	 *
-	 * @param bytes The byte array to convert.
-	 */
-	public static String byteArrayToHexString(byte[] bytes) {
-		return new String(Hex.encodeHex(bytes, false));
-	}
-
-	/**
-	 * Return an hexadecimal representation of the bytes contained in the
-	 * given string, following the default, expected byte encoding.
-	 *
-	 * @param input The input string.
-	 */
-	public static String toHexString(String input) {
-		try {
-			byte[] bytes = input.getBytes(Torrent.BYTE_ENCODING);
-			return Torrent.byteArrayToHexString(bytes);
-		} catch (UnsupportedEncodingException uee) {
-			return null;
-		}
-	}
-
-	/**
-	 * Determine how many threads to use for the piece hashing.
-	 *
-	 * <p>
-	 * If the environment variable TTORRENT_HASHING_THREADS is set to an
-	 * integer value greater than 0, its value will be used. Otherwise, it
-	 * defaults to the number of processors detected by the Java Runtime.
-	 * </p>
-	 *
-	 * @return How many threads to use for concurrent piece hashing.
-	 */
-	protected static int getHashingThreadsCount() {
-		String threads = System.getenv("TTORRENT_HASHING_THREADS");
-
-		if (threads != null) {
-			try {
-				int count = Integer.parseInt(threads);
-				if (count > 0) {
-					return count;
-				}
-			} catch (NumberFormatException nfe) {
-				// Pass
-			}
-		}
-
-		return Runtime.getRuntime().availableProcessors();
-	}
-
-	/** Torrent loading ---------------------------------------------------- */
-
-	/**
-	 * Load a torrent from the given torrent file.
-	 *
-	 * <p>
-	 * This method assumes we are not a seeder and that local data needs to be
-	 * validated.
-	 * </p>
-	 *
-	 * @param torrent The abstract {@link File} object representing the
-	 * <tt>.torrent</tt> file to load.
-	 * @throws IOException When the torrent file cannot be read.
-	 */
-	public static Torrent load(File torrent) throws IOException {
-		return Torrent.load(torrent, false);
-	}
-
-	/**
-	 * Load a torrent from the given torrent file.
-	 *
-	 * @param torrent The abstract {@link File} object representing the
-	 * <tt>.torrent</tt> file to load.
-	 * @param seeder Whether we are a seeder for this torrent or not (disables
-	 * local data validation).
-	 * @throws IOException When the torrent file cannot be read.
-	 */
-	public static Torrent load(File torrent, boolean seeder)
-		throws IOException {
-		byte[] data = FileUtils.readFileToByteArray(torrent);
-		return new Torrent(data, seeder);
-	}
-
-	/** Torrent creation --------------------------------------------------- */
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, URI announce, String createdBy)
-		throws InterruptedException, IOException {
-        TorrentCreator creator = new TorrentCreator(source);
-        creator.setAnnounce(announce);
-        creator.setCreatedBy(createdBy);
-        return creator.create();
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param parent The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File parent, List<File> files, URI announce,
-		String createdBy) throws InterruptedException, IOException {
-        TorrentCreator creator = new TorrentCreator(parent);
-        creator.setFiles(files);
-        creator.setAnnounce(announce);
-        creator.setCreatedBy(createdBy);
-        return creator.create();
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, List<List<URI>> announceList,
-			String createdBy) throws InterruptedException, IOException {
-        TorrentCreator creator = new TorrentCreator(source);
-        creator.setAnnounce(announceList);
-        creator.setCreatedBy(createdBy);
-        return creator.create();
-	}
-	
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param source The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, List<File> files,
-			List<List<URI>> announceList, String createdBy)
-			throws InterruptedException, IOException {
-        TorrentCreator creator = new TorrentCreator(source);
-        creator.setFiles(files);
-        creator.setAnnounce(announceList);
-        creator.setCreatedBy(createdBy);
-        return creator.create();
-	}
+    /**
+     * Convert a byte string to a string containing an hexadecimal
+     * representation of the original data.
+     *
+     * @param bytes The byte array to convert.
+     */
+    @Nonnull
+    public static String byteArrayToHexString(@Nonnull byte[] bytes) {
+        return new String(Hex.encodeHex(bytes, false));
+    }
 }

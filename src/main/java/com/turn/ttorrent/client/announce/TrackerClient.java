@@ -15,153 +15,146 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
 import java.net.URI;
-
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
+import javax.annotation.Nonnull;
 
 public abstract class TrackerClient {
 
-	/** The set of listeners to announce request answers. */
-	private final Set<AnnounceResponseListener> listeners;
+    protected final ClientEnvironment environment;
+    protected final Peer peer;
 
-	protected final SharedTorrent torrent;
-	protected final Peer peer;
-	protected final URI tracker;
+    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Peer peer) {
+        this.environment = environment;
+        this.peer = peer;
+    }
 
-	public TrackerClient(SharedTorrent torrent, Peer peer, URI tracker) {
-		this.listeners = new HashSet<AnnounceResponseListener>();
-		this.torrent = torrent;
-		this.peer = peer;
-		this.tracker = tracker;
-	}
+    /**
+     * Build, send and process a tracker announce request.
+     *
+     * <p>
+     * This function first builds an announce request for the specified event
+     * with all the required parameters. Then, the request is made to the
+     * tracker and the response analyzed.
+     * </p>
+     *
+     * <p>
+     * All registered {@link AnnounceResponseListener} objects are then fired
+     * with the decoded payload.
+     * </p>
+     *
+     * @param event The announce event type (can be AnnounceEvent.NONE for
+     * periodic updates).
+     * @param inhibitEvent Prevent event listeners from being notified.
+     */
+    public abstract void announce(
+            AnnounceResponseListener listener,
+            SharedTorrent torrent,
+            URI tracker,
+            AnnounceRequestMessage.RequestEvent event,
+            boolean inhibitEvents) throws AnnounceException;
 
-	/**
-	 * Register a new announce response listener.
-	 *
-	 * @param listener The listener to register on this announcer events.
-	 */
-	public void register(AnnounceResponseListener listener) {
-		this.listeners.add(listener);
-	}
+    public void start() throws Exception {
+    }
 
-	/**
-	 * Returns the URI this tracker clients connects to.
-	 */
-	public URI getTrackerURI() {
-		return this.tracker;
-	}
+    /**
+     * Close any opened announce connection.
+     *
+     * <p>
+     * This method is called by {@link Announce#stop()} to make sure all connections
+     * are correctly closed when the announce thread is asked to stop.
+     * </p>
+     */
+    public void stop() throws Exception {
+        // Do nothing by default, but can be overloaded.
+    }
 
-	/**
-	 * Build, send and process a tracker announce request.
-	 *
-	 * <p>
-	 * This function first builds an announce request for the specified event
-	 * with all the required parameters. Then, the request is made to the
-	 * tracker and the response analyzed.
-	 * </p>
-	 *
-	 * <p>
-	 * All registered {@link AnnounceResponseListener} objects are then fired
-	 * with the decoded payload.
-	 * </p>
-	 *
-	 * @param event The announce event type (can be AnnounceEvent.NONE for
-	 * periodic updates).
-	 * @param inhibitEvent Prevent event listeners from being notified.
-	 */
-	public abstract void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvent) throws AnnounceException;
+    /**
+     * Formats an announce event into a usable string.
+     */
+    public static String formatAnnounceEvent(AnnounceRequestMessage.RequestEvent event) {
+        return AnnounceRequestMessage.RequestEvent.NONE.equals(event)
+                ? ""
+                : String.format(" %s", event.name());
+    }
 
-	/**
-	 * Close any opened announce connection.
-	 *
-	 * <p>
-	 * This method is called by {@link Announce#stop()} to make sure all connections
-	 * are correctly closed when the announce thread is asked to stop.
-	 * </p>
-	 */
-	protected void close() {
-		// Do nothing by default, but can be overloaded.
-	}
+    /**
+     * Handle the announce response from the tracker.
+     *
+     * <p>
+     * Analyzes the response from the tracker and acts on it. If the response
+     * is an error, it is logged. Otherwise, the announce response is used
+     * to fire the corresponding announce and peer events to all announce
+     * listeners.
+     * </p>
+     *
+     * @param message The incoming {@link TrackerMessage}.
+     * @param inhibitEvents Whether or not to prevent events from being fired.
+     */
+    protected void handleTrackerAnnounceResponse(
+            AnnounceResponseListener listener,
+            URI tracker,
+            TrackerMessage message,
+            boolean inhibitEvents) throws AnnounceException {
+        if (message instanceof ErrorMessage) {
+            ErrorMessage error = (ErrorMessage) message;
+            throw new AnnounceException(error.getReason());
+        }
 
-	/**
-	 * Formats an announce event into a usable string.
-	 */
-	protected String formatAnnounceEvent(
-		AnnounceRequestMessage.RequestEvent event) {
-		return AnnounceRequestMessage.RequestEvent.NONE.equals(event)
-			? ""
-			: String.format(" %s", event.name());
-	}
+        if (!(message instanceof AnnounceResponseMessage)) {
+            throw new AnnounceException("Unexpected tracker message type "
+                    + message.getType().name() + "!");
+        }
 
-	/**
-	 * Handle the announce response from the tracker.
-	 *
-	 * <p>
-	 * Analyzes the response from the tracker and acts on it. If the response
-	 * is an error, it is logged. Otherwise, the announce response is used
-	 * to fire the corresponding announce and peer events to all announce
-	 * listeners.
-	 * </p>
-	 *
-	 * @param message The incoming {@link TrackerMessage}.
-	 * @param inhibitEvents Whether or not to prevent events from being fired.
-	 */
-	protected void handleTrackerAnnounceResponse(TrackerMessage message,
-		boolean inhibitEvents) throws AnnounceException {
-		if (message instanceof ErrorMessage) {
-			ErrorMessage error = (ErrorMessage)message;
-			throw new AnnounceException(error.getReason());
-		}
+        if (inhibitEvents) {
+            return;
+        }
 
-		if (! (message instanceof AnnounceResponseMessage)) {
-			throw new AnnounceException("Unexpected tracker message type " +
-				message.getType().name() + "!");
-		}
+        AnnounceResponseMessage response = (AnnounceResponseMessage) message;
+        fireAnnounceResponseEvent(Arrays.asList(listener),
+                tracker,
+                response.getComplete(),
+                response.getIncomplete(),
+                response.getInterval());
+        fireDiscoveredPeersEvent(Arrays.asList(listener),
+                tracker,
+                response.getPeers());
+    }
 
-		if (inhibitEvents) {
-			return;
-		}
+    /**
+     * Fire the announce response event to all listeners.
+     *
+     * @param complete The number of seeders on this torrent.
+     * @param incomplete The number of leechers on this torrent.
+     * @param interval The announce interval requested by the tracker.
+     */
+    protected static void fireAnnounceResponseEvent(
+            Iterable<? extends AnnounceResponseListener> listeners,
+            URI tracker,
+            int complete, int incomplete, int interval) {
+        for (AnnounceResponseListener listener : listeners) {
+            listener.handleAnnounceResponse(tracker, interval, complete, incomplete);
+        }
+    }
 
-		AnnounceResponseMessage response =
-			(AnnounceResponseMessage)message;
-		this.fireAnnounceResponseEvent(
-			response.getComplete(),
-			response.getIncomplete(),
-			response.getInterval());
-		this.fireDiscoveredPeersEvent(
-			response.getPeers());
-	}
-
-	/**
-	 * Fire the announce response event to all listeners.
-	 *
-	 * @param complete The number of seeders on this torrent.
-	 * @param incomplete The number of leechers on this torrent.
-	 * @param interval The announce interval requested by the tracker.
-	 */
-	protected void fireAnnounceResponseEvent(int complete, int incomplete,
-		int interval) {
-		for (AnnounceResponseListener listener : this.listeners) {
-			listener.handleAnnounceResponse(interval, complete, incomplete);
-		}
-	}
-
-	/**
-	 * Fire the new peer discovery event to all listeners.
-	 *
-	 * @param peers The list of peers discovered.
-	 */
-	protected void fireDiscoveredPeersEvent(List<Peer> peers) {
-		for (AnnounceResponseListener listener : this.listeners) {
-			listener.handleDiscoveredPeers(peers);
-		}
-	}
+    /**
+     * Fire the new peer discovery event to all listeners.
+     *
+     * @param peers The list of peers discovered.
+     */
+    protected static void fireDiscoveredPeersEvent(
+            Iterable<? extends AnnounceResponseListener> listeners,
+            URI tracker,
+            List<Peer> peers) {
+        for (AnnounceResponseListener listener : listeners) {
+            listener.handleDiscoveredPeers(tracker, peers);
+        }
+    }
 }

@@ -15,28 +15,30 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.udp.*;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.channels.UnsupportedAddressTypeException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Random;
+import java.nio.channels.DatagramChannel;
+import java.util.Arrays;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,312 +65,270 @@ import org.slf4j.LoggerFactory;
  */
 public class UDPTrackerClient extends TrackerClient {
 
-	protected static final Logger logger =
-		LoggerFactory.getLogger(UDPTrackerClient.class);
+    protected static final Logger logger =
+            LoggerFactory.getLogger(UDPTrackerClient.class);
+    /**
+     * Back-off timeout uses 15 * 2 ^ n formula.
+     */
+    private static final int UDP_BASE_TIMEOUT_SECONDS = 15;
+    /**
+     * We don't try more than 8 times (3840 seconds, as per the formula defined
+     * for the backing-off timeout.
+     *
+     * @see #UDP_BASE_TIMEOUT_SECONDS
+     */
+    private static final int UDP_MAX_TRIES = 8;
+    /**
+     * For STOPPED announce event, we don't want to be bothered with waiting
+     * that long. We'll try once and bail-out early.
+     */
+    private static final int UDP_MAX_TRIES_ON_STOPPED = 1;
+    /**
+     * Maximum UDP packet size expected, in bytes.
+     *
+     * The biggest packet in the exchange is the announce response, which in 20
+     * bytes + 6 bytes per peer. Common numWant is 50, so 20 + 6 * 50 = 320.
+     * With headroom, we'll ask for 512 bytes.
+     */
+    private static final int UDP_PACKET_LENGTH = 512;
 
-	/**
-	 * Back-off timeout uses 15 * 2 ^ n formula.
-	 */
-	private static final int UDP_BASE_TIMEOUT_SECONDS = 15;
+    private enum State {
 
-	/**
-	 * We don't try more than 8 times (3840 seconds, as per the formula defined
-	 * for the backing-off timeout.
-	 *
-	 * @see #UDP_BASE_TIMEOUT_SECONDS
-	 */
-	private static final int UDP_MAX_TRIES = 8;
+        CONNECT_REQUEST,
+        ANNOUNCE_REQUEST;
+        // TODO: Failed (or similar) state.
+    };
 
-	/**
-	 * For STOPPED announce event, we don't want to be bothered with waiting
-	 * that long. We'll try once and bail-out early.
-	 */
-	private static final int UDP_MAX_TRIES_ON_STOPPED = 1;
+    private static class UDPTorrentId {
 
-	/**
-	 * Maximum UDP packet size expected, in bytes.
-	 *
-	 * The biggest packet in the exchange is the announce response, which in 20
-	 * bytes + 6 bytes per peer. Common numWant is 50, so 20 + 6 * 50 = 320.
-	 * With headroom, we'll ask for 512 bytes.
-	 */
-	private static final int UDP_PACKET_LENGTH = 512;
+        private final byte[] infoHash;
 
-	private final InetSocketAddress address;
-	private final Random random;
+        public UDPTorrentId(@Nonnull byte[] infoHash) {
+            this.infoHash = infoHash;
+        }
 
-	private DatagramSocket socket;
-	private Date connectionExpiration;
-	private long connectionId;
-	private int transactionId;
-	private boolean stop;
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(infoHash);
+        }
 
-	private enum State {
-		CONNECT_REQUEST,
-		ANNOUNCE_REQUEST;
-	};
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (null == obj)
+                return false;
+            if (!getClass().equals(obj.getClass()))
+                return false;
+            UDPTorrentId other = (UDPTorrentId) obj;
+            return Arrays.equals(infoHash, other.infoHash);
+        }
 
-	/**
-	 * 
-	 * @param torrent
-	 */
-	protected UDPTrackerClient(SharedTorrent torrent, Peer peer, URI tracker)
-		throws UnknownHostException {
-		super(torrent, peer, tracker);
+        @Override
+        public String toString() {
+            return Torrent.byteArrayToHexString(infoHash);
+        }
+    }
 
-		/**
-		 * The UDP announce request protocol only supports IPv4
-		 *
-		 * @see http://bittorrent.org/beps/bep_0015.html#ipv6
-		 */
-		if (! (InetAddress.getByName(peer.getIp()) instanceof Inet4Address)) {
-			throw new UnsupportedAddressTypeException();
-		}
+    private static class UDPTorrentState {
 
-		this.address = new InetSocketAddress(
-			tracker.getHost(),
-			tracker.getPort());
+        private AnnounceRequestMessage.RequestEvent event;
+    }
 
-		this.socket = null;
-		this.random = new Random();
-		this.connectionExpiration = null;
-		this.stop = false;
-	}
+    private class UDPTrackerState {
 
-	@Override
-	public void announce(AnnounceRequestMessage.RequestEvent event,
-		boolean inhibitEvents) throws AnnounceException {
-		logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
-			new Object[] {
-				this.formatAnnounceEvent(event),
-				this.torrent.getUploaded(),
-				this.torrent.getDownloaded(),
-				this.torrent.getLeft()
-			});
+        private final InetSocketAddress address;
+        private final SharedTorrent torrent;
+        private State state = State.CONNECT_REQUEST;
+        private long connectionId;
+        private long connectionExpiration;
+        private int attempt = 0;
+        private int transactionId;
+        private final Map<UDPTorrentId, UDPTorrentState> torrents = new HashMap<UDPTorrentId, UDPTorrentState>();
 
-		State state = State.CONNECT_REQUEST;
-		int maxAttempts = AnnounceRequestMessage.RequestEvent
-			.STOPPED.equals(event)
-			? UDP_MAX_TRIES_ON_STOPPED
-			: UDP_MAX_TRIES;
-		int attempts = -1;
+        public UDPTrackerState(InetSocketAddress address, SharedTorrent torrent) {
+            this.address = address;
+            this.torrent = torrent;
+        }
 
-		try {
-			this.socket = new DatagramSocket();
-			this.socket.connect(this.address);
+        public void setEvent(@Nonnull AnnounceRequestMessage.RequestEvent event) {
+            this.event = event;
+            this.attempt = 0;
+        }
 
-			while (++attempts <= maxAttempts) {
-				// Transaction ID is randomized for each exchange.
-				this.transactionId = this.random.nextInt();
+        public int getTimeout() {
+            return UDP_BASE_TIMEOUT_SECONDS * (int) Math.pow(2, attempt);
+        }
 
-				// Immediately decide if we can send the announce request
-				// directly or not. For this, we need a valid, non-expired
-				// connection ID.
-				if (this.connectionExpiration != null) {
-					if (new Date().before(this.connectionExpiration)) {
-						state = State.ANNOUNCE_REQUEST;
-					} else {
-						logger.debug("Announce connection ID expired, " +
-							"reconnecting with tracker...");
-					}
-				}
+        public void run() {
+            if (attempt++ > getMaxAttempts(event)) {
+                logger.error("Timeout while announcing"
+                        + formatAnnounceEvent(event) + " to tracker!");
+                announcements.remove(address);
+                return;
+            }
 
-				switch (state) {
-					case CONNECT_REQUEST:
-						this.send(UDPConnectRequestMessage
-							.craft(this.transactionId).getData());
+            transactionId = environment.getRandom().nextInt();
+            announcements.put(address, this);
 
-						try {
-							this.handleTrackerConnectResponse(
-								UDPTrackerMessage.UDPTrackerResponseMessage
-									.parse(this.recv(attempts)));
-							attempts = -1;
-						} catch (SocketTimeoutException ste) {
-							// Silently ignore the timeout and retry with a
-							// longer timeout, unless announce stop was
-							// requested in which case we need to exit right
-							// away.
-							if (stop) {
-								return;
-							}
-						}
-						break;
+            // Immediately decide if we can send the announce request
+            // directly or not. For this, we need a valid, non-expired
+            // connection ID.
+            if (connectionExpiration > System.currentTimeMillis())
+                state = State.ANNOUNCE_REQUEST;
+            else
+                logger.debug("Announce connection ID expired, "
+                        + "reconnecting with tracker...");
 
-					case ANNOUNCE_REQUEST:
-						this.send(this.buildAnnounceRequest(event).getData());
+            switch (state) {
+                case CONNECT_REQUEST:
+                    send(address, new UDPConnectRequestMessage(transactionId));
+                    break;
 
-						try {
-							this.handleTrackerAnnounceResponse(
-								UDPTrackerMessage.UDPTrackerResponseMessage
-									.parse(this.recv(attempts)), inhibitEvents);
-							// If we got here, we succesfully completed this
-							// announce exchange and can simply return to exit the
-							// loop.
-							return;
-						} catch (SocketTimeoutException ste) {
-							// Silently ignore the timeout and retry with a
-							// longer timeout, unless announce stop was
-							// requested in which case we need to exit right
-							// away.
-							if (stop) {
-								return;
-							}
-						}
-						break;
-					default:
-						throw new IllegalStateException("Invalid announce state!");
-				}
-			}
+                case ANNOUNCE_REQUEST:
+                    send(address, new UDPAnnounceRequestMessage(
+                            connectionId,
+                            transactionId,
+                            torrent.getInfoHash(),
+                            peer.getPeerId(),
+                            torrent.getDownloaded(),
+                            torrent.getUploaded(),
+                            torrent.getLeft(),
+                            event,
+                            peer.getAddress().getAddress(),
+                            0,
+                            TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
+                            peer.getAddress().getPort()));
+                    break;
 
-			// When the maximum number of attempts was reached, the announce
-			// really timed-out. We'll try again in the next announce loop.
-			throw new AnnounceException("Timeout while announcing" +
-				this.formatAnnounceEvent(event) + " to tracker!");
-		} catch (IOException ioe) {
-			throw new AnnounceException("Error while announcing" +
-				this.formatAnnounceEvent(event) +
-				" to tracker: " + ioe.getMessage(), ioe);
-		} catch (MessageValidationException mve) {
-			throw new AnnounceException("Tracker message violates expected " +
-				"protocol (" + mve.getMessage() + ")", mve);
-		}
-	}
+                default:
+                    throw new IllegalStateException("Invalid announce state!");
+            }
 
-	/**
-	 * Handles the tracker announce response message.
-	 *
-	 * <p>
-	 * Verifies the transaction ID of the message before passing it over to
-	 * any registered {@link AnnounceResponseListener}.
-	 * </p>
-	 *
-	 * @param message The message received from the tracker in response to the
-	 * announce request.
-	 */
-	@Override
-	protected void handleTrackerAnnounceResponse(TrackerMessage message,
-		boolean inhibitEvents) throws AnnounceException {
-		this.validateTrackerResponse(message);
-		super.handleTrackerAnnounceResponse(message, inhibitEvents);
-	}
+            // Mark for retry.
+        }
 
-	/**
-	 * Close this announce connection.
-	 */
-	@Override
-	protected void close() {
-		this.stop = true;
+        private void recv(UDPTrackerMessage.UDPTrackerResponseMessage message) {
+            if (message.getTransactionId() != transactionId) {
+                // Probably ignore silently: It's a delayed message after a timeout.
+                logger.warn("Transaction id mismatch: " + message + " for " + this);
+                return;
+            }
 
-		// Close the socket to force blocking operations to return.
-		if (this.socket != null && !this.socket.isClosed()) {
-			this.socket.close();
-		}
-	}
+            if (message instanceof UDPConnectResponseMessage) {
+                UDPConnectResponseMessage response = (UDPConnectResponseMessage) message;
+                connectionId = response.getConnectionId();
+                connectionExpiration = System.currentTimeMillis() + 60;
+                run();
+            } else if (message instanceof UDPAnnounceResponseMessage) {
+                handleTrackerAnnounceResponse(null, message, false);
+            } else if (message instanceof UDPTrackerErrorMessage) {
+                UDPTrackerErrorMessage response = (UDPTrackerErrorMessage) message;
+                logger.warn("Announce failed: " + response.getReason());
+            } else {
+                logger.error("Unknown UDP message " + message);
+            }
+        }
+    }
+    private final ConcurrentMap<InetSocketAddress, UDPTrackerState> announcements = new ConcurrentHashMap<InetSocketAddress, UDPTrackerState>();
+    private DatagramChannel channel;
 
-	private UDPAnnounceRequestMessage buildAnnounceRequest(
-		AnnounceRequestMessage.RequestEvent event) {
-		return UDPAnnounceRequestMessage.craft(
-			this.connectionId,
-			transactionId,
-			this.torrent.getInfoHash(),
-			this.peer.getPeerId().array(),
-			this.torrent.getDownloaded(),
-			this.torrent.getUploaded(),
-			this.torrent.getLeft(),
-			event,
-			this.peer.getAddress(),
-			0,
-			TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
-			this.peer.getPort());
-	}
+    /**
+     * 
+     * @param torrent
+     */
+    public UDPTrackerClient(ClientEnvironment environment, Peer peer) {
+        super(environment, peer);
 
-	/**
-	 * Validates an incoming tracker message.
-	 *
-	 * <p>
-	 * Verifies that the message is not an error message (throws an exception
-	 * with the error message if it is) and that the transaction ID matches the
-	 * current one.
-	 * </p>
-	 *
-	 * @param message The incoming tracker message.
-	 */
-	private void validateTrackerResponse(TrackerMessage message)
-		throws AnnounceException {
-		if (message instanceof ErrorMessage) {
-			throw new AnnounceException(((ErrorMessage)message).getReason());
-		}
+        InetSocketAddress address = peer.getAddress();
+        if (!(address.getAddress() instanceof Inet4Address))
+            throw new UnsupportedOperationException("UDP announce only supports IPv4, see http://bittorrent.org/beps/bep_0015.html#ipv6");
+    }
 
-		if (message instanceof UDPTrackerMessage &&
-			(((UDPTrackerMessage)message).getTransactionId() != this.transactionId)) {
-			throw new AnnounceException("Invalid transaction ID!");
-		}
-	}
+    @Override
+    public void start() throws Exception {
+        super.start();
+        channel = DatagramChannel.open();
+        channel.configureBlocking(false);
+        channel.bind(peer.getAddress());
+    }
 
-	/**
-	 * Handles the tracker connect response message.
-	 *
-	 * @param message The message received from the tracker in response to the
-	 * connection request.
-	 */
-	private void handleTrackerConnectResponse(TrackerMessage message)
-		throws AnnounceException {
-		this.validateTrackerResponse(message);
+    /**
+     * Close this announce connection.
+     */
+    @Override
+    public void stop() throws Exception {
+        if (channel != null && channel.isOpen())
+            channel.close();
+        channel = null;
+        super.stop();
+    }
 
-		if (! (message instanceof ConnectionResponseMessage)) {
-			throw new AnnounceException("Unexpected tracker message type " +
-				message.getType().name() + "!");
-		}
+    private static int getMaxAttempts(AnnounceRequestMessage.RequestEvent event) {
+        return AnnounceRequestMessage.RequestEvent.STOPPED.equals(event)
+                ? UDP_MAX_TRIES_ON_STOPPED
+                : UDP_MAX_TRIES;
+    }
 
-		UDPConnectResponseMessage connectResponse =
-			(UDPConnectResponseMessage)message;
+    @Override
+    public void announce(
+            AnnounceResponseListener listener,
+            SharedTorrent torrent, URI tracker,
+            AnnounceRequestMessage.RequestEvent event, boolean inhibitEvents) throws AnnounceException {
+        logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
+                new Object[]{
+            formatAnnounceEvent(event),
+            torrent.getUploaded(),
+            torrent.getDownloaded(),
+            torrent.getLeft()
+        });
 
-		this.connectionId = connectResponse.getConnectionId();
-		Calendar now = Calendar.getInstance();
-		now.add(Calendar.MINUTE, 1);
-		this.connectionExpiration = now.getTime();
-	}
+        InetSocketAddress address = new InetSocketAddress(tracker.getHost(), tracker.getPort());
+        UDPAnnounceName name = new UDPAnnounceName(address, torrent.getInfoHash());
+        UDPTrackerState state = new UDPTrackerState(address, torrent);
+        {
+            UDPTrackerState state0 = announcements.putIfAbsent(name, state);
+            if (state0 != null)
+                state = state0;
+        }
 
-	/**
-	 * Send a UDP packet to the tracker.
-	 *
-	 * @param data The {@link ByteBuffer} to send in a datagram packet to the
-	 * tracker.
-	 */
-	private void send(ByteBuffer data) {
-		try {
-			this.socket.send(new DatagramPacket(
-				data.array(),
-				data.capacity(),
-				this.address));
-		} catch (IOException ioe) {
-			logger.warn("Error sending datagram packet to tracker at {}: {}.",
-				this.address, ioe.getMessage());
-		}
-	}
+        state.setEvent(event);
+        state.run();
+    }
 
-	/**
-	 * Receive a UDP packet from the tracker.
-	 *
-	 * @param attempt The attempt number, used to calculate the timeout for the
-	 * receive operation.
-	 * @return Returns a {@link ByteBuffer} containing the packet data.
-	 */
-	private ByteBuffer recv(int attempt)
-		throws IOException, SocketException, SocketTimeoutException {
-		int timeout = UDP_BASE_TIMEOUT_SECONDS * (int)Math.pow(2, attempt);
-		logger.trace("Setting receive timeout to {}s for attempt {}...",
-			timeout, attempt);
-		this.socket.setSoTimeout(timeout * 1000);
+    /**
+     * Send a UDP packet to the tracker.
+     *
+     * @param data The {@link ByteBuffer} to send in a datagram packet to the
+     * tracker.
+     */
+    private void send(InetSocketAddress destination, UDPTrackerMessage message) {
+        try {
+            ByteBuf buf = Unpooled.buffer(UDP_PACKET_LENGTH);
+            message.toWire(buf);
+            if (channel.send(buf.nioBuffer(), destination) < buf.readableBytes())
+                logger.warn("Sent short datagram to tracker at {}", destination);
+        } catch (IOException ioe) {
+            logger.warn("Error sending datagram packet to tracker at {}: {}.",
+                    destination, ioe.getMessage());
+        }
+    }
 
-		try {
-			DatagramPacket p = new DatagramPacket(
-				new byte[UDP_PACKET_LENGTH],
-				UDP_PACKET_LENGTH);
-			this.socket.receive(p);
-			return ByteBuffer.wrap(p.getData(), 0, p.getLength());
-		} catch (SocketTimeoutException ste) {
-			throw ste;
-		}
-	}
+    /**
+     * Receive a UDP packet from the tracker.
+     *
+     * @param attempt The attempt number, used to calculate the timeout for the
+     * receive operation.
+     * @return Returns a {@link ByteBuffer} containing the packet data.
+     */
+    private void recv()
+            throws IOException, MessageValidationException {
+        ByteBuffer buffer = ByteBuffer.allocate(UDP_PACKET_LENGTH);
+        SocketAddress address = channel.receive(buffer);
+        ByteBuf buf = Unpooled.wrappedBuffer(buffer);
+        UDPTrackerMessage.UDPTrackerResponseMessage message = UDPTrackerMessage.UDPTrackerResponseMessage.parse(buf);
+        UDPAnnounceId id = new UDPAnnounceId(address, message.getTransactionId());
+        UDPTrackerState state = announcements.remove(id);
+        state.recv(message);
+    }
 }

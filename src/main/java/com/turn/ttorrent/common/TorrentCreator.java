@@ -16,12 +16,12 @@
 package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-import java.io.ByteArrayOutputStream;
+import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -70,6 +70,34 @@ public class TorrentCreator {
     private static final Logger logger = LoggerFactory.getLogger(TorrentCreator.class);
 
     /**
+     * Determine how many threads to use for the piece hashing.
+     *
+     * <p>
+     * If the environment variable TTORRENT_HASHING_THREADS is set to an
+     * integer value greater than 0, its value will be used. Otherwise, it
+     * defaults to the number of processors detected by the Java Runtime.
+     * </p>
+     *
+     * @return How many threads to use for concurrent piece hashing.
+     */
+    protected static int getHashingThreadsCount() {
+        String threads = System.getenv("TTORRENT_HASHING_THREADS");
+
+        if (threads != null) {
+            try {
+                int count = Integer.parseInt(threads);
+                if (count > 0) {
+                    return count;
+                }
+            } catch (NumberFormatException nfe) {
+                // Pass
+            }
+        }
+
+        return Runtime.getRuntime().availableProcessors();
+    }
+
+    /**
      * Creates a new executor suitable for torrent hashing.
      * 
      * This executor controls memory usage by using a bounded queue, and the
@@ -85,11 +113,13 @@ public class TorrentCreator {
      * enough that JVM ergonomics keeps the eden size small.
      */
     public static ThreadPoolExecutor newExecutor() {
-        int threads = Torrent.getHashingThreadsCount();
+        int threads = getHashingThreadsCount();
         logger.info("Creating ExecutorService with {} threads", new Object[]{threads});
+        ThreadFactory factory = new DefaultThreadFactory("bittorrent-executor", true);
         ThreadPoolExecutor service = new ThreadPoolExecutor(0, threads,
                 1L, TimeUnit.SECONDS,
                 new ArrayBlockingQueue<Runnable>(threads * 3),
+                factory,
                 new ThreadPoolExecutor.CallerRunsPolicy());
         service.allowCoreThreadTimeOut(true);
         return service;
@@ -167,7 +197,7 @@ public class TorrentCreator {
      * @param createdBy The creator's name, or any string identifying the
      * torrent's creator.
      */
-    public Torrent create() throws InterruptedException, IOException {
+    public Torrent create() throws InterruptedException, IOException, URISyntaxException {
         validate();
 
         if (files == null || files.isEmpty())
@@ -230,9 +260,7 @@ public class TorrentCreator {
         }
         torrent.put("info", new BEValue(info));
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        BEncoder.bencode(new BEValue(torrent), baos);
-        return new Torrent(baos.toByteArray(), true);
+        return new Torrent(torrent);
     }
 
     /**

@@ -17,7 +17,9 @@ package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
-import java.nio.ByteBuffer;
+import io.netty.buffer.ByteBuf;
+import javax.annotation.CheckForSigned;
+import javax.annotation.Nonnull;
 
 /**
  * Base class for UDP tracker messages.
@@ -26,82 +28,141 @@ import java.nio.ByteBuffer;
  */
 public abstract class UDPTrackerMessage extends TrackerMessage {
 
-	private UDPTrackerMessage(Type type, ByteBuffer data) {
-		super(type, data);
-	}
+    private int transactionId;
 
-	public abstract int getActionId();
-	public abstract int getTransactionId();
+    private UDPTrackerMessage(Type type) {
+        super(type);
+    }
 
-	public static abstract class UDPTrackerRequestMessage
-		extends UDPTrackerMessage {
+    public final int getActionId() {
+        return getType().getId();
+    }
 
-		private static final int UDP_MIN_REQUEST_PACKET_SIZE = 16;
+    public final int getTransactionId() {
+        return transactionId;
+    }
 
-		protected UDPTrackerRequestMessage(Type type, ByteBuffer data) {
-			super(type, data);
-		}
+    public void setTransactionId(int transactionId) {
+        this.transactionId = transactionId;
+    }
 
-		public static UDPTrackerRequestMessage parse(ByteBuffer data)
-			throws MessageValidationException {
-			if (data.remaining() < UDP_MIN_REQUEST_PACKET_SIZE) {
-				throw new MessageValidationException("Invalid packet size!");
-			}
+    public abstract void fromWire(@Nonnull ByteBuf in)
+            throws MessageValidationException;
 
-			/**
-			 * UDP request packets always start with the connection ID (8 bytes),
-			 * followed by the action (4 bytes). Extract the action code
-			 * accordingly.
-			 */
-			data.mark();
-			data.getLong();
-			int action = data.getInt();
-			data.reset();
+    public abstract void toWire(@Nonnull ByteBuf out);
 
-			if (action == Type.CONNECT_REQUEST.getId()) {
-				return UDPConnectRequestMessage.parse(data);
-			} else if (action == Type.ANNOUNCE_REQUEST.getId()) {
-				return UDPAnnounceRequestMessage.parse(data);
-			}
+    protected void _fromWire(@Nonnull ByteBuf in, @CheckForSigned int length)
+            throws MessageValidationException {
+        if (length != -1)
+            if (in.readableBytes() != length)
+                throw new MessageValidationException("Packet data had bad length: " + in.readableBytes() + "; expected " + length);
+    }
 
-			throw new MessageValidationException("Unknown UDP tracker " +
-				"request message!");
-		}
-	};
+    public static abstract class UDPTrackerRequestMessage
+            extends UDPTrackerMessage {
 
-	public static abstract class UDPTrackerResponseMessage
-		extends UDPTrackerMessage {
+        private static final int UDP_MIN_REQUEST_PACKET_SIZE = 16;
+        private long connectionId;
 
-		private static final int UDP_MIN_RESPONSE_PACKET_SIZE = 8;
+        protected UDPTrackerRequestMessage(Type type) {
+            super(type);
+        }
 
-		protected UDPTrackerResponseMessage(Type type, ByteBuffer data) {
-			super(type, data);
-		}
+        public final long getConnectionId() {
+            return connectionId;
+        }
 
-		public static UDPTrackerResponseMessage parse(ByteBuffer data)
-			throws MessageValidationException {
-			if (data.remaining() < UDP_MIN_RESPONSE_PACKET_SIZE) {
-				throw new MessageValidationException("Invalid packet size!");
-			}
+        public void setConnectionId(long connectionId) {
+            this.connectionId = connectionId;
+        }
 
-			/**
-			 * UDP response packets always start with the action (4 bytes), so
-			 * we can extract it immediately.
-			 */
-			data.mark();
-			int action = data.getInt();
-			data.reset();
+        protected void _toWire(@Nonnull ByteBuf out) {
+            out.writeLong(getConnectionId());
+            out.writeInt(getActionId());
+            out.writeInt(getTransactionId());
+        }
 
-			if (action == Type.CONNECT_RESPONSE.getId()) {
-				return UDPConnectResponseMessage.parse(data);
-			} else if (action == Type.ANNOUNCE_RESPONSE.getId()) {
-				return UDPAnnounceResponseMessage.parse(data);
-			} else if (action == Type.ERROR.getId()) {
-				return UDPTrackerErrorMessage.parse(data);
-			}
+        @Override
+        protected void _fromWire(@Nonnull ByteBuf in, @CheckForSigned int length)
+                throws MessageValidationException {
+            super._fromWire(in, length);
+            setConnectionId(in.readLong());
+            int actionId = in.readInt();
+            if (actionId != getActionId())
+                throw new MessageValidationException("Packet contained bad ActionId: " + this);
+            setTransactionId(in.readInt());
+        }
 
-			throw new MessageValidationException("Unknown UDP tracker " +
-				"response message!");
-		}
-	};
+        public static UDPTrackerRequestMessage parse(ByteBuf data)
+                throws MessageValidationException {
+            if (data.readableBytes() < UDP_MIN_REQUEST_PACKET_SIZE) {
+                throw new MessageValidationException("Invalid packet size!");
+            }
+
+            /**
+             * UDP request packets always start with the connection ID (8 bytes),
+             * followed by the action (4 bytes). Extract the action code
+             * accordingly.
+             */
+            int action = data.getInt(8);
+
+            if (action == Type.CONNECT_REQUEST.getId()) {
+                return UDPConnectRequestMessage.parse(data);
+            } else if (action == Type.ANNOUNCE_REQUEST.getId()) {
+                return UDPAnnounceRequestMessage.parse(data);
+            }
+
+            throw new MessageValidationException("Unknown UDP tracker "
+                    + "request message!");
+        }
+    };
+
+    public static abstract class UDPTrackerResponseMessage
+            extends UDPTrackerMessage {
+
+        private static final int UDP_MIN_RESPONSE_PACKET_SIZE = 8;
+
+        protected UDPTrackerResponseMessage(Type type) {
+            super(type);
+        }
+
+        @Override
+        protected void _fromWire(@Nonnull ByteBuf in, @CheckForSigned int length)
+                throws MessageValidationException {
+            super._fromWire(in, length);
+            int actionId = in.readInt();
+            if (actionId != getActionId())
+                throw new MessageValidationException("Packet contained bad ActionId: " + this);
+            setTransactionId(in.readInt());
+        }
+
+        protected void _toWire(@Nonnull ByteBuf out) {
+            out.writeInt(getActionId());
+            out.writeInt(getTransactionId());
+        }
+
+        public static UDPTrackerResponseMessage parse(ByteBuf data)
+                throws MessageValidationException {
+            if (data.readableBytes() < UDP_MIN_RESPONSE_PACKET_SIZE) {
+                throw new MessageValidationException("Invalid packet size!");
+            }
+
+            /**
+             * UDP response packets always start with the action (4 bytes), so
+             * we can extract it immediately.
+             */
+            int action = data.getInt(0);
+
+            if (action == Type.CONNECT_RESPONSE.getId()) {
+                return UDPConnectResponseMessage.parse(data);
+            } else if (action == Type.ANNOUNCE_RESPONSE.getId()) {
+                return UDPAnnounceResponseMessage.parse(data);
+            } else if (action == Type.ERROR.getId()) {
+                return UDPTrackerErrorMessage.parse(data);
+            }
+
+            throw new MessageValidationException("Unknown UDP tracker "
+                    + "response message!");
+        }
+    };
 }

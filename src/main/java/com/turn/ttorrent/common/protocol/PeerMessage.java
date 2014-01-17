@@ -417,6 +417,7 @@ public abstract class PeerMessage {
 		public static BitfieldMessage parse(ByteBuffer buffer,
 				SharedTorrent torrent) throws MessageValidationException {
 			BitSet bitfield = new BitSet(buffer.remaining()*8);
+            // TODO: This looks big-endian. Compare BitSet.valueOf(ByteBuffer)
 			for (int i=0; i < buffer.remaining()*8; i++) {
 				if ((buffer.get(i/8) & (1 << (7 -(i % 8)))) > 0) {
 					bitfield.set(i);
@@ -492,7 +493,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).size()) {
+					torrent.getPiece(this.piece).getLength()) {
 				return this;
 			}
 
@@ -563,7 +564,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.block.limit() <=
-				torrent.getPiece(this.piece).size()) {
+				torrent.getPiece(this.piece).getLength()) {
 				return this;
 			}
 
@@ -635,7 +636,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).size()) {
+					torrent.getPiece(this.piece).getLength()) {
 				return this;
 			}
 

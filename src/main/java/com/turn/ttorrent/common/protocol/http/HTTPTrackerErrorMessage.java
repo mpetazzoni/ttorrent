@@ -15,73 +15,55 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-
+import javax.annotation.Nonnull;
 
 /**
  * An error message from an HTTP tracker.
  *
  * @author mpetazzoni
  */
-public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
-	implements ErrorMessage {
+public class HTTPTrackerErrorMessage extends HTTPTrackerMessage implements ErrorMessage {
 
-	private final String reason;
+    private final String reason;
 
-	private HTTPTrackerErrorMessage(ByteBuffer data, String reason) {
-		super(Type.ERROR, data);
-		this.reason = reason;
-	}
+    public HTTPTrackerErrorMessage(String reason) {
+        super(Type.ERROR);
+        this.reason = reason;
+    }
 
-	@Override
-	public String getReason() {
-		return this.reason;
-	}
+    public HTTPTrackerErrorMessage(ErrorMessage.FailureReason reason) {
+        this(reason.getMessage());
+    }
 
-	public static HTTPTrackerErrorMessage parse(ByteBuffer data)
-		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
-		}
+    @Override
+    public String getReason() {
+        return this.reason;
+    }
 
-		Map<String, BEValue> params = decoded.getMap();
+    @Nonnull
+    public static HTTPTrackerErrorMessage fromBEValue(@Nonnull Map<String, BEValue> params)
+            throws MessageValidationException {
 
-		try {
-			return new HTTPTrackerErrorMessage(
-				data,
-				params.get("failure reason")
-					.getString(Torrent.BYTE_ENCODING));
-		} catch (InvalidBEncodingException ibee) {
-			throw new MessageValidationException("Invalid tracker error " +
-				"message!", ibee);
-		}
-	}
+        try {
+            String reason = params.get("failure reason").getString(Torrent.BYTE_ENCODING);
+            return new HTTPTrackerErrorMessage(reason);
+        } catch (InvalidBEncodingException ibee) {
+            throw new MessageValidationException("Invalid tracker error "
+                    + "message!", ibee);
+        }
+    }
 
-	public static HTTPTrackerErrorMessage craft(
-		ErrorMessage.FailureReason reason) throws IOException,
-		   MessageValidationException {
-		return HTTPTrackerErrorMessage.craft(reason.getMessage());
-	}
-
-	public static HTTPTrackerErrorMessage craft(String reason)
-		throws IOException, MessageValidationException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
-		params.put("failure reason",
-			new BEValue(reason, Torrent.BYTE_ENCODING));
-		return new HTTPTrackerErrorMessage(
-			BEncoder.bencode(params),
-			reason);
-	}
+    @Nonnull
+    public Map<String, BEValue> toBEValue() {
+        Map<String, BEValue> params = new HashMap<String, BEValue>();
+        params.put("failure reason", new BEValue(getReason(), Torrent.BYTE_ENCODING));
+        return params;
+    }
 }

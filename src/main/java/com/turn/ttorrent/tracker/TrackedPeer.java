@@ -20,14 +20,12 @@ import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * A BitTorrent tracker peer.
@@ -46,171 +44,144 @@ import org.slf4j.LoggerFactory;
  * part of.
  * </p>
  */
-public class TrackedPeer extends Peer {
+public class TrackedPeer {
 
-	private static final Logger logger =
-		LoggerFactory.getLogger(TrackedPeer.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(TrackedPeer.class);
+    private static final int FRESH_TIME_SECONDS = 30;
+    private final Peer peer;
+    private final Torrent torrent;
+    private long uploaded;
+    private long downloaded;
+    private long left;
+    // TODO: The only reason to keep this reference here is to produce debug logs.
+    private TrackedPeerState state;
+    private long lastAnnounce = System.currentTimeMillis();
+    // We need a happen-before relationship for multiple threads.
+    private final Object lock = new Object();
 
-	private static final int FRESH_TIME_SECONDS = 30;
+    /**
+     * Instantiate a new tracked peer for the given torrent.
+     *
+     * @param peer The remote peer.
+     * @param torrent The torrent this peer exchanges on.
+     */
+    public TrackedPeer(Peer peer, Torrent torrent) {
+        this.peer = peer;
+        this.torrent = torrent;
 
-	private long uploaded;
-	private long downloaded;
-	private long left;
-	private Torrent torrent;
+        // Instantiated peers start in the UNKNOWN state.
+        this.state = TrackedPeerState.UNKNOWN;
 
-	/**
-	 * Represents the state of a peer exchanging on this torrent.
-	 *
-	 * <p>
-	 * Peers can be in the STARTED state, meaning they have announced
-	 * themselves to us and are eventually exchanging data with other peers.
-	 * Note that a peer starting with a completed file will also be in the
-	 * started state and will never notify as being in the completed state.
-	 * This information can be inferred from the fact that the peer reports 0
-	 * bytes left to download.
-	 * </p>
-	 *
-	 * <p>
-	 * Peers enter the COMPLETED state when they announce they have entirely
-	 * downloaded the file. As stated above, we may also elect them for this
-	 * state if they report 0 bytes left to download.
-	 * </p>
-	 *
-	 * <p>
-	 * Peers enter the STOPPED state very briefly before being removed. We
-	 * still pass them to the STOPPED state in case someone else kept a
-	 * reference on them.
-	 * </p>
-	 */
-	public enum PeerState {
-		UNKNOWN,
-		STARTED,
-		COMPLETED,
-		STOPPED;
-	};
+        this.uploaded = 0;
+        this.downloaded = 0;
+        this.left = 0;
+    }
 
-	private PeerState state;
-	private long lastAnnounce = System.currentTimeMillis();
-	// We need a happen-before relationship for multiple threads.
-	private final Object lock = new Object();
+    @Nonnull
+    public Peer getPeer() {
+        return peer;
+    }
 
-	/**
-	 * Instantiate a new tracked peer for the given torrent.
-	 *
-	 * @param torrent The torrent this peer exchanges on.
-	 * @param ip The peer's IP address.
-	 * @param port The peer's port.
-	 * @param peerId The byte-encoded peer ID.
-	 */
-	public TrackedPeer(Torrent torrent, String ip, int port,
-			ByteBuffer peerId) {
-		super(ip, port, peerId);
-		this.torrent = torrent;
+    @Nonnull
+    public Torrent getTorrent() {
+        return torrent;
+    }
 
-		// Instantiated peers start in the UNKNOWN state.
-		this.state = PeerState.UNKNOWN;
+    /**
+     * Update this peer's state and information.
+     *
+     * <p>
+     * <b>Note:</b> if the peer reports 0 bytes left to download, its state will
+     * be automatically be set to COMPLETED.
+     * </p>
+     *
+     * @param state The peer's state.
+     * @param uploaded Uploaded byte count, as reported by the peer.
+     * @param downloaded Downloaded byte count, as reported by the peer.
+     * @param left Left-to-download byte count, as reported by the peer.
+     */
+    public void update(TrackedPeerState state, long uploaded, long downloaded, long left) {
+        if (TrackedPeerState.STARTED.equals(state) && left == 0)
+            state = TrackedPeerState.COMPLETED;
 
-		this.uploaded = 0;
-		this.downloaded = 0;
-		this.left = 0;
-	}
+        if (!state.equals(this.state)) {
+            logger.info("Peer {} {} download of {}.",
+                    new Object[]{
+                this,
+                state.name().toLowerCase(),
+                this.torrent,});
+        }
 
-	/**
-	 * Update this peer's state and information.
-	 *
-	 * <p>
-	 * <b>Note:</b> if the peer reports 0 bytes left to download, its state will
-	 * be automatically be set to COMPLETED.
-	 * </p>
-	 *
-	 * @param state The peer's state.
-	 * @param uploaded Uploaded byte count, as reported by the peer.
-	 * @param downloaded Downloaded byte count, as reported by the peer.
-	 * @param left Left-to-download byte count, as reported by the peer.
-	 */
-	public void update(PeerState state, long uploaded, long downloaded,
-			long left) {
-		if (PeerState.STARTED.equals(state) && left == 0) {
-			state = PeerState.COMPLETED;
-		}
+        synchronized (lock) {
+            this.state = state;
+            this.lastAnnounce = System.currentTimeMillis();
+            this.uploaded = uploaded;
+            this.downloaded = downloaded;
+            this.left = left;
+        }
+    }
 
-		if (!state.equals(this.state)) {
-			logger.info("Peer {} {} download of {}.",
-				new Object[] {
-					this,
-					state.name().toLowerCase(),
-					this.torrent,
-				});
-		}
+    /**
+     * Tells whether this peer has completed its download and can thus be
+     * considered a seeder.
+     */
+    public boolean isCompleted() {
+        return TrackedPeerState.COMPLETED.equals(this.state);
+    }
 
-		synchronized (lock) {
-			this.state = state;
-			this.lastAnnounce = System.currentTimeMillis();
-			this.uploaded = uploaded;
-			this.downloaded = downloaded;
-			this.left = left;
-		}
-	}
+    /**
+     * Returns how many bytes the peer reported it has uploaded so far.
+     */
+    public long getUploaded() {
+        return this.uploaded;
+    }
 
-	/**
-	 * Tells whether this peer has completed its download and can thus be
-	 * considered a seeder.
-	 */
-	public boolean isCompleted() {
-		return PeerState.COMPLETED.equals(this.state);
-	}
+    /**
+     * Returns how many bytes the peer reported it has downloaded so far.
+     */
+    public long getDownloaded() {
+        return this.downloaded;
+    }
 
-	/**
-	 * Returns how many bytes the peer reported it has uploaded so far.
-	 */
-	public long getUploaded() {
-		return this.uploaded;
-	}
+    /**
+     * Returns how many bytes the peer reported it needs to retrieve before
+     * its download is complete.
+     */
+    public long getLeft() {
+        return this.left;
+    }
 
-	/**
-	 * Returns how many bytes the peer reported it has downloaded so far.
-	 */
-	public long getDownloaded() {
-		return this.downloaded;
-	}
+    /**
+     * Tells whether this peer has checked in with the tracker recently.
+     *
+     * <p>
+     * Non-fresh peers are automatically terminated and collected by the
+     * Tracker.
+     * </p>
+     */
+    public boolean isFresh(long now) {
+        // TODO: Shouldn't this use the announce interval from the tracked torrent?
+        synchronized (lock) {
+            return (this.lastAnnounce > 0
+                    && (this.lastAnnounce + (FRESH_TIME_SECONDS * 1000) > now));
+        }
+    }
 
-	/**
-	 * Returns how many bytes the peer reported it needs to retrieve before
-	 * its download is complete.
-	 */
-	public long getLeft() {
-		return this.left;
-	}
-
-	/**
-	 * Tells whether this peer has checked in with the tracker recently.
-	 *
-	 * <p>
-	 * Non-fresh peers are automatically terminated and collected by the
-	 * Tracker.
-	 * </p>
-	 */
-	public boolean isFresh(long now) {
-		synchronized (lock) {
-			return (this.lastAnnounce > 0 &&
-					(this.lastAnnounce + (FRESH_TIME_SECONDS * 1000) > now));
-		}
-	}
-
-	/**
-	 * Returns a BEValue representing this peer for inclusion in an
-	 * announce reply from the tracker.
-	 *
-	 * The returned BEValue is a dictionary containing the peer ID (in its
-	 * original byte-encoded form), the peer's IP and the peer's port.
-	 */
-	public BEValue toBEValue() throws UnsupportedEncodingException {
-		Map<String, BEValue> peer = new HashMap<String, BEValue>();
-		if (this.hasPeerId()) {
-			peer.put("peer id", new BEValue(this.getPeerId().array()));
-		}
-		peer.put("ip", new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
-		peer.put("port", new BEValue(this.getPort()));
-		return new BEValue(peer);
-	}
+    /**
+     * Returns a BEValue representing this peer for inclusion in an
+     * announce reply from the tracker.
+     *
+     * The returned BEValue is a dictionary containing the peer ID (in its
+     * original byte-encoded form), the peer's IP and the peer's port.
+     */
+    public BEValue toBEValue() throws UnsupportedEncodingException {
+        Map<String, BEValue> out = new HashMap<String, BEValue>();
+        if (peer.hasPeerId()) {
+            out.put("peer id", new BEValue(peer.getPeerId()));
+        }
+        out.put("ip", new BEValue(peer.getIp(), Torrent.BYTE_ENCODING));
+        out.put("port", new BEValue(peer.getPort()));
+        return new BEValue(out);
+    }
 }
