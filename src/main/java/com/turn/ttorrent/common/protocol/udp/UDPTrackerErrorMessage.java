@@ -18,9 +18,7 @@ package com.turn.ttorrent.common.protocol.udp;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-
+import io.netty.buffer.ByteBuf;
 
 /**
  * The error message for the UDP tracker protocol.
@@ -28,75 +26,35 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class UDPTrackerErrorMessage
-	extends UDPTrackerMessage.UDPTrackerResponseMessage
-	implements TrackerMessage.ErrorMessage {
+        extends UDPTrackerMessage.UDPTrackerResponseMessage
+        implements TrackerMessage.ErrorMessage {
 
-	private static final int UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE = 8;
+    private static final int UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE = 8;
+    private String reason;
 
-	private final int actionId = Type.ERROR.getId();
-	private final int transactionId;
-	private final String reason;
+    private UDPTrackerErrorMessage() {
+        super(Type.ERROR);
+    }
 
-	private UDPTrackerErrorMessage(ByteBuffer data, int transactionId,
-		String reason) {
-		super(Type.ERROR, data);
-		this.transactionId = transactionId;
-		this.reason = reason;
-	}
+    @Override
+    public String getReason() {
+        return this.reason;
+    }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
+    @Override
+    public void fromWire(ByteBuf in) throws MessageValidationException {
+        if (in.readableBytes() < UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE)
+            throw new MessageValidationException("Invalid tracker error message size " + in.readableBytes());
+        _fromWire(in, -1);
 
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
+        byte[] reasonBytes = new byte[in.readableBytes()];
+        in.readBytes(reasonBytes);
+        reason = new String(reasonBytes, Torrent.BYTE_ENCODING);
+    }
 
-	@Override
-	public String getReason() {
-		return this.reason;
-	}
-
-	public static UDPTrackerErrorMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() < UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE) {
-			throw new MessageValidationException(
-				"Invalid tracker error message size!");
-		}
-
-		if (data.getInt() != Type.ERROR.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for tracker error!");
-		}
-
-		int transactionId = data.getInt();
-		byte[] reasonBytes = new byte[data.remaining()];
-		data.get(reasonBytes);
-
-		try {
-			return new UDPTrackerErrorMessage(data,
-				transactionId,
-				new String(reasonBytes, Torrent.BYTE_ENCODING)
-			);
-		} catch (UnsupportedEncodingException uee) {
-			throw new MessageValidationException(
-				"Could not decode error message!", uee);
-		}
-	}
-
-	public static UDPTrackerErrorMessage craft(int transactionId,
-		String reason) throws UnsupportedEncodingException {
-		byte[] reasonBytes = reason.getBytes(Torrent.BYTE_ENCODING);
-		ByteBuffer data = ByteBuffer
-			.allocate(UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE +
-				reasonBytes.length);
-		data.putInt(Type.ERROR.getId());
-		data.putInt(transactionId);
-		data.put(reasonBytes);
-		return new UDPTrackerErrorMessage(data,
-			transactionId,
-			reason);
-	}
+    @Override
+    public void toWire(ByteBuf out) {
+        _toWire(out);
+        out.writeBytes(reason.getBytes(Torrent.BYTE_ENCODING));
+    }
 }

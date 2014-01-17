@@ -15,14 +15,11 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
-import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
-
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 
 /**
  * Base class for HTTP tracker messages.
@@ -31,28 +28,50 @@ import java.util.Map;
  */
 public abstract class HTTPTrackerMessage extends TrackerMessage {
 
-	protected HTTPTrackerMessage(Type type, ByteBuffer data) {
-		super(type, data);
-	}
+    protected HTTPTrackerMessage(Type type) {
+        super(type);
+    }
 
-	public static HTTPTrackerMessage parse(ByteBuffer data)
-		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
-		}
+    protected static String toString(@Nonnull Map<String, String> params, @Nonnull String key, @CheckForNull ErrorMessage.FailureReason error) throws MessageValidationException {
+        String text = params.get(key);
+        if (text != null)
+            return text;
+        if (error != null)
+            throw new MessageValidationException("Invalid parameters " + params + ": " + error.getMessage());
+        return null;
+    }
 
-		Map<String, BEValue> params = decoded.getMap();
+    @CheckForNull
+    protected static byte[] toBytes(Map<String, String> params, String key, @CheckForNull ErrorMessage.FailureReason error) throws MessageValidationException {
+        String text = toString(params, key, error);
+        if (text == null)
+            return null;
+        return text.getBytes(Torrent.BYTE_ENCODING);
+    }
 
-		if (params.containsKey("info_hash")) {
-			return HTTPAnnounceRequestMessage.parse(data);
-		} else if (params.containsKey("peers")) {
-			return HTTPAnnounceResponseMessage.parse(data);
-		} else if (params.containsKey("failure reason")) {
-			return HTTPTrackerErrorMessage.parse(data);
-		}
+    protected static int toInt(Map<String, String> params, String key, int unknown, @CheckForNull ErrorMessage.FailureReason error) throws MessageValidationException {
+        try {
+            String text = toString(params, key, error);
+            if (text == null)
+                return unknown;
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            throw new MessageValidationException(e.getMessage(), e);
+        }
+    }
 
-		throw new MessageValidationException("Unknown HTTP tracker message!");
-	}
+    protected static long toLong(Map<String, String> params, String key, long unknown, @CheckForNull ErrorMessage.FailureReason error) throws MessageValidationException {
+        try {
+            String text = toString(params, key, error);
+            if (text == null)
+                return unknown;
+            return Long.parseLong(text);
+        } catch (NumberFormatException e) {
+            throw new MessageValidationException(e.getMessage(), e);
+        }
+    }
+
+    protected static boolean toBoolean(Map<String, String> params, String key) throws MessageValidationException {
+        return toInt(params, key, 0, null) != 0;
+    }
 }

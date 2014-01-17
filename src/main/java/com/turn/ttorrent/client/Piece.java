@@ -16,19 +16,21 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
+import com.turn.ttorrent.common.Torrent;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.concurrent.Callable;
 
 import java.util.concurrent.CountDownLatch;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * A torrent piece.
@@ -48,276 +50,236 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class Piece implements Comparable<Piece> {
+public class Piece {
 
-	private static final Logger logger =
-		LoggerFactory.getLogger(Piece.class);
+    private static final Logger logger = LoggerFactory.getLogger(Piece.class);
+    private final SharedTorrent torrent;
+    private final int index;
+    // Piece is considered invalid until first check.
+    private volatile boolean valid = false;
+    // Piece start unseen
+    private volatile int seen = 0;
+    // private ByteBuffer data = null;
 
-	private final TorrentByteStorage bucket;
-	private final int index;
-	private final long offset;
-	private final long length;
-	private final byte[] hash;
-	private final boolean seeder;
+    /**
+     * Initialize a new piece in the byte bucket.
+     *
+     * @param bucket The underlying byte storage bucket.
+     * @param index This piece index in the torrent.
+     */
+    public Piece(@Nonnull SharedTorrent torrent, @Nonnegative int index) {
+        this.torrent = torrent;
+        this.index = index;
+    }
 
-	private volatile boolean valid;
-	private int seen;
-	private ByteBuffer data;
+    @Nonnull
+    public SharedTorrent getTorrent() {
+        return torrent;
+    }
 
-	/**
-	 * Initialize a new piece in the byte bucket.
-	 *
-	 * @param bucket The underlying byte storage bucket.
-	 * @param index This piece index in the torrent.
-	 * @param offset This piece offset, in bytes, in the storage.
-	 * @param length This piece length, in bytes.
-	 * @param hash This piece 20-byte SHA1 hash sum.
-	 * @param seeder Whether we're seeding this torrent or not (disables piece
-	 * validation).
-	 */
-	public Piece(TorrentByteStorage bucket, int index, long offset,
-		long length, byte[] hash, boolean seeder) {
-		this.bucket = bucket;
-		this.index = index;
-		this.offset = offset;
-		this.length = length;
-		this.hash = hash;
-		this.seeder = seeder;
+    /**
+     * Returns the index of this piece in the torrent.
+     */
+    @Nonnegative
+    public int getIndex() {
+        return this.index;
+    }
 
-		// Piece is considered invalid until first check.
-		this.valid = false;
+    /**
+     * Returns the offset of this piece in the overall data.
+     *
+     * This is not the same as a block offset.
+     */
+    @Nonnegative
+    public long getOffset() {
+        return (long) getIndex() * (long) torrent.getPieceLength();
+    }
 
-		// Piece start unseen
-		this.seen = 0;
+    /**
+     * Returns the size, in bytes, of this piece.
+     *
+     * <p>
+     * All pieces, except the last one, are expected to have the same size.
+     * </p>
+     */
+    @Nonnegative
+    public int getLength() {
+        // The last piece may be shorter than the torrent's global piece
+        // length. Let's make sure we get the right piece length in any
+        // situation.
+        if (getIndex() < torrent.getPieceCount() - 1)
+            return torrent.getPieceLength();
+        return (int) (torrent.getSize() % torrent.getPieceLength());
+    }
 
-		this.data = null;
-	}
+    @Nonnull
+    public byte[] getHash() {
+        byte[] hashes = torrent.getTorrent().getPiecesHashes();
+        int offset = getIndex() * Torrent.PIECE_HASH_SIZE;
+        return Arrays.copyOfRange(hashes, offset, offset + Torrent.PIECE_HASH_SIZE);
+    }
 
-	/**
-	 * Tells whether this piece's data is valid or not.
-	 */
-	public boolean isValid() {
-		return this.valid;
-	}
+    /**
+     * Tells whether this piece's data is valid or not.
+     */
+    public boolean isValid() {
+        return this.valid;
+    }
 
-	/**
-	 * Returns the index of this piece in the torrent.
-	 */
-	public int getIndex() {
-		return this.index;
-	}
+    public void setValid(boolean valid) {
+        this.valid = valid;
+    }
 
-	/**
-	 * Returns the size, in bytes, of this piece.
-	 *
-	 * <p>
-	 * All pieces, except the last one, are expected to have the same size.
-	 * </p>
-	 */
-	public long size() {
-		return this.length;
-	}
+    /**
+     * Tells whether this piece is available in the current connected peer swarm.
+     */
+    public boolean available() {
+        return this.seen > 0;
+    }
 
-	/**
-	 * Tells whether this piece is available in the current connected peer swarm.
-	 */
-	public boolean available() {
-		return this.seen > 0;
-	}
+    /**
+     * Mark this piece as being seen at the given peer.
+     *
+     * @param peer The sharing peer this piece has been seen available at.
+     */
+    public void seenAt(SharingPeer peer) {
+        this.seen++;
+    }
 
-	/**
-	 * Mark this piece as being seen at the given peer.
-	 *
-	 * @param peer The sharing peer this piece has been seen available at.
-	 */
-	public void seenAt(SharingPeer peer) {
-		this.seen++;
-	}
+    /**
+     * Mark this piece as no longer being available at the given peer.
+     *
+     * @param peer The sharing peer from which the piece is no longer available.
+     */
+    public void noLongerAt(SharingPeer peer) {
+        this.seen--;
+    }
 
-	/**
-	 * Mark this piece as no longer being available at the given peer.
-	 *
-	 * @param peer The sharing peer from which the piece is no longer available.
-	 */
-	public void noLongerAt(SharingPeer peer) {
-		this.seen--;
-	}
+    /**
+     * Validates this piece.
+     *
+     * @return Returns true if this piece, as stored in the given byte
+     * buffer, is valid, i.e. its SHA1 sum matches the one from the torrent
+     * meta-info.
+     * 
+     * This method allows the caller to use already in-memory data, rather
+     * than rereading the underlying storage, and reading sequential data,
+     * rather than risking a threadpool randomizing reads.
+     */
+    public boolean isValid(@Nonnull ByteBuffer data) {
+        logger.trace("Validating data for {}...", this);
+        MessageDigest digest = DigestUtils.getSha1Digest();
+        digest.update(data);
+        return Arrays.equals(digest.digest(), getHash());
+    }
 
-	/**
-	 * Validates this piece.
-	 *
-	 * @return Returns true if this piece, as stored in the underlying byte
-	 * storage, is valid, i.e. its SHA1 sum matches the one from the torrent
-	 * meta-info.
-	 */
-	public synchronized boolean validate() throws IOException {
-		if (this.seeder) {
-			logger.trace("Skipping validation of {} (seeder mode).", this);
-			this.valid = true;
-			return true;
-		}
+    /**
+     * Internal piece data read function.
+     *
+     * <p>
+     * This function will read the piece data without checking if the piece has
+     * been validated. It is simply meant at factoring-in the common read code
+     * from the validate and read functions.
+     * </p>
+     *
+     * @param offset Offset inside this piece where to start reading.
+     * @param length Number of bytes to read from the piece.
+     * @return A byte buffer containing the piece data.
+     * @throws IllegalArgumentException If <em>offset + length</em> goes over
+     * the piece boundary.
+     * @throws IOException If the read can't be completed (I/O error, or EOF
+     * reached, which can happen if the piece is not complete).
+     */
+    private ByteBuffer _read(long offset, long length) throws IOException {
+        if (offset + length > getLength()) {
+            throw new IllegalArgumentException("Piece#" + this.index
+                    + " overrun (" + offset + " + " + length + " > "
+                    + getLength() + ") !");
+        }
 
-		logger.trace("Validating {}...", this);
-		this.valid = false;
+        // TODO: remove cast to int when large ByteBuffer support is
+        // implemented in Java.
+        ByteBuffer buffer = ByteBuffer.allocate((int) length);
+        torrent.getBucket().read(buffer, getOffset() + offset);
+        buffer.flip();
+        if (buffer.remaining() != length)
+            throw new IllegalStateException("Bad length: Requested " + length + " but read " + buffer.remaining());
+        return buffer;
+    }
 
-		ByteBuffer buffer = this._read(0, this.length);
-		MessageDigest digest = DigestUtils.getSha1Digest();
-		digest.update(buffer);
-		this.valid = Arrays.equals(digest.digest(), this.hash);
+    /**
+     * Read a piece block from the underlying byte storage.
+     *
+     * <p>
+     * This is the public method for reading this piece's data, and it will
+     * only succeed if the piece is complete and valid on disk, thus ensuring
+     * any data that comes out of this function is valid piece data we can send
+     * to other peers.
+     * </p>
+     *
+     * @param offset Offset inside this piece where to start reading.
+     * @param length Number of bytes to read from the piece.
+     * @return A byte buffer containing the piece data.
+     * @throws IllegalArgumentException If <em>offset + length</em> goes over
+     * the piece boundary.
+     * @throws IllegalStateException If the piece is not valid when attempting
+     * to read it.
+     * @throws IOException If the read can't be completed (I/O error, or EOF
+     * reached, which can happen if the piece is not complete).
+     */
+    public ByteBuffer read(long offset, int length)
+            throws IllegalArgumentException, IllegalStateException, IOException {
+        if (!isValid())
+            throw new IllegalStateException("Attempting to read a known-invalid piece!");
 
-		return this.isValid();
-	}
+        return this._read(offset, length);
+    }
 
-	/**
-	 * Internal piece data read function.
-	 *
-	 * <p>
-	 * This function will read the piece data without checking if the piece has
-	 * been validated. It is simply meant at factoring-in the common read code
-	 * from the validate and read functions.
-	 * </p>
-	 *
-	 * @param offset Offset inside this piece where to start reading.
-	 * @param length Number of bytes to read from the piece.
-	 * @return A byte buffer containing the piece data.
-	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
-	 * the piece boundary.
-	 * @throws IOException If the read can't be completed (I/O error, or EOF
-	 * reached, which can happen if the piece is not complete).
-	 */
-	private ByteBuffer _read(long offset, long length) throws IOException {
-		if (offset + length > this.length) {
-			throw new IllegalArgumentException("Piece#" + this.index +
-				" overrun (" + offset + " + " + length + " > " +
-				this.length + ") !");
-		}
-
-		// TODO: remove cast to int when large ByteBuffer support is
-		// implemented in Java.
-		ByteBuffer buffer = ByteBuffer.allocate((int)length);
-		this.bucket.read(buffer, this.offset + offset);
-		buffer.flip();
-		return buffer;
-	}
-
-	/**
-	 * Read a piece block from the underlying byte storage.
-	 *
-	 * <p>
-	 * This is the public method for reading this piece's data, and it will
-	 * only succeed if the piece is complete and valid on disk, thus ensuring
-	 * any data that comes out of this function is valid piece data we can send
-	 * to other peers.
-	 * </p>
-	 *
-	 * @param offset Offset inside this piece where to start reading.
-	 * @param length Number of bytes to read from the piece.
-	 * @return A byte buffer containing the piece data.
-	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
-	 * the piece boundary.
-	 * @throws IllegalStateException If the piece is not valid when attempting
-	 * to read it.
-	 * @throws IOException If the read can't be completed (I/O error, or EOF
-	 * reached, which can happen if the piece is not complete).
-	 */
-	public ByteBuffer read(long offset, int length)
-		throws IllegalArgumentException, IllegalStateException, IOException {
-		if (!isValid()) {
-			throw new IllegalStateException("Attempting to read an " +
-					"known-to-be invalid piece!");
-		}
-
-		return this._read(offset, length);
-	}
-
-	/**
-	 * Record the given block at the given offset in this piece.
-	 *
-	 * <p>
-	 * <b>Note:</b> this has synchronized access to the underlying byte storage.
-	 * </p>
-	 *
-	 * @param block The ByteBuffer containing the block data.
-	 * @param offset The block offset in this piece.
-	 */
-	public synchronized void record(ByteBuffer block, int offset)
-		throws IOException {
-		if (this.data == null || offset == 0) {
-			// TODO: remove cast to int when large ByteBuffer support is
-			// implemented in Java.
-			this.data = ByteBuffer.allocate((int)this.length);
-		}
-
-		int pos = block.position();
-		this.data.position(offset);
-		this.data.put(block);
-		block.position(pos);
-
-		if (block.remaining() + offset == this.length) {
-			this.data.rewind();
-			logger.trace("Recording {}...", this);
-			this.bucket.write(this.data, this.offset);
-			this.data = null;
-		}
-	}
-
-	/**
-	 * Return a human-readable representation of this piece.
-	 */
+    /**
+     * Return a human-readable representation of this piece.
+     */
     @Override
-	public String toString() {
-		return String.format("piece#%4d%s",
-			this.index,
-			this.isValid() ? "+" : "-");
-	}
+    public String toString() {
+        return String.format("piece#%4d%s",
+                getIndex(),
+                isValid() ? "+" : "-");
+    }
 
-	/**
-	 * Piece comparison function for ordering pieces based on their
-	 * availability.
-	 *
-	 * @param other The piece to compare with, should not be <em>null</em>.
-	 */
-    @Override
-	public int compareTo(Piece other) {
-		if (this.seen != other.seen) {
-			return this.seen < other.seen ? -1 : 1;
-		}
-		return this.index == other.index ? 0 :
-			(this.index < other.index ? -1 : 1);
-	}
+    /**
+     * A {@link Callable} to call the piece validation function.
+     *
+     * <p>
+     * This {@link Callable} implementation allows for the calling of the piece
+     * validation function in a controlled context like a thread or an
+     * executor. It returns the piece it was created for. Results of the
+     * validation can easily be extracted from the {@link Piece} object after
+     * it is returned.
+     * </p>
+     *
+     * @author mpetazzoni
+     */
+    public static class Validator implements Runnable {
 
-	/**
-	 * A {@link Callable} to call the piece validation function.
-	 *
-	 * <p>
-	 * This {@link Callable} implementation allows for the calling of the piece
-	 * validation function in a controlled context like a thread or an
-	 * executor. It returns the piece it was created for. Results of the
-	 * validation can easily be extracted from the {@link Piece} object after
-	 * it is returned.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public static class Validator implements Runnable {
+        private final Piece piece;
+        private final ByteBuffer data;
+        private final CountDownLatch latch;
 
-		private final Piece piece;
-		private final CountDownLatch latch;
+        public Validator(Piece piece, ByteBuffer data, CountDownLatch latch) {
+            this.piece = piece;
+            this.data = data;
+            this.latch = latch;
+        }
 
-		public Validator(Piece piece, CountDownLatch latch) {
-			this.piece = piece;
-			this.latch = latch;
-		}
-
-		@Override
-		public void run() {
-			try {
-				this.piece.validate();
-			} catch (Exception e) {
-				logger.error("Failed validation of " + this, e);
-			} finally {
-				latch.countDown();
-			}
-		}
-	}
+        @Override
+        public void run() {
+            try {
+                if (piece.isValid(data))
+                    piece.setValid(true);
+            } catch (Exception e) {
+                logger.error("Failed validation of " + this, e);
+            } finally {
+                latch.countDown();
+            }
+        }
+    }
 }

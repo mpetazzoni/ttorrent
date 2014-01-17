@@ -17,8 +17,8 @@ package com.turn.ttorrent.common.protocol;
 
 import com.turn.ttorrent.common.Peer;
 
-import java.nio.ByteBuffer;
 import java.util.List;
+import javax.annotation.CheckForNull;
 
 
 /**
@@ -48,6 +48,7 @@ public abstract class TrackerMessage {
 		SCRAPE_RESPONSE(2),
 		ERROR(3);
 
+        // This is the ActionId for the UDP protocol. Do not screw with it.
 		private final int id;
 
 		Type(int id) {
@@ -60,21 +61,14 @@ public abstract class TrackerMessage {
 	};
 
 	private final Type type;
-	private final ByteBuffer data;
 
 	/**
 	 * Constructor for the base tracker message type.
 	 *
 	 * @param type The message type.
-	 * @param data A byte buffer containing the binary data of the message (a
-	 * B-encoded map, a UDP packet data, etc.).
 	 */
-	protected TrackerMessage(Type type, ByteBuffer data) {
+	protected TrackerMessage(Type type) {
 		this.type = type;
-		this.data = data;
-		if (this.data != null) {
-			this.data.rewind();
-		}
 	}
 
 	/**
@@ -82,13 +76,6 @@ public abstract class TrackerMessage {
 	 */
 	public Type getType() {
 		return this.type;
-	}
-
-	/**
-	 * Returns the encoded binary data for this message.
-	 */
-	public ByteBuffer getData() {
-		return this.data;
 	}
 
 	/**
@@ -190,7 +177,8 @@ public abstract class TrackerMessage {
 				return this.id;
 			}
 
-			public static RequestEvent getByName(String name) {
+            @CheckForNull
+			public static RequestEvent getByName(@CheckForNull String name) {
 				for (RequestEvent type : RequestEvent.values()) {
 					if (type.name().equalsIgnoreCase(name)) {
 						return type;
@@ -210,18 +198,14 @@ public abstract class TrackerMessage {
 		};
 
 		public byte[] getInfoHash();
-		public String getHexInfoHash();
-		public byte[] getPeerId();
-		public String getHexPeerId();
-		public int getPort();
+        public String getHexInfoHash();
+		public Peer getPeer();
 		public long getUploaded();
 		public long getDownloaded();
 		public long getLeft();
 		public boolean getCompact();
 		public boolean getNoPeerIds();
 		public RequestEvent getEvent();
-
-		public String getIp();
 		public int getNumWant();
 	};
 

@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.ttorrent.client;
+package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.peer.SharingPeer;
 
-import java.nio.channels.SocketChannel;
+import io.netty.channel.socket.SocketChannel;
 import java.util.EventListener;
 
 /**
@@ -26,9 +25,9 @@ import java.util.EventListener;
  *
  * @author mpetazzoni
  */
-public interface IncomingConnectionListener extends EventListener {
+public interface PeerConnectionListener extends EventListener {
 
-	public void handleNewPeerConnection(SocketChannel channel, byte[] peerId);
+    public void handleNewPeerConnection(SocketChannel channel, SharingPeer peer);
 
-	public void handleFailedConnection(SharingPeer peer, Throwable cause);
+    public void handleFailedConnection(SharingPeer peer, Throwable cause);
 }

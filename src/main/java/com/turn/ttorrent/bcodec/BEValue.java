@@ -15,11 +15,12 @@
  */
 package com.turn.ttorrent.bcodec;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.codec.Charsets;
 
 
 /**
@@ -39,21 +40,20 @@ public class BEValue {
 		this.value = value;
 	}
 
-	public BEValue(String value) throws UnsupportedEncodingException {
-		this.value = value.getBytes("UTF-8");
+	public BEValue(String value) {
+        this(value, Charsets.UTF_8);
 	}
 
-	public BEValue(String value, String enc)
-		throws UnsupportedEncodingException {
+	public BEValue(String value, Charset enc) {
 		this.value = value.getBytes(enc);
 	}
 
 	public BEValue(int value) {
-		this.value = new Integer(value);
+		this.value = Integer.valueOf(value);
 	}
 
 	public BEValue(long value) {
-		this.value = new Long(value);
+		this.value = Long.valueOf(value);
 	}
 
 	public BEValue(Number value) {
@@ -77,7 +77,7 @@ public class BEValue {
 	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
 	public String getString() throws InvalidBEncodingException {
-		return this.getString("UTF-8");
+		return this.getString(Charsets.UTF_8);
 	}
 
 	/**
@@ -88,14 +88,8 @@ public class BEValue {
 	 * them into a {@link String}.
 	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
-	public String getString(String encoding) throws InvalidBEncodingException {
-		try {
-			return new String(this.getBytes(), encoding);
-		} catch (ClassCastException cce) {
-			throw new InvalidBEncodingException(cce.toString());
-		} catch (UnsupportedEncodingException uee) {
-			throw new InternalError(uee.toString());
-		}
+	public String getString(Charset encoding) throws InvalidBEncodingException {
+        return new String(this.getBytes(), encoding);
 	}
 
 	/**
@@ -159,8 +153,8 @@ public class BEValue {
 	 */
 	@SuppressWarnings("unchecked")
 	public List<BEValue> getList() throws InvalidBEncodingException {
-		if (this.value instanceof ArrayList) {
-			return (ArrayList<BEValue>)this.value;
+		if (this.value instanceof List) {
+			return (List<BEValue>)this.value;
 		} else {
 			throw new InvalidBEncodingException("Excepted List<BEvalue> !");
 		}
@@ -173,7 +167,7 @@ public class BEValue {
 	 */
 	@SuppressWarnings("unchecked")
 	public Map<String, BEValue> getMap() throws InvalidBEncodingException {
-		if (this.value instanceof HashMap) {
+		if (this.value instanceof Map) {
 			return (Map<String, BEValue>)this.value;
 		} else {
 			throw new InvalidBEncodingException("Expected Map<String, BEValue> !");

@@ -18,10 +18,11 @@ package com.turn.ttorrent.common.protocol.udp;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
+import io.netty.buffer.ByteBuf;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -31,130 +32,83 @@ import java.util.List;
  * @author mpetazzoni
  */
 public class UDPAnnounceResponseMessage
-	extends UDPTrackerMessage.UDPTrackerResponseMessage
-	implements TrackerMessage.AnnounceResponseMessage {
+        extends UDPTrackerMessage.UDPTrackerResponseMessage
+        implements TrackerMessage.AnnounceResponseMessage {
 
-	private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
+    private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
+    private int interval;
+    private int complete;
+    private int incomplete;
+    private final List<Peer> peers = new ArrayList<Peer>();
 
-	private final int actionId = Type.ANNOUNCE_RESPONSE.getId();
-	private final int transactionId;
-	private final int interval;
-	private final int complete;
-	private final int incomplete;
-	private final List<Peer> peers;
+    private UDPAnnounceResponseMessage() {
+        super(Type.ANNOUNCE_REQUEST);
+    }
 
-	private UDPAnnounceResponseMessage(ByteBuffer data, int transactionId,
-		int interval, int complete, int incomplete, List<Peer> peers) {
-		super(Type.ANNOUNCE_REQUEST, data);
-		this.transactionId = transactionId;
-		this.interval = interval;
-		this.complete = complete;
-		this.incomplete = incomplete;
-		this.peers = peers;
-	}
+    @Override
+    public int getInterval() {
+        return this.interval;
+    }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
+    @Override
+    public int getComplete() {
+        return this.complete;
+    }
 
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
+    @Override
+    public int getIncomplete() {
+        return this.incomplete;
+    }
 
-	@Override
-	public int getInterval() {
-		return this.interval;
-	}
+    @Override
+    public List<Peer> getPeers() {
+        return this.peers;
+    }
 
-	@Override
-	public int getComplete() {
-		return this.complete;
-	}
+    @Override
+    public void fromWire(ByteBuf in) throws MessageValidationException {
+        if (in.readableBytes() < UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE
+                || (in.readableBytes() - UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE) % 6 != 0) {
+            throw new MessageValidationException("Invalid announce response message size " + in.readableBytes());
+        }
+        _fromWire(in, -1);
 
-	@Override
-	public int getIncomplete() {
-		return this.incomplete;
-	}
+        interval = in.readInt();
+        incomplete = in.readInt();
+        complete = in.readInt();
 
-	@Override
-	public List<Peer> getPeers() {
-		return this.peers;
-	}
+        peers.clear();
+        while (in.readableBytes() > 0) {
+            try {
+                byte[] ipBytes = new byte[4];
+                in.readBytes(ipBytes);
+                InetAddress ip = InetAddress.getByAddress(ipBytes);
+                int port = in.readShort() & 0xFFFF;
+                peers.add(new Peer(new InetSocketAddress(ip, port), null));
+            } catch (UnknownHostException uhe) {
+                throw new MessageValidationException(
+                        "Invalid IP address in announce request!");
+            }
+        }
+    }
 
-	public static UDPAnnounceResponseMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() < UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE ||
-			(data.remaining() - UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE) % 6 != 0) {
-			throw new MessageValidationException(
-				"Invalid announce response message size!");
-		}
+    @Override
+    public void toWire(ByteBuf out) {
+        _toWire(out);
+        out.writeInt(interval);
 
-		if (data.getInt() != Type.ANNOUNCE_RESPONSE.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for announce response!");
-		}
+        /**
+         * Leechers (incomplete) are first, before seeders (complete) in the packet.
+         */
+        out.writeInt(incomplete);
+        out.writeInt(complete);
 
-		int transactionId = data.getInt();
-		int interval = data.getInt();
-		int incomplete = data.getInt();
-		int complete = data.getInt();
-
-		List<Peer> peers = new LinkedList<Peer>();
-		for (int i=0; i < data.remaining() / 6; i++) {
-			try {
-				byte[] ipBytes = new byte[4];
-				data.get(ipBytes);
-				InetAddress ip = InetAddress.getByAddress(ipBytes);
-				int port =
-					(0xFF & (int)data.get()) << 8 |
-					(0xFF & (int)data.get());
-				peers.add(new Peer(new InetSocketAddress(ip, port)));
-			} catch (UnknownHostException uhe) {
-				throw new MessageValidationException(
-					"Invalid IP address in announce request!");
-			}
-		}
-
-		return new UDPAnnounceResponseMessage(data,
-			transactionId,
-			interval,
-			complete,
-			incomplete,
-			peers);
-	}
-
-	public static UDPAnnounceResponseMessage craft(int transactionId,
-		int interval, int complete, int incomplete, List<Peer> peers) {
-		ByteBuffer data = ByteBuffer
-			.allocate(UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE + 6*peers.size());
-		data.putInt(Type.ANNOUNCE_RESPONSE.getId());
-		data.putInt(transactionId);
-		data.putInt(interval);
-
-		/**
-		 * Leechers (incomplete) are first, before seeders (complete) in the packet.
-		 */
-		data.putInt(incomplete);
-		data.putInt(complete);
-
-		for (Peer peer : peers) {
-			byte[] ip = peer.getRawIp();
-			if (ip == null || ip.length != 4) {
-				continue;
-			}
-
-			data.put(ip);
-			data.putShort((short)peer.getPort());
-		}
-
-		return new UDPAnnounceResponseMessage(data,
-			transactionId,
-			interval,
-			complete,
-			incomplete,
-			peers);
-	}
+        for (Peer peer : peers) {
+            byte[] ip = peer.getAddress().getAddress().getAddress();
+            if (ip == null || ip.length != 4)
+                continue;
+            out.writeBytes(ip);
+            out.writeShort((short) peer.getAddress().getPort());
+        }
+    }
 }
-
