@@ -493,7 +493,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).getLength()) {
+					torrent.getPieceLength(this.piece)) {
 				return this;
 			}
 
@@ -564,7 +564,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.block.limit() <=
-				torrent.getPiece(this.piece).getLength()) {
+				torrent.getPieceLength(this.piece)) {
 				return this;
 			}
 
@@ -636,7 +636,7 @@ public abstract class PeerMessage {
 			throws MessageValidationException {
 			if (this.piece >= 0 && this.piece < torrent.getPieceCount() &&
 				this.offset + this.length <=
-					torrent.getPiece(this.piece).getLength()) {
+					torrent.getPieceLength(this.piece)) {
 				return this;
 			}
 

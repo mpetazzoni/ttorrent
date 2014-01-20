@@ -326,6 +326,23 @@ public class Torrent {
         return pieceLength;
     }
 
+    /**
+     * Returns the size, in bytes, of the given piece.
+     *
+     * <p>
+     * All pieces, except the last one, are expected to have the same size.
+     * </p>
+     */
+    @Nonnegative
+    public int getPieceLength(int index) {
+        // The last piece may be shorter than the torrent's global piece
+        // length. Let's make sure we get the right piece length in any
+        // situation.
+        if (index < getPieceCount() - 1)
+            return getPieceLength();
+        return (int) (getSize() % getPieceLength());
+    }
+
     @Nonnull
     public byte[] getPiecesHashes() {
         return piecesHashes;

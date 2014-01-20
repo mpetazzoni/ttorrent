@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.BitSet;
 import java.util.EventListener;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 
 /**
  * EventListener interface for objects that want to handle peer activity
@@ -41,7 +43,7 @@ public interface PeerActivityListener extends EventListener {
      *
      * @param peer The peer that choked.
      */
-    public void handlePeerChoked(SharingPeer peer);
+    public void handlePeerChoking(SharingPeer peer);
 
     /**
      * Peer ready handler.
@@ -53,7 +55,7 @@ public interface PeerActivityListener extends EventListener {
      *
      * @param peer The peer that became ready.
      */
-    public void handlePeerReady(SharingPeer peer);
+    public void handlePeerUnchoking(SharingPeer peer);
 
     /**
      * Piece availability handler.
@@ -79,8 +81,9 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got the update from.
      * @param availablePieces The pieces availability bit field of the peer.
      */
-    public void handleBitfieldAvailability(SharingPeer peer,
-            BitSet availablePieces);
+    public void handleBitfieldAvailability(@Nonnull SharingPeer peer,
+            @Nonnull BitSet prevAvailablePieces,
+            @Nonnull BitSet availablePieces);
 
     /**
      * Piece upload completion handler.
@@ -88,9 +91,13 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer the piece was sent to.
      * @param piece The piece in question.
      */
-    public void handleBlockSent(SharingPeer peer, Piece piece, int offset, int length);
+    public void handleBlockSent(@Nonnull SharingPeer peer,
+            @Nonnull Piece piece,
+            @Nonnegative int offset, @Nonnegative int length);
 
-    public void handleBlockReceived(SharingPeer peer, Piece piece, int offset, int length);
+    public void handleBlockReceived(@Nonnull SharingPeer peer,
+            @Nonnull Piece piece,
+            @Nonnegative int offset, @Nonnegative int length);
 
     /**
      * Piece download completion handler.

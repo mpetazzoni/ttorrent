@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.google.common.collect.Iterables;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,21 +58,27 @@ public class TrackedTorrent {
     private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
     /** Default announce interval requested from peers, in seconds. */
     private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 10;
-    private final Torrent torrent;
+    @CheckForNull
+    private final String name;
+    @Nonnull
+    private final String infoHash;
     private int announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
     /** Peers currently exchanging on this torrent. */
     private final ConcurrentMap<Peer, TrackedPeer> peers = new ConcurrentHashMap<Peer, TrackedPeer>();
 
-    public TrackedTorrent(Torrent torrent) {
-        this.torrent = torrent;
+    public TrackedTorrent(String name, byte[] infoHash) {
+        this.name = name;
+        this.infoHash = Torrent.byteArrayToHexString(infoHash);
     }
 
+    @CheckForNull
     public String getName() {
-        return torrent.getName();
+        return name;
     }
 
+    @Nonnull
     public String getHexInfoHash() {
-        return torrent.getHexInfoHash();
+        return infoHash;
     }
 
     /**
@@ -197,7 +205,7 @@ public class TrackedTorrent {
 
         TrackedPeer trackedPeer;
         if (RequestEvent.STARTED.equals(event)) {
-            trackedPeer = new TrackedPeer(peer, torrent);
+            trackedPeer = new TrackedPeer(peer);
             state = TrackedPeerState.STARTED;
             this.addPeer(trackedPeer);
         } else if (RequestEvent.STOPPED.equals(event)) {
@@ -214,7 +222,7 @@ public class TrackedTorrent {
             throw new IllegalArgumentException("Unexpected announce event type!");
         }
 
-        trackedPeer.update(state, uploaded, downloaded, left);
+        trackedPeer.update(this, state, uploaded, downloaded, left);
         return trackedPeer;
     }
 
@@ -258,5 +266,10 @@ public class TrackedTorrent {
         }
 
         return out;
+    }
+
+    @Override
+    public String toString() {
+        return getName() + " (" + peers.size() + " peers)";
     }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 
 /**
  *
@@ -63,14 +64,17 @@ public class ClientEnvironment {
         executorService = null;
     }
 
+    @Nonnull
     public Random getRandom() {
         return random;
     }
 
+    @Nonnull
     public ThreadPoolExecutor getExecutorService() {
         return executorService;
     }
 
+    @Nonnull
     public ScheduledExecutorService getSchedulerService() {
         return schedulerService;
     }

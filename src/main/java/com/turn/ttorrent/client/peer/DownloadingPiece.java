@@ -58,6 +58,7 @@ public class DownloadingPiece {
         this(piece, PieceBlock.DEFAULT_SIZE);
     }
 
+    @Nonnull
     public SharedTorrent getTorrent() {
         return piece.getTorrent();
     }
@@ -92,7 +93,7 @@ public class DownloadingPiece {
     }
 
     @Nonnull
-    public Iterable<PeerMessage.RequestMessage> requests() {
+    public Iterable<PeerMessage.RequestMessage> newRequestIterator() {
         return new Iterable<PeerMessage.RequestMessage>() {
             @Override
             public Iterator<PeerMessage.RequestMessage> iterator() {

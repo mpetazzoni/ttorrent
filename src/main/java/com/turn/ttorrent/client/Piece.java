@@ -22,10 +22,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.concurrent.Callable;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -58,7 +58,7 @@ public class Piece {
     // Piece is considered invalid until first check.
     private volatile boolean valid = false;
     // Piece start unseen
-    private volatile int seen = 0;
+    private final AtomicInteger availability = new AtomicInteger(0);
     // private ByteBuffer data = null;
 
     /**
@@ -96,20 +96,14 @@ public class Piece {
     }
 
     /**
-     * Returns the size, in bytes, of this piece.
+     * Try to use {@link Torrent#getPieceLength(int)} or
+     * {@link SharedTorrent#getPieceLength(int)} instead of this.
      *
-     * <p>
-     * All pieces, except the last one, are expected to have the same size.
-     * </p>
+     * @see Torrent#getPieceLength(int)
      */
     @Nonnegative
     public int getLength() {
-        // The last piece may be shorter than the torrent's global piece
-        // length. Let's make sure we get the right piece length in any
-        // situation.
-        if (getIndex() < torrent.getPieceCount() - 1)
-            return torrent.getPieceLength();
-        return (int) (torrent.getSize() % torrent.getPieceLength());
+        return torrent.getPieceLength(getIndex());
     }
 
     @Nonnull
@@ -131,19 +125,13 @@ public class Piece {
     }
 
     /**
-     * Tells whether this piece is available in the current connected peer swarm.
-     */
-    public boolean available() {
-        return this.seen > 0;
-    }
-
-    /**
      * Mark this piece as being seen at the given peer.
      *
      * @param peer The sharing peer this piece has been seen available at.
      */
-    public void seenAt(SharingPeer peer) {
-        this.seen++;
+    @Nonnegative
+    public int seenAt(@Nonnull SharingPeer peer) {
+        return availability.incrementAndGet();
     }
 
     /**
@@ -151,8 +139,28 @@ public class Piece {
      *
      * @param peer The sharing peer from which the piece is no longer available.
      */
-    public void noLongerAt(SharingPeer peer) {
-        this.seen--;
+    @Nonnegative
+    public int noLongerAt(@Nonnull SharingPeer peer) {
+        for (;;) {
+            int current = availability.get();
+            if (current <= 0)
+                return 0;
+            int next = current - 1;
+            if (availability.compareAndSet(current, next))
+                return next;
+        }
+    }
+
+    @Nonnegative
+    public int getAvailability() {
+        return availability.get();
+    }
+
+    /**
+     * Tells whether this piece is available in the current connected peer swarm.
+     */
+    public boolean isAvailable() {
+        return getAvailability() > 0;
     }
 
     /**

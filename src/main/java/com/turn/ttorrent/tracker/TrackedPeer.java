@@ -50,11 +50,10 @@ public class TrackedPeer {
             LoggerFactory.getLogger(TrackedPeer.class);
     private static final int FRESH_TIME_SECONDS = 30;
     private final Peer peer;
-    private final Torrent torrent;
+    // TODO: The only reason to keep this reference here is to produce debug logs.
     private long uploaded;
     private long downloaded;
     private long left;
-    // TODO: The only reason to keep this reference here is to produce debug logs.
     private TrackedPeerState state;
     private long lastAnnounce = System.currentTimeMillis();
     // We need a happen-before relationship for multiple threads.
@@ -66,9 +65,8 @@ public class TrackedPeer {
      * @param peer The remote peer.
      * @param torrent The torrent this peer exchanges on.
      */
-    public TrackedPeer(Peer peer, Torrent torrent) {
+    public TrackedPeer(Peer peer) {
         this.peer = peer;
-        this.torrent = torrent;
 
         // Instantiated peers start in the UNKNOWN state.
         this.state = TrackedPeerState.UNKNOWN;
@@ -83,11 +81,6 @@ public class TrackedPeer {
         return peer;
     }
 
-    @Nonnull
-    public Torrent getTorrent() {
-        return torrent;
-    }
-
     /**
      * Update this peer's state and information.
      *
@@ -96,12 +89,13 @@ public class TrackedPeer {
      * be automatically be set to COMPLETED.
      * </p>
      *
+     * @param torrent The torrent. This should be the same on every call.
      * @param state The peer's state.
      * @param uploaded Uploaded byte count, as reported by the peer.
      * @param downloaded Downloaded byte count, as reported by the peer.
      * @param left Left-to-download byte count, as reported by the peer.
      */
-    public void update(TrackedPeerState state, long uploaded, long downloaded, long left) {
+    public void update(@Nonnull TrackedTorrent torrent, TrackedPeerState state, long uploaded, long downloaded, long left) {
         if (TrackedPeerState.STARTED.equals(state) && left == 0)
             state = TrackedPeerState.COMPLETED;
 
@@ -110,7 +104,8 @@ public class TrackedPeer {
                     new Object[]{
                 this,
                 state.name().toLowerCase(),
-                this.torrent,});
+                torrent
+            });
         }
 
         synchronized (lock) {
