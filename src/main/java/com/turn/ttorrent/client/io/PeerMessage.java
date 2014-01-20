@@ -382,7 +382,7 @@ public abstract class PeerMessage {
                 throw new MessageValidationException(this);
             if (piece > torrent.getPieceCount())
                 throw new MessageValidationException(this);
-            if (this.offset + this.length > torrent.getPiece(piece).getLength())
+            if (this.offset + this.length > torrent.getPieceLength(piece))
                 throw new MessageValidationException(this);
             return this;
         }
@@ -478,15 +478,21 @@ public abstract class PeerMessage {
                 throw new MessageValidationException(this);
             if (piece > torrent.getPieceCount())
                 throw new MessageValidationException(this);
-            if (this.offset + this.block.limit() > torrent.getPiece(piece).getLength())
+            if (this.offset + this.block.limit() > torrent.getPieceLength(piece))
                 throw new MessageValidationException(this);
             return this;
         }
 
         public boolean answers(@Nonnull RequestMessage request) {
-            int start = Math.max(getOffset(), request.getOffset());
-            int end = Math.min(getOffset() + getLength(), request.getOffset() + request.getLength());
-            return end > start;
+            return getPiece() == request.getPiece()
+                    && getOffset() == request.getOffset()
+                    && getLength() == request.getLength();
+            // It might be a partial answer, in which case we will simply
+            // have to request again. However, DownloadingPiece can handle
+            // this.
+            // int start = Math.max(getOffset(), request.getOffset());
+            // int end = Math.min(getOffset() + getLength(), request.getOffset() + request.getLength());
+            // return end > start;
         }
 
         @Override
@@ -560,7 +566,7 @@ public abstract class PeerMessage {
                 throws MessageValidationException {
             if (this.piece >= 0 && this.piece < torrent.getPieceCount()
                     && this.offset + this.length
-                    <= torrent.getPiece(this.piece).getLength()) {
+                    <= torrent.getPieceLength(this.piece)) {
                 return this;
             }
 

@@ -77,6 +77,7 @@ public class SharingPeer implements PeerMessageListener {
     private final PeerActivityListener listener;    // torrent.getPeerHandler()
     @GuardedBy("lock")
     private final BitSet availablePieces;
+    // TODO: AtomicBoolean Or AtomicBoolean for CompareAndSet?
     // We decide about them:
     private volatile boolean choked;
     private volatile boolean interesting;
@@ -166,6 +167,7 @@ public class SharingPeer implements PeerMessageListener {
         return this.upload;
     }
 
+    // TODO: These four methods need to be atomic.
     /**
      * Choke this peer.
      *
@@ -293,33 +295,6 @@ public class SharingPeer implements PeerMessageListener {
     }
 
     /**
-     * Request some more blocks from this peer.
-     *
-     * <p>
-     * Re-fill the pipeline to get download the next blocks from the peer.
-     * </p>
-     */
-    private void send() {
-        synchronized (lock) {
-            while (requestsSent.size() < MAX_PIPELINED_REQUESTS) {
-                if (!channel.isWritable())
-                    break;
-                if (!requestsPending.hasNext()) {
-                    DownloadingPiece piece = torrent.getNextPiece();
-                    if (piece == null)
-                        return;
-                    requestsPending = torrent.newRequestIterator();
-                    if (requestsPending == null)
-                        return;
-                }
-                PeerMessage.RequestMessage request = requestsPending.next();
-                requestsSent.add(request);
-                send(request);
-            }
-        }
-    }
-
-    /**
      * Remove the REQUEST message from the request pipeline matching this
      * PIECE message.
      *
@@ -335,10 +310,8 @@ public class SharingPeer implements PeerMessageListener {
         synchronized (lock) {
             Iterator<PeerMessage.RequestMessage> it = requestsSent.iterator();
             while (it.hasNext()) {
-                // It might be a partial answer, in which case we will simply
-                // have to request again. However, DownloadingPiece can handle
-                // this.
-                if (response.answers(it.next()))
+                PeerMessage.RequestMessage request = it.next();
+                if (response.answers(request))
                     it.remove();
             }
         }
@@ -370,6 +343,32 @@ public class SharingPeer implements PeerMessageListener {
     }
 
     /**
+     * Run one step of the SharingPeer finite state machine.
+     *
+     * <p>
+     * Re-fill the pipeline to get download the next blocks from the peer.
+     * </p>
+     */
+    private void run() {
+        synchronized (lock) {
+            while (requestsSent.size() < MAX_PIPELINED_REQUESTS) {
+                if (!channel.isWritable())
+                    break;
+                if (!requestsPending.hasNext())
+                    requestsPending = torrent.newRequestIterator();
+                if (!requestsPending.hasNext()) {
+                    notInteresting();
+                    return;
+                }
+                interesting();
+                PeerMessage.RequestMessage request = requestsPending.next();
+                requestsSent.add(request);
+                send(request);
+            }
+        }
+    }
+
+    /**
      * Handle an incoming message from this peer.
      *
      * @param msg The incoming, parsed message.
@@ -381,25 +380,31 @@ public class SharingPeer implements PeerMessageListener {
                 case KEEP_ALIVE:
                     // Nothing to do, we're keeping the connection open anyways.
                     break;
+
                 case CHOKE:
                     this.choking = true;
                     logger.trace("Peer {} is no longer accepting requests.", this);
-                    listener.handlePeerChoked(this);
                     this.cancelPendingRequests();
+                    listener.handlePeerChoking(this);
                     break;
+
                 case UNCHOKE:
                     this.choking = false;
                     logger.trace("Peer {} is now accepting requests.", this);
-                    listener.handlePeerReady(this);
+                    listener.handlePeerUnchoking(this);
+                    run();  // We might want something.
                     break;
+
                 case INTERESTED:
                     this.interested = true;
                     logger.trace("Peer {} is now interested.", this);
                     break;
+
                 case NOT_INTERESTED:
                     this.interested = false;
                     logger.trace("Peer {} is no longer interested.", this);
                     break;
+
                 case HAVE: {
                     // Record this peer has the given piece
                     PeerMessage.HaveMessage message = (PeerMessage.HaveMessage) msg;
@@ -417,13 +422,17 @@ public class SharingPeer implements PeerMessageListener {
                     }
 
                     listener.handlePieceAvailability(this, piece);
+                    run(); // We might now be interested.
                     break;
                 }
+
                 case BITFIELD: {
                     // Augment the hasPiece bit field from this BITFIELD message
                     PeerMessage.BitfieldMessage message = (PeerMessage.BitfieldMessage) msg;
+                    BitSet prevAvailablePieces;
 
                     synchronized (lock) {
+                        prevAvailablePieces = getAvailablePieces();
                         this.availablePieces.clear();
                         this.availablePieces.or(message.getBitfield());
                         logger.trace("Recorded message from {} with {} "
@@ -437,9 +446,11 @@ public class SharingPeer implements PeerMessageListener {
                     }
 
                     // The copy from the message is independent, and thus threadsafe.
-                    listener.handleBitfieldAvailability(this, message.getBitfield());
+                    listener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
+                    run();  // We might now be interested.
                     break;
                 }
+
                 case REQUEST: {
                     PeerMessage.RequestMessage message = (PeerMessage.RequestMessage) msg;
                     Piece piece = this.torrent.getPiece(message.getPiece());
@@ -450,6 +461,7 @@ public class SharingPeer implements PeerMessageListener {
                     // is a violation of the BitTorrent protocol. In these
                     // situation, terminate the connection.
                     if (isChoked()) {
+                        // TODO: This isn't synchronous. We need to remember WHEN we choked them.
                         logger.warn("Peer {} ignored choking, "
                                 + "terminating exchange.", this);
                         close();
@@ -483,6 +495,7 @@ public class SharingPeer implements PeerMessageListener {
 
                     break;
                 }
+
                 case PIECE: {
                     // Record the incoming piece block.
 
@@ -501,15 +514,15 @@ public class SharingPeer implements PeerMessageListener {
                     DownloadingPiece sp = null;
                     boolean valid = sp.receive(message.getBlock(), message.getOffset());
 
-                    if (valid) {
+                    if (valid)
                         listener.handlePieceCompleted(this, piece);
-                        listener.handlePeerReady(this);
-                    } else {
-                        // TODO: If the piece isn't valid but both queues are empty, re-request blocks.
-                        this.requestNextBlocks();
-                    }
+                    else
+                        logger.warn("Downloaded piece#{} from {} was not valid ;-(",
+                                piece.getIndex(), peer);
+                    run();
                     break;
                 }
+
                 case CANCEL:
                     // No need to support
                     break;

@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.io.PeerMessage;
-import io.netty.buffer.ByteBuf;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 
@@ -24,6 +23,7 @@ import javax.annotation.Nonnull;
  *
  * @author shevek
  */
+@Deprecated // Not currently used... but might be.
 public class PieceBlock {
 
     /** Default block size is 2^14 bytes, or 16kB. */
@@ -38,6 +38,10 @@ public class PieceBlock {
         this.piece = piece;
         this.offset = offset;
         this.length = length;
+    }
+
+    public PieceBlock(@Nonnull PeerMessage.RequestMessage message) {
+        this(message.getPiece(), message.getOffset(), message.getLength());
     }
 
     public PieceBlock(@Nonnull PeerMessage.PieceMessage message) {

@@ -82,9 +82,6 @@ public class SharedTorrent {
     private Piece[] pieces;
     // private SortedSet<Piece> rarest;
     private BitSet completedPieces = new BitSet();
-    private long uploaded;
-    private long downloaded;
-    private long left;
     private double maxUploadRate = 0.0;
     private double maxDownloadRate = 0.0;
     private final Object lock = new Object();
@@ -168,9 +165,6 @@ public class SharedTorrent {
         this.bucket = bucket;
         this.trackerHandler = new TrackerHandler(this);
         this.peerHandler = new PeerHandler(this);
-
-        this.left = torrent.getSize();
-        // this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
     }
 
     @Nonnull
@@ -208,6 +202,14 @@ public class SharedTorrent {
         return getTorrent().getPieceLength();
     }
 
+    /**
+     * @see Torrent#getPieceLength(int)
+     */
+    @Nonnegative
+    public int getPieceLength(@Nonnegative int index) {
+        return getTorrent().getPieceLength(index);
+    }
+
     @Nonnegative
     public long getSize() {
         return getTorrent().getSize();
@@ -243,13 +245,12 @@ public class SharedTorrent {
      */
     @Nonnull
     public Piece getPiece(@Nonnegative int index) {
-        if (!this.isInitialized())
+        if (!isInitialized())
             throw new IllegalStateException("Torrent not initialized yet.");
         if (index >= getPieceCount())
             throw new IllegalArgumentException("Invalid piece index!");
-        synchronized (lock) {
-            return this.pieces[index];
-        }
+        // Don't need to lock here again because isInitialized() raised it.
+        return this.pieces[index];
     }
 
     /**
@@ -264,6 +265,18 @@ public class SharedTorrent {
         }
     }
 
+    /**
+     * Mark a piece as completed, decrementing the piece size in bytes from our
+     * left bytes to download counter.
+     */
+    public void setCompletedPiece(@Nonnegative int index) {
+        // A completed piece means that's that much data left to download for
+        // this torrent.
+        synchronized (lock) {
+            this.completedPieces.set(index);
+        }
+    }
+
     public boolean isCompletedPiece(@Nonnegative int index) {
         synchronized (lock) {
             return completedPieces.get(index);
@@ -274,6 +287,12 @@ public class SharedTorrent {
     public int getCompletedPieceCount() {
         synchronized (lock) {
             return completedPieces.cardinality();
+        }
+    }
+
+    public void andNotCompletedPieces(BitSet b) {
+        synchronized (lock) {
+            b.andNot(completedPieces);
         }
     }
 
@@ -293,7 +312,7 @@ public class SharedTorrent {
         BitSet availablePieces = new BitSet(getPieceCount());
         synchronized (lock) {
             for (Piece piece : pieces) {
-                if (piece.available())
+                if (piece.isAvailable())
                     availablePieces.set(piece.getIndex());
             }
         }
@@ -306,7 +325,7 @@ public class SharedTorrent {
         synchronized (lock) {
             int count = 0;
             for (Piece piece : pieces)
-                if (piece.available())
+                if (piece.isAvailable())
                     count++;
             return count;
         }
@@ -354,30 +373,32 @@ public class SharedTorrent {
         this.maxDownloadRate = rate;
     }
 
-    /**
-     * Get the number of bytes uploaded for this torrent.
-     */
+    @Nonnegative
     public long getUploaded() {
-        return this.uploaded;
+        return peerHandler.getUploaded();
     }
 
-    /**
-     * Get the number of bytes downloaded for this torrent.
-     *
-     * <p>
-     * <b>Note:</b> this could be more than the torrent's length, and should
-     * not be used to determine a completion percentage.
-     * </p>
-     */
+    @Nonnegative
     public long getDownloaded() {
-        return this.downloaded;
+        return peerHandler.getDownloaded();
     }
 
     /**
      * Get the number of bytes left to download for this torrent.
      */
     public long getLeft() {
-        return this.left;
+        synchronized (lock) {
+            long count = getPieceCount() - getCompletedPieceCount();
+            long left = count * getPieceLength();
+
+            int lastPieceIndex = getPieceCount() - 1;
+            if (!isCompletedPiece(lastPieceIndex)) {
+                left -= getPieceLength();
+                left += getPieceLength(lastPieceIndex);
+            }
+
+            return left;
+        }
     }
 
     /**
@@ -424,7 +445,7 @@ public class SharedTorrent {
             // Store in a local so we can update with minimal synchronization.
             Piece[] pieces = new Piece[npieces];
             BitSet completedPieces = new BitSet(npieces);
-            long left = size;
+            long completedSize = 0;
 
             ThreadPoolExecutor executor = TorrentCreator.newExecutor();
 
@@ -439,7 +460,7 @@ public class SharedTorrent {
                     pieces[index] = piece;
                     // TODO: Read the file sequentially and pass it to the validator.
                     // Otherwise we thrash the disk on validation.
-                    ByteBuffer buffer = ByteBuffer.allocate(piece.getLength());
+                    ByteBuffer buffer = ByteBuffer.allocate(getPieceLength(index));
                     bucket.read(buffer, piece.getOffset());
                     buffer.flip();
                     executor.execute(new Piece.Validator(pieces[index], buffer, latch));
@@ -454,7 +475,7 @@ public class SharedTorrent {
                 for (Piece piece : pieces) {
                     if (piece.isValid()) {
                         completedPieces.set(piece.getIndex());
-                        left -= piece.getLength();
+                        completedSize += getPieceLength(piece.getIndex());
                     }
                 }
             } finally {
@@ -467,9 +488,9 @@ public class SharedTorrent {
             logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
                     new Object[]{
                 getName(),
-                (size - left),
+                completedSize,
                 size,
-                String.format("%.1f", (100f * (1f - left / (float) size))),
+                String.format("%.1f", (100f * (completedSize / (float) size))),
                 completedPieces.cardinality(),
                 pieces.length
             });
@@ -477,7 +498,6 @@ public class SharedTorrent {
             synchronized (lock) {
                 this.pieces = pieces;
                 this.completedPieces = completedPieces;
-                this.left = left;
             }
 
             if (isComplete())
@@ -536,21 +556,6 @@ public class SharedTorrent {
          : "");
          }
          */
-    }
-
-    /**
-     * Mark a piece as completed, decrementing the piece size in bytes from our
-     * left bytes to download counter.
-     */
-    public synchronized void markCompleted(Piece piece) {
-        if (this.completedPieces.get(piece.getIndex())) {
-            return;
-        }
-
-        // A completed piece means that's that much data left to download for
-        // this torrent.
-        this.left -= piece.getLength();
-        this.completedPieces.set(piece.getIndex());
     }
 
     /**

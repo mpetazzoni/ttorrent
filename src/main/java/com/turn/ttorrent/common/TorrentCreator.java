@@ -39,6 +39,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -112,6 +114,7 @@ public class TorrentCreator {
      * heap-based strategy we might devise. Now, we want the queue size small
      * enough that JVM ergonomics keeps the eden size small.
      */
+    @Nonnull
     public static ThreadPoolExecutor newExecutor() {
         int threads = getHashingThreadsCount();
         logger.info("Creating ExecutorService with {} threads", new Object[]{threads});
@@ -136,31 +139,31 @@ public class TorrentCreator {
     private List<List<URI>> announce = new ArrayList<List<URI>>();
     private String createdBy = getClass().getName();
 
-    public TorrentCreator(File parent) {
+    public TorrentCreator(@Nonnull File parent) {
         this.parent = parent;
     }
 
-    public void setExecutor(Executor executor) {
+    public void setExecutor(@Nonnull Executor executor) {
         this.executor = executor;
     }
 
-    public void setFiles(List<File> files) {
+    public void setFiles(@Nonnull List<File> files) {
         this.files = files;
     }
 
-    public void setAnnounce(List<List<URI>> announce) {
+    public void setAnnounce(@Nonnull List<List<URI>> announce) {
         this.announce = announce;
     }
 
-    public void setAnnounce(URI... announce) {
+    public void setAnnounce(@Nonnull URI... announce) {
         this.announce = Arrays.asList(Arrays.asList(announce));
     }
 
-    public void setCreatedBy(String createdBy) {
+    public void setCreatedBy(@Nonnull String createdBy) {
         this.createdBy = createdBy;
     }
 
-    private void validate(File file) {
+    private void validate(@Nonnull File file) {
         if (!file.isFile())
             throw new IllegalStateException("Not a file: " + file);
         if (!file.canRead())
@@ -197,6 +200,7 @@ public class TorrentCreator {
      * @param createdBy The creator's name, or any string identifying the
      * torrent's creator.
      */
+    @Nonnull
     public Torrent create() throws InterruptedException, IOException, URISyntaxException {
         validate();
 
@@ -275,7 +279,7 @@ public class TorrentCreator {
         private final CountDownLatch latch;
         private final ByteBuffer data;
 
-        ChunkHasher(byte[] out, int piece, CountDownLatch latch, ByteBuffer data) {
+        ChunkHasher(@Nonnull byte[] out, @Nonnegative int piece, @Nonnull CountDownLatch latch, @Nonnull ByteBuffer data) {
             this.out = out;
             this.piece = piece;
             this.latch = latch;
