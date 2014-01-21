@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
+import com.turn.ttorrent.client.peer.DownloadingPiece;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.RateComparator;
 import com.turn.ttorrent.client.peer.SharingPeer;
@@ -29,15 +30,19 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,9 +90,6 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
     private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
     private static final int RATE_COMPUTATION_ITERATIONS = 2;
     private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-    /** Randomly select the next piece to download from a peer from the
-     * RAREST_PIECE_JITTER available from it. */
-    private static final int RAREST_PIECE_JITTER = 42;
     /** End-game trigger ratio.
      *
      * <p>
@@ -102,10 +104,14 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
     private final ConcurrentMap<String, SharingPeer> peers = new ConcurrentHashMap<String, SharingPeer>();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
+    @GuardedBy("lock")
     private final BitSet requestedPieces;
+    @GuardedBy("lock")
+    private final Set<DownloadingPiece> partialPieces = new HashSet<DownloadingPiece>();
     // We only care about global rarest pieces for peer selection or opportunistic unchoking.
     // private final BitSet rarestPieces;
     // private int rarestPiecesAvailability = 0;
+    @GuardedBy("lock")
     private int optimisticIterations = 0;
     private final Object lock = new Object();
 
@@ -411,89 +417,90 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
         return rarestAvailability;
     }
 
-    /*
-     private void recomputeRarestPieces() {
-     synchronized (lock) {
-     rarestPiecesAvailability = computeRarestPieces(torrent, rarestPieces, null);
-     rarestPieces.clear();
-     rarestPiecesAvailability = Integer.MAX_VALUE;
-     int pieceCount = torrent.getPieceCount();
-     for (int i = 0; i < pieceCount; i++) {
-     Piece piece = torrent.getPiece(i);
-     int availability = piece.getAvailability();
-     if (availability == 0)
-     continue;
-     if (availability > rarestPiecesAvailability)
-     continue;
-     if (availability < rarestPiecesAvailability) {
-     rarestPiecesAvailability = availability;
-     rarestPieces.clear();
-     }
-     rarestPieces.set(i);
-     }
-     }
-     }
-     */
-    @CheckForNull
-    public Piece getNextPieceToDownload(@Nonnull SharingPeer peer) {
-        BitSet interesting = peer.getAvailablePieces();
-        torrent.andNotCompletedPieces(interesting);
-        this.andNotRequestedPieces(interesting);
-        logger.trace("Peer {} has {} interesting piece(s).",
-                peer, interesting.cardinality());
+    public void addPartiallyDownloadedPiece(@Nonnull DownloadingPiece piece) {
+        synchronized (lock) {
+            partialPieces.add(piece);
+        }
+    }
 
-        // If we didn't find interesting pieces, we need to check if we're in
-        // an end-game situation. If yes, we request an already requested piece
-        // to try to speed up the end.
-        if (interesting.isEmpty()) {
-            if (torrent.getCompletedPieceCount() < END_GAME_COMPLETION_RATIO * torrent.getPieceCount()) {
-                logger.trace("Not far along enough to warrant end-game mode.");
+    @CheckForNull
+    public DownloadingPiece getNextPieceToDownload(@Nonnull SharingPeer peer) {
+        BitSet interesting = peer.getAvailablePieces();
+
+        // TODO: We hold this lock for a LONG time. :-(
+        // I'm fairly sure our lock acquisition order is peer then torrent.
+        // We can't drop the lock earlier, else two peers will get the
+        // same DownloadingPiece, and we don't reference those.
+        synchronized (lock) {
+            Iterator<DownloadingPiece> it = partialPieces.iterator();
+            while (it.hasNext()) {
+                DownloadingPiece piece = it.next();
+                if (interesting.get(piece.getIndex())) {
+                    logger.trace("Peer {} receiving partial piece {}",
+                            peer, piece);
+                    it.remove();
+                    return piece;
+                }
+            }
+
+            torrent.andNotCompletedPieces(interesting);
+            this.andNotRequestedPieces(interesting);
+            logger.trace("Peer {} has {} interesting piece(s).",
+                    peer, interesting.cardinality());
+
+            // If we didn't find interesting pieces, we need to check if we're in
+            // an end-game situation. If yes, we request an already requested piece
+            // to try to speed up the end.
+            if (interesting.isEmpty()) {
+                if (torrent.getCompletedPieceCount() < END_GAME_COMPLETION_RATIO * torrent.getPieceCount()) {
+                    logger.trace("Not far along enough to warrant end-game mode.");
+                    return null;
+                }
+
+                interesting = peer.getAvailablePieces();
+                torrent.andNotCompletedPieces(interesting);
+                logger.trace("Possible end-game, we're about to request a piece "
+                        + "that was already requested from another peer.");
+            }
+
+            if (interesting.isEmpty()) {
+                logger.trace("No interesting piece from {}!", peer);
                 return null;
             }
 
-            interesting = peer.getAvailablePieces();
-            torrent.andNotCompletedPieces(interesting);
-            logger.trace("Possible end-game, we're about to request a piece "
-                    + "that was already requested from another peer.");
-        }
-
-        if (interesting.isEmpty()) {
-            logger.trace("No interesting piece from {}!", peer);
-            return null;
-        }
-
-        BitSet rarestPieces = new BitSet(interesting.length());
-        computeRarestPieces(torrent, rarestPieces, interesting);
-        if (rarestPieces.isEmpty()) // TODO: This should never happen if we aren't complete.
-            return null;
-        // Pick a random piece from the rarest pieces from this peer.
-        int rarestIndex = getRandom().nextInt(rarestPieces.cardinality());
-        Piece rarestPiece;
-        SEARCH:
-        {
-            for (int i = rarestPieces.nextSetBit(0); i >= 0;
-                    i = rarestPieces.nextSetBit(i + 1)) {
-                if (rarestIndex-- == 0) {
-                    rarestPiece = torrent.getPiece(i);
-                    break SEARCH;
+            BitSet rarestPieces = new BitSet(interesting.length());
+            computeRarestPieces(torrent, rarestPieces, interesting);
+            if (rarestPieces.isEmpty()) // TODO: This should never happen if we aren't complete.
+                return null;
+            // Pick a random piece from the rarest pieces from this peer.
+            int rarestIndex = getRandom().nextInt(rarestPieces.cardinality());
+            Piece rarestPiece;
+            SEARCH:
+            {
+                for (int i = rarestPieces.nextSetBit(0); i >= 0;
+                        i = rarestPieces.nextSetBit(i + 1)) {
+                    if (rarestIndex-- == 0) {
+                        rarestPiece = torrent.getPiece(i);
+                        break SEARCH;
+                    }
                 }
+                logger.trace("No rare piece from {}!", peer);
+                return null;
             }
-            logger.trace("No rare piece from {}!", peer);
-            return null;
+
+            requestedPieces.set(rarestPiece.getIndex());
+
+            logger.trace("Requesting {} from {}, we now have {} "
+                    + "outstanding request(s): {}",
+                    new Object[]{
+                rarestPiece,
+                peer,
+                this.requestedPieces.cardinality(),
+                this.requestedPieces
+            });
+
+            return new DownloadingPiece(rarestPiece);
         }
-
-        requestedPieces.set(rarestPiece.getIndex());
-
-        logger.trace("Requesting {} from {}, we now have {} "
-                + "outstanding request(s): {}",
-                new Object[]{
-            rarestPiece,
-            peer,
-            this.requestedPieces.cardinality(),
-            this.requestedPieces
-        });
-
-        return rarestPiece;
     }
 
     /** PeerConnectionListener handler(s). ********************************/
@@ -556,18 +563,22 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
     @Override
     public void handleFailedConnection(SharingPeer peer, Throwable cause) {
         logger.warn("Could not connect to {}: {}.", peer, cause.getMessage());
-        peers.remove(peer.getHostIdentifier());
-        peers.remove(peer.getHexPeerId());
+        synchronized (peers) {
+            peers.remove(peer.getHostIdentifier());
+            peers.remove(peer.getHexPeerId());
+        }
     }
 
     /** PeerActivityListener handler(s). *************************************/
     private void handlePeerPipelineDiscard(SharingPeer peer) {
+        /*
         synchronized (lock) {
             Piece piece = peer.getRequestedPiece();
             if (piece != null) {
                 requestedPieces.set(piece.getIndex(), false);
             }
         }
+        */
     }
 
     /**
@@ -756,7 +767,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
 
             // Send a HAVE message to all connected peers
             PeerMessage have = new PeerMessage.HaveMessage(piece.getIndex());
-            for (SharingPeer remote : this.peers.values())
+            for (SharingPeer remote : peers.values())
                 if (remote.isConnected())
                     remote.send(have);
         } else {
@@ -769,7 +780,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerActivi
 
             // Cancel all remaining outstanding requests
             for (SharingPeer remote : peers.values()) {
-                int requests = remote.cancelPendingRequests();
+                int requests = remote.cancelRequestsSent();
                 logger.info("Cancelled {} remaining pending requests on {}.",
                         requests, remote);
             }

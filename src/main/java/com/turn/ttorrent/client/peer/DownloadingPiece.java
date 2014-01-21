@@ -15,15 +15,13 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.google.common.collect.AbstractIterator;
 import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.PieceBlock;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.io.PeerMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.Iterator;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -39,67 +37,36 @@ public class DownloadingPiece {
 
     private static final Logger logger = LoggerFactory.getLogger(DownloadingPiece.class);
     private final Piece piece;
-    private final int blockSize;
-    private final BitSet pieceRequiredBytes;    // We could do this with blocks, but why bother?
+    @GuardedBy("lock")
     private final byte[] pieceData;
+    @GuardedBy("lock")
+    private final BitSet pieceRequiredBytes;    // We could do this with blocks, but why bother?
+    private int requestOffset = -1;
     private final Object lock = new Object();
 
-    public DownloadingPiece(@Nonnull Piece piece, @Nonnegative int blockSize) {
-        if (blockSize > PieceBlock.MAX_SIZE)
-            throw new IllegalArgumentException("Illegal block size " + blockSize + " > max " + PieceBlock.MAX_SIZE);
-        this.piece = piece;
-        this.blockSize = blockSize;
-        this.pieceRequiredBytes = new BitSet(blockSize);
-        this.pieceRequiredBytes.set(0, piece.getLength());  // It's easier to find 1s than 0s.
-        this.pieceData = new byte[piece.getLength()];
-    }
-
     public DownloadingPiece(@Nonnull Piece piece) {
-        this(piece, PieceBlock.DEFAULT_SIZE);
+        this.piece = piece;
+        this.pieceData = new byte[piece.getLength()];
+        this.pieceRequiredBytes = new BitSet(pieceData.length);
+        this.pieceRequiredBytes.set(0, pieceData.length);  // It's easier to find 1s than 0s.
     }
 
     @Nonnull
-    public SharedTorrent getTorrent() {
+    private SharedTorrent getTorrent() {
         return piece.getTorrent();
     }
 
-    public boolean isComplete() {
-        synchronized (lock) {
-            return pieceRequiredBytes.isEmpty();
-        }
+    /**
+     * Returns the index of this piece in the torrent.
+     */
+    @Nonnegative
+    public int getIndex() {
+        return piece.getIndex();
     }
 
-    // I guess I bit the bullet and used Guava. It is SOOO TASTY!
-    private class _Iterator extends AbstractIterator<PeerMessage.RequestMessage> {
+    public static enum Reception {
 
-        @GuardedBy("lock")
-        private int offset = -1;
-
-        @Override
-        protected PeerMessage.RequestMessage computeNext() {
-            synchronized (lock) {
-                if (offset < 0)
-                    offset = pieceRequiredBytes.nextSetBit(offset);
-                else
-                    offset = pieceRequiredBytes.nextSetBit(offset + blockSize);
-                if (offset < 0)
-                    return null;
-                int length = Math.min(
-                        blockSize,
-                        piece.getLength() - offset);
-                return new PeerMessage.RequestMessage(piece.getIndex(), offset, length);
-            }
-        }
-    }
-
-    @Nonnull
-    public Iterable<PeerMessage.RequestMessage> newRequestIterator() {
-        return new Iterable<PeerMessage.RequestMessage>() {
-            @Override
-            public Iterator<PeerMessage.RequestMessage> iterator() {
-                return new _Iterator();
-            }
-        };
+        IGNORED, INCOMPLETE, VALID, INVALID;
     }
 
     /**
@@ -108,32 +75,78 @@ public class DownloadingPiece {
      * @param block The ByteBuffer containing the block data.
      * @param offset The block offset in this piece.
      */
-    public boolean receive(ByteBuffer block, int offset) throws IOException {
+    @Nonnull
+    private Reception receive(ByteBuffer block, int offset) throws IOException {
         int length = block.remaining();
 
         synchronized (lock) {
             // Make sure we actually needed any of these bytes.
             if (pieceRequiredBytes.nextSetBit(offset) >= offset + length) {
-                logger.debug("Discarding non-required block for " + piece);
-                return false;
+                if (logger.isDebugEnabled())
+                    logger.debug("Discarding non-required block for " + piece);
+                return Reception.IGNORED;
             }
 
             block.get(pieceData, offset, length);
             pieceRequiredBytes.clear(offset, offset + length);
 
-            if (!isComplete())
-                return false;
+            if (!pieceRequiredBytes.isEmpty())
+                return Reception.INCOMPLETE;
 
             boolean valid = piece.isValid(ByteBuffer.wrap(pieceData));
             if (!valid) {
                 logger.warn("Piece {} complete, but invalid. Not saving.", piece);
                 this.pieceRequiredBytes.set(0, piece.getLength());
-                return false;
+                return Reception.INVALID;
             }
         }
 
+        if (logger.isDebugEnabled())
+            logger.debug("Piece {} complete, and valid.", piece);
         getTorrent().getBucket().write(ByteBuffer.wrap(pieceData), piece.getOffset());
         piece.setValid(true);
-        return true;
+        return Reception.VALID;
+    }
+
+    public class AnswerableRequestMessage extends PeerMessage.RequestMessage {
+
+        private final long requestTime = System.currentTimeMillis();
+
+        public AnswerableRequestMessage(int piece, int offset, int length) {
+            super(piece, offset, length);
+        }
+
+        @Nonnull
+        public DownloadingPiece getDownloadingPiece() {
+            return DownloadingPiece.this;
+        }
+
+        public long getRequestTime() {
+            return requestTime;
+        }
+
+        public Reception answer(PeerMessage.PieceMessage response) throws IOException {
+            if (!response.answers(this))
+                throw new IllegalArgumentException("Not an answer: request=" + this + ", response=" + response);
+            return receive(response.getBlock(), response.getOffset());
+        }
+    }
+
+    /** Returns null once when all blocks have been requested, then cycles. */
+    @CheckForNull
+    public AnswerableRequestMessage nextRequest() {
+        int blockSize = getTorrent().getBlockSize();
+        synchronized (lock) {
+            if (requestOffset < 0)
+                requestOffset = pieceRequiredBytes.nextSetBit(0);
+            else
+                requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockSize);
+            if (requestOffset < 0)
+                return null;
+            int length = Math.min(
+                    blockSize,
+                    piece.getLength() - requestOffset);
+            return new AnswerableRequestMessage(piece.getIndex(), requestOffset, length);
+        }
     }
 }

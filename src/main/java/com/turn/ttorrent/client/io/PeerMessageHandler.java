@@ -15,9 +15,7 @@
  */
 package com.turn.ttorrent.client.io;
 
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.PeerMessageListener;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import javax.annotation.Nonnull;

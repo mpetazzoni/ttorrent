@@ -193,6 +193,11 @@ public class SharedTorrent {
     }
 
     @Nonnegative
+    public long getSize() {
+        return getTorrent().getSize();
+    }
+
+    @Nonnegative
     public int getPieceCount() {
         return getTorrent().getPieceCount();
     }
@@ -211,8 +216,8 @@ public class SharedTorrent {
     }
 
     @Nonnegative
-    public long getSize() {
-        return getTorrent().getSize();
+    public int getBlockSize() {
+        return PieceBlock.DEFAULT_SIZE;
     }
 
     @Nonnull

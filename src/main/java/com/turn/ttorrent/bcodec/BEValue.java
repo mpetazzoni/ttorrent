@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.codec.Charsets;
+import org.apache.commons.io.Charsets;
 
 
 /**

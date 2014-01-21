@@ -49,7 +49,7 @@ public class PeerClientHandshakeHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         // Client only.
         SharedTorrent torrent = peer.getTorrent();
-        ctx.writeAndFlush(new HandshakeMessage(torrent.getInfoHash(), client.getPeerSpec().getPeerId()));
+        ctx.writeAndFlush(new HandshakeMessage(torrent.getInfoHash(), client.getPeerId()));
         super.channelActive(ctx);
     }
 

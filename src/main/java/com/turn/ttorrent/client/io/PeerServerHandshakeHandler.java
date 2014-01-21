@@ -19,12 +19,10 @@ import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.Peer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.SocketChannel;
-import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +49,7 @@ public class PeerServerHandshakeHandler extends ChannelInboundHandlerAdapter {
             ctx.close();
             return;
         }
-        HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerSpec().getPeerId());
+        HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerId());
         ctx.writeAndFlush(response);
 
         SocketChannel channel = (SocketChannel) ctx.channel();
