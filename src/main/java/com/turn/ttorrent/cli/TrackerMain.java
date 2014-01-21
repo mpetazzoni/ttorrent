@@ -31,9 +31,6 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,8 +59,7 @@ public class TrackerMain {
      * Main function to start a tracker.
      */
     public static void main(String[] args) throws Exception {
-        BasicConfigurator.configure(new ConsoleAppender(
-                new PatternLayout("%d [%-25t] %-5p: %m%n")));
+        // BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("%d [%-25t] %-5p: %m%n")));
 
         OptionParser parser = new OptionParser();
         OptionSpec<Void> helpOption = parser.accepts("help")
