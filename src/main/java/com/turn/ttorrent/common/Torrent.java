@@ -19,9 +19,11 @@ import com.turn.ttorrent.bcodec.BEValue;
 
 import com.turn.ttorrent.bcodec.BytesBDecoder;
 import com.turn.ttorrent.bcodec.BytesBEncoder;
+import com.turn.ttorrent.bcodec.StreamBDecoder;
 import com.turn.ttorrent.bcodec.StreamBEncoder;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -41,6 +43,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,6 +103,16 @@ public class Torrent {
     private final int pieceLength;
     private final byte[] piecesHashes;
 
+    @Nonnull
+    private static Map<String, BEValue> load(@Nonnull File file) throws IOException {
+        InputStream in = FileUtils.openInputStream(file);
+        try {
+            return new StreamBDecoder(in).bdecodeMap().getMap();
+        } finally {
+            IOUtils.closeQuietly(in);
+        }
+    }
+
     /**
      * Load a torrent from the given torrent file.
      *
@@ -107,8 +120,8 @@ public class Torrent {
      * <tt>.torrent</tt> file to load.
      * @throws IOException When the torrent file cannot be read.
      */
-    public Torrent(File torrent) throws IOException, URISyntaxException {
-        this(FileUtils.readFileToByteArray(torrent));
+    public Torrent(@Nonnull File torrent) throws IOException, URISyntaxException {
+        this(load(torrent));
     }
 
     /**
@@ -319,6 +332,11 @@ public class Torrent {
     @Nonnegative
     public int getPieceCount() {
         return (int) (Math.ceil((double) getSize() / getPieceLength()));
+    }
+
+    @Nonnegative
+    public long getPieceOffset(@Nonnegative int index) {
+        return (long) getPieceLength() * (long) index;
     }
 
     @Nonnegative

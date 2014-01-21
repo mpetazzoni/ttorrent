@@ -68,7 +68,8 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got the update from.
      * @param piece The piece that became available from this peer.
      */
-    public void handlePieceAvailability(SharingPeer peer, Piece piece);
+    public void handlePieceAvailability(@Nonnull SharingPeer peer,
+            @Nonnegative int piece);
 
     /**
      * Bit field availability handler.
@@ -92,11 +93,11 @@ public interface PeerActivityListener extends EventListener {
      * @param piece The piece in question.
      */
     public void handleBlockSent(@Nonnull SharingPeer peer,
-            @Nonnull Piece piece,
+            @Nonnegative int piece,
             @Nonnegative int offset, @Nonnegative int length);
 
     public void handleBlockReceived(@Nonnull SharingPeer peer,
-            @Nonnull Piece piece,
+            @Nonnegative int piece,
             @Nonnegative int offset, @Nonnegative int length);
 
     /**
@@ -116,7 +117,8 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got this piece from.
      * @param piece The piece in question.
      */
-    public void handlePieceCompleted(SharingPeer peer, Piece piece)
+    public void handlePieceCompleted(@Nonnull SharingPeer peer,
+            @Nonnegative int piece)
             throws IOException;
 
     /**

@@ -101,6 +101,11 @@ public class SharedTorrent {
         this(client, new Torrent(torrent), destDir);
     }
 
+    public SharedTorrent(@Nonnull Client client, @Nonnull File torrent, @Nonnull File destDir)
+            throws IOException, URISyntaxException {
+        this(client, new Torrent(torrent), destDir);
+    }
+
     /**
      * Create a new shared torrent from a base Torrent object.
      *
@@ -213,11 +218,6 @@ public class SharedTorrent {
     @Nonnegative
     public int getPieceLength(@Nonnegative int index) {
         return getTorrent().getPieceLength(index);
-    }
-
-    @Nonnegative
-    public int getBlockSize() {
-        return PieceBlock.DEFAULT_SIZE;
     }
 
     @Nonnull
@@ -461,7 +461,7 @@ public class SharedTorrent {
                 int step = 10;
                 CountDownLatch latch = new CountDownLatch(npieces);
                 for (int index = 0; index < npieces; index++) {
-                    Piece piece = new Piece(this, index);
+                    Piece piece = new Piece(torrent, index);
                     pieces[index] = piece;
                     // TODO: Read the file sequentially and pass it to the validator.
                     // Otherwise we thrash the disk on validation.

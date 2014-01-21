@@ -26,10 +26,6 @@ import javax.annotation.Nonnull;
 @Deprecated // Not currently used... but might be.
 public class PieceBlock {
 
-    /** Default block size is 2^14 bytes, or 16kB. */
-    public static final int DEFAULT_SIZE = 16384;
-    /** Max block request size is 2^17 bytes, or 131kB. */
-    public static final int MAX_SIZE = 131072;
     private final int piece;
     private final int offset;
     private final int length;
