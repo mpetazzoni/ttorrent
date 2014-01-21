@@ -17,7 +17,6 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -39,32 +38,34 @@ public class PeerClientHandshakeHandler extends ChannelInboundHandlerAdapter {
     private final Client client;
     @Nonnull
     private final SharingPeer peer;
+    @Nonnull
+    private final PeerConnectionListener listener;
 
-    public PeerClientHandshakeHandler(@Nonnull Client client, @Nonnull SharingPeer peer) {
+    public PeerClientHandshakeHandler(@Nonnull Client client,
+            @Nonnull SharingPeer peer,
+            @Nonnull PeerConnectionListener listener) {
         this.client = client;
         this.peer = peer;
+        this.listener = listener;
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         // Client only.
-        SharedTorrent torrent = peer.getTorrent();
-        ctx.writeAndFlush(new HandshakeMessage(torrent.getInfoHash(), client.getPeerId()));
+        ctx.writeAndFlush(new HandshakeMessage(peer.getInfoHash(), client.getPeerId()));
         super.channelActive(ctx);
     }
 
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
         // We were the connecting client.
-        SharedTorrent torrent = peer.getTorrent();
-        if (!Arrays.equals(torrent.getInfoHash(), message.getInfoHash())) {
-            logger.warn("InfoHash mismatch: requested " + torrent + " but received " + message);
+        if (!Arrays.equals(peer.getInfoHash(), message.getInfoHash())) {
+            logger.warn("InfoHash mismatch: requested " + peer + " but received " + message);
             ctx.close();
             return;
         }
 
         ctx.pipeline().remove(this);
 
-        PeerConnectionListener listener = torrent.getPeerHandler();
         listener.handleNewPeerConnection((SocketChannel) ctx.channel(), peer);
     }
 

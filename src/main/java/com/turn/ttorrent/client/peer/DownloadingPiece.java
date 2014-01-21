@@ -15,8 +15,9 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.PieceBlock;
 import com.turn.ttorrent.client.io.PeerMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,24 +37,27 @@ import org.slf4j.LoggerFactory;
 public class DownloadingPiece {
 
     private static final Logger logger = LoggerFactory.getLogger(DownloadingPiece.class);
+    /** Default block size is 2^14 bytes, or 16kB. */
+    public static final int DEFAULT_BLOCK_SIZE = 16384;
+    /** Max block request size is 2^17 bytes, or 131kB. */
+    public static final int MAX_BLOCK_SIZE = 131072;
     private final Piece piece;
+    private final PeerPieceProvider provider;
     @GuardedBy("lock")
     private final byte[] pieceData;
     @GuardedBy("lock")
     private final BitSet pieceRequiredBytes;    // We could do this with blocks, but why bother?
-    private int requestOffset = -1;
+    private static final int REQUEST_OFFSET_INIT = -1;
+    private static final int REQUEST_OFFSET_FINI = -2;
+    private int requestOffset = REQUEST_OFFSET_INIT;
     private final Object lock = new Object();
 
-    public DownloadingPiece(@Nonnull Piece piece) {
+    public DownloadingPiece(@Nonnull Piece piece, @Nonnull PeerPieceProvider provider) {
         this.piece = piece;
+        this.provider = provider;
         this.pieceData = new byte[piece.getLength()];
         this.pieceRequiredBytes = new BitSet(pieceData.length);
         this.pieceRequiredBytes.set(0, pieceData.length);  // It's easier to find 1s than 0s.
-    }
-
-    @Nonnull
-    private SharedTorrent getTorrent() {
-        return piece.getTorrent();
     }
 
     /**
@@ -103,7 +107,7 @@ public class DownloadingPiece {
 
         if (logger.isDebugEnabled())
             logger.debug("Piece {} complete, and valid.", piece);
-        getTorrent().getBucket().write(ByteBuffer.wrap(pieceData), piece.getOffset());
+        provider.writeBlock(ByteBuffer.wrap(pieceData), piece.getIndex(), 0);
         piece.setValid(true);
         return Reception.VALID;
     }
@@ -135,14 +139,18 @@ public class DownloadingPiece {
     /** Returns null once when all blocks have been requested, then cycles. */
     @CheckForNull
     public AnswerableRequestMessage nextRequest() {
-        int blockSize = getTorrent().getBlockSize();
+        int blockSize = DEFAULT_BLOCK_SIZE;
         synchronized (lock) {
-            if (requestOffset < 0)
+            if (requestOffset == REQUEST_OFFSET_FINI)
+                return null;
+            else if (requestOffset == REQUEST_OFFSET_INIT)
                 requestOffset = pieceRequiredBytes.nextSetBit(0);
             else
                 requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockSize);
-            if (requestOffset < 0)
+            if (requestOffset < 0) {
+                requestOffset = REQUEST_OFFSET_FINI;
                 return null;
+            }
             int length = Math.min(
                     blockSize,
                     piece.getLength() - requestOffset);

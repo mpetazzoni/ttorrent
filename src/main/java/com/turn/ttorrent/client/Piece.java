@@ -18,7 +18,6 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import com.turn.ttorrent.common.Torrent;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -53,7 +52,7 @@ import org.slf4j.LoggerFactory;
 public class Piece {
 
     private static final Logger logger = LoggerFactory.getLogger(Piece.class);
-    private final SharedTorrent torrent;
+    private final Torrent torrent;
     private final int index;
     // Piece is considered invalid until first check.
     private volatile boolean valid = false;
@@ -67,13 +66,13 @@ public class Piece {
      * @param bucket The underlying byte storage bucket.
      * @param index This piece index in the torrent.
      */
-    public Piece(@Nonnull SharedTorrent torrent, @Nonnegative int index) {
+    public Piece(@Nonnull Torrent torrent, @Nonnegative int index) {
         this.torrent = torrent;
         this.index = index;
     }
 
     @Nonnull
-    public SharedTorrent getTorrent() {
+    public Torrent getTorrent() {
         return torrent;
     }
 
@@ -108,7 +107,7 @@ public class Piece {
 
     @Nonnull
     public byte[] getHash() {
-        byte[] hashes = torrent.getTorrent().getPiecesHashes();
+        byte[] hashes = torrent.getPiecesHashes();
         int offset = getIndex() * Torrent.PIECE_HASH_SIZE;
         return Arrays.copyOfRange(hashes, offset, offset + Torrent.PIECE_HASH_SIZE);
     }
@@ -179,68 +178,6 @@ public class Piece {
         MessageDigest digest = DigestUtils.getSha1Digest();
         digest.update(data);
         return Arrays.equals(digest.digest(), getHash());
-    }
-
-    /**
-     * Internal piece data read function.
-     *
-     * <p>
-     * This function will read the piece data without checking if the piece has
-     * been validated. It is simply meant at factoring-in the common read code
-     * from the validate and read functions.
-     * </p>
-     *
-     * @param offset Offset inside this piece where to start reading.
-     * @param length Number of bytes to read from the piece.
-     * @return A byte buffer containing the piece data.
-     * @throws IllegalArgumentException If <em>offset + length</em> goes over
-     * the piece boundary.
-     * @throws IOException If the read can't be completed (I/O error, or EOF
-     * reached, which can happen if the piece is not complete).
-     */
-    private ByteBuffer _read(long offset, long length) throws IOException {
-        if (offset + length > getLength()) {
-            throw new IllegalArgumentException("Piece#" + this.index
-                    + " overrun (" + offset + " + " + length + " > "
-                    + getLength() + ") !");
-        }
-
-        // TODO: remove cast to int when large ByteBuffer support is
-        // implemented in Java.
-        ByteBuffer buffer = ByteBuffer.allocate((int) length);
-        torrent.getBucket().read(buffer, getOffset() + offset);
-        buffer.flip();
-        if (buffer.remaining() != length)
-            throw new IllegalStateException("Bad length: Requested " + length + " but read " + buffer.remaining());
-        return buffer;
-    }
-
-    /**
-     * Read a piece block from the underlying byte storage.
-     *
-     * <p>
-     * This is the public method for reading this piece's data, and it will
-     * only succeed if the piece is complete and valid on disk, thus ensuring
-     * any data that comes out of this function is valid piece data we can send
-     * to other peers.
-     * </p>
-     *
-     * @param offset Offset inside this piece where to start reading.
-     * @param length Number of bytes to read from the piece.
-     * @return A byte buffer containing the piece data.
-     * @throws IllegalArgumentException If <em>offset + length</em> goes over
-     * the piece boundary.
-     * @throws IllegalStateException If the piece is not valid when attempting
-     * to read it.
-     * @throws IOException If the read can't be completed (I/O error, or EOF
-     * reached, which can happen if the piece is not complete).
-     */
-    public ByteBuffer read(long offset, int length)
-            throws IllegalArgumentException, IllegalStateException, IOException {
-        if (!isValid())
-            throw new IllegalStateException("Attempting to read a known-invalid piece!");
-
-        return this._read(offset, length);
     }
 
     /**

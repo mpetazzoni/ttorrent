@@ -15,11 +15,9 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.PieceBlock;
-import com.turn.ttorrent.client.SharedTorrent;
 
 import com.turn.ttorrent.client.io.PeerMessage;
 import io.netty.channel.socket.SocketChannel;
@@ -81,9 +79,9 @@ public class SharingPeer implements PeerMessageListener {
         // They decide about us:
         CHOKING, INTERESTED;
     }
-    private final SharedTorrent torrent;
     private final Peer peer;
-    private final PeerActivityListener listener;    // torrent.getPeerHandler()
+    private final PeerPieceProvider provider;
+    private final PeerActivityListener listener;
     @GuardedBy("lock")
     private final BitSet availablePieces;
     // TODO: Convert to AtomicLongArray and allow some hysteresis on flag changes.
@@ -113,12 +111,16 @@ public class SharingPeer implements PeerMessageListener {
      * @param peer The peer.
      * @param torrent The torrent this peer exchanges with us on.
      */
-    public SharingPeer(@Nonnull SharedTorrent torrent, @Nonnull Peer peer, @Nonnull PeerActivityListener listener) {
-        this.torrent = torrent;
+    // Deliberately specified in terms of interfaces, for testing.
+    public SharingPeer(
+            @Nonnull Peer peer, 
+            @Nonnull PeerPieceProvider provider,
+            @Nonnull PeerActivityListener listener) {
         this.peer = peer;
+        this.provider = provider;
         this.listener = listener;
 
-        this.availablePieces = new BitSet(torrent.getPieceCount());
+        this.availablePieces = new BitSet(provider.getPieceCount());
 
         reset();
     }
@@ -145,16 +147,6 @@ public class SharingPeer implements PeerMessageListener {
     }
 
     @Nonnull
-    public Client getClient() {
-        return getTorrent().getClient();
-    }
-
-    @Nonnull
-    public SharedTorrent getTorrent() {
-        return torrent;
-    }
-
-    @Nonnull
     public Peer getPeer() {
         return peer;
     }
@@ -167,6 +159,11 @@ public class SharingPeer implements PeerMessageListener {
     @Nonnull
     public String getHexPeerId() {
         return peer.getHexPeerId();
+    }
+
+    @Nonnull
+    public byte[] getInfoHash() {
+        return provider.getInfoHash();
     }
 
     @Nonnull
@@ -343,6 +340,7 @@ public class SharingPeer implements PeerMessageListener {
      *
      * @param message The PIECE message received.
      */
+    @CheckForNull
     private DownloadingPiece.AnswerableRequestMessage removeRequestSent(@Nonnull PeerMessage.PieceMessage response) {
         synchronized (lock) {
             return removeRequestMessage(response, requestsSent.iterator());
@@ -419,7 +417,7 @@ public class SharingPeer implements PeerMessageListener {
                     // This calls a significant piece of infrastructure elsewhere,
                     // and needs a proof against deadlock.
                     if (requestsSource == null)
-                        requestsSource = torrent.getPeerHandler().getNextPieceToDownload(this);
+                        requestsSource = provider.getNextPieceToDownload(this);
                     if (requestsSource == null) {
                         notInteresting();
                         break REQUEST;
@@ -441,7 +439,7 @@ public class SharingPeer implements PeerMessageListener {
                     break;
             }
 
-            Piece piece = torrent.getPiece(request.getPiece());
+            Piece piece = provider.getPiece(request.getPiece());
             if (!piece.isValid()) {
                 logger.warn("Peer {} requested invalid piece {}, "
                         + "terminating exchange.", this, piece);
@@ -451,14 +449,16 @@ public class SharingPeer implements PeerMessageListener {
 
             // At this point we agree to send the requested piece block to
             // the remote peer, so let's queue a message with that block
-            ByteBuffer block = piece.read(request.getOffset(), request.getLength());
+            ByteBuffer block = ByteBuffer.allocate(request.getLength());
+            provider.readBlock(block, request.getPiece(), request.getOffset());
+            // ByteBuffer block = piece.read(request.getOffset(), request.getLength());
             send(new PeerMessage.PieceMessage(
                     request.getPiece(),
                     request.getOffset(),
                     block));
             upload.update(request.getLength());
 
-            listener.handleBlockSent(this, piece, request.getOffset(), request.getLength());
+            listener.handleBlockSent(this, request.getPiece(), request.getOffset(), request.getLength());
         }
     }
 
@@ -502,20 +502,12 @@ public class SharingPeer implements PeerMessageListener {
                 case HAVE: {
                     // Record this peer has the given piece
                     PeerMessage.HaveMessage message = (PeerMessage.HaveMessage) msg;
-                    Piece piece = this.torrent.getPiece(message.getPiece());
 
                     synchronized (lock) {
                         this.availablePieces.set(message.getPiece());
-                        logger.trace("Peer {} now has {} [{}/{}].",
-                                new Object[]{
-                            this,
-                            piece,
-                            this.availablePieces.cardinality(),
-                            this.torrent.getPieceCount()
-                        });
                     }
 
-                    listener.handlePieceAvailability(this, piece);
+                    listener.handlePieceAvailability(this, message.getPiece());
                     run(); // We might now be interested.
                     break;
                 }
@@ -527,16 +519,8 @@ public class SharingPeer implements PeerMessageListener {
 
                     synchronized (lock) {
                         prevAvailablePieces = getAvailablePieces();
-                        this.availablePieces.clear();
-                        this.availablePieces.or(message.getBitfield());
-                        logger.trace("Recorded message from {} with {} "
-                                + "pieces(s) [{}/{}].",
-                                new Object[]{
-                            this,
-                            message.getBitfield().cardinality(),
-                            getAvailablePieceCount(),
-                            this.torrent.getPieceCount()
-                        });
+                        availablePieces.clear();
+                        availablePieces.or(message.getBitfield());
                     }
 
                     // The copy from the message is independent, and thus threadsafe.
@@ -561,7 +545,7 @@ public class SharingPeer implements PeerMessageListener {
                         break;
                     }
 
-                    if (message.getLength() > PieceBlock.MAX_SIZE) {
+                    if (message.getLength() > DownloadingPiece.MAX_BLOCK_SIZE) {
                         logger.warn("Peer {} requested a block too big, "
                                 + "terminating exchange.", this);
                         close();
@@ -590,19 +574,19 @@ public class SharingPeer implements PeerMessageListener {
                     // greedy?
                     PeerMessage.PieceMessage message = (PeerMessage.PieceMessage) msg;
                     int blockLength = message.getLength();
-                    Piece piece = this.torrent.getPiece(message.getPiece());
 
                     // Remove the corresponding request from the request queue to
                     // make room for next block requests.
                     DownloadingPiece.AnswerableRequestMessage request = removeRequestSent(message);
+                    // TODO: Not found.
                     DownloadingPiece.Reception reception = request.answer(message);
 
                     download.update(blockLength);
-                    listener.handleBlockReceived(this, piece, message.getOffset(), blockLength);
+                    listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
                     switch (reception) {
                         case VALID:
                         case INVALID:
-                            listener.handlePieceCompleted(this, piece);
+                            listener.handlePieceCompleted(this, message.getPiece());
                             break;
                     }
 

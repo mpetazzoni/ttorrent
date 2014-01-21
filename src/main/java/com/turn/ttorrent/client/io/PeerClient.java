@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -65,14 +66,16 @@ public class PeerClient {
     }
 
     @Nonnull
-    public ChannelFuture connect(@Nonnull SocketAddress remoteAddress, @Nonnull final SharingPeer peer) {
+    public ChannelFuture connect(@Nonnull SocketAddress remoteAddress,
+            @Nonnull final SharingPeer peer,
+            @Nonnull final PeerConnectionListener listener) {
         ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
             bootstrap.handler(new PeerChannelInitializer(client) {
                 @Override
                 protected void initChannel(Channel ch) throws Exception {
-                    ch.pipeline().addLast(new PeerClientHandshakeHandler(client, peer));
+                    ch.pipeline().addLast(new PeerClientHandshakeHandler(client, peer, listener));
                     super.initChannelPipeline(ch.pipeline(), peer);
                 }
             });
