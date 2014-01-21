@@ -30,7 +30,7 @@ apply plugin: 'application'
 
 dependencies {
 	compile 'com.google.code.findbugs:jsr305:2.0.2'
-	compile 'org.slf4j:slf4j-log4j12:1.7.5'
+	compile 'org.slf4j:slf4j-api:1.7.5'
 	compile 'commons-io:commons-io:2.4'
 	// compile 'net.sf:jargs:1.0'
 	compile 'org.simpleframework:simple:4.1.21'
@@ -41,4 +41,5 @@ dependencies {
 	compile 'net.sf.jopt-simple:jopt-simple:4.6'
 
 	testCompile 'junit:junit:4.8.1'
+	testRuntime 'org.slf4j:slf4j-jcl:1.7.5'
 }
