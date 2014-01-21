@@ -320,29 +320,17 @@ public abstract class PeerMessage {
         }
     }
 
-    /**
-     * Request message.
-     *
-     * <len=00013><id=6><piece index><block offset><block length>
-     */
-    public static class RequestMessage extends PeerMessage {
+    public static abstract class AbstractPieceMessage extends PeerMessage {
 
         private int piece;
         private int offset;
-        private int length;
 
-        public RequestMessage() {
+        public AbstractPieceMessage() {
         }
 
-        public RequestMessage(@Nonnegative int piece, @Nonnegative int offset, @Nonnegative int length) {
+        public AbstractPieceMessage(int piece, int offset) {
             this.piece = piece;
             this.offset = offset;
-            this.length = length;
-        }
-
-        @Override
-        public Type getType() {
-            return Type.REQUEST;
         }
 
         @Nonnegative
@@ -356,15 +344,12 @@ public abstract class PeerMessage {
         }
 
         @Nonnegative
-        public int getLength() {
-            return this.length;
-        }
+        public abstract int getLength();
 
         @Override
         public void fromWire(ByteBuf in) {
             piece = in.readInt();
             offset = in.readInt();
-            length = in.readInt();
         }
 
         @Override
@@ -372,40 +357,26 @@ public abstract class PeerMessage {
             super.toWire(out);
             out.writeInt(piece);
             out.writeInt(offset);
-            out.writeInt(length);
         }
 
         @Override
-        public RequestMessage validate(SharedTorrent torrent)
+        public AbstractPieceMessage validate(SharedTorrent torrent)
                 throws MessageValidationException {
-            if (piece < 0)
+            if (getPiece() < 0)
                 throw new MessageValidationException(this);
-            if (piece > torrent.getPieceCount())
+            if (getPiece() > torrent.getPieceCount())
                 throw new MessageValidationException(this);
-            if (this.offset + this.length > torrent.getPieceLength(piece))
+            if (getOffset() + getLength() > torrent.getPieceLength(piece))
                 throw new MessageValidationException(this);
             return this;
         }
 
-        /*
-         @Override
-         public int hashCode() {
-         return getPiece() ^ getOffset() ^ getLength();
-         }
-         @Override
-         public boolean equals(Object obj) {
-         if (this == obj)
-         return true;
-         if (null == obj)
-         return false;
-         if (!getClass().equals(obj.getClass()))
-         return false;
-         RequestMessage other = (RequestMessage) obj;
-         return getPiece() == other.getPiece()
-         && getOffset() == other.getOffset()
-         && getLength() == other.getLength();
-         }
-         */
+        public boolean answers(@Nonnull AbstractPieceMessage message) {
+            return getPiece() == message.getPiece()
+                    && getOffset() == message.getOffset()
+                    && getLength() == message.getLength();
+        }
+
         @Override
         public String toString() {
             return super.toString() + " #" + this.getPiece()
@@ -414,15 +385,53 @@ public abstract class PeerMessage {
     }
 
     /**
+     * Request message.
+     *
+     * <len=00013><id=6><piece index><block offset><block length>
+     */
+    public static class RequestMessage extends AbstractPieceMessage {
+
+        private int length;
+
+        public RequestMessage() {
+        }
+
+        public RequestMessage(@Nonnegative int piece, @Nonnegative int offset, @Nonnegative int length) {
+            super(piece, offset);
+            this.length = length;
+        }
+
+        @Override
+        public Type getType() {
+            return Type.REQUEST;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public void fromWire(ByteBuf in) {
+            super.fromWire(in);
+            length = in.readInt();
+        }
+
+        @Override
+        public void toWire(ByteBuf out) {
+            super.toWire(out);
+            out.writeInt(length);
+        }
+    }
+
+    /**
      * Piece message.
      *
      * <len=0009+X><id=7><piece index><block offset><block data>
      */
-    public static class PieceMessage extends PeerMessage {
+    public static class PieceMessage extends AbstractPieceMessage {
 
         private static final int BASE_SIZE = 9;
-        private int piece;
-        private int offset;
         // TODO: Use a FileRegion.
         private ByteBuffer block;
 
@@ -430,8 +439,7 @@ public abstract class PeerMessage {
         }
 
         public PieceMessage(int piece, int offset, ByteBuffer block) {
-            this.piece = piece;
-            this.offset = offset;
+            super(piece, offset);
             this.block = block;
         }
 
@@ -440,14 +448,7 @@ public abstract class PeerMessage {
             return Type.PIECE;
         }
 
-        public int getPiece() {
-            return this.piece;
-        }
-
-        public int getOffset() {
-            return this.offset;
-        }
-
+        @Override
         public int getLength() {
             return getBlock().remaining();
         }
@@ -458,47 +459,14 @@ public abstract class PeerMessage {
 
         @Override
         public void fromWire(ByteBuf in) {
-            piece = in.readInt();
-            offset = in.readInt();
+            super.fromWire(in);
             block = in.nioBuffer().slice();
         }
 
         @Override
         public void toWire(ByteBuf out) {
             super.toWire(out);
-            out.writeInt(piece);
-            out.writeInt(offset);
             out.writeBytes(block);
-        }
-
-        @Override
-        public PieceMessage validate(@Nonnull SharedTorrent torrent)
-                throws MessageValidationException {
-            if (piece < 0)
-                throw new MessageValidationException(this);
-            if (piece > torrent.getPieceCount())
-                throw new MessageValidationException(this);
-            if (this.offset + this.block.limit() > torrent.getPieceLength(piece))
-                throw new MessageValidationException(this);
-            return this;
-        }
-
-        public boolean answers(@Nonnull RequestMessage request) {
-            return getPiece() == request.getPiece()
-                    && getOffset() == request.getOffset()
-                    && getLength() == request.getLength();
-            // It might be a partial answer, in which case we will simply
-            // have to request again. However, DownloadingPiece can handle
-            // this.
-            // int start = Math.max(getOffset(), request.getOffset());
-            // int end = Math.min(getOffset() + getLength(), request.getOffset() + request.getLength());
-            // return end > start;
-        }
-
-        @Override
-        public String toString() {
-            return super.toString() + " #" + this.getPiece()
-                    + " (" + this.getBlock().capacity() + "@" + this.getOffset() + ")";
         }
     }
 
@@ -507,18 +475,15 @@ public abstract class PeerMessage {
      *
      * <len=00013><id=8><piece index><block offset><block length>
      */
-    public static class CancelMessage extends PeerMessage {
+    public static class CancelMessage extends AbstractPieceMessage {
 
-        private int piece;
-        private int offset;
         private int length;
 
         public CancelMessage() {
         }
 
         public CancelMessage(@Nonnegative int piece, @Nonnegative int offset, @Nonnegative int length) {
-            this.piece = piece;
-            this.offset = offset;
+            super(piece, offset);
             this.length = length;
         }
 
@@ -531,52 +496,21 @@ public abstract class PeerMessage {
             return Type.CANCEL;
         }
 
-        @Nonnegative
-        public int getPiece() {
-            return this.piece;
-        }
-
-        @Nonnegative
-        public int getOffset() {
-            return this.offset;
-        }
-
-        @Nonnegative
+        @Override
         public int getLength() {
-            return this.length;
+            return length;
         }
 
         @Override
         public void fromWire(ByteBuf in) {
-            piece = in.readInt();
-            offset = in.readInt();
+            super.fromWire(in);
             length = in.readInt();
         }
 
         @Override
         public void toWire(ByteBuf out) {
             super.toWire(out);
-            out.writeInt(piece);
-            out.writeInt(offset);
             out.writeInt(length);
-        }
-
-        @Override
-        public CancelMessage validate(SharedTorrent torrent)
-                throws MessageValidationException {
-            if (this.piece >= 0 && this.piece < torrent.getPieceCount()
-                    && this.offset + this.length
-                    <= torrent.getPieceLength(this.piece)) {
-                return this;
-            }
-
-            throw new MessageValidationException(this);
-        }
-
-        @Override
-        public String toString() {
-            return super.toString() + " #" + this.getPiece()
-                    + " (" + this.getLength() + "@" + this.getOffset() + ")";
         }
     }
 }

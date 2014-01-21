@@ -145,8 +145,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         String scheme = tracker.getScheme();
         if ("http".equals(scheme) || "https".equals(scheme)) {
             return getClient().getHttpTrackerClient();
-        } else if ("udp".equals(scheme)) {
-            return getClient().getUdpTrackerClient();
+        // } else if ("udp".equals(scheme)) {
+            // return getClient().getUdpTrackerClient();
         } else {
             return null;
         }

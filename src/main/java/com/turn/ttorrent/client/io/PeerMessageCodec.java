@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.io;
 
-import com.turn.ttorrent.common.protocol.PeerMessage.Type;
+import com.turn.ttorrent.client.io.PeerMessage.Type;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;

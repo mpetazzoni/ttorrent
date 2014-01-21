@@ -1,12 +1,9 @@
 # Git ignore patterns
 # Author: Maxime Petazzoni <mpetazzoni@turn.com>
+# Author: Shevek
 
 # Ignore build output
-/build/*
-/release.properties
-
-# Ignore Javadoc output
-/doc/*
+/build
 
 # Ignore any eventual Eclipse project files, these don't belong in the
 # repository.
@@ -19,3 +16,7 @@
 *.bak
 *~
 *~
+
+/.gradle
+/.nb-gradle
+

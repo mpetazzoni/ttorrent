@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.announce.HTTPTrackerClient;
-import com.turn.ttorrent.client.announce.UDPTrackerClient;
 import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.common.Peer;
@@ -58,11 +57,11 @@ public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
     private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
     private final ClientEnvironment environment;
-    private final PeerServer peerServer;
-    private final PeerClient peerClient;
-    private final Peer self;
-    private final HTTPTrackerClient httpTrackerClient;
-    private final UDPTrackerClient udpTrackerClient;
+    private final byte[] peerId;
+    private PeerServer peerServer;
+    private PeerClient peerClient;
+    private HTTPTrackerClient httpTrackerClient;
+    // private UDPTrackerClient udpTrackerClient;
     // TODO: Search ports for a free port.
     private final Map<String, SharedTorrent> torrents = new ConcurrentHashMap<String, SharedTorrent>();
 
@@ -78,11 +77,8 @@ public class Client {
                 .toString().split("-")[4];
 
         this.environment = new ClientEnvironment();
-        this.peerServer = new PeerServer(this);
-        this.peerClient = new PeerClient(this);
-        this.self = new Peer(peerServer.getLocalAddress(), id.getBytes(Torrent.BYTE_ENCODING));
-        this.httpTrackerClient = new HTTPTrackerClient(environment, self);
-        this.udpTrackerClient = new UDPTrackerClient(environment, self);
+        this.peerId = id.getBytes(Torrent.BYTE_ENCODING);
+
     }
 
     @Nonnull
@@ -94,8 +90,8 @@ public class Client {
      * Get this client's peer specification.
      */
     @Nonnull
-    public Peer getPeerSpec() {
-        return this.self;
+    public byte[] getPeerId() {
+        return peerId;
     }
 
     @Nonnull
@@ -113,30 +109,47 @@ public class Client {
         return httpTrackerClient;
     }
 
-    @Nonnull
-    public UDPTrackerClient getUdpTrackerClient() {
-        return udpTrackerClient;
-    }
-
+    /*
+     @Nonnull
+     public UDPTrackerClient getUdpTrackerClient() {
+     return udpTrackerClient;
+     }
+     */
     public void start() throws Exception {
         environment.start();
+
+        peerServer = new PeerServer(this);
         peerServer.start();
+        peerClient = new PeerClient(this);
         peerClient.start();
+
+        Peer peer = new Peer(peerServer.getLocalAddress(), peerId);
+
+        httpTrackerClient = new HTTPTrackerClient(environment, peer);
         httpTrackerClient.start();
-        udpTrackerClient.start();
+
+        // udpTrackerClient = new UDPTrackerClient(environment, peer);
+        // udpTrackerClient.start();
 
         logger.info("BitTorrent client [{}] started and listening at {}...",
                 new Object[]{
-            this.self.getShortHexPeerId(),
-            this.self.getHostIdentifier()
+            peer.getShortHexPeerId(),
+            peer.getHostIdentifier()
         });
     }
 
     public void stop() throws Exception {
-        udpTrackerClient.stop();
-        httpTrackerClient.stop();
-        peerClient.stop();
-        peerServer.stop();
+        // if (udpTrackerClient != null)
+        // udpTrackerClient.stop();
+        // udpTrackerClient = null;
+        if (httpTrackerClient != null)
+            httpTrackerClient.stop();
+        httpTrackerClient = null;
+        if (peerClient != null)
+            peerClient.stop();
+        peerClient = null;
+        if (peerServer != null)
+            peerServer.stop();
         environment.stop();
     }
 
