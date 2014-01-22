@@ -20,10 +20,12 @@ import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -63,7 +65,7 @@ public class Client {
     private HTTPTrackerClient httpTrackerClient;
     // private UDPTrackerClient udpTrackerClient;
     // TODO: Search ports for a free port.
-    private final Map<String, SharedTorrent> torrents = new ConcurrentHashMap<String, SharedTorrent>();
+    private final ConcurrentMap<String, TorrentHandler> torrents = new ConcurrentHashMap<String, TorrentHandler>();
 
     /**
      * Initialize the BitTorrent client.
@@ -76,7 +78,14 @@ public class Client {
 
         this.environment = new ClientEnvironment();
         this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
+    }
 
+    /**
+     * A convenience constructor to start with a single torrent.
+     */
+    public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException {
+        this();
+        addTorrent(new TorrentHandler(this, torrent, outputDir));
     }
 
     @Nonnull
@@ -152,9 +161,13 @@ public class Client {
     }
 
     @CheckForNull
-    public SharedTorrent getTorrent(@Nonnull byte[] infoHash) {
+    public TorrentHandler getTorrent(@Nonnull byte[] infoHash) {
         String hexInfoHash = Torrent.byteArrayToHexString(infoHash);
         return torrents.get(hexInfoHash);
+    }
+
+    public void addTorrent(@Nonnull TorrentHandler torrent) {
+        torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
     }
     /**
      * Main client loop.

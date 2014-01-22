@@ -58,12 +58,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class SharedTorrent {
+public class TorrentHandler {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(SharedTorrent.class);
+    private static final Logger logger = LoggerFactory.getLogger(TorrentHandler.class);
 
-    public enum SharedTorrentState {
+    public enum State {
 
         WAITING,
         VALIDATING,
@@ -78,7 +77,7 @@ public class SharedTorrent {
     private final TrackerHandler trackerHandler;
     private final SwarmHandler swarmHandler;
     @Nonnull
-    private SharedTorrentState state = SharedTorrentState.WAITING;
+    private State state = State.WAITING;
     private Piece[] pieces;
     // private SortedSet<Piece> rarest;
     private BitSet completedPieces = new BitSet();
@@ -96,12 +95,12 @@ public class SharedTorrent {
      * destination directory does not exist and can't be created.
      * @throws IOException If the torrent file cannot be read or decoded.
      */
-    public SharedTorrent(@Nonnull Client client, @Nonnull byte[] torrent, @Nonnull File destDir)
+    public TorrentHandler(@Nonnull Client client, @Nonnull byte[] torrent, @Nonnull File destDir)
             throws IOException, URISyntaxException {
         this(client, new Torrent(torrent), destDir);
     }
 
-    public SharedTorrent(@Nonnull Client client, @Nonnull File torrent, @Nonnull File destDir)
+    public TorrentHandler(@Nonnull Client client, @Nonnull File torrent, @Nonnull File destDir)
             throws IOException, URISyntaxException {
         this(client, new Torrent(torrent), destDir);
     }
@@ -121,7 +120,7 @@ public class SharedTorrent {
      * destination directory does not exist and can't be created.
      * @throws IOException If the torrent file cannot be read or decoded.
      */
-    public SharedTorrent(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull File destDir)
+    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull File destDir)
             throws IOException {
         this(client, torrent, toStorage(torrent, destDir));
     }
@@ -163,7 +162,7 @@ public class SharedTorrent {
      * destination directory does not exist and can't be created.
      * @throws IOException If the torrent file cannot be read or decoded.
      */
-    public SharedTorrent(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket)
+    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket)
             throws IOException {
         this.client = client;
         this.torrent = torrent;
@@ -231,13 +230,13 @@ public class SharedTorrent {
     }
 
     @Nonnull
-    public SharedTorrentState getState() {
+    public State getState() {
         synchronized (lock) {
             return state;
         }
     }
 
-    public void setState(@Nonnull SharedTorrentState state) {
+    public void setState(@Nonnull State state) {
         synchronized (lock) {
             this.state = state;
         }
@@ -441,7 +440,7 @@ public class SharedTorrent {
     public void init() throws InterruptedException, IOException {
         if (this.isInitialized())
             throw new IllegalStateException("Torrent was already initialized!");
-        setState(SharedTorrentState.VALIDATING);
+        setState(State.VALIDATING);
 
         try {
             int npieces = torrent.getPieceCount();
@@ -506,11 +505,11 @@ public class SharedTorrent {
             }
 
             if (isComplete())
-                setState(SharedTorrentState.SEEDING);
+                setState(State.SEEDING);
             else
-                setState(SharedTorrentState.SHARING);
+                setState(State.SHARING);
         } catch (Exception e) {
-            setState(SharedTorrentState.ERROR);
+            setState(State.ERROR);
             Throwables.propagateIfPossible(e, InterruptedException.class, IOException.class);
             throw Throwables.propagate(e);
         } finally {
@@ -602,11 +601,17 @@ public class SharedTorrent {
     public void close() throws IOException {
         // Determine final state
         if (isFinished())
-            setState(SharedTorrentState.DONE);
+            setState(State.DONE);
         else
-            setState(SharedTorrentState.ERROR);
+            setState(State.ERROR);
 
         this.bucket.close();
+    }
+
+    public void start() {
+    }
+
+    public void stop() {
     }
 
     /*

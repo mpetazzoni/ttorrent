@@ -9,7 +9,7 @@ import com.google.common.math.IntMath;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
@@ -29,10 +29,11 @@ public class PieceHandlerTest {
 
     @Test
     public void testPiece() throws Exception {
-        Torrent torrent = TorrentTestUtils.newTorrent(465432, true);
+        File dir = TorrentTestUtils.newTorrentDir("PieceHandlerTest");
+        Torrent torrent = TorrentTestUtils.newTorrent(dir, 465432, true);
 
         Client client = new Client();
-        SharedTorrent torrentHandler = new SharedTorrent(client, torrent, new File("build/tmp"));
+        TorrentHandler torrentHandler = new TorrentHandler(client, torrent, new File("build/tmp"));
         torrentHandler.init();
 
         Piece piece = torrentHandler.getPiece(0);

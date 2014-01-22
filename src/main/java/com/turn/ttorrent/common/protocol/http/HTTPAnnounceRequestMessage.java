@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
+import com.google.common.net.InetAddresses;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
@@ -150,7 +151,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
             url.append("&event=").append(getEvent().getEventName());
         }
 
-        String ip = getPeer().getAddress().getAddress().getHostAddress();
+        String ip = getPeer().getIp();
         if (ip != null)
             url.append("&ip=").append(ip);
 

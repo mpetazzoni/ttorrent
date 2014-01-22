@@ -17,11 +17,11 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -50,7 +50,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
         LOG.info("Processing " + message);
         // We are a server.
-        SharedTorrent torrent = client.getTorrent(message.getInfoHash());
+        TorrentHandler torrent = client.getTorrent(message.getInfoHash());
         if (torrent == null) {
             LOG.warn("Unknown torrent " + message);
             ctx.close();
@@ -60,7 +60,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerId());
         ctx.writeAndFlush(toByteBuf(response));
 
-        SocketChannel channel = (SocketChannel) ctx.channel();
+        Channel channel = ctx.channel();
         PeerHandler peer = torrent.getSwarmHandler().getOrCreatePeer(channel.remoteAddress(), message.getPeerId());
 
         addMessageHandlers(ctx.pipeline(), peer);

@@ -23,7 +23,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -104,11 +103,11 @@ public class UDPAnnounceResponseMessage
         out.writeInt(complete);
 
         for (Peer peer : peers) {
-            byte[] ip = peer.getAddress().getAddress().getAddress();
+            byte[] ip = peer.getIpAddress();
             if (ip == null || ip.length != 4)
                 continue;
             out.writeBytes(ip);
-            out.writeShort((short) peer.getAddress().getPort());
+            out.writeShort((short) peer.getPort());
         }
     }
 }

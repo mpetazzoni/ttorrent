@@ -179,11 +179,11 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 
         ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
         for (Peer peer : peers) {
-            byte[] ip = peer.getAddress().getAddress().getAddress();
+            byte[] ip = peer.getIpAddress();
             if (ip == null || ip.length != 4)
                 continue;
             data.put(ip);
-            data.putShort((short) peer.getAddress().getPort());
+            data.putShort((short) peer.getPort());
         }
         params.put("peers", new BEValue(data.array()));
         return params;

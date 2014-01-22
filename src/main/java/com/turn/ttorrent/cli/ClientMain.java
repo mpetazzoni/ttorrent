@@ -16,8 +16,8 @@
 package com.turn.ttorrent.cli;
 
 import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.client.SharedTorrent;
 
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.net.Inet4Address;
@@ -141,8 +141,8 @@ public class ClientMain {
 
             for (Object arg : options.nonOptionArguments()) {
                 Torrent torrent = new Torrent((File) arg);
-                SharedTorrent share = new SharedTorrent(c, torrent, options.valueOf(outputOption));
-                // c.share(options.valueOf(seedOption));
+                TorrentHandler torrentHandler = new TorrentHandler(c, torrent, options.valueOf(outputOption));
+                c.addTorrent(torrentHandler);
             }
 
         } catch (Exception e) {
