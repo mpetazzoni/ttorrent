@@ -15,13 +15,12 @@
  */
 package com.turn.ttorrent.client.io;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 import java.util.Arrays;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -31,28 +30,37 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerClientHandshakeHandler extends ChannelInboundHandlerAdapter {
+public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PeerClientHandshakeHandler.class);
+    private static final LoggingHandler wireLogger = new LoggingHandler("client-wire");
     @Nonnull
-    private final Client client;
+    private final byte[] peerId;
     @Nonnull
-    private final SharingPeer peer;
+    private final PeerHandler peer;
     @Nonnull
     private final PeerConnectionListener listener;
 
-    public PeerClientHandshakeHandler(@Nonnull Client client,
-            @Nonnull SharingPeer peer,
+    public PeerClientHandshakeHandler(@Nonnull byte[] peerId,
+            @Nonnull PeerHandler peer,
             @Nonnull PeerConnectionListener listener) {
-        this.client = client;
+        this.peerId = peerId;
         this.peer = peer;
         this.listener = listener;
     }
 
     @Override
+    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        ctx.pipeline().addFirst(wireLogger);
+        addMessageHandlers(ctx.pipeline(), peer);
+        super.channelRegistered(ctx);
+    }
+
+    @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         // Client only.
-        ctx.writeAndFlush(new HandshakeMessage(peer.getInfoHash(), client.getPeerId()));
+        HandshakeMessage response = new HandshakeMessage(peer.getInfoHash(), peerId);
+        ctx.writeAndFlush(toByteBuf(response));
         super.channelActive(ctx);
     }
 

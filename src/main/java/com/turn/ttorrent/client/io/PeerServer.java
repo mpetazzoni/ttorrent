@@ -17,7 +17,6 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -25,7 +24,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 /**
@@ -38,17 +39,18 @@ public class PeerServer {
     public static final int PORT_RANGE_END = 6889;
     public static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
     private final Client client;
-    private final int port;
+    @CheckForNull
+    private final SocketAddress address;
     private EventLoopGroup group;
     private ChannelFuture future;
 
-    public PeerServer(Client client, int port) {
+    public PeerServer(@Nonnull Client client, @CheckForNull SocketAddress address) {
         this.client = client;
-        this.port = port;
+        this.address = address;
     }
 
     public PeerServer(Client client) {
-        this(client, -1);
+        this(client, null);
     }
 
     public void start() throws Exception {
@@ -56,27 +58,20 @@ public class PeerServer {
         ServerBootstrap b = new ServerBootstrap();
         b.group(group);
         b.channel(NioServerSocketChannel.class);
-        b.childHandler(new PeerChannelInitializer(client) {
-            @Override
-            protected void initChannel(Channel ch) throws Exception {
-                ch.pipeline().addLast(new PeerServerHandshakeHandler(client, this));
-            }
-        });
         b.option(ChannelOption.SO_BACKLOG, 128);
+        b.childHandler(new PeerServerHandshakeHandler(client));
         b.childOption(ChannelOption.SO_KEEPALIVE, true);
         b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
-        if (port != -1) {
-            future = b.bind(port).sync();
+        if (address != null) {
+            future = b.bind(address);
         } else {
             BIND:
             {
                 Exception x = new IOException("No available port for the BitTorrent client!");
                 for (int i = PORT_RANGE_START; i <= PORT_RANGE_END; i++) {
                     try {
-                        future = b.bind(i).sync();
+                        future = b.bind(i);
                         break BIND;
-                    } catch (InterruptedException e) {
-                        throw e;
                     } catch (Exception e) {
                         x = e;
                     }
@@ -84,6 +79,7 @@ public class PeerServer {
                 throw x;
             }
         }
+        future = future.sync();
     }
 
     public void stop() throws InterruptedException {

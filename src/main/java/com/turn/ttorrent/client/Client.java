@@ -15,12 +15,12 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.client.announce.HTTPTrackerClient;
+import com.turn.ttorrent.client.tracker.HTTPTrackerClient;
 import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import java.net.InetAddress;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,16 +68,14 @@ public class Client {
     /**
      * Initialize the BitTorrent client.
      *
-     * @param address The address to bind to.
      * @param torrent The torrent to download and share.
      */
-    public Client(InetAddress address) {
-
+    public Client() {
         String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
                 .toString().split("-")[4];
 
         this.environment = new ClientEnvironment();
-        this.peerId = id.getBytes(Torrent.BYTE_ENCODING);
+        this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
 
     }
 

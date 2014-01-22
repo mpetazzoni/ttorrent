@@ -4,8 +4,8 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.client.peer.DownloadingPiece;
-import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.PieceHandler;
+import com.turn.ttorrent.client.peer.PeerHandler;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import javax.annotation.CheckForNull;
@@ -28,7 +28,7 @@ public interface PeerPieceProvider {
     public Piece getPiece(@Nonnegative int index);
 
     @CheckForNull
-    public DownloadingPiece getNextPieceToDownload(@Nonnull SharingPeer peer);
+    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer);
 
     /**
      * Read a piece block from the underlying byte storage.
@@ -52,5 +52,8 @@ public interface PeerPieceProvider {
      */
     public void readBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset) throws IOException;
 
+    /**
+     * Consumes the block.
+     */
     public void writeBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset) throws IOException;
 }

@@ -127,7 +127,8 @@ public class ClientMain {
         File outputValue = options.valueOf(outputOption);
 
         InetAddress address = getIPv4Address(options.valueOf(ifaceOption));
-        Client c = new Client(address);
+        // TODO: Pass this through to PeerServer and PeerClient.
+        Client c = new Client();
         try {
             c.start();
 

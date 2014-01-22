@@ -22,7 +22,7 @@ import java.util.Comparator;
  *
  * @author shevek
  */
-public abstract class RateComparator implements Comparator<SharingPeer>, Serializable {
+public abstract class RateComparator implements Comparator<PeerHandler>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -38,7 +38,7 @@ public abstract class RateComparator implements Comparator<SharingPeer>, Seriali
     public static class DLRateComparator extends RateComparator {
 
         @Override
-        public int compare(SharingPeer a, SharingPeer b) {
+        public int compare(PeerHandler a, PeerHandler b) {
             return EWMA.compare(a.getDLRate(), b.getDLRate());
         }
     }
@@ -55,7 +55,7 @@ public abstract class RateComparator implements Comparator<SharingPeer>, Seriali
     public static class ULRateComparator extends RateComparator {
 
         @Override
-        public int compare(SharingPeer a, SharingPeer b) {
+        public int compare(PeerHandler a, PeerHandler b) {
             return EWMA.compare(a.getULRate(), b.getULRate());
         }
     }

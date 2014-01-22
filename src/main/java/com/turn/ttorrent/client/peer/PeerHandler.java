@@ -20,7 +20,7 @@ import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.client.Piece;
 
 import com.turn.ttorrent.client.io.PeerMessage;
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.Channel;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -66,9 +66,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class SharingPeer implements PeerMessageListener {
+public class PeerHandler implements PeerMessageListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
+    private static final Logger logger = LoggerFactory.getLogger(PeerHandler.class);
     private static final int MAX_REQUESTS_SENT = 50;
     private static final int MAX_REQUESTS_RCVD = 100;
 
@@ -92,12 +92,12 @@ public class SharingPeer implements PeerMessageListener {
     private final EWMA upload = new EWMA(60);
     private final Object lock = new Object();
     @GuardedBy("lock")
-    private SocketChannel channel;
+    private Channel channel;
     @Nonnull
     @GuardedBy("lock")
-    private DownloadingPiece requestsSource;
+    private PieceHandler requestsSource;
     @GuardedBy("lock")
-    private final Queue<DownloadingPiece.AnswerableRequestMessage> requestsSent = new LinkedList<DownloadingPiece.AnswerableRequestMessage>();
+    private final Queue<PieceHandler.AnswerableRequestMessage> requestsSent = new LinkedList<PieceHandler.AnswerableRequestMessage>();
     @GuardedBy("lock")
     private int requestsSentLimit = MAX_REQUESTS_SENT;
     @GuardedBy("lock")
@@ -112,8 +112,8 @@ public class SharingPeer implements PeerMessageListener {
      * @param torrent The torrent this peer exchanges with us on.
      */
     // Deliberately specified in terms of interfaces, for testing.
-    public SharingPeer(
-            @Nonnull Peer peer, 
+    public PeerHandler(
+            @Nonnull Peer peer,
             @Nonnull PeerPieceProvider provider,
             @Nonnull PeerActivityListener listener) {
         this.peer = peer;
@@ -268,13 +268,13 @@ public class SharingPeer implements PeerMessageListener {
     }
 
     @CheckForNull
-    public SocketChannel getChannel() {
+    public Channel getChannel() {
         synchronized (lock) {
             return channel;
         }
     }
 
-    public void setChannel(@CheckForNull SocketChannel channel) {
+    public void setChannel(@CheckForNull Channel channel) {
         synchronized (lock) {
             if (this.channel != null)
                 throw new IllegalStateException("Already connected.");
@@ -305,7 +305,7 @@ public class SharingPeer implements PeerMessageListener {
      * exchange.
      */
     public void send(@Nonnull PeerMessage message) throws IllegalStateException {
-        SocketChannel c = getChannel();
+        Channel c = getChannel();
         if (c != null) {
             c.write(message);
         } else {
@@ -341,7 +341,7 @@ public class SharingPeer implements PeerMessageListener {
      * @param message The PIECE message received.
      */
     @CheckForNull
-    private DownloadingPiece.AnswerableRequestMessage removeRequestSent(@Nonnull PeerMessage.PieceMessage response) {
+    private PieceHandler.AnswerableRequestMessage removeRequestSent(@Nonnull PeerMessage.PieceMessage response) {
         synchronized (lock) {
             return removeRequestMessage(response, requestsSent.iterator());
         }
@@ -386,20 +386,22 @@ public class SharingPeer implements PeerMessageListener {
      * </p>
      */
     // TODO: Do we want to make sure only one person enters this FSM at a time?
-    private void run() throws IOException {
-        SocketChannel c;
+    public void run() throws IOException {
+        Channel c;
         // This locking could be more fine-grained.
         synchronized (lock) {
             c = getChannel();   // Share the reentrant lock.
-            if (c == null)
+            if (c == null) {
+                logger.warn("Peer {} taking no action: Not connected.", this);
                 return;
+            }
 
             EXPIRE:
             {
                 long then = System.currentTimeMillis() - 30000;
-                Iterator<DownloadingPiece.AnswerableRequestMessage> it = requestsSent.iterator();
+                Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
                 while (it.hasNext()) {
-                    DownloadingPiece.AnswerableRequestMessage requestSent = it.next();
+                    PieceHandler.AnswerableRequestMessage requestSent = it.next();
                     if (requestSent.getRequestTime() < then) {
                         logger.warn("Peer {} request {} timed out.", this, requestSent);
                         it.remove();
@@ -409,20 +411,28 @@ public class SharingPeer implements PeerMessageListener {
 
             REQUEST:
             while (requestsSent.size() < requestsSentLimit) {
-                if (!c.isWritable())
+                if (!c.isWritable()) {
+                    logger.debug("Peer {} channel {} not writable.", this, c);
                     return;
+                }
                 // Search for a block we can request. Ideally, this iterates once.
-                DownloadingPiece.AnswerableRequestMessage request = null;
+                PieceHandler.AnswerableRequestMessage request = null;
                 while (request == null) {
                     // This calls a significant piece of infrastructure elsewhere,
                     // and needs a proof against deadlock.
                     if (requestsSource == null)
                         requestsSource = provider.getNextPieceToDownload(this);
+                    logger.debug("RequestSource is {}", requestsSource);
                     if (requestsSource == null) {
-                        notInteresting();
+                        logger.debug("Peer {} has no request source; breaking request loop.", this);
+                        if (requestsSent.isEmpty())
+                            notInteresting();
                         break REQUEST;
                     }
                     request = requestsSource.nextRequest();
+                    logger.debug("Request is {}", request);
+                    if (request == null)
+                        requestsSource = null;
                 }
                 interesting();
                 requestsSent.add(request);
@@ -451,6 +461,7 @@ public class SharingPeer implements PeerMessageListener {
             // the remote peer, so let's queue a message with that block
             ByteBuffer block = ByteBuffer.allocate(request.getLength());
             provider.readBlock(block, request.getPiece(), request.getOffset());
+            block.flip();
             // ByteBuffer block = piece.read(request.getOffset(), request.getLength());
             send(new PeerMessage.PieceMessage(
                     request.getPiece(),
@@ -545,7 +556,7 @@ public class SharingPeer implements PeerMessageListener {
                         break;
                     }
 
-                    if (message.getLength() > DownloadingPiece.MAX_BLOCK_SIZE) {
+                    if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
                         logger.warn("Peer {} requested a block too big, "
                                 + "terminating exchange.", this);
                         close();
@@ -577,9 +588,9 @@ public class SharingPeer implements PeerMessageListener {
 
                     // Remove the corresponding request from the request queue to
                     // make room for next block requests.
-                    DownloadingPiece.AnswerableRequestMessage request = removeRequestSent(message);
+                    PieceHandler.AnswerableRequestMessage request = removeRequestSent(message);
                     // TODO: Not found.
-                    DownloadingPiece.Reception reception = request.answer(message);
+                    PieceHandler.Reception reception = request.answer(message);
 
                     download.update(blockLength);
                     listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);

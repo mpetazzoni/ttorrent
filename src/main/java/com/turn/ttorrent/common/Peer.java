@@ -43,6 +43,8 @@ public class Peer {
      * @param address The peer's address, with port.
      */
     public Peer(@Nonnull InetSocketAddress address, byte[] peerId) {
+        if (peerId.length != 20)
+            throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.address = address;
         this.peerId = peerId;
     }

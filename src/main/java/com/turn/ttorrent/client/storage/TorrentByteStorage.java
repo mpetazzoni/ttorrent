@@ -44,6 +44,7 @@ public interface TorrentByteStorage extends Closeable {
      * <p>
      * Read {@code length} bytes at offset {@code offset} from the underlying
      * byte storage and return them in a {@link ByteBuffer}.
+     * This method does NOT call {@link ByteBuffer#flip()}.
      * </p>
      *
      * @param buffer The buffer to read the bytes into. The buffer's limit will

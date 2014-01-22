@@ -16,8 +16,8 @@
 package com.turn.ttorrent.client;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.announce.TrackerClient;
+import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
+import com.turn.ttorrent.client.tracker.TrackerClient;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
