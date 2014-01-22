@@ -17,7 +17,6 @@ package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.PieceBlock;
 import com.turn.ttorrent.client.io.PeerMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,9 +33,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class DownloadingPiece {
+public class PieceHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(DownloadingPiece.class);
+    private static final Logger logger = LoggerFactory.getLogger(PieceHandler.class);
     /** Default block size is 2^14 bytes, or 16kB. */
     public static final int DEFAULT_BLOCK_SIZE = 16384;
     /** Max block request size is 2^17 bytes, or 131kB. */
@@ -52,7 +51,7 @@ public class DownloadingPiece {
     private int requestOffset = REQUEST_OFFSET_INIT;
     private final Object lock = new Object();
 
-    public DownloadingPiece(@Nonnull Piece piece, @Nonnull PeerPieceProvider provider) {
+    public PieceHandler(@Nonnull Piece piece, @Nonnull PeerPieceProvider provider) {
         this.piece = piece;
         this.provider = provider;
         this.pieceData = new byte[piece.getLength()];
@@ -121,14 +120,15 @@ public class DownloadingPiece {
         }
 
         @Nonnull
-        public DownloadingPiece getDownloadingPiece() {
-            return DownloadingPiece.this;
+        public PieceHandler getDownloadingPiece() {
+            return PieceHandler.this;
         }
 
         public long getRequestTime() {
             return requestTime;
         }
 
+        @Nonnull
         public Reception answer(PeerMessage.PieceMessage response) throws IOException {
             if (!response.answers(this))
                 throw new IllegalArgumentException("Not an answer: request=" + this + ", response=" + response);
@@ -156,5 +156,10 @@ public class DownloadingPiece {
                     piece.getLength() - requestOffset);
             return new AnswerableRequestMessage(piece.getIndex(), requestOffset, length);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "PieceHandler(" + piece + ")";
     }
 }

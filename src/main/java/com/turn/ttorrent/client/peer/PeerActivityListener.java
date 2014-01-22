@@ -43,7 +43,7 @@ public interface PeerActivityListener extends EventListener {
      *
      * @param peer The peer that choked.
      */
-    public void handlePeerChoking(SharingPeer peer);
+    public void handlePeerChoking(PeerHandler peer);
 
     /**
      * Peer ready handler.
@@ -55,7 +55,7 @@ public interface PeerActivityListener extends EventListener {
      *
      * @param peer The peer that became ready.
      */
-    public void handlePeerUnchoking(SharingPeer peer);
+    public void handlePeerUnchoking(PeerHandler peer);
 
     /**
      * Piece availability handler.
@@ -68,7 +68,7 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got the update from.
      * @param piece The piece that became available from this peer.
      */
-    public void handlePieceAvailability(@Nonnull SharingPeer peer,
+    public void handlePieceAvailability(@Nonnull PeerHandler peer,
             @Nonnegative int piece);
 
     /**
@@ -82,7 +82,7 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got the update from.
      * @param availablePieces The pieces availability bit field of the peer.
      */
-    public void handleBitfieldAvailability(@Nonnull SharingPeer peer,
+    public void handleBitfieldAvailability(@Nonnull PeerHandler peer,
             @Nonnull BitSet prevAvailablePieces,
             @Nonnull BitSet availablePieces);
 
@@ -92,11 +92,11 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer the piece was sent to.
      * @param piece The piece in question.
      */
-    public void handleBlockSent(@Nonnull SharingPeer peer,
+    public void handleBlockSent(@Nonnull PeerHandler peer,
             @Nonnegative int piece,
             @Nonnegative int offset, @Nonnegative int length);
 
-    public void handleBlockReceived(@Nonnull SharingPeer peer,
+    public void handleBlockReceived(@Nonnull PeerHandler peer,
             @Nonnegative int piece,
             @Nonnegative int offset, @Nonnegative int length);
 
@@ -117,7 +117,7 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer we got this piece from.
      * @param piece The piece in question.
      */
-    public void handlePieceCompleted(@Nonnull SharingPeer peer,
+    public void handlePieceCompleted(@Nonnull PeerHandler peer,
             @Nonnegative int piece)
             throws IOException;
 
@@ -131,7 +131,7 @@ public interface PeerActivityListener extends EventListener {
      *
      * @param peer The peer we got this piece from.
      */
-    public void handlePeerDisconnected(SharingPeer peer);
+    public void handlePeerDisconnected(PeerHandler peer);
 
     /**
      * Handler for IOException during peer operation.
@@ -139,5 +139,5 @@ public interface PeerActivityListener extends EventListener {
      * @param peer The peer whose activity trigger the exception.
      * @param ioe The IOException object, for reporting.
      */
-    public void handleIOException(SharingPeer peer, IOException ioe);
+    public void handleIOException(PeerHandler peer, IOException ioe);
 }

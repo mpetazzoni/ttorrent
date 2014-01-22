@@ -17,7 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.google.common.base.Throwables;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
@@ -76,7 +76,7 @@ public class SharedTorrent {
     private final Torrent torrent;
     private final TorrentByteStorage bucket;
     private final TrackerHandler trackerHandler;
-    private final PeerHandler peerHandler;
+    private final SwarmHandler swarmHandler;
     @Nonnull
     private SharedTorrentState state = SharedTorrentState.WAITING;
     private Piece[] pieces;
@@ -169,7 +169,7 @@ public class SharedTorrent {
         this.torrent = torrent;
         this.bucket = bucket;
         this.trackerHandler = new TrackerHandler(this);
-        this.peerHandler = new PeerHandler(this);
+        this.swarmHandler = new SwarmHandler(this);
     }
 
     @Nonnull
@@ -226,8 +226,8 @@ public class SharedTorrent {
     }
 
     @Nonnull
-    public PeerHandler getPeerHandler() {
-        return peerHandler;
+    public SwarmHandler getSwarmHandler() {
+        return swarmHandler;
     }
 
     @Nonnull
@@ -380,12 +380,12 @@ public class SharedTorrent {
 
     @Nonnegative
     public long getUploaded() {
-        return peerHandler.getUploaded();
+        return swarmHandler.getUploaded();
     }
 
     @Nonnegative
     public long getDownloaded() {
-        return peerHandler.getDownloaded();
+        return swarmHandler.getDownloaded();
     }
 
     /**
@@ -531,8 +531,8 @@ public class SharedTorrent {
         int connected = 0;
         double dl = 0;
         double ul = 0;
-        Map<? extends String, ? extends SharingPeer> peers = getPeerHandler().getPeers();
-        for (SharingPeer peer : peers.values()) {
+        Map<? extends String, ? extends PeerHandler> peers = getSwarmHandler().getPeers();
+        for (PeerHandler peer : peers.values()) {
             if (peer.isConnected())
                 connected++;
             dl += peer.getDLRate().rate(TimeUnit.SECONDS);

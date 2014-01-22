@@ -18,11 +18,12 @@ package com.turn.ttorrent.client.io;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.logging.LoggingHandler;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,48 +31,58 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerServerHandshakeHandler extends ChannelInboundHandlerAdapter {
+public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(PeerServerHandshakeHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PeerServerHandshakeHandler.class);
+    private static final LoggingHandler wireLogger = new LoggingHandler("server-wire");
     private final Client client;
-    private final PeerChannelInitializer initializer;
 
-    public PeerServerHandshakeHandler(Client client, PeerChannelInitializer initializer) {
+    public PeerServerHandshakeHandler(@Nonnull Client client) {
         this.client = client;
-        this.initializer = initializer;
+    }
+
+    @Override
+    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        ctx.pipeline().addFirst(wireLogger);
+        super.channelRegistered(ctx);
     }
 
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
+        LOG.info("Processing " + message);
         // We are a server.
         SharedTorrent torrent = client.getTorrent(message.getInfoHash());
         if (torrent == null) {
-            logger.warn("Unknown torrent " + message);
+            LOG.warn("Unknown torrent " + message);
             ctx.close();
             return;
         }
+        LOG.info("Found torrent " + torrent);
         HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerId());
-        ctx.writeAndFlush(response);
+        ctx.writeAndFlush(toByteBuf(response));
 
         SocketChannel channel = (SocketChannel) ctx.channel();
-        SharingPeer sharingPeer = torrent.getPeerHandler().getOrCreatePeer(channel.remoteAddress(), message.getPeerId());
+        PeerHandler peer = torrent.getSwarmHandler().getOrCreatePeer(channel.remoteAddress(), message.getPeerId());
 
+        addMessageHandlers(ctx.pipeline(), peer);
         ctx.pipeline().remove(this);
-        initializer.initChannelPipeline(ctx.pipeline(), sharingPeer);
 
-        PeerConnectionListener listener = torrent.getPeerHandler();
-        listener.handleNewPeerConnection(channel, sharingPeer);
+        PeerConnectionListener listener = torrent.getSwarmHandler();
+        listener.handleNewPeerConnection(channel, peer);
     }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         ByteBuf in = (ByteBuf) msg;
+        LOG.info("Read " + in + " with " + in.readableBytes() + " bytes");
         if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
             return;
 
         int length = in.getUnsignedByte(0);
+        LOG.info("Length byte is " + length);
         if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
             return;
 
+        LOG.info("Parsing HandshakeMessage.");
         HandshakeMessage request = new HandshakeMessage();
         request.fromWire(in);
 

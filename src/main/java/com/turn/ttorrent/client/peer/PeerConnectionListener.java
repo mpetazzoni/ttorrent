@@ -16,8 +16,10 @@
 package com.turn.ttorrent.client.peer;
 
 
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.Channel;
 import java.util.EventListener;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 
 /**
  * EventListener interface for objects that want to handle incoming peer
@@ -27,7 +29,7 @@ import java.util.EventListener;
  */
 public interface PeerConnectionListener extends EventListener {
 
-    public void handleNewPeerConnection(SocketChannel channel, SharingPeer peer);
+    public void handleNewPeerConnection(@Nonnull Channel channel, @Nonnull PeerHandler peer);
 
-    public void handleFailedConnection(SharingPeer peer, Throwable cause);
+    public void handleFailedConnection(@Nonnull PeerHandler peer, @CheckForNull Throwable cause);
 }

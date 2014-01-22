@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.ttorrent.client.announce;
+package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.common.Peer;
 

@@ -15,8 +15,8 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.client.peer.SharingPeer;
 
+import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Torrent;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -129,7 +129,7 @@ public class Piece {
      * @param peer The sharing peer this piece has been seen available at.
      */
     @Nonnegative
-    public int seenAt(@Nonnull SharingPeer peer) {
+    public int seenAt(@Nonnull PeerHandler peer) {
         return availability.incrementAndGet();
     }
 
@@ -139,7 +139,7 @@ public class Piece {
      * @param peer The sharing peer from which the piece is no longer available.
      */
     @Nonnegative
-    public int noLongerAt(@Nonnull SharingPeer peer) {
+    public int noLongerAt(@Nonnull PeerHandler peer) {
         for (;;) {
             int current = availability.get();
             if (current <= 0)

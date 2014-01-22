@@ -38,6 +38,10 @@ public class HandshakeMessage extends PeerMessage {
     }
 
     public HandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
+        if (infoHash.length != 20)
+            throw new IllegalArgumentException("InfoHash length should be 20, not " + infoHash.length);
+        if (peerId.length != 20)
+            throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.protocolName = BITTORRENT_PROTOCOL_IDENTIFIER;
         this.infoHash = infoHash;
         this.peerId = peerId;

@@ -21,6 +21,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;
 import java.io.IOException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -28,6 +30,8 @@ import java.util.List;
  */
 // Not shareable
 public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PeerMessageCodec.class);
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<Object> out) throws Exception {
@@ -74,7 +78,9 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
                 throw new IllegalStateException("Message type should have "
                         + "been properly defined by now.");
         }
+        // LOG.info("decode: " + buf);
         message.fromWire(buf);
+        // LOG.info("decode: " + message);
         out.add(message);
 
         if (buf.readableBytes() > 0)
@@ -83,6 +89,7 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
 
     @Override
     protected void encode(ChannelHandlerContext ctx, PeerMessage value, ByteBuf out) throws Exception {
+        // LOG.info("encode: " + value);
         value.toWire(out);
     }
 }

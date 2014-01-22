@@ -17,13 +17,13 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
-import com.turn.ttorrent.client.peer.DownloadingPiece;
+
+import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.RateComparator;
-import com.turn.ttorrent.client.peer.SharingPeer;
-
+import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Peer;
-import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.Channel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -80,9 +80,9 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
-public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
+public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(PeerHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(SwarmHandler.class);
     /** Peers unchoking frequency, in seconds. Current BitTorrent specification
      * recommends 10 seconds to avoid choking fibrilation. */
     private static final int UNCHOKING_FREQUENCY = 3;
@@ -102,13 +102,13 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      */
     private static final float END_GAME_COMPLETION_RATIO = 0.95f;
     private final SharedTorrent torrent;
-    private final ConcurrentMap<String, SharingPeer> peers = new ConcurrentHashMap<String, SharingPeer>();
+    private final ConcurrentMap<String, PeerHandler> peers = new ConcurrentHashMap<String, PeerHandler>();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
     @GuardedBy("lock")
     private final BitSet requestedPieces;
     @GuardedBy("lock")
-    private final Set<DownloadingPiece> partialPieces = new HashSet<DownloadingPiece>();
+    private final Set<PieceHandler> partialPieces = new HashSet<PieceHandler>();
     // We only care about global rarest pieces for peer selection or opportunistic unchoking.
     // private final BitSet rarestPieces;
     // private int rarestPiecesAvailability = 0;
@@ -127,7 +127,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      *
      * @param torrent The torrent shared by this client.
      */
-    PeerHandler(@Nonnull SharedTorrent torrent) throws IOException {
+    SwarmHandler(@Nonnull SharedTorrent torrent) throws IOException {
         this.torrent = torrent;
         this.requestedPieces = new BitSet(torrent.getPieceCount());
         // this.rarestPieces = new BitSet(torrent.getPieceCount());
@@ -149,7 +149,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
     }
 
     @Nonnull
-    public ConcurrentMap<? extends String, ? extends SharingPeer> getPeers() {
+    public ConcurrentMap<? extends String, ? extends PeerHandler> getPeers() {
         return peers;
     }
 
@@ -161,8 +161,8 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
     @Nonnegative
     private int getConnectedPeerCount() {
         int count = 0;
-        for (Map.Entry<String, SharingPeer> e : peers.entrySet()) {
-            SharingPeer peer = e.getValue();
+        for (Map.Entry<String, PeerHandler> e : peers.entrySet()) {
+            PeerHandler peer = e.getValue();
             // Avoid double-counting peers.
             if (e.getKey().equals(peer.getHexPeerId()))
                 if (peer.isConnected())
@@ -205,34 +205,34 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @CheckForNull on {@link Peer#getPeerId()}.
      */
     @Nonnull
-    public SharingPeer getOrCreatePeer(@Nonnull InetSocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
-        Peer remotePeer = new Peer(remoteAddress, remotePeerId);
-        logger.trace("Searching for {}...", remotePeer);
+    public PeerHandler getOrCreatePeer(@Nonnull InetSocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
+        Peer peer = new Peer(remoteAddress, remotePeerId);
+        logger.trace("Searching for {}...", peer);
 
         synchronized (this.peers) {
-            SharingPeer peer = this.peers.get(remotePeer.getHexPeerId());
-            if (peer != null) {
-                logger.trace("Found peer (by peer ID): {}.", peer);
-                this.peers.put(peer.getHostIdentifier(), peer);
-                this.peers.put(remotePeer.getHostIdentifier(), peer);
-                return peer;
+            PeerHandler peerHandler = this.peers.get(peer.getHexPeerId());
+            if (peerHandler != null) {
+                logger.trace("Found peer (by peer ID): {}.", peerHandler);
+                this.peers.put(peerHandler.getHostIdentifier(), peerHandler);
+                this.peers.put(peer.getHostIdentifier(), peerHandler);
+                return peerHandler;
             }
 
-            peer = this.peers.get(remotePeer.getHostIdentifier());
-            if (peer != null) {
-                logger.trace("Recording peer ID {} for {}.", remotePeer.getHexPeerId(), peer);
-                this.peers.put(remotePeer.getHexPeerId(), peer);
-                logger.debug("Found peer (by host ID): {}.", peer);
-                return peer;
+            peerHandler = this.peers.get(peer.getHostIdentifier());
+            if (peerHandler != null) {
+                logger.trace("Recording peer ID {} for {}.", peer.getHexPeerId(), peerHandler);
+                this.peers.put(peer.getHexPeerId(), peerHandler);
+                logger.debug("Found peer (by host ID): {}.", peerHandler);
+                return peerHandler;
             }
 
-            peer = new SharingPeer(remotePeer, this, this);
-            logger.trace("Created new peer: {}.", peer);
+            peerHandler = new PeerHandler(peer, this, this);
+            logger.trace("Created new peer: {}.", peerHandler);
 
-            this.peers.put(peer.getHostIdentifier(), peer);
-            this.peers.put(peer.getHexPeerId(), peer);
+            this.peers.put(peerHandler.getHostIdentifier(), peerHandler);
+            this.peers.put(peerHandler.getHexPeerId(), peerHandler);
 
-            return peer;
+            return peerHandler;
         }
     }
 
@@ -275,7 +275,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      *
      * @param peer The peer to connect to.
      */
-    public void connect(SharingPeer peer) {
+    public void connect(PeerHandler peer) {
         // TODO
         getClient().getPeerClient().connect(peer.getPeer().getAddress(), peer, this);
     }
@@ -303,7 +303,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @return A SharingPeer comparator that can be used to sort peers based on
      * the download or upload rate we get from them.
      */
-    private Comparator<SharingPeer> getPeerRateComparator() {
+    private Comparator<PeerHandler> getPeerRateComparator() {
         switch (torrent.getState()) {
             case SHARING:
                 return new RateComparator.DLRateComparator();
@@ -349,8 +349,8 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
     private void unchokePeers(boolean optimistic) {
         // Build a set of all connected peers, we don't care about peers we're
         // not connected to.
-        List<SharingPeer> bound = new ArrayList<SharingPeer>();
-        for (SharingPeer peer : peers.values())
+        List<PeerHandler> bound = new ArrayList<PeerHandler>();
+        for (PeerHandler peer : peers.values())
             if (peer.isConnected() && peer.isChoked() && peer.isInterested())
                 bound.add(peer);
 
@@ -363,11 +363,11 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
         Collections.sort(bound, getPeerRateComparator());
 
         int downloaders = 0;
-        List<SharingPeer> choked = new ArrayList<SharingPeer>();
+        List<PeerHandler> choked = new ArrayList<PeerHandler>();
 
         // We're interested in the top downloaders first, so use a descending
         // set.
-        for (SharingPeer peer : bound) {
+        for (PeerHandler peer : bound) {
             if (downloaders < MAX_DOWNLOADERS_UNCHOKE) {
                 // Unchoke up to MAX_DOWNLOADERS_UNCHOKE interested peers
                 if (peer.isChoking()) {
@@ -387,9 +387,9 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
         // optimistic unchoke.
         if (!choked.isEmpty()) {
             int index = getRandom().nextInt(choked.size());
-            SharingPeer randomPeer = choked.get(index);
+            PeerHandler randomPeer = choked.get(index);
 
-            for (SharingPeer peer : choked) {
+            for (PeerHandler peer : choked) {
                 if (optimistic && peer == randomPeer) {
                     logger.debug("Optimistic unchoke of {}.", peer);
                     continue;
@@ -433,14 +433,14 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
         return torrent.getPiece(index);
     }
 
-    public void addPartiallyDownloadedPiece(@Nonnull DownloadingPiece piece) {
+    public void addPartiallyDownloadedPiece(@Nonnull PieceHandler piece) {
         synchronized (lock) {
             partialPieces.add(piece);
         }
     }
 
     @CheckForNull
-    public DownloadingPiece getNextPieceToDownload(@Nonnull SharingPeer peer) {
+    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer) {
         BitSet interesting = peer.getAvailablePieces();
 
         // TODO: We hold this lock for a LONG time. :-(
@@ -448,9 +448,9 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
         // We can't drop the lock earlier, else two peers will get the
         // same DownloadingPiece, and we don't reference those.
         synchronized (lock) {
-            Iterator<DownloadingPiece> it = partialPieces.iterator();
+            Iterator<PieceHandler> it = partialPieces.iterator();
             while (it.hasNext()) {
-                DownloadingPiece piece = it.next();
+                PieceHandler piece = it.next();
                 if (interesting.get(piece.getIndex())) {
                     logger.trace("Peer {} receiving partial piece {}",
                             peer, piece);
@@ -515,7 +515,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
                 this.requestedPieces
             });
 
-            return new DownloadingPiece(rarestPiece, this);
+            return new PieceHandler(rarestPiece, this);
         }
     }
 
@@ -533,7 +533,6 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
         ioBlock(block, piece, offset);
         long rawOffset = torrent.getTorrent().getPieceOffset(piece) + offset;
         torrent.getBucket().read(block, rawOffset);
-        block.flip();
     }
 
     @Override
@@ -562,7 +561,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @see com.turn.ttorrent.client.peer.SharingPeer
      */
     @Override
-    public void handleNewPeerConnection(SocketChannel channel, SharingPeer peer) {
+    public void handleNewPeerConnection(Channel channel, PeerHandler peer) {
         logger.info("Handling new peer connection with {}...", peer);
 
         try {
@@ -601,7 +600,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param cause The exception encountered when connecting with the peer.
      */
     @Override
-    public void handleFailedConnection(SharingPeer peer, Throwable cause) {
+    public void handleFailedConnection(PeerHandler peer, Throwable cause) {
         logger.warn("Could not connect to {}: {}.", peer, cause.getMessage());
         synchronized (peers) {
             peers.remove(peer.getHostIdentifier());
@@ -610,7 +609,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
     }
 
     /** PeerActivityListener handler(s). *************************************/
-    private void handlePeerPipelineDiscard(SharingPeer peer) {
+    private void handlePeerPipelineDiscard(PeerHandler peer) {
         /*
          synchronized (lock) {
          Piece piece = peer.getRequestedPiece();
@@ -633,7 +632,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param peer The peer that choked.
      */
     @Override
-    public void handlePeerChoking(SharingPeer peer) {
+    public void handlePeerChoking(PeerHandler peer) {
         handlePeerPipelineDiscard(peer);
 
         logger.trace("Peer {} choked, we now have {} outstanding "
@@ -656,7 +655,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param peer The peer that became ready.
      */
     @Override
-    public void handlePeerUnchoking(SharingPeer peer) {
+    public void handlePeerUnchoking(PeerHandler peer) {
         logger.trace("Peer {} is ready and has {} piece(s).",
                 peer, peer.getAvailablePieceCount());
     }
@@ -673,7 +672,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param piece The piece that became available.
      */
     @Override
-    public void handlePieceAvailability(SharingPeer peer, int piece) {
+    public void handlePieceAvailability(PeerHandler peer, int piece) {
         Piece p = torrent.getPiece(piece);
         /* int availability = */ p.seenAt(peer);
         logger.trace("Peer {} now has {} [{}/{}].",
@@ -708,7 +707,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param availablePieces The pieces availability bit field of the peer.
      */
     @Override
-    public void handleBitfieldAvailability(SharingPeer peer,
+    public void handleBitfieldAvailability(PeerHandler peer,
             BitSet prevAvailablePieces,
             BitSet availablePieces) {
 
@@ -773,12 +772,12 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param piece The piece in question.
      */
     @Override
-    public void handleBlockSent(SharingPeer peer, int piece, int offset, int length) {
+    public void handleBlockSent(PeerHandler peer, int piece, int offset, int length) {
         this.uploaded.addAndGet(length);
     }
 
     @Override
-    public void handleBlockReceived(SharingPeer peer, int piece, int offset, int length) {
+    public void handleBlockReceived(PeerHandler peer, int piece, int offset, int length) {
         this.downloaded.addAndGet(length);
     }
 
@@ -800,7 +799,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param piece The piece in question.
      */
     @Override
-    public void handlePieceCompleted(SharingPeer peer, int piece)
+    public void handlePieceCompleted(PeerHandler peer, int piece)
             throws IOException {
         // Regardless of validity, record the number of bytes downloaded and
         // mark the piece as not requested anymore
@@ -825,7 +824,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
 
             // Send a HAVE message to all connected peers
             PeerMessage have = new PeerMessage.HaveMessage(piece);
-            for (SharingPeer remote : peers.values())
+            for (PeerHandler remote : peers.values())
                 if (remote.isConnected())
                     remote.send(have);
         } else {
@@ -837,7 +836,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
             logger.info("Last piece validated and completed, finishing download...");
 
             // Cancel all remaining outstanding requests
-            for (SharingPeer remote : peers.values()) {
+            for (PeerHandler remote : peers.values()) {
                 int requests = remote.cancelRequestsSent();
                 logger.info("Cancelled {} remaining pending requests on {}.",
                         requests, remote);
@@ -867,7 +866,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
      * @param peer The peer we got this piece from.
      */
     @Override
-    public void handlePeerDisconnected(SharingPeer peer) {
+    public void handlePeerDisconnected(PeerHandler peer) {
         logger.debug("Peer {} disconnected, [{}/{}].",
                 new Object[]{
             peer,
@@ -903,7 +902,7 @@ public class PeerHandler implements Runnable, PeerConnectionListener, PeerPieceP
     }
 
     @Override
-    public void handleIOException(SharingPeer peer, IOException ioe) {
+    public void handleIOException(PeerHandler peer, IOException ioe) {
         logger.warn("I/O error while exchanging data with " + peer + ", "
                 + "closing connection with it!", ioe);
         peer.setChannel(null);

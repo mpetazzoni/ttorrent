@@ -17,13 +17,13 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import java.net.SocketAddress;
@@ -53,6 +53,7 @@ public class PeerClient {
         group = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
         bootstrap.group(group);
+        bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_BACKLOG, 128);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
@@ -67,18 +68,12 @@ public class PeerClient {
 
     @Nonnull
     public ChannelFuture connect(@Nonnull SocketAddress remoteAddress,
-            @Nonnull final SharingPeer peer,
+            @Nonnull final PeerHandler peer,
             @Nonnull final PeerConnectionListener listener) {
         ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
-            bootstrap.handler(new PeerChannelInitializer(client) {
-                @Override
-                protected void initChannel(Channel ch) throws Exception {
-                    ch.pipeline().addLast(new PeerClientHandshakeHandler(client, peer, listener));
-                    super.initChannelPipeline(ch.pipeline(), peer);
-                }
-            });
+            bootstrap.handler(new PeerClientHandshakeHandler(client.getPeerId(), peer, listener));
             future = bootstrap.connect(remoteAddress);
         }
         future.addListener(new GenericFutureListener<Future<? super Void>>() {
