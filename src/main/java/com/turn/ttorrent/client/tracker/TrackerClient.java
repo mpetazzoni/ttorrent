@@ -16,7 +16,7 @@
 package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.client.ClientEnvironment;
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -56,7 +56,7 @@ public abstract class TrackerClient {
      */
     public abstract void announce(
             AnnounceResponseListener listener,
-            SharedTorrent torrent,
+            TorrentHandler torrent,
             URI tracker,
             AnnounceRequestMessage.RequestEvent event,
             boolean inhibitEvents) throws AnnounceException;

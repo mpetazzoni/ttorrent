@@ -25,7 +25,7 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Peer;
 import io.netty.channel.Channel;
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -101,7 +101,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * </p>
      */
     private static final float END_GAME_COMPLETION_RATIO = 0.95f;
-    private final SharedTorrent torrent;
+    private final TorrentHandler torrent;
     private final ConcurrentMap<String, PeerHandler> peers = new ConcurrentHashMap<String, PeerHandler>();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
@@ -127,7 +127,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      *
      * @param torrent The torrent shared by this client.
      */
-    SwarmHandler(@Nonnull SharedTorrent torrent) throws IOException {
+    SwarmHandler(@Nonnull TorrentHandler torrent) throws IOException {
         this.torrent = torrent;
         this.requestedPieces = new BitSet(torrent.getPieceCount());
         // this.rarestPieces = new BitSet(torrent.getPieceCount());
@@ -205,7 +205,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @CheckForNull on {@link Peer#getPeerId()}.
      */
     @Nonnull
-    public PeerHandler getOrCreatePeer(@Nonnull InetSocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
+    public PeerHandler getOrCreatePeer(@Nonnull SocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
         Peer peer = new Peer(remoteAddress, remotePeerId);
         logger.trace("Searching for {}...", peer);
 
@@ -403,7 +403,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     /**
      * Computes the set of rarest pieces from the interesting set.
      */
-    private static int computeRarestPieces(@Nonnull SharedTorrent torrent, @Nonnull BitSet rarest, @Nonnull BitSet interesting) {
+    private static int computeRarestPieces(@Nonnull TorrentHandler torrent, @Nonnull BitSet rarest, @Nonnull BitSet interesting) {
         rarest.clear();
         int rarestAvailability = Integer.MAX_VALUE;
         for (int i = interesting.nextSetBit(0); i >= 0;

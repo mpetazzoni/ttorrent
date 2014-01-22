@@ -152,9 +152,8 @@ public class UDPAnnounceRequestMessage
             byte[] ipBytes = new byte[4];
             in.readBytes(ipBytes);
             address = InetAddress.getByAddress(ipBytes);
-        } catch (UnknownHostException uhe) {
-            throw new MessageValidationException(
-                    "Invalid IP address in announce request!");
+        } catch (UnknownHostException e) {
+            throw new MessageValidationException("Invalid IP address in announce request!", e);
         }
 
         key = in.readInt();

@@ -17,8 +17,10 @@ package com.turn.ttorrent.common;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Arrays;
-import javax.annotation.Nonnegative;
+import javax.annotation.CheckForNull;
+import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnull;
 
 /**
@@ -33,7 +35,7 @@ import javax.annotation.Nonnull;
  */
 public class Peer {
 
-    private final InetSocketAddress address;
+    private final SocketAddress address;
     // On UDP, this is nullable. On HTTP, it isn't.
     private final byte[] peerId;
 
@@ -42,7 +44,7 @@ public class Peer {
      *
      * @param address The peer's address, with port.
      */
-    public Peer(@Nonnull InetSocketAddress address, byte[] peerId) {
+    public Peer(@Nonnull SocketAddress address, byte[] peerId) {
         if (peerId.length != 20)
             throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.address = address;
@@ -83,26 +85,42 @@ public class Peer {
     }
 
     @Nonnull
-    public InetSocketAddress getAddress() {
+    public SocketAddress getAddress() {
         return address;
     }
 
-    @Nonnull
+    @CheckForNull
+    private InetAddress getInetAddress() {
+        SocketAddress sa = getAddress();
+        if (!(sa instanceof InetSocketAddress))
+            return null;
+        InetSocketAddress isa = (InetSocketAddress) sa;
+        return isa.getAddress();
+    }
+
+    @CheckForNull
     public byte[] getIpAddress() {
-        return getAddress().getAddress().getAddress();
+        InetAddress ia = getInetAddress();
+        if (ia == null)
+            return null;
+        return ia.getAddress();
     }
 
-    @Nonnull
+    @CheckForNull
     public String getIp() {
-        InetAddress inetAddress = getAddress().getAddress();
-        if (inetAddress == null)
-            throw new NullPointerException("InetSocketAddress contained no InetAddress.");
-        return inetAddress.getHostAddress();
+        InetAddress ia = getInetAddress();
+        if (ia == null)
+            return null;
+        return ia.getHostAddress();
     }
 
-    @Nonnegative
+    @CheckForSigned
     public int getPort() {
-        return getAddress().getPort();
+        SocketAddress sa = getAddress();
+        if (!(sa instanceof InetSocketAddress))
+            return -1;
+        InetSocketAddress isa = (InetSocketAddress) sa;
+        return isa.getPort();
     }
 
     /**

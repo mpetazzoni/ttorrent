@@ -93,7 +93,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return uri + " [T" + tier + "]";
         }
     }
-    private final SharedTorrent torrent;
+    private final TorrentHandler torrent;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
     private int currentClient;
     private AnnounceRequestMessage.RequestEvent event = AnnounceRequestMessage.RequestEvent.STARTED;
@@ -106,7 +106,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param torrent The torrent we're announcing about.
      * @param peer Our peer specification.
      */
-    public TrackerHandler(SharedTorrent torrent) {
+    public TrackerHandler(TorrentHandler torrent) {
         this.torrent = torrent;
 
         int tier = 0;
@@ -145,7 +145,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         String scheme = tracker.getScheme();
         if ("http".equals(scheme) || "https".equals(scheme)) {
             return getClient().getHttpTrackerClient();
-        // } else if ("udp".equals(scheme)) {
+            // } else if ("udp".equals(scheme)) {
+            // TODO: Check we have an ipv4 address before allowing the UDP protocol.
             // return getClient().getUdpTrackerClient();
         } else {
             return null;

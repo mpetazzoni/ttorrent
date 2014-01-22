@@ -15,6 +15,7 @@ import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import org.apache.commons.io.FileUtils;
 
 /**
  *
@@ -22,10 +23,30 @@ import javax.annotation.Nonnull;
  */
 public class TorrentTestUtils {
 
+    private static File ROOT;
+
     @Nonnull
-    public static Torrent newTorrent(@Nonnegative final long size, boolean random) throws IOException, URISyntaxException, InterruptedException {
-        File file = File.createTempFile("ttorrent", ".seed");
-        file.deleteOnExit();
+    public static synchronized File newTorrentRoot() throws IOException {
+        if (ROOT != null)
+            return ROOT;
+        File root = File.createTempFile("ttorrent", ".seed");
+        FileUtils.forceDeleteOnExit(root);
+        FileUtils.forceDelete(root);
+        FileUtils.forceMkdir(root);
+        ROOT = root;
+        return root;
+    }
+
+    @Nonnull
+    public static File newTorrentDir(@Nonnull String name) throws IOException {
+        File dir = new File(newTorrentRoot(), name);
+        FileUtils.forceMkdir(dir);
+        return dir;
+    }
+
+    @Nonnull
+    public static Torrent newTorrent(@Nonnull File dir, @Nonnegative final long size, boolean random) throws IOException, URISyntaxException, InterruptedException {
+        File file = new File(dir, "torrent-data-file");
         if (random) {
             Files.copy(new InputSupplier<InputStream>() {
                 @Override

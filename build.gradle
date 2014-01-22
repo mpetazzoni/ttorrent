@@ -41,5 +41,6 @@ dependencies {
 	compile 'net.sf.jopt-simple:jopt-simple:4.6'
 
 	testCompile 'junit:junit:4.8.1'
+	testCompile 'org.easymock:easymock:3.2'
 	testRuntime 'org.slf4j:slf4j-jcl:1.7.5'
 }
