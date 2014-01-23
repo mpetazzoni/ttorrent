@@ -71,6 +71,10 @@ public class TrackedTorrent {
         this.infoHash = Torrent.byteArrayToHexString(infoHash);
     }
 
+    public TrackedTorrent(@Nonnull Torrent torrent) {
+        this(torrent.getName(), torrent.getInfoHash());
+    }
+
     @CheckForNull
     public String getName() {
         return name;

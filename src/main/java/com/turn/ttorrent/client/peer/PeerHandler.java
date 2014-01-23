@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PeerHandler implements PeerMessageListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(PeerHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PeerHandler.class);
     private static final int MAX_REQUESTS_SENT = 50;
     private static final int MAX_REQUESTS_RCVD = 100;
 
@@ -93,6 +93,8 @@ public class PeerHandler implements PeerMessageListener {
     private final Object lock = new Object();
     @GuardedBy("lock")
     private Channel channel;
+    @GuardedBy("lock")
+    private boolean bitfieldSent;
     @Nonnull
     @GuardedBy("lock")
     private PieceHandler requestsSource;
@@ -140,6 +142,7 @@ public class PeerHandler implements PeerMessageListener {
         setFlag(Flag.INTERESTED, false);
 
         synchronized (lock) {
+            this.bitfieldSent = false;
             this.requestsSource = null;
             this.requestsSent.clear();
             this.requestsReceived.clear();
@@ -217,7 +220,7 @@ public class PeerHandler implements PeerMessageListener {
      */
     public void choke() {
         if (setFlag(Flag.CHOKED, true)) {
-            logger.trace("Choking {}", this);
+            LOG.trace("Choking {}", this);
             this.send(new PeerMessage.ChokeMessage());
         }
     }
@@ -232,7 +235,7 @@ public class PeerHandler implements PeerMessageListener {
      */
     public void unchoke() {
         if (setFlag(Flag.CHOKED, false)) {
-            logger.trace("Unchoking {}", this);
+            LOG.trace("Unchoking {}", this);
             this.send(new PeerMessage.UnchokeMessage());
         }
     }
@@ -243,14 +246,14 @@ public class PeerHandler implements PeerMessageListener {
 
     public void interesting() {
         if (setFlag(Flag.INTERESTING, true)) {
-            logger.trace("Telling {} we're interested.", this);
+            LOG.trace("Telling {} we're interested.", this);
             this.send(new PeerMessage.InterestedMessage());
         }
     }
 
     public void notInteresting() {
         if (setFlag(Flag.INTERESTING, false)) {
-            logger.trace("Telling {} we're no longer interested.", this);
+            LOG.trace("Telling {} we're no longer interested.", this);
             this.send(new PeerMessage.NotInterestedMessage());
         }
     }
@@ -309,7 +312,7 @@ public class PeerHandler implements PeerMessageListener {
         if (c != null) {
             c.write(message);
         } else {
-            logger.warn("Attempting to send a message to non-connected peer {}! ({})", this, message);
+            LOG.warn("Attempting to send a message to non-connected peer {}! ({})", this, message);
         }
     }
 
@@ -387,13 +390,26 @@ public class PeerHandler implements PeerMessageListener {
      */
     // TODO: Do we want to make sure only one person enters this FSM at a time?
     public void run() throws IOException {
+        LOG.trace("Step function in " + this);
         Channel c;
         // This locking could be more fine-grained.
         synchronized (lock) {
             c = getChannel();   // Share the reentrant lock.
             if (c == null) {
-                logger.warn("Peer {} taking no action: Not connected.", this);
+                LOG.warn("Peer {} taking no action: Not connected.", this);
                 return;
+            }
+
+            BITFIELD:
+            {
+                if (!c.isWritable()) {
+                    LOG.debug("Peer {} channel {} not writable for bitfield.", this, c);
+                    return;
+                }
+                if (!bitfieldSent) {
+                    send(new PeerMessage.BitfieldMessage(provider.getAvailablePieces()));
+                    bitfieldSent = true;
+                }
             }
 
             EXPIRE:
@@ -403,7 +419,7 @@ public class PeerHandler implements PeerMessageListener {
                 while (it.hasNext()) {
                     PieceHandler.AnswerableRequestMessage requestSent = it.next();
                     if (requestSent.getRequestTime() < then) {
-                        logger.warn("Peer {} request {} timed out.", this, requestSent);
+                        LOG.warn("Peer {} request {} timed out.", this, requestSent);
                         it.remove();
                     }
                 }
@@ -412,7 +428,7 @@ public class PeerHandler implements PeerMessageListener {
             REQUEST:
             while (requestsSent.size() < requestsSentLimit) {
                 if (!c.isWritable()) {
-                    logger.debug("Peer {} channel {} not writable.", this, c);
+                    LOG.debug("Peer {} channel {} not writable for request.", this, c);
                     return;
                 }
                 // Search for a block we can request. Ideally, this iterates once.
@@ -422,15 +438,15 @@ public class PeerHandler implements PeerMessageListener {
                     // and needs a proof against deadlock.
                     if (requestsSource == null)
                         requestsSource = provider.getNextPieceToDownload(this);
-                    logger.debug("RequestSource is {}", requestsSource);
+                    LOG.debug("RequestSource is {}", requestsSource);
                     if (requestsSource == null) {
-                        logger.debug("Peer {} has no request source; breaking request loop.", this);
+                        LOG.debug("Peer {} has no request source; breaking request loop.", this);
                         if (requestsSent.isEmpty())
                             notInteresting();
                         break REQUEST;
                     }
                     request = requestsSource.nextRequest();
-                    logger.debug("Request is {}", request);
+                    LOG.debug("Request is {}", request);
                     if (request == null)
                         requestsSource = null;
                 }
@@ -451,7 +467,7 @@ public class PeerHandler implements PeerMessageListener {
 
             Piece piece = provider.getPiece(request.getPiece());
             if (!piece.isValid()) {
-                logger.warn("Peer {} requested invalid piece {}, "
+                LOG.warn("Peer {} requested invalid piece {}, "
                         + "terminating exchange.", this, piece);
                 close();
                 break;
@@ -488,26 +504,26 @@ public class PeerHandler implements PeerMessageListener {
 
                 case CHOKE:
                     setFlag(Flag.CHOKING, true);
-                    logger.trace("Peer {} is no longer accepting requests.", this);
+                    LOG.trace("Peer {} is no longer accepting requests.", this);
                     this.cancelRequestsSent();
                     listener.handlePeerChoking(this);
                     break;
 
                 case UNCHOKE:
                     setFlag(Flag.CHOKING, false);
-                    logger.trace("Peer {} is now accepting requests.", this);
+                    LOG.trace("Peer {} is now accepting requests.", this);
                     listener.handlePeerUnchoking(this);
                     run();  // We might want something.
                     break;
 
                 case INTERESTED:
                     setFlag(Flag.INTERESTED, true);
-                    logger.trace("Peer {} is now interested.", this);
+                    LOG.trace("Peer {} is now interested.", this);
                     break;
 
                 case NOT_INTERESTED:
                     setFlag(Flag.INTERESTED, false);
-                    logger.trace("Peer {} is no longer interested.", this);
+                    LOG.trace("Peer {} is no longer interested.", this);
                     break;
 
                 case HAVE: {
@@ -550,14 +566,14 @@ public class PeerHandler implements PeerMessageListener {
                     // situation, terminate the connection.
                     if (isChoked()) {
                         // TODO: This isn't synchronous. We need to remember WHEN we choked them.
-                        logger.warn("Peer {} ignored choking, "
+                        LOG.warn("Peer {} ignored choking, "
                                 + "terminating exchange.", this);
                         close();
                         break;
                     }
 
                     if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
-                        logger.warn("Peer {} requested a block too big, "
+                        LOG.warn("Peer {} requested a block too big, "
                                 + "terminating exchange.", this);
                         close();
                         break;
@@ -565,7 +581,7 @@ public class PeerHandler implements PeerMessageListener {
 
                     synchronized (lock) {
                         if (requestsReceived.size() > MAX_REQUESTS_RCVD) {
-                            logger.warn("Peer {} requested too many blocks; dropping {}",
+                            LOG.warn("Peer {} requested too many blocks; dropping {}",
                                     this, message);
                             break;
                         }

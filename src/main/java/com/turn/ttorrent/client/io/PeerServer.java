@@ -28,6 +28,8 @@ import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -35,6 +37,7 @@ import javax.annotation.Nonnull;
  */
 public class PeerServer {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PeerServer.class);
     public static final int PORT_RANGE_START = 6881;
     public static final int PORT_RANGE_END = 6889;
     public static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
@@ -70,8 +73,10 @@ public class PeerServer {
                 Exception x = new IOException("No available port for the BitTorrent client!");
                 for (int i = PORT_RANGE_START; i <= PORT_RANGE_END; i++) {
                     try {
-                        future = b.bind(i);
+                        future = b.bind(i).sync();
                         break BIND;
+                    } catch (InterruptedException e) {
+                        throw e;
                     } catch (Exception e) {
                         x = e;
                     }
@@ -79,7 +84,6 @@ public class PeerServer {
                 throw x;
             }
         }
-        future = future.sync();
     }
 
     public void stop() throws InterruptedException {

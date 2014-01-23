@@ -8,6 +8,7 @@ import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.BitSet;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -20,6 +21,9 @@ public interface PeerPieceProvider {
 
     @Nonnull
     public byte[] getInfoHash();
+
+    @Nonnull
+    public BitSet getAvailablePieces();
 
     @Nonnegative
     public int getPieceCount();

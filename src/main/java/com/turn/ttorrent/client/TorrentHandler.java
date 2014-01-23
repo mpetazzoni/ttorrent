@@ -609,9 +609,11 @@ public class TorrentHandler {
     }
 
     public void start() {
+        trackerHandler.start();
     }
 
     public void stop() {
+        trackerHandler.stop();
     }
 
     /*

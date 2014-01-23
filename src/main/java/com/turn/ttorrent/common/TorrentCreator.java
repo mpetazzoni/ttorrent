@@ -212,7 +212,7 @@ public class TorrentCreator {
         Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 
         ANNOUNCE:
-        {
+        if (announce != null) {
             List<URI> announceFlat = new ArrayList<URI>();
             List<BEValue> announceTiers = new LinkedList<BEValue>();
             for (List<URI> trackers : announce) {

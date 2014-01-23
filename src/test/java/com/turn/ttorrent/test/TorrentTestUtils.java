@@ -26,7 +26,8 @@ public class TorrentTestUtils {
     private static File ROOT;
 
     @Nonnull
-    public static synchronized File newTorrentRoot() throws IOException {
+    public static synchronized File newTorrentRoot()
+            throws IOException {
         if (ROOT != null)
             return ROOT;
         File root = File.createTempFile("ttorrent", ".seed");
@@ -38,14 +39,16 @@ public class TorrentTestUtils {
     }
 
     @Nonnull
-    public static File newTorrentDir(@Nonnull String name) throws IOException {
+    public static File newTorrentDir(@Nonnull String name)
+            throws IOException {
         File dir = new File(newTorrentRoot(), name);
         FileUtils.forceMkdir(dir);
         return dir;
     }
 
     @Nonnull
-    public static Torrent newTorrent(@Nonnull File dir, @Nonnegative final long size, boolean random) throws IOException, URISyntaxException, InterruptedException {
+    public static TorrentCreator newTorrentCreator(@Nonnull File dir, @Nonnegative final long size, boolean random)
+            throws IOException, InterruptedException {
         File file = new File(dir, "torrent-data-file");
         if (random) {
             Files.copy(new InputSupplier<InputStream>() {
@@ -60,7 +63,12 @@ public class TorrentTestUtils {
             raf.close();
         }
 
-        TorrentCreator creator = new TorrentCreator(file);
-        return creator.create();
+        return new TorrentCreator(file);
+    }
+
+    @Nonnull
+    public static Torrent newTorrent(@Nonnull File dir, @Nonnegative long size, boolean random)
+            throws IOException, InterruptedException, URISyntaxException {
+        return newTorrentCreator(dir, size, random).create();
     }
 }

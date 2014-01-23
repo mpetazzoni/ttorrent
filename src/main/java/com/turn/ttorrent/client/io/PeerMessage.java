@@ -269,6 +269,15 @@ public abstract class PeerMessage {
      */
     public static class BitfieldMessage extends PeerMessage {
 
+        private BitSet bitfield;
+
+        public BitfieldMessage() {
+        }
+
+        public BitfieldMessage(@Nonnull BitSet bitfield) {
+            this.bitfield = bitfield;
+        }
+
         @Override
         public Type getType() {
             return Type.BITFIELD;
@@ -281,7 +290,6 @@ public abstract class PeerMessage {
             i = (i & 0x0f) << 4 | (i >>> 4) & 0x0f;
             return (byte) i;
         }
-        private BitSet bitfield;
 
         @Nonnull
         public BitSet getBitfield() {

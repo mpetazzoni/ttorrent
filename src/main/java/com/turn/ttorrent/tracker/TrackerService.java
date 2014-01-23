@@ -58,8 +58,7 @@ import org.simpleframework.http.core.Container;
  */
 public class TrackerService implements Container {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(TrackerService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TrackerService.class);
     private final String version;
     private final ConcurrentMap<String, TrackedTorrent> torrents;
 
@@ -69,8 +68,7 @@ public class TrackerService implements Container {
      * @param torrents The torrents this TrackerService should serve requests
      * for.
      */
-    TrackerService(String version,
-            ConcurrentMap<String, TrackedTorrent> torrents) {
+    TrackerService(String version, ConcurrentMap<String, TrackedTorrent> torrents) {
         this.version = version;
         this.torrents = torrents;
     }
@@ -89,10 +87,15 @@ public class TrackerService implements Container {
      */
     @Override
     public void handle(Request request, Response response) {
-        // Reject non-announce requests
-        if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
-            response.setCode(404);
-            response.setText("Not Found");
+        try {
+            // Reject non-announce requests
+            if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
+                response.setCode(404);
+                response.setText("Not Found");
+                return;
+            }
+        } catch (Exception e) {
+            LOG.warn("Error while parsing request", e);
             return;
         }
 
@@ -101,8 +104,8 @@ public class TrackerService implements Container {
             body = response.getOutputStream();
             this.process(request, response, body);
             body.flush();
-        } catch (IOException ioe) {
-            logger.warn("Error while writing response: {}!", ioe.getMessage());
+        } catch (Exception e) {
+            LOG.warn("Error while writing response: {}!", e.getMessage());
         } finally {
             IOUtils.closeQuietly(body);
         }
@@ -148,7 +151,7 @@ public class TrackerService implements Container {
         TrackedTorrent torrent = this.torrents.get(
                 announceRequest.getHexInfoHash());
         if (torrent == null) {
-            logger.warn("Requested torrent hash was: {}",
+            LOG.warn("Requested torrent hash was: {}",
                     announceRequest.getHexInfoHash());
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.UNKNOWN_TORRENT);
@@ -265,8 +268,8 @@ public class TrackerService implements Container {
             params.put(key, value);
         } catch (UnsupportedEncodingException uee) {
             // Ignore, act like parameter was not there
-            if (logger.isDebugEnabled())
-                logger.debug("Could not decode {}", value);
+            if (LOG.isDebugEnabled())
+                LOG.debug("Could not decode {}", value);
         }
     }
 
@@ -283,7 +286,7 @@ public class TrackerService implements Container {
             Status status, HTTPTrackerErrorMessage error) throws IOException {
         response.setCode(status.getCode());
         response.setText(status.getDescription());
-        logger.warn("Could not process announce request ({}) !",
+        LOG.warn("Could not process announce request ({}) !",
                 error.getReason());
         StreamBEncoder encoder = new StreamBEncoder(body);
         encoder.bencode(error.toBEValue());
