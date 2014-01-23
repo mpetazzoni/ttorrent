@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 import org.slf4j.Logger;
@@ -206,6 +207,11 @@ public class Tracker {
         return torrent;
     }
 
+    @Nonnull
+    public TrackedTorrent announce(Torrent torrent) {
+        return announce(new TrackedTorrent(torrent));
+    }
+
     /**
      * Stop announcing the given torrent.
      *
@@ -244,7 +250,7 @@ public class Tracker {
 
         private final Torrent torrent;
 
-        TorrentRemover(Torrent torrent) {
+        TorrentRemover(@Nonnull Torrent torrent) {
             this.torrent = torrent;
         }
 

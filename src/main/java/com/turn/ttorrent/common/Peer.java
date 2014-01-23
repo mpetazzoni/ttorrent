@@ -36,7 +36,8 @@ import javax.annotation.Nonnull;
 public class Peer {
 
     private final SocketAddress address;
-    // On UDP, this is nullable. On HTTP, it isn't.
+    // On UDP and HTTP-compact this is nullable.
+    @CheckForNull
     private final byte[] peerId;
 
     /**
@@ -44,8 +45,8 @@ public class Peer {
      *
      * @param address The peer's address, with port.
      */
-    public Peer(@Nonnull SocketAddress address, byte[] peerId) {
-        if (peerId.length != 20)
+    public Peer(@Nonnull SocketAddress address, @CheckForNull byte[] peerId) {
+        if (peerId != null && peerId.length != 20)
             throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.address = address;
         this.peerId = peerId;
@@ -54,6 +55,7 @@ public class Peer {
     /**
      * Returns the raw peer ID.
      */
+    @CheckForNull
     public byte[] getPeerId() {
         return this.peerId;
     }
@@ -65,22 +67,22 @@ public class Peer {
     /**
      * Get the hexadecimal-encoded string representation of this peer's ID.
      */
-    @Nonnull
+    @CheckForNull
     public String getHexPeerId() {
-        /*
-         byte[] peerId = getPeerId();
-         if (peerId == null)
-         return null;
-         */
-        return Torrent.byteArrayToHexString(getPeerId());
+        byte[] peerId = getPeerId();
+        if (peerId == null)
+            return null;
+        return Torrent.byteArrayToHexString(peerId);
     }
 
     /**
      * Get the shortened hexadecimal-encoded peer ID.
      */
-    @Nonnull
+    @CheckForNull
     public String getShortHexPeerId() {
         String hexPeerId = getHexPeerId();
+        if (hexPeerId == null)
+            return null;
         return hexPeerId.substring(hexPeerId.length() - 6);
     }
 

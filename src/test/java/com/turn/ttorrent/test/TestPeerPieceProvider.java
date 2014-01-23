@@ -11,6 +11,7 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Torrent;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.BitSet;
 
 /**
  *
@@ -20,6 +21,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
 
     private final Torrent torrent;
     private final Piece[] pieces;
+    private final BitSet availablePieces;
     private PieceHandler pieceHandler;
     private final Object lock = new Object();
 
@@ -28,6 +30,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
         this.pieces = new Piece[torrent.getPieceCount()];
         for (int i = 0; i < torrent.getPieceCount(); i++)
             pieces[i] = new Piece(torrent, i);
+        this.availablePieces = new BitSet(pieces.length);
     }
 
     @Override
@@ -43,6 +46,11 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     @Override
     public Piece getPiece(int index) {
         return pieces[index];
+    }
+
+    @Override
+    public BitSet getAvailablePieces() {
+        return availablePieces;
     }
 
     @Override

@@ -23,11 +23,14 @@ import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,16 +59,25 @@ import org.slf4j.LoggerFactory;
  */
 public class Client {
 
-    private static final Logger logger = LoggerFactory.getLogger(Client.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Client.class);
     private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+
+    public enum State {
+
+        STOPPED, STARTING, STARTED, STOPPING;
+    }
     private final ClientEnvironment environment;
     private final byte[] peerId;
+    @GuardedBy("lock")
+    private State state = State.STOPPED;
     private PeerServer peerServer;
     private PeerClient peerClient;
     private HTTPTrackerClient httpTrackerClient;
     // private UDPTrackerClient udpTrackerClient;
     // TODO: Search ports for a free port.
     private final ConcurrentMap<String, TorrentHandler> torrents = new ConcurrentHashMap<String, TorrentHandler>();
+    private final List<ClientListener> listeners = new CopyOnWriteArrayList<ClientListener>();
+    private final Object lock = new Object();
 
     /**
      * Initialize the BitTorrent client.
@@ -83,7 +95,7 @@ public class Client {
     /**
      * A convenience constructor to start with a single torrent.
      */
-    public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException {
+    public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException, InterruptedException {
         this();
         addTorrent(new TorrentHandler(this, torrent, outputDir));
     }
@@ -102,6 +114,20 @@ public class Client {
     }
 
     @Nonnull
+    public State getState() {
+        synchronized (lock) {
+            return state;
+        }
+    }
+
+    private void setState(@Nonnull State state) {
+        synchronized (lock) {
+            this.state = state;
+        }
+        fireClientState(state);
+    }
+
+    @Nonnull
     public PeerServer getPeerServer() {
         return peerServer;
     }
@@ -113,7 +139,12 @@ public class Client {
 
     @Nonnull
     public HTTPTrackerClient getHttpTrackerClient() {
-        return httpTrackerClient;
+        synchronized (lock) {
+            HTTPTrackerClient h = httpTrackerClient;
+            if (h == null)
+                throw new IllegalStateException("No HTTPTrackerClient - bad state: " + this);
+            return h;
+        }
     }
 
     /*
@@ -123,41 +154,59 @@ public class Client {
      }
      */
     public void start() throws Exception {
-        environment.start();
+        synchronized (lock) {
+            setState(State.STARTING);
 
-        peerServer = new PeerServer(this);
-        peerServer.start();
-        peerClient = new PeerClient(this);
-        peerClient.start();
+            environment.start();
 
-        Peer peer = new Peer(peerServer.getLocalAddress(), peerId);
+            peerServer = new PeerServer(this);
+            peerServer.start();
+            peerClient = new PeerClient(this);
+            peerClient.start();
 
-        httpTrackerClient = new HTTPTrackerClient(environment, peer);
-        httpTrackerClient.start();
+            Peer peer = new Peer(peerServer.getLocalAddress(), peerId);
 
-        // udpTrackerClient = new UDPTrackerClient(environment, peer);
-        // udpTrackerClient.start();
+            httpTrackerClient = new HTTPTrackerClient(environment, peer);
+            httpTrackerClient.start();
 
-        logger.info("BitTorrent client [{}] started and listening at {}...",
-                new Object[]{
-            peer.getShortHexPeerId(),
-            peer.getHostIdentifier()
-        });
+            // udpTrackerClient = new UDPTrackerClient(environment, peer);
+            // udpTrackerClient.start();
+
+            for (TorrentHandler torrent : torrents.values())
+                torrent.start();
+
+            LOG.info("BitTorrent client [{}] started and listening at {}...",
+                    new Object[]{
+                peer.getShortHexPeerId(),
+                peer.getHostIdentifier()
+            });
+
+            setState(State.STARTED);
+        }
     }
 
     public void stop() throws Exception {
-        // if (udpTrackerClient != null)
-        // udpTrackerClient.stop();
-        // udpTrackerClient = null;
-        if (httpTrackerClient != null)
-            httpTrackerClient.stop();
-        httpTrackerClient = null;
-        if (peerClient != null)
-            peerClient.stop();
-        peerClient = null;
-        if (peerServer != null)
-            peerServer.stop();
-        environment.stop();
+        synchronized (lock) {
+            setState(State.STOPPING);
+
+            for (TorrentHandler torrent : torrents.values())
+                torrent.stop();
+
+            // if (udpTrackerClient != null)
+            // udpTrackerClient.stop();
+            // udpTrackerClient = null;
+            if (httpTrackerClient != null)
+                httpTrackerClient.stop();
+            httpTrackerClient = null;
+            if (peerClient != null)
+                peerClient.stop();
+            peerClient = null;
+            if (peerServer != null)
+                peerServer.stop();
+            environment.stop();
+
+            setState(State.STOPPED);
+        }
     }
 
     @CheckForNull
@@ -166,8 +215,34 @@ public class Client {
         return torrents.get(hexInfoHash);
     }
 
-    public void addTorrent(@Nonnull TorrentHandler torrent) {
+    public void addTorrent(@Nonnull TorrentHandler torrent) throws IOException, InterruptedException {
+        torrent.init();
         torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
+        State s = getState();
+        switch (s) {
+            case STARTED:
+                torrent.start();
+                break;
+            case STOPPING:
+            case STOPPED:
+                break;
+            default:
+                throw new IllegalStateException("Cannot add torrent in state " + s);
+        }
+    }
+
+    public void addClientListener(ClientListener listener) {
+        listeners.add(listener);
+    }
+
+    private void fireClientState(@Nonnull State state) {
+        for (ClientListener listener : listeners)
+            listener.clientStateChanged(this, state);
+    }
+
+    public void fireTorrentState(@Nonnull TorrentHandler torrent, @Nonnull TorrentHandler.State state) {
+        for (ClientListener listener : listeners)
+            listener.torrentStateChanged(this, torrent, state);
     }
     /**
      * Main client loop.

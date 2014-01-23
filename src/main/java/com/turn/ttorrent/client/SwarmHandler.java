@@ -85,11 +85,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     private static final Logger logger = LoggerFactory.getLogger(SwarmHandler.class);
     /** Peers unchoking frequency, in seconds. Current BitTorrent specification
      * recommends 10 seconds to avoid choking fibrilation. */
-    private static final int UNCHOKING_FREQUENCY = 3;
+    private static final int UNCHOKE_DELAY = 10;
     /** Optimistic unchokes are done every 2 loop iterations, i.e. every
      * 2*UNCHOKING_FREQUENCY seconds. */
-    private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
-    private static final int RATE_COMPUTATION_ITERATIONS = 2;
+    private static final int OPTIMISTIC_UNCHOKE_DELAY = 16;
     private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
     /** End-game trigger ratio.
      *
@@ -113,7 +112,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // private final BitSet rarestPieces;
     // private int rarestPiecesAvailability = 0;
     @GuardedBy("lock")
-    private int optimisticIterations = 0;
+    private long optimisticUnchokeTime = 0;
     private final Object lock = new Object();
 
     /**
@@ -280,14 +279,18 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         getClient().getPeerClient().connect(peer.getPeer().getAddress(), peer, this);
     }
 
-    // TODO: Periodic
+    // TODO: Periodic / step function.
     @Override
     public void run() {
-        optimisticIterations =
-                (optimisticIterations == 0
-                ? OPTIMISTIC_UNCHOKE_ITERATIONS
-                : optimisticIterations - 1);
-        unchokePeers(optimisticIterations == 0);
+        boolean optimistic = false;
+        synchronized(lock) {
+            long now = System.currentTimeMillis();
+            if (optimisticUnchokeTime + OPTIMISTIC_UNCHOKE_DELAY < now) {
+                optimisticUnchokeTime = now;
+                optimistic = true;
+            }
+        }
+        unchokePeers(optimistic);
     }
 
     /**
@@ -431,6 +434,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     @Override
     public Piece getPiece(int index) {
         return torrent.getPiece(index);
+    }
+
+    @Override
+    public BitSet getAvailablePieces() {
+        return torrent.getAvailablePieces();
     }
 
     public void addPartiallyDownloadedPiece(@Nonnull PieceHandler piece) {
@@ -582,6 +590,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 getConnectedPeerCount(),
                 getPeerCount()
             });
+
+            peer.run();
+            run();
         } catch (Exception e) {
             logger.warn("Could not handle new peer connection "
                     + "with {}: {}", peer, e.getMessage());
@@ -606,6 +617,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             peers.remove(peer.getHostIdentifier());
             peers.remove(peer.getHexPeerId());
         }
+        peer.reset();
     }
 
     /** PeerActivityListener handler(s). *************************************/

@@ -54,8 +54,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HTTPTrackerClient extends TrackerClient {
 
-    protected static final Logger logger =
-            LoggerFactory.getLogger(HTTPTrackerClient.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(HTTPTrackerClient.class);
     private CloseableHttpAsyncClient httpclient;
 
     public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Peer peer) {
@@ -96,7 +95,7 @@ public class HTTPTrackerClient extends TrackerClient {
 
         @Override
         public void completed(final HttpResponse response) {
-            System.out.println(request.getRequestLine() + "->" + response.getStatusLine());
+            LOG.trace(request.getRequestLine() + "->" + response.getStatusLine());
             try {
                 HTTPTrackerMessage message = toMessage(response, -1);
                 handleTrackerAnnounceResponse(listener, tracker, message, false);
@@ -106,13 +105,14 @@ public class HTTPTrackerClient extends TrackerClient {
         }
 
         @Override
-        public void failed(final Exception e) {
-            System.out.println(request.getRequestLine() + "->" + e);
+        public void failed(Exception e) {
+            // TODO: Pass failure back to TrackerHandler.
+            LOG.trace("failed: " + request.getRequestLine(), e);
         }
 
         @Override
         public void cancelled() {
-            System.out.println(request.getRequestLine() + " cancelled");
+            LOG.trace(request.getRequestLine() + " cancelled");
         }
     }
 
@@ -141,7 +141,7 @@ public class HTTPTrackerClient extends TrackerClient {
             URI tracker,
             AnnounceRequestMessage.RequestEvent event,
             boolean inhibitEvents) throws AnnounceException {
-        logger.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
+        LOG.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
                 new Object[]{
             TrackerClient.formatAnnounceEvent(event),
             torrent.getUploaded(),

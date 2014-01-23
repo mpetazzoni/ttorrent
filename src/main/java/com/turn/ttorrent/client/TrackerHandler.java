@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
-    protected static final Logger logger = LoggerFactory.getLogger(TrackerHandler.class);
+    protected static final Logger LOG = LoggerFactory.getLogger(TrackerHandler.class);
 
     @VisibleForTesting
     /* pp */ static class TrackerState {
@@ -106,23 +106,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param torrent The torrent we're announcing about.
      * @param peer Our peer specification.
      */
-    public TrackerHandler(TorrentHandler torrent) {
+    public TrackerHandler(@Nonnull TorrentHandler torrent) {
         this.torrent = torrent;
-
-        int tier = 0;
-        for (List<URI> announceTier : torrent.getTorrent().getAnnounceList()) {
-            for (URI announceUri : announceTier) {
-                if (getTrackerClient(announceUri) != null) {
-                    trackers.add(new TrackerState(announceUri, tier));
-                } else {
-                    logger.warn("No tracker client available for {}.", announceUri);
-                }
-            }
-            tier++;
-        }
-
-        logger.info("Initialized announce sub-system with {} trackers on {}.",
-                new Object[]{trackers.size(), torrent});
     }
 
     @Nonnull
@@ -143,7 +128,9 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     @VisibleForTesting
     /* pp */ TrackerClient getTrackerClient(@Nonnull URI tracker) {
         String scheme = tracker.getScheme();
+        LOG.trace("Tracker scheme is " + scheme);
         if ("http".equals(scheme) || "https".equals(scheme)) {
+            LOG.trace("Looking for HttpTrackerClient");
             return getClient().getHttpTrackerClient();
             // } else if ("udp".equals(scheme)) {
             // TODO: Check we have an ipv4 address before allowing the UDP protocol.
@@ -167,7 +154,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 if (tracker.uri.equals(uri))
                     return tracker;
         }
-        logger.warn("No tracker for {}: available are {}", uri, trackers);
+        LOG.warn("No tracker for {}: available are {}", uri, trackers);
         return null;
     }
 
@@ -222,8 +209,26 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
     /********** Event drivers *****/
     public void start() {
-        logger.info("Starting TrackerHandler for {}", torrent);
+        LOG.info("Starting TrackerHandler for {}", torrent);
         synchronized (lock) {
+
+            int tier = 0;
+            for (List<URI> announceTier : torrent.getTorrent().getAnnounceList()) {
+                LOG.trace("Loading tier " + announceTier);
+                for (URI announceUri : announceTier) {
+                    LOG.trace("Loading client for " + announceUri);
+                    if (getTrackerClient(announceUri) != null) {
+                        trackers.add(new TrackerState(announceUri, tier));
+                    } else {
+                        LOG.warn("No tracker client available for {}.", announceUri);
+                    }
+                }
+                tier++;
+            }
+
+            LOG.info("Initialized announce sub-system with {} trackers on {}.",
+                    new Object[]{trackers.size(), torrent});
+
             event = AnnounceRequestMessage.RequestEvent.STARTED;
             run();
         }
@@ -232,16 +237,17 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     public void complete() {
         synchronized (lock) {
             event = AnnounceRequestMessage.RequestEvent.COMPLETED;
-            run();
+            // run();
         }
     }
 
     public void stop() {
-        logger.info("Stopping TrackerHandler for {}", torrent);
+        LOG.info("Stopping TrackerHandler for {}", torrent);
         synchronized (lock) {
             event = AnnounceRequestMessage.RequestEvent.STOPPED;
             future.cancel(false);
             run();
+            trackers.clear();
         }
     }
 
@@ -283,7 +289,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 client.announce(this, torrent, tracker.uri, event, false);
                 tracker.lastSend = System.currentTimeMillis();
             } catch (Exception e) {
-                logger.error("Failed to announce to " + tracker, e);
+                LOG.error("Failed to announce to " + tracker, e);
                 moveToNextTracker();
             } finally {
                 reschedule(tracker.getDelay());
@@ -348,7 +354,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return;
         }
 
-        logger.info("Got {} peer(s) in tracker response.", peers.size());
+        LOG.info("Got {} peer(s) in tracker response.", peers.size());
 
         /*
          for (Peer peer : peers) {

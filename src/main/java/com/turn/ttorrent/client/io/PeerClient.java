@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -27,6 +28,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import java.net.SocketAddress;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -70,19 +72,21 @@ public class PeerClient {
     public ChannelFuture connect(@Nonnull SocketAddress remoteAddress,
             @Nonnull final PeerHandler peer,
             @Nonnull final PeerConnectionListener listener) {
-        ChannelFuture future;
+        final ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
             bootstrap.handler(new PeerClientHandshakeHandler(client.getPeerId(), peer, listener));
             future = bootstrap.connect(remoteAddress);
         }
-        future.addListener(new GenericFutureListener<Future<? super Void>>() {
+        future.addListener(new ChannelFutureListener() {
             @Override
-            public void operationComplete(Future<? super Void> future) throws Exception {
+            public void operationComplete(ChannelFuture future) throws Exception {
                 try {
                     LOG.error("Succeeded: " + future.get());
+                    listener.handleNewPeerConnection(future.channel(), peer);
                 } catch (Exception e) {
                     LOG.error("Failed", e);
+                    listener.handleFailedConnection(peer, e);
                 }
             }
         });
