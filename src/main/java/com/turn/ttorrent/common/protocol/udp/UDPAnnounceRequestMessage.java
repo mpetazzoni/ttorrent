@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
@@ -23,6 +22,7 @@ import io.netty.buffer.ByteBuf;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import javax.annotation.Nonnull;
 
 /**
  * The announce request message for the UDP tracker protocol.
@@ -33,9 +33,20 @@ public class UDPAnnounceRequestMessage
         extends UDPTrackerMessage.UDPTrackerRequestMessage
         implements TrackerMessage.AnnounceRequestMessage {
 
+    @Nonnull
+    private static byte[] getIp4Address(InetSocketAddress peerAddress) {
+        InetAddress address = peerAddress.getAddress();
+        if (address == null)
+            return new byte[4];
+        byte[] ip = address.getAddress();
+        if (ip.length != 4)
+            throw new IllegalArgumentException("Cannot express in UDP: " + peerAddress);
+        return ip;
+    }
     private static final int UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE = 98;
     private byte[] infoHash;
-    private Peer peer;
+    private byte[] peerId;
+    private InetSocketAddress peerAddress;
     private long downloaded;
     private long uploaded;
     private long left;
@@ -60,14 +71,19 @@ public class UDPAnnounceRequestMessage
 
     public UDPAnnounceRequestMessage(
             long connectionId, int transactionId,
-            byte[] infoHash, byte[] peerId,
+            byte[] infoHash,
+            byte[] peerId, InetSocketAddress peerAddress,
             long downloaded, long uploaded, long left,
-            RequestEvent event, InetAddress ip, int numWant, int key, int port) {
+            RequestEvent event, int numWant, int key) {
         this();
+
+        getIp4Address(peerAddress);
+
         setConnectionId(connectionId);
         setTransactionId(transactionId);
         this.infoHash = infoHash;
-        this.peer = new Peer(new InetSocketAddress(ip, port), peerId);
+        this.peerId = peerId;
+        this.peerAddress = peerAddress;
         this.downloaded = downloaded;
         this.uploaded = uploaded;
         this.left = left;
@@ -87,8 +103,13 @@ public class UDPAnnounceRequestMessage
     }
 
     @Override
-    public Peer getPeer() {
-        return peer;
+    public byte[] getPeerId() {
+        return peerId;
+    }
+
+    @Override
+    public InetSocketAddress getPeerAddress() {
+        return peerAddress;
     }
 
     @Override
@@ -136,7 +157,7 @@ public class UDPAnnounceRequestMessage
 
         infoHash = new byte[20];
         in.readBytes(infoHash);
-        byte[] peerId = new byte[20];
+        peerId = new byte[20];
         in.readBytes(peerId);
 
         downloaded = in.readLong();
@@ -159,21 +180,22 @@ public class UDPAnnounceRequestMessage
         key = in.readInt();
         numWant = in.readInt();
         int port = in.readShort() & 0xFFFF;
-        peer = new Peer(new InetSocketAddress(address, port), peerId);
+
+        peerAddress = new InetSocketAddress(address, port);
     }
 
     @Override
     public void toWire(ByteBuf out) {
         _toWire(out);
         out.writeBytes(infoHash);
-        out.writeBytes(peer.getPeerId());
+        out.writeBytes(getPeerId());
         out.writeLong(downloaded);
         out.writeLong(uploaded);
         out.writeLong(left);
         out.writeInt(event.getId());
-        out.writeBytes(peer.getIpBytes());
+        out.writeBytes(getIp4Address(peerAddress));
         out.writeInt(key);
         out.writeInt(numWant);
-        out.writeShort((short) peer.getPort());
+        out.writeShort(peerAddress.getPort());
     }
 }

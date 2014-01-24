@@ -15,14 +15,17 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
+import com.google.common.collect.Collections2;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import io.netty.buffer.ByteBuf;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -60,8 +63,13 @@ public class UDPAnnounceResponseMessage
     }
 
     @Override
-    public List<Peer> getPeers() {
+    public Collection<Peer> getPeers() {
         return this.peers;
+    }
+
+    @Override
+    public Collection<? extends SocketAddress> getPeerAddresses() {
+        return Collections2.transform(getPeers(), PEERADDRESS);
     }
 
     @Override

@@ -17,23 +17,35 @@ package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentHandler;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
 import javax.annotation.Nonnull;
 
 public abstract class TrackerClient {
 
-    protected final ClientEnvironment environment;
-    protected final Peer peer;
+    private final ClientEnvironment environment;
+    private final InetSocketAddress peerAddress;
 
-    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Peer peer) {
+    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull InetSocketAddress peerAddress) {
         this.environment = environment;
-        this.peer = peer;
+        this.peerAddress = peerAddress;
+    }
+
+    @Nonnull
+    protected ClientEnvironment getEnvironment() {
+        return environment;
+    }
+
+    /** Might only have a port. */
+    @Nonnull
+    protected InetSocketAddress getPeerAddress() {
+        return peerAddress;
     }
 
     /**
@@ -99,9 +111,9 @@ public abstract class TrackerClient {
      * @param inhibitEvents Whether or not to prevent events from being fired.
      */
     protected void handleTrackerAnnounceResponse(
-            AnnounceResponseListener listener,
-            URI tracker,
-            TrackerMessage message,
+            @Nonnull AnnounceResponseListener listener,
+            @Nonnull URI tracker,
+            @Nonnull TrackerMessage message,
             boolean inhibitEvents) throws AnnounceException {
         if (message instanceof ErrorMessage) {
             ErrorMessage error = (ErrorMessage) message;
@@ -125,7 +137,7 @@ public abstract class TrackerClient {
                 response.getInterval());
         fireDiscoveredPeersEvent(Arrays.asList(listener),
                 tracker,
-                response.getPeers());
+                response.getPeerAddresses());
     }
 
     /**
@@ -136,8 +148,8 @@ public abstract class TrackerClient {
      * @param interval The announce interval requested by the tracker.
      */
     protected static void fireAnnounceResponseEvent(
-            Iterable<? extends AnnounceResponseListener> listeners,
-            URI tracker,
+            @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
+            @Nonnull URI tracker,
             int complete, int incomplete, int interval) {
         for (AnnounceResponseListener listener : listeners) {
             listener.handleAnnounceResponse(tracker, interval, complete, incomplete);
@@ -150,11 +162,11 @@ public abstract class TrackerClient {
      * @param peers The list of peers discovered.
      */
     protected static void fireDiscoveredPeersEvent(
-            Iterable<? extends AnnounceResponseListener> listeners,
-            URI tracker,
-            List<Peer> peers) {
+            @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
+            @Nonnull URI tracker,
+            @Nonnull Collection<? extends SocketAddress> peerAddresses) {
         for (AnnounceResponseListener listener : listeners) {
-            listener.handleDiscoveredPeers(tracker, peers);
+            listener.handleDiscoveredPeers(tracker, peerAddresses);
         }
     }
 }

@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.peer;
 
 import io.netty.channel.Channel;
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.EventListener;
 import javax.annotation.CheckForNull;
@@ -29,10 +30,30 @@ import javax.annotation.Nonnull;
  */
 public interface PeerConnectionListener extends EventListener {
 
-    @Nonnull
-    public PeerHandler handlePeerConnectionCreated(@Nonnull SocketAddress address, @Nonnull byte[] peerId);
-
-    public void handlePeerConnectionReady(@Nonnull Channel channel, @Nonnull PeerHandler peer);
-
     public void handlePeerConnectionFailed(@Nonnull SocketAddress address, @CheckForNull Throwable cause);
+
+    @CheckForNull
+    public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] peerId);
+
+    public void handlePeerConnectionReady(@Nonnull PeerHandler peer);
+
+    /**
+     * Peer disconnection handler.
+     *
+     * <p>
+     * This handler is fired when a peer disconnects, or is disconnected due to
+     * protocol violation.
+     * </p>
+     *
+     * @param peer The peer we got this piece from.
+     */
+    public void handlePeerDisconnected(@Nonnull PeerHandler peer);
+
+    /**
+     * Handler for IOException during peer operation.
+     *
+     * @param peer The peer whose activity trigger the exception.
+     * @param ioe The IOException object, for reporting.
+     */
+    public void handleIOException(@Nonnull PeerHandler peer, @CheckForNull IOException ioe);
 }

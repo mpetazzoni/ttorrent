@@ -20,7 +20,6 @@ import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.bcodec.StreamBDecoder;
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentHandler;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
@@ -29,6 +28,7 @@ import com.turn.ttorrent.common.protocol.http.HTTPTrackerErrorMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -57,8 +57,8 @@ public class HTTPTrackerClient extends TrackerClient {
     protected static final Logger LOG = LoggerFactory.getLogger(HTTPTrackerClient.class);
     private CloseableHttpAsyncClient httpclient;
 
-    public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Peer peer) {
-        super(environment, peer);
+    public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull InetSocketAddress peerAddress) {
+        super(environment, peerAddress);
     }
 
     @Override
@@ -152,7 +152,8 @@ public class HTTPTrackerClient extends TrackerClient {
         try {
             HTTPAnnounceRequestMessage message =
                     new HTTPAnnounceRequestMessage(
-                    torrent.getInfoHash(), peer,
+                    torrent.getInfoHash(),
+                    getEnvironment().getPeerId(), getPeerAddress(),
                     torrent.getUploaded(), torrent.getDownloaded(), torrent.getLeft(),
                     true, false, event, AnnounceRequestMessage.DEFAULT_NUM_WANT);
             URI target = message.toURI(tracker);

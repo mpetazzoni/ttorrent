@@ -25,6 +25,7 @@ import com.turn.ttorrent.common.protocol.http.*;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
@@ -161,8 +162,11 @@ public class TrackerService implements Container {
         }
 
         AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
-        Peer peer = announceRequest.getPeer();
-        TrackedPeer client = torrent.getPeer(peer);
+
+        InetSocketAddress peerAddress = request.getClientAddress();
+        if (!Peer.isValidIpAddress(peerAddress))
+            peerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerAddress.getPort());
+        TrackedPeer client = torrent.getPeer(peerAddress);
 
         // When no event is specified, it's a periodic update while the client
         // is operating. If we don't have a peer for this announce, it means
@@ -187,7 +191,8 @@ public class TrackerService implements Container {
         // Update the torrent according to the announce event
         try {
             client = torrent.update(event,
-                    announceRequest.getPeer(),
+                    peerAddress,
+                    announceRequest.getPeerId(),
                     announceRequest.getUploaded(),
                     announceRequest.getDownloaded(),
                     announceRequest.getLeft());

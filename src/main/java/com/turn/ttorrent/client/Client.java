@@ -18,13 +18,10 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.tracker.HTTPTrackerClient;
 import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -60,14 +57,12 @@ import org.slf4j.LoggerFactory;
 public class Client {
 
     private static final Logger LOG = LoggerFactory.getLogger(Client.class);
-    private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
     public enum State {
 
         STOPPED, STARTING, STARTED, STOPPING;
     }
     private final ClientEnvironment environment;
-    private final byte[] peerId;
     @GuardedBy("lock")
     private State state = State.STOPPED;
     private PeerServer peerServer;
@@ -85,11 +80,7 @@ public class Client {
      * @param torrent The torrent to download and share.
      */
     public Client() {
-        String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
-                .toString().split("-")[4];
-
         this.environment = new ClientEnvironment();
-        this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
     }
 
     /**
@@ -105,12 +96,9 @@ public class Client {
         return environment;
     }
 
-    /**
-     * Get this client's peer specification.
-     */
     @Nonnull
     public byte[] getPeerId() {
-        return peerId;
+        return getEnvironment().getPeerId();
     }
 
     @Nonnull
@@ -164,9 +152,7 @@ public class Client {
             peerClient = new PeerClient(this);
             peerClient.start();
 
-            Peer peer = new Peer(peerServer.getLocalAddress(), peerId);
-
-            httpTrackerClient = new HTTPTrackerClient(environment, peer);
+            httpTrackerClient = new HTTPTrackerClient(environment, peerServer.getLocalAddress());
             httpTrackerClient.start();
 
             // udpTrackerClient = new UDPTrackerClient(environment, peer);
@@ -175,7 +161,7 @@ public class Client {
             for (TorrentHandler torrent : torrents.values())
                 torrent.start();
 
-            LOG.info("BitTorrent client [{}] started...", peer);
+            LOG.info("BitTorrent client [{}] started...", this);
 
             setState(State.STARTED);
         }

@@ -31,14 +31,35 @@ import javax.annotation.Nonnull;
  * A basic BitTorrent peer.
  *
  * <p>
- * This class is meant to be a common base for the tracker and client, which
- * would presumably subclass it to extend its functionality and fields.
+ * We can't use this class in as many places as we'd like because it does
+ * not have strong nonnull or type guarantees.
+ * 
+ * Peer-to-peer traffic needs a SocketAddress and a PeerId, whereas the tracker
+ * needs an InetSocketAddress but PeerId is optional.
  * </p>
  *
  * @author mpetazzoni
  */
 public class Peer {
 
+    public static boolean isValidIpAddress(@CheckForNull SocketAddress sa) {
+        if (!(sa instanceof InetSocketAddress))
+            return false;
+        InetSocketAddress isa = (InetSocketAddress) sa;
+        return isValidIpAddress(isa.getAddress());
+    }
+
+    public static boolean isValidIpAddress(@CheckForNull InetAddress ia) {
+        if (ia == null)
+            return false;
+        byte[] ba = ia.getAddress();
+        if (ba == null)
+            return false;
+        for (byte b : ba)
+            if (b != 0)
+                return true;
+        return false;
+    }
     private final SocketAddress address;
     // On UDP and HTTP-compact this is nullable.
     @CheckForNull
@@ -50,8 +71,8 @@ public class Peer {
      * @param address The peer's address, with port.
      */
     public Peer(@Nonnull SocketAddress address, @CheckForNull byte[] peerId) {
-        if (address == null)
-            throw new NullPointerException("SocketAddress was null.");
+        if (!isValidIpAddress(address))
+            throw new IllegalArgumentException("Invalid SocketAddress: " + address);
         if (peerId != null && peerId.length != 20)
             throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.address = address;

@@ -22,6 +22,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -45,7 +46,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         implements AnnounceRequestMessage {
 
     private final byte[] infoHash;
-    private final Peer peer;
+    private final byte[] peerId;
+    private final InetSocketAddress peerAddress;
     private final long uploaded;
     private final long downloaded;
     private final long left;
@@ -55,12 +57,14 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     private final int numWant;
 
     public HTTPAnnounceRequestMessage(
-            byte[] infoHash, Peer peer,
+            byte[] infoHash,
+            byte[] peerId, InetSocketAddress peerAddress,
             long uploaded, long downloaded, long left,
             boolean compact, boolean noPeerId, RequestEvent event, int numWant) {
         super(Type.ANNOUNCE_REQUEST);
         this.infoHash = infoHash;
-        this.peer = peer;
+        this.peerId = peerId;
+        this.peerAddress = peerAddress;
         this.downloaded = downloaded;
         this.uploaded = uploaded;
         this.left = left;
@@ -81,8 +85,13 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     }
 
     @Override
-    public Peer getPeer() {
-        return peer;
+    public byte[] getPeerId() {
+        return peerId;
+    }
+
+    @Override
+    public InetSocketAddress getPeerAddress() {
+        return peerAddress;
     }
 
     @Override
@@ -138,8 +147,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         StringBuilder url = new StringBuilder(base);
         url.append(base.contains("?") ? "&" : "?")
                 .append("info_hash=").append(toUrlString(getInfoHash()))
-                .append("&peer_id=").append(toUrlString(getPeer().getPeerId()))
-                .append("&port=").append(getPeer().getPort())
+                .append("&peer_id=").append(toUrlString(getPeerId()))
+                .append("&port=").append(getPeerAddress().getPort())
                 .append("&uploaded=").append(getUploaded())
                 .append("&downloaded=").append(getDownloaded())
                 .append("&left=").append(getLeft())
@@ -151,9 +160,9 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
             url.append("&event=").append(getEvent().getEventName());
         }
 
-        String ip = getPeer().getIpString();
-        if (ip != null)
-            url.append("&ip=").append(ip);
+        InetAddress ip = getPeerAddress().getAddress();
+        if (Peer.isValidIpAddress(ip))
+            url.append("&ip=").append(ip.getHostAddress());
 
         if (getNumWant() != AnnounceRequestMessage.DEFAULT_NUM_WANT)
             url.append("&numwant=").append(getNumWant());
@@ -184,13 +193,12 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         String ip = toString(params, "ip", null);
 
         RequestEvent event = RequestEvent.NONE;
-        if (params.containsKey("event")) {
+        if (params.containsKey("event"))
             event = RequestEvent.getByName(params.get("event"));
-        }
 
         InetSocketAddress address = new InetSocketAddress(ip, port);
         return new HTTPAnnounceRequestMessage(infoHash,
-                new Peer(address, peerId),
+                peerId, address,
                 uploaded, downloaded, left, compact, noPeerId,
                 event, numWant);
     }
@@ -199,7 +207,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     public String toString() {
         return Objects.toStringHelper(this)
                 .add("infoHash", infoHash)
-                .add("peer", peer)
+                .add("peerId", Torrent.byteArrayToHexString(peerId))
+                .add("peerAddress", peerAddress)
                 .add("uploaded", uploaded)
                 .add("downloaded", downloaded)
                 .add("left", left)

@@ -18,11 +18,12 @@ package com.turn.ttorrent.client;
 import com.google.common.annotations.VisibleForTesting;
 import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
 import com.turn.ttorrent.client.tracker.TrackerClient;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -340,7 +341,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * any other means like DHT/PEX, etc.).
      */
     @Override
-    public void handleDiscoveredPeers(URI uri, List<Peer> peers) {
+    public void handleDiscoveredPeers(URI uri, Collection<? extends SocketAddress> peerAddresses) {
         synchronized (lock) {
             TrackerState tracker = getTracker(uri);
             if (tracker == null)
@@ -348,35 +349,9 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             tracker.lastRecv = System.currentTimeMillis();
         }
 
-        if (peers == null || peers.isEmpty()) {
-            // No peers returned by the tracker. Apparently we're alone on
-            // this one for now.
-            return;
-        }
-
-        LOG.info("Got {} peer(s) in tracker response.", peers.size());
-        LOG.info("Peers are " + peers);
+        LOG.info("Got {} peer(s) in tracker response.", peerAddresses.size());
         // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
-        torrent.getSwarmHandler().addPeers(peers);
-        /*
-         for (Peer peer : peers) {
-         // Attempt to connect to the peer if and only if:
-         //   - We're not already connected or connecting to it;
-         //   - We're not a seeder (we leave the responsibility
-         //	   of connecting to peers that need to download
-         //     something).
-         SharingPeer match = this.getOrCreatePeer(peer);
-         if (this.isSeed()) {
-         continue;
-         }
-
-         synchronized (match) {
-         if (!match.isConnected()) {
-         connect(match);
-         }
-         }
-         }
-         */
+        torrent.getSwarmHandler().addPeers(peerAddresses);
     }
 }
