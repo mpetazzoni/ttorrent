@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.tracker;
 
-import com.google.common.collect.Iterables;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
@@ -240,12 +239,12 @@ public class TrackedTorrent {
      */
     public List<Peer> getSomePeers(TrackedPeer client, int numWant) {
         numWant = Math.min(numWant, DEFAULT_ANSWER_NUM_PEERS);
-        List<Peer> out = new ArrayList<Peer>(numWant);
 
         // Extract answerPeers random peers
         List<TrackedPeer> candidates = new ArrayList<TrackedPeer>(this.peers.values());
         Collections.shuffle(candidates);
 
+        List<Peer> out = new ArrayList<Peer>(numWant);
         long now = System.currentTimeMillis();
         for (TrackedPeer candidate : candidates) {
             // Collect unfresh peers, and obviously don't serve them as well.

@@ -175,11 +175,7 @@ public class Client {
             for (TorrentHandler torrent : torrents.values())
                 torrent.start();
 
-            LOG.info("BitTorrent client [{}] started and listening at {}...",
-                    new Object[]{
-                peer.getShortHexPeerId(),
-                peer.getHostIdentifier()
-            });
+            LOG.info("BitTorrent client [{}] started...", peer);
 
             setState(State.STARTED);
         }
@@ -217,17 +213,19 @@ public class Client {
 
     public void addTorrent(@Nonnull TorrentHandler torrent) throws IOException, InterruptedException {
         torrent.init();
-        torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
-        State s = getState();
-        switch (s) {
-            case STARTED:
-                torrent.start();
-                break;
-            case STOPPING:
-            case STOPPED:
-                break;
-            default:
-                throw new IllegalStateException("Cannot add torrent in state " + s);
+        // This lock guarantees that we are started or stopped.
+        synchronized (lock) {
+            torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
+            State s = getState();
+            switch (s) {
+                case STARTED:
+                    torrent.start();
+                    break;
+                case STOPPED:
+                    break;
+                default:
+                    throw new IllegalStateException("WAT? " + s);
+            }
         }
     }
 

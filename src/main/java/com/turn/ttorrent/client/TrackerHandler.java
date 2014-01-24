@@ -355,7 +355,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         }
 
         LOG.info("Got {} peer(s) in tracker response.", peers.size());
+        LOG.info("Peers are " + peers);
+        // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
+        torrent.getSwarmHandler().addPeers(peers);
         /*
          for (Peer peer : peers) {
          // Attempt to connect to the peer if and only if:

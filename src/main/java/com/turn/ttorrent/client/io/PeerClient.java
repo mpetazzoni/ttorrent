@@ -16,8 +16,8 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.peer.PeerHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -25,10 +25,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
 import java.net.SocketAddress;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -69,24 +66,24 @@ public class PeerClient {
     }
 
     @Nonnull
-    public ChannelFuture connect(@Nonnull SocketAddress remoteAddress,
-            @Nonnull final PeerHandler peer,
-            @Nonnull final PeerConnectionListener listener) {
+    public ChannelFuture connect(
+            @Nonnull final PeerConnectionListener listener,
+            @Nonnull final byte[] infoHash,
+            @Nonnull final SocketAddress remoteAddress) {
         final ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
-            bootstrap.handler(new PeerClientHandshakeHandler(client.getPeerId(), peer, listener));
+            bootstrap.handler(new PeerClientHandshakeHandler(listener, infoHash, client.getPeerId()));
             future = bootstrap.connect(remoteAddress);
         }
         future.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 try {
-                    LOG.error("Succeeded: " + future.get());
-                    listener.handleNewPeerConnection(future.channel(), peer);
+                    LOG.trace("Succeeded: {}", future.get());
                 } catch (Exception e) {
-                    LOG.error("Failed", e);
-                    listener.handleFailedConnection(peer, e);
+                    LOG.error("Connection to " + remoteAddress + " failed.", e);
+                    listener.handlePeerConnectionFailed(remoteAddress, e);
                 }
             }
         });

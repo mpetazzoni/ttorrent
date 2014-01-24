@@ -530,7 +530,7 @@ public class TorrentHandler {
         int connected = 0;
         double dl = 0;
         double ul = 0;
-        Map<? extends String, ? extends PeerHandler> peers = getSwarmHandler().getPeers();
+        Map<? extends Object, ? extends PeerHandler> peers = getSwarmHandler().getPeers();
         for (PeerHandler peer : peers.values()) {
             if (peer.isConnected())
                 connected++;

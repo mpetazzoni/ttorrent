@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.google.common.net.InetAddresses;
+import com.google.common.base.Objects;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
@@ -151,7 +151,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
             url.append("&event=").append(getEvent().getEventName());
         }
 
-        String ip = getPeer().getIp();
+        String ip = getPeer().getIpString();
         if (ip != null)
             url.append("&ip=").append(ip);
 
@@ -161,7 +161,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         return new URI(url.toString());
     }
 
-    public static HTTPAnnounceRequestMessage fromParams(Map<String, String> params)
+    @Nonnull
+    public static HTTPAnnounceRequestMessage fromParams(@Nonnull Map<String, String> params)
             throws IOException, MessageValidationException {
 
         byte[] infoHash = toBytes(params, "info_hash", ErrorMessage.FailureReason.MISSING_HASH);
@@ -194,14 +195,18 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
                 event, numWant);
     }
 
-    public static HTTPAnnounceRequestMessage craft(byte[] infoHash,
-            byte[] peerId, int port, long uploaded, long downloaded, long left,
-            boolean compact, boolean noPeerId, RequestEvent event,
-            String ip, int numWant)
-            throws IOException, MessageValidationException, UnsupportedEncodingException {
-        InetSocketAddress address = new InetSocketAddress(ip, port);
-        return new HTTPAnnounceRequestMessage(
-                infoHash, new Peer(address, peerId),
-                uploaded, downloaded, left, compact, noPeerId, event, numWant);
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("infoHash", infoHash)
+                .add("peer", peer)
+                .add("uploaded", uploaded)
+                .add("downloaded", downloaded)
+                .add("left", left)
+                .add("compact", compact)
+                .add("noPeerId", noPeerId)
+                .add("event", event)
+                .add("numWant", numWant)
+                .toString();
     }
 }

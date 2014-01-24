@@ -15,10 +15,14 @@
  */
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.bcodec.BEValue;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnull;
@@ -46,6 +50,8 @@ public class Peer {
      * @param address The peer's address, with port.
      */
     public Peer(@Nonnull SocketAddress address, @CheckForNull byte[] peerId) {
+        if (address == null)
+            throw new NullPointerException("SocketAddress was null.");
         if (peerId != null && peerId.length != 20)
             throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
         this.address = address;
@@ -79,7 +85,7 @@ public class Peer {
      * Get the shortened hexadecimal-encoded peer ID.
      */
     @CheckForNull
-    public String getShortHexPeerId() {
+    private String getShortHexPeerId() {
         String hexPeerId = getHexPeerId();
         if (hexPeerId == null)
             return null;
@@ -101,7 +107,7 @@ public class Peer {
     }
 
     @CheckForNull
-    public byte[] getIpAddress() {
+    public byte[] getIpBytes() {
         InetAddress ia = getInetAddress();
         if (ia == null)
             return null;
@@ -109,7 +115,7 @@ public class Peer {
     }
 
     @CheckForNull
-    public String getIp() {
+    public String getIpString() {
         InetAddress ia = getInetAddress();
         if (ia == null)
             return null;
@@ -130,7 +136,7 @@ public class Peer {
      */
     @Nonnull
     public String getHostIdentifier() {
-        return getIp() + ":" + getPort();
+        return getIpString() + ":" + getPort();
     }
 
     @Override
@@ -160,15 +166,38 @@ public class Peer {
     }
 
     /**
+     * Returns a BEValue representing this peer for inclusion in an
+     * announce reply from the tracker.
+     *
+     * The returned BEValue is a dictionary containing the peer ID (in its
+     * original byte-encoded form), the peer's IP and the peer's port.
+     */
+    // TODO: Use this for noncompact tracking.
+    public BEValue toBEValue() throws UnsupportedEncodingException {
+        Map<String, BEValue> out = new HashMap<String, BEValue>();
+        byte[] peerId = getPeerId();
+        if (peerId != null)
+            out.put("peer id", new BEValue(peerId));
+        String ip = getIpString();
+        if (ip != null)
+            out.put("ip", new BEValue(ip, Torrent.BYTE_ENCODING));
+        int port = getPort();
+        if (port != -1)
+            out.put("port", new BEValue(port));
+        return new BEValue(out);
+    }
+
+    /**
      * Returns a human-readable representation of this peer.
      */
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder("peer://")
-                .append(getHostIdentifier())
+                .append(getAddress())
                 .append("/");
-        if (hasPeerId())
-            s.append(getShortHexPeerId());
+        String hexPeerId = getShortHexPeerId();
+        if (hexPeerId != null)
+            s.append(hexPeerId);
         else
             s.append("?");
         return s.toString();

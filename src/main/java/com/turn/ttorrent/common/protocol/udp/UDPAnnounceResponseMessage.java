@@ -103,7 +103,7 @@ public class UDPAnnounceResponseMessage
         out.writeInt(complete);
 
         for (Peer peer : peers) {
-            byte[] ip = peer.getIpAddress();
+            byte[] ip = peer.getIpBytes();
             if (ip == null || ip.length != 4)
                 continue;
             out.writeBytes(ip);

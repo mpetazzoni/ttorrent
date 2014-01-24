@@ -171,7 +171,7 @@ public class UDPAnnounceRequestMessage
         out.writeLong(uploaded);
         out.writeLong(left);
         out.writeInt(event.getId());
-        out.writeBytes(peer.getIpAddress());
+        out.writeBytes(peer.getIpBytes());
         out.writeInt(key);
         out.writeInt(numWant);
         out.writeShort((short) peer.getPort());

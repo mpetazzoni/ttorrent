@@ -20,9 +20,6 @@ import javax.annotation.Nonnull;
 public interface PeerPieceProvider {
 
     @Nonnull
-    public byte[] getInfoHash();
-
-    @Nonnull
     public BitSet getAvailablePieces();
 
     @Nonnegative

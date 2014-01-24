@@ -16,10 +16,10 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.client.Piece;
 
 import com.turn.ttorrent.client.io.PeerMessage;
+import com.turn.ttorrent.common.Torrent;
 import io.netty.channel.Channel;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -79,7 +79,7 @@ public class PeerHandler implements PeerMessageListener {
         // They decide about us:
         CHOKING, INTERESTED;
     }
-    private final Peer peer;
+    private final byte[] peerId;
     private final PeerPieceProvider provider;
     private final PeerActivityListener listener;
     @GuardedBy("lock")
@@ -115,10 +115,10 @@ public class PeerHandler implements PeerMessageListener {
      */
     // Deliberately specified in terms of interfaces, for testing.
     public PeerHandler(
-            @Nonnull Peer peer,
+            @Nonnull byte[] peerId,
             @Nonnull PeerPieceProvider provider,
             @Nonnull PeerActivityListener listener) {
-        this.peer = peer;
+        this.peerId = peerId;
         this.provider = provider;
         this.listener = listener;
 
@@ -150,23 +150,13 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Nonnull
-    public Peer getPeer() {
-        return peer;
-    }
-
-    @Nonnull
-    public String getHostIdentifier() {
-        return peer.getHostIdentifier();
+    public byte[] getPeerId() {
+        return peerId;
     }
 
     @Nonnull
     public String getHexPeerId() {
-        return peer.getHexPeerId();
-    }
-
-    @Nonnull
-    public byte[] getInfoHash() {
-        return provider.getInfoHash();
+        return Torrent.byteArrayToHexString(getPeerId());
     }
 
     @Nonnull
@@ -634,7 +624,8 @@ public class PeerHandler implements PeerMessageListener {
 
     @Override
     public String toString() {
-        return new StringBuilder(peer.toString())
+        // Channel c = getChannel();
+        return new StringBuilder(getHexPeerId())
                 .append(" [")
                 .append((isChoking() ? "C" : "c"))
                 .append((isInterested() ? "I" : "i"))

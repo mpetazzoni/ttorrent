@@ -16,10 +16,8 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.client.peer.PeerHandler;
-import io.netty.buffer.ByteBuf;
+import com.turn.ttorrent.common.Torrent;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import java.util.Arrays;
 import javax.annotation.Nonnull;
@@ -34,60 +32,49 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PeerClientHandshakeHandler.class);
     private static final LoggingHandler wireLogger = new LoggingHandler("client-wire");
+    private static final LoggingHandler messageLogger = new LoggingHandler("client-message");
+    @Nonnull
+    private final byte[] infoHash;
     @Nonnull
     private final byte[] peerId;
     @Nonnull
-    private final PeerHandler peer;
-    @Nonnull
     private final PeerConnectionListener listener;
 
-    public PeerClientHandshakeHandler(@Nonnull byte[] peerId,
-            @Nonnull PeerHandler peer,
-            @Nonnull PeerConnectionListener listener) {
-        this.peerId = peerId;
-        this.peer = peer;
+    public PeerClientHandshakeHandler(
+            @Nonnull PeerConnectionListener listener,
+            @Nonnull byte[] infoHash,
+            @Nonnull byte[] peerId) {
         this.listener = listener;
+        this.infoHash = infoHash;
+        this.peerId = peerId;
     }
 
     @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        ctx.pipeline().addFirst(wireLogger);
-        addMessageHandlers(ctx.pipeline(), peer);
-        super.channelRegistered(ctx);
+    public LoggingHandler getWireLogger() {
+        return wireLogger;
+    }
+
+    @Override
+    public LoggingHandler getMessageLogger() {
+        return messageLogger;
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        // Client only.
-        HandshakeMessage response = new HandshakeMessage(peer.getInfoHash(), peerId);
+        HandshakeMessage response = new HandshakeMessage(infoHash, peerId);
         ctx.writeAndFlush(toByteBuf(response));
         super.channelActive(ctx);
     }
 
+    @Override
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
         // We were the connecting client.
-        if (!Arrays.equals(peer.getInfoHash(), message.getInfoHash())) {
-            logger.warn("InfoHash mismatch: requested " + peer + " but received " + message);
+        if (!Arrays.equals(infoHash, message.getInfoHash())) {
+            logger.warn("InfoHash mismatch: requested " + Torrent.byteArrayToHexString(infoHash) + " but received " + message);
             ctx.close();
             return;
         }
 
-        ctx.pipeline().remove(this);
-
-        listener.handleNewPeerConnection((SocketChannel) ctx.channel(), peer);
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf in = (ByteBuf) msg;
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
-            return;
-
-        int length = in.getUnsignedByte(0);
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
-            return;
-
-        HandshakeMessage request = new HandshakeMessage();
-        request.fromWire(in);
+        addPeer(ctx, message, listener);
     }
 }
