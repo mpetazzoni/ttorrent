@@ -18,9 +18,6 @@ package com.turn.ttorrent.client.io;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.TorrentHandler;
-import com.turn.ttorrent.client.peer.PeerHandler;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;
 import javax.annotation.Nonnull;
@@ -35,6 +32,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerServerHandshakeHandler.class);
     private static final LoggingHandler wireLogger = new LoggingHandler("server-wire");
+    private static final LoggingHandler messageLogger = new LoggingHandler("server-message");
     private final Client client;
 
     public PeerServerHandshakeHandler(@Nonnull Client client) {
@@ -42,11 +40,16 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     }
 
     @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        ctx.pipeline().addFirst(wireLogger);
-        super.channelRegistered(ctx);
+    public LoggingHandler getWireLogger() {
+        return wireLogger;
     }
 
+    @Override
+    public LoggingHandler getMessageLogger() {
+        return messageLogger;
+    }
+
+    @Override
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
         LOG.info("Processing " + message);
         // We are a server.
@@ -56,36 +59,12 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
             ctx.close();
             return;
         }
+        PeerConnectionListener listener = torrent.getSwarmHandler();
         LOG.info("Found torrent " + torrent);
+
         HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerId());
         ctx.writeAndFlush(toByteBuf(response));
 
-        Channel channel = ctx.channel();
-        PeerHandler peer = torrent.getSwarmHandler().getOrCreatePeer(channel.remoteAddress(), message.getPeerId());
-
-        addMessageHandlers(ctx.pipeline(), peer);
-        ctx.pipeline().remove(this);
-
-        PeerConnectionListener listener = torrent.getSwarmHandler();
-        listener.handleNewPeerConnection(channel, peer);
-    }
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf in = (ByteBuf) msg;
-        LOG.info("Read " + in + " with " + in.readableBytes() + " bytes");
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
-            return;
-
-        int length = in.getUnsignedByte(0);
-        LOG.info("Length byte is " + length);
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
-            return;
-
-        LOG.info("Parsing HandshakeMessage.");
-        HandshakeMessage request = new HandshakeMessage();
-        request.fromWire(in);
-
-        process(ctx, request);
+        addPeer(ctx, message, listener);
     }
 }

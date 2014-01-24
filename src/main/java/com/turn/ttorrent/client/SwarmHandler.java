@@ -23,12 +23,14 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.RateComparator;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 import io.netty.channel.Channel;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -101,7 +103,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     private static final float END_GAME_COMPLETION_RATIO = 0.95f;
     private final TorrentHandler torrent;
-    private final ConcurrentMap<String, PeerHandler> peers = new ConcurrentHashMap<String, PeerHandler>();
+    // Keys are InetSocketAddress or HexPeerId
+    private final ConcurrentMap<Object, PeerHandler> peers = new ConcurrentHashMap<Object, PeerHandler>();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
     @GuardedBy("lock")
@@ -142,13 +145,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         return getClient().getEnvironment().getRandom();
     }
 
-    @Override
-    public byte[] getInfoHash() {
-        return torrent.getInfoHash();
-    }
-
     @Nonnull
-    public ConcurrentMap<? extends String, ? extends PeerHandler> getPeers() {
+    public ConcurrentMap<? extends Object, ? extends PeerHandler> getPeers() {
         return peers;
     }
 
@@ -160,14 +158,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     @Nonnegative
     private int getConnectedPeerCount() {
         int count = 0;
-        for (Map.Entry<String, PeerHandler> e : peers.entrySet()) {
+        for (Map.Entry<? extends Object, ? extends PeerHandler> e : peers.entrySet()) {
             PeerHandler peer = e.getValue();
             // Avoid double-counting peers.
-            if (e.getKey().equals(peer.getHexPeerId()))
+            if (e.getKey() instanceof SocketAddress)
                 if (peer.isConnected())
                     count++;
         }
         return count;
+    }
+
+    public void addPeers(@Nonnull Collection<? extends Peer> peers) {
     }
 
     /**
@@ -189,50 +190,6 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     @Nonnegative
     public long getDownloaded() {
         return downloaded.get();
-    }
-
-    /**
-     * Retrieve a SharingPeer object from the given peer specification.
-     *
-     * <p>
-     * This function tries to retrieve an existing peer object based on the
-     * provided peer specification or otherwise instantiates a new one and adds
-     * it to our peer repository.
-     * </p>
-     *
-     * This method takes two @Nonnull arguments, because Peer has a
-     * @CheckForNull on {@link Peer#getPeerId()}.
-     */
-    @Nonnull
-    public PeerHandler getOrCreatePeer(@Nonnull SocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
-        Peer peer = new Peer(remoteAddress, remotePeerId);
-        logger.trace("Searching for {}...", peer);
-
-        synchronized (this.peers) {
-            PeerHandler peerHandler = this.peers.get(peer.getHexPeerId());
-            if (peerHandler != null) {
-                logger.trace("Found peer (by peer ID): {}.", peerHandler);
-                this.peers.put(peerHandler.getHostIdentifier(), peerHandler);
-                this.peers.put(peer.getHostIdentifier(), peerHandler);
-                return peerHandler;
-            }
-
-            peerHandler = this.peers.get(peer.getHostIdentifier());
-            if (peerHandler != null) {
-                logger.trace("Recording peer ID {} for {}.", peer.getHexPeerId(), peerHandler);
-                this.peers.put(peer.getHexPeerId(), peerHandler);
-                logger.debug("Found peer (by host ID): {}.", peerHandler);
-                return peerHandler;
-            }
-
-            peerHandler = new PeerHandler(peer, this, this);
-            logger.trace("Created new peer: {}.", peerHandler);
-
-            this.peers.put(peerHandler.getHostIdentifier(), peerHandler);
-            this.peers.put(peerHandler.getHexPeerId(), peerHandler);
-
-            return peerHandler;
-        }
     }
 
     /**
@@ -274,16 +231,16 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      *
      * @param peer The peer to connect to.
      */
-    public void connect(PeerHandler peer) {
+    public void connect(SocketAddress address) {
         // TODO
-        getClient().getPeerClient().connect(peer.getPeer().getAddress(), peer, this);
+        getClient().getPeerClient().connect(this, torrent.getInfoHash(), address);
     }
 
     // TODO: Periodic / step function.
     @Override
     public void run() {
         boolean optimistic = false;
-        synchronized(lock) {
+        synchronized (lock) {
             long now = System.currentTimeMillis();
             if (optimisticUnchokeTime + OPTIMISTIC_UNCHOKE_DELAY < now) {
                 optimisticUnchokeTime = now;
@@ -552,6 +509,52 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
     /** PeerConnectionListener handler(s). ********************************/
     /**
+     * Retrieve a SharingPeer object from the given peer specification.
+     *
+     * <p>
+     * This function tries to retrieve an existing peer object based on the
+     * provided peer specification or otherwise instantiates a new one and adds
+     * it to our peer repository.
+     * </p>
+     *
+     * This method takes two @Nonnull arguments, because Peer has a
+     * @CheckForNull on {@link Peer#getPeerId()}.
+     */
+    @Override
+    public PeerHandler handlePeerConnectionCreated(@Nonnull SocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
+        String remoteHexPeerId = Torrent.byteArrayToHexString(remotePeerId);
+
+        // Peer peer = new Peer(remoteAddress, remotePeerId);
+        logger.trace("Searching for {}...", new Peer(remoteAddress, remotePeerId));
+
+        synchronized (this.peers) {
+            PeerHandler peerHandler = peers.get(remoteHexPeerId);
+            if (peerHandler != null) {
+                logger.trace("Found peer (by peer ID): {}.", peerHandler);
+                peers.put(remoteAddress, peerHandler);
+                peers.put(remoteHexPeerId, peerHandler);
+                return peerHandler;
+            }
+
+            peerHandler = peers.get(remoteAddress);
+            if (peerHandler != null) {
+                logger.trace("Recording peer ID {} for {}.", remoteHexPeerId, peerHandler);
+                peers.put(remoteHexPeerId, peerHandler);
+                logger.debug("Found peer (by host ID): {}.", peerHandler);
+                return peerHandler;
+            }
+
+            peerHandler = new PeerHandler(remotePeerId, this, this);
+            logger.trace("Created new peer: {}.", peerHandler);
+
+            this.peers.put(remoteAddress, peerHandler);
+            this.peers.put(remoteHexPeerId, peerHandler);
+
+            return peerHandler;
+        }
+    }
+
+    /**
      * Handle a new peer connection.
      *
      * <p>
@@ -569,7 +572,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @see com.turn.ttorrent.client.peer.SharingPeer
      */
     @Override
-    public void handleNewPeerConnection(Channel channel, PeerHandler peer) {
+    public void handlePeerConnectionReady(Channel channel, PeerHandler peer) {
         logger.info("Handling new peer connection with {}...", peer);
 
         try {
@@ -611,13 +614,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @param cause The exception encountered when connecting with the peer.
      */
     @Override
-    public void handleFailedConnection(PeerHandler peer, Throwable cause) {
-        logger.warn("Could not connect to {}: {}.", peer, cause.getMessage());
+    public void handlePeerConnectionFailed(SocketAddress remoteAddress, Throwable cause) {
+        logger.warn("Could not connect to {}: {}.", remoteAddress, cause.getMessage());
         synchronized (peers) {
-            peers.remove(peer.getHostIdentifier());
-            peers.remove(peer.getHexPeerId());
+            PeerHandler peerHandler = peers.remove(remoteAddress);
         }
-        peer.reset();
     }
 
     /** PeerActivityListener handler(s). *************************************/

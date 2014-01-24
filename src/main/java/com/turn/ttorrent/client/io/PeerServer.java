@@ -96,7 +96,7 @@ public class PeerServer {
     }
 
     @Nonnull
-    public InetSocketAddress getLocalAddress() {
-        return (InetSocketAddress) future.channel().localAddress();
+    public SocketAddress getLocalAddress() {
+        return future.channel().localAddress();
     }
 }

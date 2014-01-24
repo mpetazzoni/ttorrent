@@ -34,11 +34,6 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public byte[] getInfoHash() {
-        return torrent.getInfoHash();
-    }
-
-    @Override
     public int getPieceCount() {
         return torrent.getPieceCount();
     }

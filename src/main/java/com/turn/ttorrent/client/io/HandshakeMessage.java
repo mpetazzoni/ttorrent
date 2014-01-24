@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.turn.ttorrent.common.Torrent;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.apache.commons.io.Charsets;
 
@@ -90,7 +91,7 @@ public class HandshakeMessage extends PeerMessage {
         out.writeBytes(peerId);
     }
 
-    private String toHex(byte[] data) {
+    private static String toHex(@CheckForNull byte[] data) {
         if (data == null)
             return null;
         return Torrent.byteArrayToHexString(data);

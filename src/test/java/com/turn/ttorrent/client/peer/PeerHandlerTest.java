@@ -8,7 +8,6 @@ import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.io.PeerClientHandshakeHandler;
 import com.turn.ttorrent.client.io.PeerServerHandshakeHandler;
 import com.turn.ttorrent.test.TestPeerPieceProvider;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import io.netty.bootstrap.Bootstrap;
@@ -42,7 +41,7 @@ public class PeerHandlerTest {
         Torrent torrent = TorrentTestUtils.newTorrent(dir, 12345, true);
         TestPeerPieceProvider provider = new TestPeerPieceProvider(torrent);
         PeerActivityListener activityListener = EasyMock.createMock(PeerActivityListener.class);
-        PeerHandler peerHandler = new PeerHandler(new Peer(peerAddress, peerId), provider, activityListener);
+        PeerHandler peerHandler = new PeerHandler(peerId, provider, activityListener);
 
         PeerConnectionListener connectionListener = EasyMock.createMock(PeerConnectionListener.class);
 
@@ -69,7 +68,7 @@ public class PeerHandlerTest {
             Bootstrap b = new Bootstrap()
                     .group(group)
                     .channel(LocalChannel.class)
-                    .handler(new PeerClientHandshakeHandler(peerId, peerHandler, connectionListener));
+                    .handler(new PeerClientHandshakeHandler(connectionListener, torrent.getInfoHash(), peerId));
             channel = b.connect(address).sync().channel();
         }
 

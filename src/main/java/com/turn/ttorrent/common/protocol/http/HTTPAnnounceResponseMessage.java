@@ -28,10 +28,13 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The announce response message from an HTTP tracker.
@@ -41,6 +44,7 @@ import javax.annotation.Nonnull;
 public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
         implements AnnounceResponseMessage {
 
+    private static final Logger LOG = LoggerFactory.getLogger(HTTPAnnounceResponseMessage.class);
     private final int interval;
     private final int complete;
     private final int incomplete;
@@ -90,7 +94,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
                 // First attempt to decode a compact response, since we asked
                 // for it.
                 peers = toPeerList(params.get("peers").getBytes());
-            } catch (InvalidBEncodingException ibee) {
+            } catch (InvalidBEncodingException e) {
                 // Fall back to peer list, non-compact response, in case the
                 // tracker did not support compact responses.
                 peers = toPeerList(params.get("peers").getList());
@@ -179,12 +183,14 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 
         ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
         for (Peer peer : peers) {
-            byte[] ip = peer.getIpAddress();
+            // LOG.info("Adding peer " + peer);
+            byte[] ip = peer.getIpBytes();
             if (ip == null || ip.length != 4)
                 continue;
             data.put(ip);
             data.putShort((short) peer.getPort());
         }
+        // LOG.info("Peers are " + Arrays.toString(data.array()));
         params.put("peers", new BEValue(data.array()));
         return params;
     }

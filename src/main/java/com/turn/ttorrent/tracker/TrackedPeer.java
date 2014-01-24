@@ -15,13 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-
-import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -161,22 +155,5 @@ public class TrackedPeer {
             return (this.lastAnnounce > 0
                     && (this.lastAnnounce + (FRESH_TIME_SECONDS * 1000) > now));
         }
-    }
-
-    /**
-     * Returns a BEValue representing this peer for inclusion in an
-     * announce reply from the tracker.
-     *
-     * The returned BEValue is a dictionary containing the peer ID (in its
-     * original byte-encoded form), the peer's IP and the peer's port.
-     */
-    public BEValue toBEValue() throws UnsupportedEncodingException {
-        Map<String, BEValue> out = new HashMap<String, BEValue>();
-        if (peer.hasPeerId()) {
-            out.put("peer id", new BEValue(peer.getPeerId()));
-        }
-        out.put("ip", new BEValue(peer.getIp(), Torrent.BYTE_ENCODING));
-        out.put("port", new BEValue(peer.getPort()));
-        return new BEValue(out);
     }
 }

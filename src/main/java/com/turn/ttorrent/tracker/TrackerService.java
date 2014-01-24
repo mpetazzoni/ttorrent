@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.bcodec.BytesBEncoder;
 import com.turn.ttorrent.bcodec.StreamBEncoder;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
@@ -141,18 +142,19 @@ public class TrackerService implements Container {
         HTTPAnnounceRequestMessage announceRequest;
         try {
             announceRequest = this.parseQuery(request);
-        } catch (MessageValidationException mve) {
+        } catch (MessageValidationException e) {
+            LOG.error("Failed to parse request", e);
             this.serveError(response, body, Status.BAD_REQUEST,
-                    mve.getMessage());
+                    e.getMessage());
             return;
         }
 
+        LOG.trace("Announce request is {}", announceRequest);
+
         // The requested torrent must be announced by the tracker.
-        TrackedTorrent torrent = this.torrents.get(
-                announceRequest.getHexInfoHash());
+        TrackedTorrent torrent = this.torrents.get(announceRequest.getHexInfoHash());
         if (torrent == null) {
-            LOG.warn("Requested torrent hash was: {}",
-                    announceRequest.getHexInfoHash());
+            LOG.warn("No such torrent: {}", announceRequest.getHexInfoHash());
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.UNKNOWN_TORRENT);
             return;
@@ -189,7 +191,8 @@ public class TrackerService implements Container {
                     announceRequest.getUploaded(),
                     announceRequest.getDownloaded(),
                     announceRequest.getLeft());
-        } catch (IllegalArgumentException iae) {
+        } catch (IllegalArgumentException e) {
+            LOG.error("Failed to update torrent", e);
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.INVALID_EVENT);
             return;
@@ -205,9 +208,11 @@ public class TrackerService implements Container {
                     torrent.seeders(),
                     torrent.leechers(),
                     torrent.getSomePeers(client, announceRequest.getNumWant()));
-            StreamBEncoder encoder = new StreamBEncoder(body);
+            BytesBEncoder encoder = new BytesBEncoder();
             encoder.bencode(announceResponse.toBEValue());
+            body.write(encoder.toByteArray());  // This is the raw network stream.
         } catch (Exception e) {
+            LOG.error("Failed to send response", e);
             this.serveError(response, body, Status.INTERNAL_SERVER_ERROR,
                     e.getMessage());
         }
@@ -255,9 +260,8 @@ public class TrackerService implements Container {
 
         // Make sure we have the peer IP, fallbacking on the request's source
         // address if the peer didn't provide it.
-        if (!params.containsKey("ip")) {
+        if (!params.containsKey("ip"))
             params.put("ip", request.getClientAddress().getAddress().getHostAddress());
-        }
 
         return HTTPAnnounceRequestMessage.fromParams(params);
     }
