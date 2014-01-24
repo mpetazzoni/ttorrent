@@ -118,24 +118,4 @@ public interface PeerActivityListener extends EventListener {
     public void handlePieceCompleted(@Nonnull PeerHandler peer,
             @Nonnegative int piece)
             throws IOException;
-
-    /**
-     * Peer disconnection handler.
-     *
-     * <p>
-     * This handler is fired when a peer disconnects, or is disconnected due to
-     * protocol violation.
-     * </p>
-     *
-     * @param peer The peer we got this piece from.
-     */
-    public void handlePeerDisconnected(PeerHandler peer);
-
-    /**
-     * Handler for IOException during peer operation.
-     *
-     * @param peer The peer whose activity trigger the exception.
-     * @param ioe The IOException object, for reporting.
-     */
-    public void handleIOException(PeerHandler peer, IOException ioe);
 }

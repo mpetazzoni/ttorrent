@@ -21,6 +21,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -52,7 +53,7 @@ public class PeerServer {
         this.address = address;
     }
 
-    public PeerServer(Client client) {
+    public PeerServer(@Nonnull Client client) {
         this(client, null);
     }
 
@@ -66,7 +67,7 @@ public class PeerServer {
         b.childOption(ChannelOption.SO_KEEPALIVE, true);
         b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         if (address != null) {
-            future = b.bind(address);
+            future = b.bind(address).sync();
         } else {
             BIND:
             {
@@ -96,7 +97,8 @@ public class PeerServer {
     }
 
     @Nonnull
-    public SocketAddress getLocalAddress() {
-        return future.channel().localAddress();
+    public InetSocketAddress getLocalAddress() {
+        ServerSocketChannel channel = (ServerSocketChannel) future.channel();
+        return channel.localAddress();
     }
 }

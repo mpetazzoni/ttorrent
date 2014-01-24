@@ -17,6 +17,7 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Peer;
 
+import java.net.InetSocketAddress;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,8 @@ public class TrackedPeer {
     private static final Logger logger =
             LoggerFactory.getLogger(TrackedPeer.class);
     private static final int FRESH_TIME_SECONDS = 30;
-    private final Peer peer;
+    private final InetSocketAddress peerAddress;
+    private final byte[] peerId;
     // TODO: The only reason to keep this reference here is to produce debug logs.
     private long uploaded;
     private long downloaded;
@@ -59,8 +61,11 @@ public class TrackedPeer {
      * @param peer The remote peer.
      * @param torrent The torrent this peer exchanges on.
      */
-    public TrackedPeer(Peer peer) {
-        this.peer = peer;
+    public TrackedPeer(@Nonnull InetSocketAddress peerAddress, @Nonnull byte[] peerId) {
+        if (!Peer.isValidIpAddress(peerAddress))
+            throw new IllegalArgumentException("Useless SocketAddress: " + peerAddress);
+        this.peerAddress = peerAddress;
+        this.peerId = peerId;
 
         // Instantiated peers start in the UNKNOWN state.
         this.state = TrackedPeerState.UNKNOWN;
@@ -71,8 +76,13 @@ public class TrackedPeer {
     }
 
     @Nonnull
-    public Peer getPeer() {
-        return peer;
+    public InetSocketAddress getPeerAddress() {
+        return peerAddress;
+    }
+
+    @Nonnull
+    public byte[] getPeerId() {
+        return peerId;
     }
 
     /**

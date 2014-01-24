@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
+import com.google.common.collect.Collections2;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
@@ -25,10 +26,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +50,10 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
     private final int interval;
     private final int complete;
     private final int incomplete;
-    private final List<Peer> peers;
+    private final List<? extends Peer> peers;
 
     public HTTPAnnounceResponseMessage(
-            int interval, int complete, int incomplete, List<Peer> peers) {
+            int interval, int complete, int incomplete, List<? extends Peer> peers) {
         super(Type.ANNOUNCE_RESPONSE);
         this.interval = interval;
         this.complete = complete;
@@ -75,8 +77,13 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
     }
 
     @Override
-    public List<Peer> getPeers() {
+    public Collection<? extends Peer> getPeers() {
         return this.peers;
+    }
+
+    @Override
+    public Collection<? extends SocketAddress> getPeerAddresses() {
+        return Collections2.transform(getPeers(), PEERADDRESS);
     }
 
     public static HTTPAnnounceResponseMessage fromBEValue(Map<String, BEValue> params)

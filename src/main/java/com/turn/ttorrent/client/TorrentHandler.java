@@ -33,7 +33,6 @@ import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -527,13 +526,10 @@ public class TorrentHandler {
      * </p>
      */
     public void info() {
-        int connected = 0;
+        int connected = getSwarmHandler().getConnectedPeerCount();
         double dl = 0;
         double ul = 0;
-        Map<? extends Object, ? extends PeerHandler> peers = getSwarmHandler().getPeers();
-        for (PeerHandler peer : peers.values()) {
-            if (peer.isConnected())
-                connected++;
+        for (PeerHandler peer : getSwarmHandler().getConnectedPeers()) {
             dl += peer.getDLRate().rate(TimeUnit.SECONDS);
             ul += peer.getULRate().rate(TimeUnit.SECONDS);
         }
@@ -547,19 +543,10 @@ public class TorrentHandler {
             getAvailablePieceCount(),
             -42, // getRequestedPieceCount(),
             connected,
-            peers.size(),
+            getSwarmHandler().getPeerCount(),
             String.format("%.2f", dl / 1024.0),
             String.format("%.2f", ul / 1024.0),});
-        /*
-         for (SharingPeer peer : peers.values()) {
-         Piece piece = peer.getRequestedPiece();
-         logger.debug("  | {} {}",
-         peer,
-         piece != null
-         ? "(downloading " + piece + ")"
-         : "");
-         }
-         */
+        getSwarmHandler().info();
     }
 
     /**
@@ -610,27 +597,11 @@ public class TorrentHandler {
 
     public void start() {
         trackerHandler.start();
+        swarmHandler.start();
     }
 
     public void stop() {
         trackerHandler.stop();
+        swarmHandler.stop();
     }
-
-    /*
-     * Reset peers download and upload rates.
-     *
-     * <p>
-     * This method is called every RATE_COMPUTATION_ITERATIONS to reset the
-     * download and upload rates of all peers. This contributes to making the
-     * download and upload rate computations rolling averages every
-     * UNCHOKING_FREQUENCY * RATE_COMPUTATION_ITERATIONS seconds (usually 20
-     * seconds).
-     * </p>
-     private void tick() {
-     for (SharingPeer peer : this.peers.values()) {
-     peer.getDLRate().tick();
-     peer.getULRate().tick();
-     }
-     }
-     */
 }

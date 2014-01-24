@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.io.PeerMessage;
+import java.io.IOException;
 import java.util.EventListener;
 import javax.annotation.Nonnull;
 
@@ -27,5 +28,5 @@ import javax.annotation.Nonnull;
  */
 public interface PeerMessageListener extends EventListener {
 
-    public void handleMessage(@Nonnull PeerMessage msg);
+    public void handleMessage(@Nonnull PeerMessage msg) throws IOException;
 }

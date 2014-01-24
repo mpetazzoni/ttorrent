@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
+import com.google.common.collect.Iterables;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
 
@@ -25,12 +26,13 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import io.netty.channel.Channel;
+import io.netty.util.internal.ConcurrentSet;
+import io.netty.util.internal.PlatformDependent;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -39,10 +41,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -84,7 +86,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(SwarmHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SwarmHandler.class);
     /** Peers unchoking frequency, in seconds. Current BitTorrent specification
      * recommends 10 seconds to avoid choking fibrilation. */
     private static final int UNCHOKE_DELAY = 10;
@@ -104,7 +106,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     private static final float END_GAME_COMPLETION_RATIO = 0.95f;
     private final TorrentHandler torrent;
     // Keys are InetSocketAddress or HexPeerId
-    private final ConcurrentMap<Object, PeerHandler> peers = new ConcurrentHashMap<Object, PeerHandler>();
+    ConcurrentSet<Object> x = new ConcurrentSet<Object>();
+    private final ConcurrentSet<SocketAddress> peers = new ConcurrentSet<SocketAddress>();
+    private final ConcurrentMap<Object, PeerHandler> connectedPeers = PlatformDependent.newConcurrentHashMap();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
     @GuardedBy("lock")
@@ -114,6 +118,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // We only care about global rarest pieces for peer selection or opportunistic unchoking.
     // private final BitSet rarestPieces;
     // private int rarestPiecesAvailability = 0;
+    @GuardedBy("future")
+    private Future<?> future;
     @GuardedBy("lock")
     private long optimisticUnchokeTime = 0;
     private final Object lock = new Object();
@@ -145,30 +151,31 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         return getClient().getEnvironment().getRandom();
     }
 
-    @Nonnull
-    public ConcurrentMap<? extends Object, ? extends PeerHandler> getPeers() {
-        return peers;
-    }
-
     @Nonnegative
-    private int getPeerCount() {
+    public int getPeerCount() {
         return peers.size();
     }
 
-    @Nonnegative
-    private int getConnectedPeerCount() {
-        int count = 0;
-        for (Map.Entry<? extends Object, ? extends PeerHandler> e : peers.entrySet()) {
-            PeerHandler peer = e.getValue();
-            // Avoid double-counting peers.
-            if (e.getKey() instanceof SocketAddress)
-                if (peer.isConnected())
-                    count++;
-        }
-        return count;
+    public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
+        LOG.info("Adding peers " + peerAddresses);
+        Iterables.addAll(this.peers, peerAddresses);
+        run();
     }
 
-    public void addPeers(@Nonnull Collection<? extends Peer> peers) {
+    @Nonnull
+    public List<? extends PeerHandler> getConnectedPeers() {
+        List<PeerHandler> out = new ArrayList<PeerHandler>(connectedPeers.size());
+        for (Map.Entry<? extends Object, ? extends PeerHandler> e : connectedPeers.entrySet()) {
+            // Avoid double-counting peers.
+            if (e.getKey() instanceof SocketAddress)
+                out.add(e.getValue());
+        }
+        return out;
+    }
+
+    @Nonnegative
+    public int getConnectedPeerCount() {
+        return connectedPeers.size();
     }
 
     /**
@@ -233,7 +240,21 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     public void connect(SocketAddress address) {
         // TODO
+        LOG.info("Attempting to connect to {} for {}", address, torrent);
         getClient().getPeerClient().connect(this, torrent.getInfoHash(), address);
+    }
+
+    public void start() {
+        synchronized (lock) {
+            future = getClient().getEnvironment().getSchedulerService().schedule(this, 1, TimeUnit.SECONDS);
+        }
+    }
+
+    public void stop() {
+        synchronized (lock) {
+            if (future != null)
+                future.cancel(true);
+        }
     }
 
     // TODO: Periodic / step function.
@@ -247,6 +268,21 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 optimistic = true;
             }
         }
+
+        if (!torrent.isComplete()) {
+            for (SocketAddress peer : peers) {
+                // Attempt to connect to the peer if and only if:
+                //   - We're not already connected or connecting to it;
+                //   - We're not a seeder (we leave the responsibility
+                //	   of connecting to peers that need to download
+                //     something).
+                if (connectedPeers.containsKey(peer))
+                    continue;
+
+                connect(peer);
+            }
+        }
+
         unchokePeers(optimistic);
     }
 
@@ -310,16 +346,16 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // Build a set of all connected peers, we don't care about peers we're
         // not connected to.
         List<PeerHandler> bound = new ArrayList<PeerHandler>();
-        for (PeerHandler peer : peers.values())
-            if (peer.isConnected() && peer.isChoked() && peer.isInterested())
+        for (PeerHandler peer : connectedPeers.values())
+            if (peer.isChoked() && peer.isInterested())
                 bound.add(peer);
 
         if (bound.isEmpty()) {
-            logger.trace("No connected peers, skipping unchoking.");
+            LOG.trace("No connected peers, skipping unchoking.");
             return;
         }
 
-        logger.trace("Running unchokePeers() on {} connected peers.", bound.size());
+        LOG.trace("Running unchokePeers() on {} connected peers.", bound.size());
         Collections.sort(bound, getPeerRateComparator());
 
         int downloaders = 0;
@@ -351,7 +387,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
             for (PeerHandler peer : choked) {
                 if (optimistic && peer == randomPeer) {
-                    logger.debug("Optimistic unchoke of {}.", peer);
+                    LOG.debug("Optimistic unchoke of {}.", peer);
                     continue;
                 }
 
@@ -398,13 +434,14 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         return torrent.getAvailablePieces();
     }
 
-    public void addPartiallyDownloadedPiece(@Nonnull PieceHandler piece) {
+    // TODO: Call this.
+    private void addPartiallyDownloadedPiece(@Nonnull Iterable<? extends PieceHandler> pieces) {
         synchronized (lock) {
-            partialPieces.add(piece);
+            Iterables.addAll(partialPieces, pieces);
         }
     }
 
-    @CheckForNull
+    @Override
     public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer) {
         BitSet interesting = peer.getAvailablePieces();
 
@@ -417,7 +454,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             while (it.hasNext()) {
                 PieceHandler piece = it.next();
                 if (interesting.get(piece.getIndex())) {
-                    logger.trace("Peer {} receiving partial piece {}",
+                    LOG.trace("Peer {} receiving partial piece {}",
                             peer, piece);
                     it.remove();
                     return piece;
@@ -426,7 +463,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
             torrent.andNotCompletedPieces(interesting);
             this.andNotRequestedPieces(interesting);
-            logger.trace("Peer {} has {} interesting piece(s).",
+            LOG.trace("Peer {} has {} interesting piece(s).",
                     peer, interesting.cardinality());
 
             // If we didn't find interesting pieces, we need to check if we're in
@@ -434,18 +471,18 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             // to try to speed up the end.
             if (interesting.isEmpty()) {
                 if (torrent.getCompletedPieceCount() < END_GAME_COMPLETION_RATIO * torrent.getPieceCount()) {
-                    logger.trace("Not far along enough to warrant end-game mode.");
+                    LOG.trace("Not far along enough to warrant end-game mode.");
                     return null;
                 }
 
                 interesting = peer.getAvailablePieces();
                 torrent.andNotCompletedPieces(interesting);
-                logger.trace("Possible end-game, we're about to request a piece "
+                LOG.trace("Possible end-game, we're about to request a piece "
                         + "that was already requested from another peer.");
             }
 
             if (interesting.isEmpty()) {
-                logger.trace("No interesting piece from {}!", peer);
+                LOG.trace("No interesting piece from {}!", peer);
                 return null;
             }
 
@@ -465,13 +502,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                         break SEARCH;
                     }
                 }
-                logger.trace("No rare piece from {}!", peer);
+                LOG.trace("No rare piece from {}!", peer);
                 return null;
             }
 
             requestedPieces.set(rarestPiece.getIndex());
 
-            logger.trace("Requesting {} from {}, we now have {} "
+            LOG.trace("Requesting {} from {}, we now have {} "
                     + "outstanding request(s): {}",
                     new Object[]{
                 rarestPiece,
@@ -521,37 +558,29 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @CheckForNull on {@link Peer#getPeerId()}.
      */
     @Override
-    public PeerHandler handlePeerConnectionCreated(@Nonnull SocketAddress remoteAddress, @Nonnull byte[] remotePeerId) {
+    public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] remotePeerId) {
+        SocketAddress remoteAddress = channel.remoteAddress();
         String remoteHexPeerId = Torrent.byteArrayToHexString(remotePeerId);
 
         // Peer peer = new Peer(remoteAddress, remotePeerId);
-        logger.trace("Searching for {}...", new Peer(remoteAddress, remotePeerId));
+        LOG.trace("Searching for {}...", new Peer(remoteAddress, remotePeerId));
 
-        synchronized (this.peers) {
-            PeerHandler peerHandler = peers.get(remoteHexPeerId);
-            if (peerHandler != null) {
-                logger.trace("Found peer (by peer ID): {}.", peerHandler);
-                peers.put(remoteAddress, peerHandler);
-                peers.put(remoteHexPeerId, peerHandler);
-                return peerHandler;
-            }
-
-            peerHandler = peers.get(remoteAddress);
-            if (peerHandler != null) {
-                logger.trace("Recording peer ID {} for {}.", remoteHexPeerId, peerHandler);
-                peers.put(remoteHexPeerId, peerHandler);
-                logger.debug("Found peer (by host ID): {}.", peerHandler);
-                return peerHandler;
-            }
-
-            peerHandler = new PeerHandler(remotePeerId, this, this);
-            logger.trace("Created new peer: {}.", peerHandler);
-
-            this.peers.put(remoteAddress, peerHandler);
-            this.peers.put(remoteHexPeerId, peerHandler);
-
-            return peerHandler;
+        PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
+        if (peerHandler != null) {
+            LOG.trace("Found peer (by peer ID): {}.", peerHandler);
+            return null;
         }
+
+        peerHandler = connectedPeers.get(remoteAddress);
+        if (peerHandler != null) {
+            LOG.debug("Found peer (by host ID): {}.", peerHandler);
+            return null;
+        }
+
+        peerHandler = new PeerHandler(remotePeerId, channel, this, this);
+        LOG.trace("Created new peer: {}.", peerHandler);
+
+        return peerHandler;
     }
 
     /**
@@ -572,32 +601,25 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @see com.turn.ttorrent.client.peer.SharingPeer
      */
     @Override
-    public void handlePeerConnectionReady(Channel channel, PeerHandler peer) {
-        logger.info("Handling new peer connection with {}...", peer);
+    public void handlePeerConnectionReady(PeerHandler peer) {
+        LOG.info("Handling new peer connection with {}...", peer);
 
         try {
-            synchronized (peer) {
-                if (peer.isConnected()) {
-                    logger.info("Already connected with {}, closing new link.",
-                            peer);
-                    channel.close();
-                    return;
-                }
-
-                peer.setChannel(channel);
-            }
-
-            logger.debug("New peer connection with {} [{}/{}].",
+            LOG.debug("New peer connection with {} [{}/{}].",
                     new Object[]{
                 peer,
                 getConnectedPeerCount(),
                 getPeerCount()
             });
 
+            PeerHandler prev_a = connectedPeers.put(peer.getRemoteAddress(), peer);
+            PeerHandler prev_h = connectedPeers.put(peer.getHexPeerId(), peer);
+            // TODO: Close prev_a and prev_h.
+
             peer.run();
             run();
         } catch (Exception e) {
-            logger.warn("Could not handle new peer connection "
+            LOG.warn("Could not handle new peer connection "
                     + "with {}: {}", peer, e.getMessage());
         }
     }
@@ -615,14 +637,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     @Override
     public void handlePeerConnectionFailed(SocketAddress remoteAddress, Throwable cause) {
-        logger.warn("Could not connect to {}: {}.", remoteAddress, cause.getMessage());
-        synchronized (peers) {
-            PeerHandler peerHandler = peers.remove(remoteAddress);
+        LOG.warn("Could not connect to {}: {}.", remoteAddress, cause.getMessage());
+        synchronized (connectedPeers) {
+            PeerHandler peerHandler = connectedPeers.remove(remoteAddress);
+            if (peerHandler != null)
+                connectedPeers.remove(peerHandler.getHexPeerId(), peerHandler);
         }
     }
 
     /** PeerActivityListener handler(s). *************************************/
     private void handlePeerPipelineDiscard(PeerHandler peer) {
+        peer.cancelRequestsSent();
         /*
          synchronized (lock) {
          Piece piece = peer.getRequestedPiece();
@@ -648,7 +673,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void handlePeerChoking(PeerHandler peer) {
         handlePeerPipelineDiscard(peer);
 
-        logger.trace("Peer {} choked, we now have {} outstanding "
+        LOG.trace("Peer {} choked, we now have {} outstanding "
                 + "request(s): {}",
                 new Object[]{
             peer,
@@ -669,7 +694,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     @Override
     public void handlePeerUnchoking(PeerHandler peer) {
-        logger.trace("Peer {} is ready and has {} piece(s).",
+        LOG.trace("Peer {} is ready and has {} piece(s).",
                 peer, peer.getAvailablePieceCount());
     }
 
@@ -688,7 +713,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void handlePieceAvailability(PeerHandler peer, int piece) {
         Piece p = torrent.getPiece(piece);
         /* int availability = */ p.seenAt(peer);
-        logger.trace("Peer {} now has {} [{}/{}].",
+        LOG.trace("Peer {} now has {} [{}/{}].",
                 new Object[]{
             peer,
             piece,
@@ -696,7 +721,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             this.torrent.getPieceCount()
         });
 
-        logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+        LOG.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
                 new Object[]{
             peer,
             peer.getAvailablePieceCount(),
@@ -724,7 +749,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             BitSet prevAvailablePieces,
             BitSet availablePieces) {
 
-        logger.trace("Recorded message from {} with {} "
+        LOG.trace("Recorded message from {} with {} "
                 + "pieces(s) [{}/{}].",
                 new Object[]{
             peer,
@@ -759,7 +784,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
          peer.interesting();
          */
 
-        logger.trace("Peer {} contributes {} piece(s) ({} interesting) "
+        LOG.trace("Peer {} contributes {} piece(s) ({} interesting) "
                 + "[completed={}; available={}/{}].",
                 new Object[]{
             peer,
@@ -826,7 +851,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             // might be called before the torrent's piece completion
             // handler is.
             this.torrent.setCompletedPiece(piece);
-            logger.debug("Completed download of {} from {}. "
+            LOG.debug("Completed download of {} from {}. "
                     + "We now have {}/{} pieces",
                     new Object[]{
                 piece,
@@ -837,30 +862,29 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
             // Send a HAVE message to all connected peers
             PeerMessage have = new PeerMessage.HaveMessage(piece);
-            for (PeerHandler remote : peers.values())
-                if (remote.isConnected())
-                    remote.send(have);
+            for (PeerHandler remote : connectedPeers.values())
+                remote.send(have);
         } else {
-            logger.warn("Downloaded piece#{} from {} was not valid ;-(",
+            LOG.warn("Downloaded piece#{} from {} was not valid ;-(",
                     piece, peer);
         }
 
         if (this.torrent.isComplete()) {
-            logger.info("Last piece validated and completed, finishing download...");
+            LOG.info("Last piece validated and completed, finishing download...");
 
             // Cancel all remaining outstanding requests
-            for (PeerHandler remote : peers.values()) {
+            for (PeerHandler remote : connectedPeers.values()) {
                 int requests = remote.cancelRequestsSent();
-                logger.info("Cancelled {} remaining pending requests on {}.",
+                LOG.info("Cancelled {} remaining pending requests on {}.",
                         requests, remote);
             }
 
             // TODO: This need locking.
             this.torrent.finish();
-            logger.info("Download is complete and finalized.");
+            LOG.info("Download is complete and finalized.");
         }
 
-        logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
+        LOG.trace("We now have {} piece(s) and {} outstanding request(s): {}",
                 new Object[]{
             torrent.getCompletedPieceCount(),
             getRequestedPieceCount(),
@@ -880,7 +904,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     @Override
     public void handlePeerDisconnected(PeerHandler peer) {
-        logger.debug("Peer {} disconnected, [{}/{}].",
+        LOG.debug("Peer {} disconnected, [{}/{}].",
                 new Object[]{
             peer,
             getConnectedPeerCount(),
@@ -898,7 +922,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
         peer.reset();
 
-        logger.debug("Peer {} went away with {} piece(s) [completed={}; available={}/{}]",
+        LOG.debug("Peer {} went away with {} piece(s) [completed={}; available={}/{}]",
                 new Object[]{
             peer,
             peer.getAvailablePieceCount(),
@@ -906,7 +930,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             torrent.getAvailablePieceCount(),
             torrent.getPieceCount()
         });
-        logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
+        LOG.trace("We now have {} piece(s) and {} outstanding request(s): {}",
                 new Object[]{
             torrent.getCompletedPieceCount(),
             getRequestedPieceCount(),
@@ -916,8 +940,15 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
     @Override
     public void handleIOException(PeerHandler peer, IOException ioe) {
-        logger.warn("I/O error while exchanging data with " + peer + ", "
+        LOG.warn("I/O error while exchanging data with " + peer + ", "
                 + "closing connection with it!", ioe);
-        peer.setChannel(null);
+        connectedPeers.remove(peer.getHexPeerId(), peer);
+        connectedPeers.remove(peer.getRemoteAddress(), peer);
+    }
+
+    public void info() {
+        for (PeerHandler peer : connectedPeers.values()) {
+            LOG.debug("  | {}", peer);
+        }
     }
 }

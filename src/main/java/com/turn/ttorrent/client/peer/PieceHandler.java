@@ -69,7 +69,16 @@ public class PieceHandler {
 
     public static enum Reception {
 
-        IGNORED, INCOMPLETE, VALID, INVALID;
+        /** Corresponding request not found. */
+        WAT,
+        /** Not required. */
+        IGNORED,
+        /** Thankyou, but piece not complete. */
+        INCOMPLETE,
+        /** Thank you, piece complete. */
+        VALID,
+        /** Thank you, but you sent me a bum piece. */
+        INVALID;
     }
 
     /**
@@ -126,6 +135,11 @@ public class PieceHandler {
 
         public long getRequestTime() {
             return requestTime;
+        }
+
+        // TODO: Make public, and call when appropriate.
+        private void cancel() {
+            // TODO: Add to partial set.
         }
 
         @Nonnull

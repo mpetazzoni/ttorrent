@@ -18,7 +18,6 @@ import io.netty.channel.local.LocalChannel;
 import io.netty.channel.local.LocalEventLoopGroup;
 import io.netty.channel.local.LocalServerChannel;
 import java.io.File;
-import java.net.InetSocketAddress;
 import java.util.Arrays;
 import org.easymock.EasyMock;
 import org.junit.Test;
@@ -36,19 +35,8 @@ public class PeerHandlerTest {
     @Test
     public void testPeerHandler() throws Exception {
         byte[] peerId = Arrays.copyOf(new byte[]{1, 2, 3, 4, 5, 6}, 20);
-        InetSocketAddress peerAddress = new InetSocketAddress(1234);
         File dir = TorrentTestUtils.newTorrentDir("PeerHandlerTest-server");
         Torrent torrent = TorrentTestUtils.newTorrent(dir, 12345, true);
-        TestPeerPieceProvider provider = new TestPeerPieceProvider(torrent);
-        PeerActivityListener activityListener = EasyMock.createMock(PeerActivityListener.class);
-        PeerHandler peerHandler = new PeerHandler(peerId, provider, activityListener);
-
-        PeerConnectionListener connectionListener = EasyMock.createMock(PeerConnectionListener.class);
-
-        EasyMock.reset(activityListener, connectionListener);
-        EasyMock.replay(activityListener, connectionListener);
-        peerHandler.run();
-        EasyMock.verify(activityListener, connectionListener);
 
         LocalAddress address = new LocalAddress("test");
         LocalEventLoopGroup group = new LocalEventLoopGroup();
@@ -62,6 +50,8 @@ public class PeerHandlerTest {
             b.bind(address).sync();
         }
 
+        PeerConnectionListener connectionListener = EasyMock.createMock(PeerConnectionListener.class);
+
         Channel channel;
         CLIENT:
         {
@@ -72,9 +62,12 @@ public class PeerHandlerTest {
             channel = b.connect(address).sync().channel();
         }
 
+        TestPeerPieceProvider provider = new TestPeerPieceProvider(torrent);
+        PeerActivityListener activityListener = EasyMock.createMock(PeerActivityListener.class);
+        PeerHandler peerHandler = new PeerHandler(peerId, channel, provider, activityListener);
+
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
-        peerHandler.setChannel(channel);
         peerHandler.run();
         EasyMock.verify(activityListener, connectionListener);
 

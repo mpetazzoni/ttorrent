@@ -22,6 +22,7 @@ import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.common.Torrent;
 import io.netty.channel.Channel;
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Iterator;
@@ -80,6 +81,7 @@ public class PeerHandler implements PeerMessageListener {
         CHOKING, INTERESTED;
     }
     private final byte[] peerId;
+    private final Channel channel;
     private final PeerPieceProvider provider;
     private final PeerActivityListener listener;
     @GuardedBy("lock")
@@ -92,9 +94,9 @@ public class PeerHandler implements PeerMessageListener {
     private final EWMA upload = new EWMA(60);
     private final Object lock = new Object();
     @GuardedBy("lock")
-    private Channel channel;
-    @GuardedBy("lock")
     private boolean bitfieldSent;
+    @GuardedBy("lock")
+    private long keepaliveSent;
     @Nonnull
     @GuardedBy("lock")
     private PieceHandler requestsSource;
@@ -116,9 +118,11 @@ public class PeerHandler implements PeerMessageListener {
     // Deliberately specified in terms of interfaces, for testing.
     public PeerHandler(
             @Nonnull byte[] peerId,
+            @Nonnull Channel channel,
             @Nonnull PeerPieceProvider provider,
             @Nonnull PeerActivityListener listener) {
         this.peerId = peerId;
+        this.channel = channel;
         this.provider = provider;
         this.listener = listener;
 
@@ -157,6 +161,11 @@ public class PeerHandler implements PeerMessageListener {
     @Nonnull
     public String getHexPeerId() {
         return Torrent.byteArrayToHexString(getPeerId());
+    }
+
+    @Nonnull
+    public SocketAddress getRemoteAddress() {
+        return channel.remoteAddress();
     }
 
     @Nonnull
@@ -260,31 +269,8 @@ public class PeerHandler implements PeerMessageListener {
         return getFlag(Flag.INTERESTED);
     }
 
-    @CheckForNull
-    public Channel getChannel() {
-        synchronized (lock) {
-            return channel;
-        }
-    }
-
-    public void setChannel(@CheckForNull Channel channel) {
-        synchronized (lock) {
-            if (this.channel != null)
-                throw new IllegalStateException("Already connected.");
-            this.channel = channel;
-        }
-    }
-
-    public boolean isConnected() {
-        return getChannel() != null;
-    }
-
     public void close() {
-        synchronized (lock) {
-            if (channel != null)
-                channel.close();
-            channel = null;
-        }
+        channel.close();
     }
 
     /**
@@ -298,12 +284,7 @@ public class PeerHandler implements PeerMessageListener {
      * exchange.
      */
     public void send(@Nonnull PeerMessage message) throws IllegalStateException {
-        Channel c = getChannel();
-        if (c != null) {
-            c.write(message);
-        } else {
-            LOG.warn("Attempting to send a message to non-connected peer {}! ({})", this, message);
-        }
+        channel.write(message);
     }
 
     @GuardedBy("lock")
@@ -360,6 +341,7 @@ public class PeerHandler implements PeerMessageListener {
      * </p>
      */
     public int cancelRequestsSent() {
+        // Set<PieceHandler> pieces = new HashSet<PieceHandler>();
         synchronized (lock) {
             int count = 0;
             for (PeerMessage.RequestMessage request : requestsSent) {
@@ -381,15 +363,9 @@ public class PeerHandler implements PeerMessageListener {
     // TODO: Do we want to make sure only one person enters this FSM at a time?
     public void run() throws IOException {
         LOG.trace("Step function in " + this);
-        Channel c;
+        Channel c = channel;
         // This locking could be more fine-grained.
         synchronized (lock) {
-            c = getChannel();   // Share the reentrant lock.
-            if (c == null) {
-                LOG.warn("Peer {} taking no action: Not connected.", this);
-                return;
-            }
-
             BITFIELD:
             {
                 if (!c.isWritable()) {
@@ -485,140 +461,139 @@ public class PeerHandler implements PeerMessageListener {
      * @param msg The incoming, parsed message.
      */
     @Override
-    public void handleMessage(PeerMessage msg) {
-        try {
-            switch (msg.getType()) {
-                case KEEP_ALIVE:
-                    // Nothing to do, we're keeping the connection open anyways.
-                    break;
+    public void handleMessage(PeerMessage msg) throws IOException {
+        switch (msg.getType()) {
+            case KEEP_ALIVE:
+                // Nothing to do, we're keeping the connection open anyways.
+                break;
 
-                case CHOKE:
-                    setFlag(Flag.CHOKING, true);
-                    LOG.trace("Peer {} is no longer accepting requests.", this);
-                    this.cancelRequestsSent();
-                    listener.handlePeerChoking(this);
-                    break;
+            case CHOKE:
+                setFlag(Flag.CHOKING, true);
+                LOG.trace("Peer {} is no longer accepting requests.", this);
+                cancelRequestsSent();
+                listener.handlePeerChoking(this);
+                break;
 
-                case UNCHOKE:
-                    setFlag(Flag.CHOKING, false);
-                    LOG.trace("Peer {} is now accepting requests.", this);
-                    listener.handlePeerUnchoking(this);
-                    run();  // We might want something.
-                    break;
+            case UNCHOKE:
+                setFlag(Flag.CHOKING, false);
+                LOG.trace("Peer {} is now accepting requests.", this);
+                listener.handlePeerUnchoking(this);
+                run();  // We might want something.
+                break;
 
-                case INTERESTED:
-                    setFlag(Flag.INTERESTED, true);
-                    LOG.trace("Peer {} is now interested.", this);
-                    break;
+            case INTERESTED:
+                setFlag(Flag.INTERESTED, true);
+                LOG.trace("Peer {} is now interested.", this);
+                break;
 
-                case NOT_INTERESTED:
-                    setFlag(Flag.INTERESTED, false);
-                    LOG.trace("Peer {} is no longer interested.", this);
-                    break;
+            case NOT_INTERESTED:
+                setFlag(Flag.INTERESTED, false);
+                LOG.trace("Peer {} is no longer interested.", this);
+                break;
 
-                case HAVE: {
-                    // Record this peer has the given piece
-                    PeerMessage.HaveMessage message = (PeerMessage.HaveMessage) msg;
+            case HAVE: {
+                // Record this peer has the given piece
+                PeerMessage.HaveMessage message = (PeerMessage.HaveMessage) msg;
 
-                    synchronized (lock) {
-                        this.availablePieces.set(message.getPiece());
-                    }
-
-                    listener.handlePieceAvailability(this, message.getPiece());
-                    run(); // We might now be interested.
-                    break;
+                synchronized (lock) {
+                    this.availablePieces.set(message.getPiece());
                 }
 
-                case BITFIELD: {
-                    // Augment the hasPiece bit field from this BITFIELD message
-                    PeerMessage.BitfieldMessage message = (PeerMessage.BitfieldMessage) msg;
-                    BitSet prevAvailablePieces;
-
-                    synchronized (lock) {
-                        prevAvailablePieces = getAvailablePieces();
-                        availablePieces.clear();
-                        availablePieces.or(message.getBitfield());
-                    }
-
-                    // The copy from the message is independent, and thus threadsafe.
-                    listener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
-                    run();  // We might now be interested.
-                    break;
-                }
-
-                case REQUEST: {
-                    PeerMessage.RequestMessage message = (PeerMessage.RequestMessage) msg;
-
-                    // If we are choking from this peer and it still sends us
-                    // requests, it is a violation of the BitTorrent protocol.
-                    // Similarly, if the peer requests a piece we don't have, it
-                    // is a violation of the BitTorrent protocol. In these
-                    // situation, terminate the connection.
-                    if (isChoked()) {
-                        // TODO: This isn't synchronous. We need to remember WHEN we choked them.
-                        LOG.warn("Peer {} ignored choking, "
-                                + "terminating exchange.", this);
-                        close();
-                        break;
-                    }
-
-                    if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
-                        LOG.warn("Peer {} requested a block too big, "
-                                + "terminating exchange.", this);
-                        close();
-                        break;
-                    }
-
-                    synchronized (lock) {
-                        if (requestsReceived.size() > MAX_REQUESTS_RCVD) {
-                            LOG.warn("Peer {} requested too many blocks; dropping {}",
-                                    this, message);
-                            break;
-                        }
-
-                        requestsReceived.add(message);
-                        run();
-                    }
-
-                    break;
-                }
-
-                case PIECE: {
-                    // Record the incoming piece block.
-
-                    // Should we keep track of the requested pieces and act when we
-                    // get a piece we didn't ask for, or should we just stay
-                    // greedy?
-                    PeerMessage.PieceMessage message = (PeerMessage.PieceMessage) msg;
-                    int blockLength = message.getLength();
-
-                    // Remove the corresponding request from the request queue to
-                    // make room for next block requests.
-                    PieceHandler.AnswerableRequestMessage request = removeRequestSent(message);
-                    // TODO: Not found.
-                    PieceHandler.Reception reception = request.answer(message);
-
-                    download.update(blockLength);
-                    listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
-                    switch (reception) {
-                        case VALID:
-                        case INVALID:
-                            listener.handlePieceCompleted(this, message.getPiece());
-                            break;
-                    }
-
-                    run();
-                    break;
-                }
-
-                case CANCEL: {
-                    PeerMessage.CancelMessage message = (PeerMessage.CancelMessage) msg;
-                    removeRequestReceived(message);
-                    break;
-                }
+                listener.handlePieceAvailability(this, message.getPiece());
+                run(); // We might now be interested.
+                break;
             }
-        } catch (IOException ioe) {
-            listener.handleIOException(this, ioe);
+
+            case BITFIELD: {
+                // Augment the hasPiece bit field from this BITFIELD message
+                PeerMessage.BitfieldMessage message = (PeerMessage.BitfieldMessage) msg;
+                BitSet prevAvailablePieces;
+
+                synchronized (lock) {
+                    prevAvailablePieces = getAvailablePieces();
+                    availablePieces.clear();
+                    availablePieces.or(message.getBitfield());
+                }
+
+                // The copy from the message is independent, and thus threadsafe.
+                listener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
+                run();  // We might now be interested.
+                break;
+            }
+
+            case REQUEST: {
+                PeerMessage.RequestMessage message = (PeerMessage.RequestMessage) msg;
+
+                // If we are choking from this peer and it still sends us
+                // requests, it is a violation of the BitTorrent protocol.
+                // Similarly, if the peer requests a piece we don't have, it
+                // is a violation of the BitTorrent protocol. In these
+                // situation, terminate the connection.
+                if (isChoked()) {
+                    // TODO: This isn't synchronous. We need to remember WHEN we choked them.
+                    LOG.warn("Peer {} ignored choking, "
+                            + "terminating exchange.", this);
+                    close();
+                    break;
+                }
+
+                if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
+                    LOG.warn("Peer {} requested a block too big, "
+                            + "terminating exchange.", this);
+                    close();
+                    break;
+                }
+
+                synchronized (lock) {
+                    if (requestsReceived.size() > MAX_REQUESTS_RCVD) {
+                        LOG.warn("Peer {} requested too many blocks; dropping {}",
+                                this, message);
+                        break;
+                    }
+
+                    requestsReceived.add(message);
+                    run();
+                }
+
+                break;
+            }
+
+            case PIECE: {
+                // Record the incoming piece block.
+
+                // Should we keep track of the requested pieces and act when we
+                // get a piece we didn't ask for, or should we just stay
+                // greedy?
+                PeerMessage.PieceMessage message = (PeerMessage.PieceMessage) msg;
+                int blockLength = message.getLength();
+
+                // Remove the corresponding request from the request queue to
+                // make room for next block requests.
+                PieceHandler.AnswerableRequestMessage request = removeRequestSent(message);
+                PieceHandler.Reception reception = PieceHandler.Reception.WAT;
+                if (request != null)
+                    request.answer(message);
+                else
+                    LOG.warn("Response received to unsent request: {}", message);
+
+                download.update(blockLength);
+                listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
+                switch (reception) {
+                    case VALID:
+                    case INVALID:
+                        listener.handlePieceCompleted(this, message.getPiece());
+                        break;
+                }
+
+                run();
+                break;
+            }
+
+            case CANCEL: {
+                PeerMessage.CancelMessage message = (PeerMessage.CancelMessage) msg;
+                removeRequestReceived(message);
+                break;
+            }
         }
     }
 

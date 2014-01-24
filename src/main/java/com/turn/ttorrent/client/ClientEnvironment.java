@@ -15,9 +15,12 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.util.Arrays;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -33,9 +36,25 @@ import javax.annotation.Nonnull;
  */
 public class ClientEnvironment {
 
+    public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
     private final Random random = new Random();
+    private final byte[] peerId;
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
+
+    public ClientEnvironment() {
+        String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+        this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
+
+    }
+
+    /**
+     * Get this client's peer specification.
+     */
+    @Nonnull
+    public byte[] getPeerId() {
+        return peerId;
+    }
 
     public void start() {
         {
