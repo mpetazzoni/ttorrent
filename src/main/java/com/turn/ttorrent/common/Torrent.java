@@ -446,4 +446,16 @@ public class Torrent {
     public static String byteArrayToHexString(@Nonnull byte[] bytes) {
         return new String(Hex.encodeHex(bytes, false));
     }
+
+    @Nonnull
+    public static String byteArrayToText(@Nonnull byte[] bytes) {
+        StringBuilder buf = new StringBuilder();
+        for (byte b : bytes) {
+            if (Character.isValidCodePoint(b))
+                buf.append((char) b);
+            else
+                buf.append("\\x").append((int) b);
+        }
+        return buf.toString();
+    }
 }

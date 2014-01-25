@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -51,8 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TrackedTorrent {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(TrackedTorrent.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TrackedTorrent.class);
     /** Minimum announce interval requested from peers, in seconds. */
     public static final int MIN_ANNOUNCE_INTERVAL_SECONDS = 5;
     /** Default number of peers included in a tracker response. */
@@ -99,6 +99,7 @@ public class TrackedTorrent {
      *
      * @param peerId The hexadecimal representation of the peer's ID.
      */
+    @CheckForNull
     public TrackedPeer getPeer(@Nonnull SocketAddress address) {
         return peers.get(address);
     }
@@ -176,12 +177,15 @@ public class TrackedTorrent {
      *
      * @param interval New announce interval, in seconds.
      */
-    public void setAnnounceInterval(int interval) {
+    public void setAnnounceInterval(int interval, TimeUnit unit) {
         if (interval <= 0) {
             throw new IllegalArgumentException("Invalid announce interval");
         }
 
-        this.announceInterval = interval;
+        long announceInterval = unit.toSeconds(interval);
+        if (announceInterval < 0 || announceInterval > Integer.MAX_VALUE)
+            throw new IllegalArgumentException("Illegal (overflow) timeunit " + announceInterval);
+        this.announceInterval = (int) announceInterval;
     }
 
     /**
@@ -251,7 +255,7 @@ public class TrackedTorrent {
         for (TrackedPeer candidate : candidates) {
             // Collect unfresh peers, and obviously don't serve them as well.
             if (!candidate.isFresh(now)) {
-                logger.debug("Collecting stale peer {}...", candidate.getPeerAddress());
+                LOG.debug("Collecting stale peer {}...", candidate.getPeerAddress());
                 peers.remove(candidate.getPeerAddress(), candidate);
                 continue;
             }
@@ -259,7 +263,7 @@ public class TrackedTorrent {
             // Don't include the requesting peer in the answer.
             if (client.getPeerAddress().equals(candidate.getPeerAddress())) {
                 if (!client.equals(candidate)) {
-                    logger.debug("Collecting superceded peer {}...", candidate);
+                    LOG.debug("Collecting superceded peer {}...", candidate);
                     removePeer(candidate.getPeerAddress());
                 }
                 continue;
@@ -270,6 +274,7 @@ public class TrackedTorrent {
                 break;
         }
 
+        LOG.trace("Some peers are {}", out);
         return out;
     }
 

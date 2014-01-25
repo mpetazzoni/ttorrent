@@ -163,7 +163,7 @@ public class TrackerService implements Container {
 
         AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
 
-        InetSocketAddress peerAddress = request.getClientAddress();
+        InetSocketAddress peerAddress = announceRequest.getPeerAddress();
         if (!Peer.isValidIpAddress(peerAddress))
             peerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerAddress.getPort());
         TrackedPeer client = torrent.getPeer(peerAddress);

@@ -27,6 +27,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import java.net.SocketAddress;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -57,7 +59,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class TorrentHandler {
+public class TorrentHandler implements TorrentMetadataProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(TorrentHandler.class);
 
@@ -166,7 +168,7 @@ public class TorrentHandler {
         this.client = client;
         this.torrent = torrent;
         this.bucket = bucket;
-        this.trackerHandler = new TrackerHandler(this);
+        this.trackerHandler = new TrackerHandler(client, this);
         this.swarmHandler = new SwarmHandler(this);
     }
 
@@ -190,7 +192,7 @@ public class TorrentHandler {
         return getTorrent().getName();
     }
 
-    @Nonnull
+    @Override
     public byte[] getInfoHash() {
         return getTorrent().getInfoHash();
     }
@@ -218,6 +220,11 @@ public class TorrentHandler {
         return getTorrent().getPieceLength(index);
     }
 
+    @Override
+    public List<? extends List<? extends URI>> getAnnounceList() {
+        return getTorrent().getAnnounceList();
+    }
+
     @Nonnull
     public TrackerHandler getTrackerHandler() {
         return trackerHandler;
@@ -226,6 +233,11 @@ public class TorrentHandler {
     @Nonnull
     public SwarmHandler getSwarmHandler() {
         return swarmHandler;
+    }
+
+    @Override
+    public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
+        getSwarmHandler().addPeers(peerAddresses);
     }
 
     @Nonnull
@@ -376,12 +388,12 @@ public class TorrentHandler {
         this.maxDownloadRate = rate;
     }
 
-    @Nonnegative
+    @Override
     public long getUploaded() {
         return swarmHandler.getUploaded();
     }
 
-    @Nonnegative
+    @Override
     public long getDownloaded() {
         return swarmHandler.getDownloaded();
     }
@@ -389,6 +401,7 @@ public class TorrentHandler {
     /**
      * Get the number of bytes left to download for this torrent.
      */
+    @Override
     public long getLeft() {
         synchronized (lock) {
             long count = getPieceCount() - getCompletedPieceCount();
@@ -526,7 +539,6 @@ public class TorrentHandler {
      * </p>
      */
     public void info() {
-        int connected = getSwarmHandler().getConnectedPeerCount();
         double dl = 0;
         double ul = 0;
         for (PeerHandler peer : getSwarmHandler().getConnectedPeers()) {
@@ -534,18 +546,19 @@ public class TorrentHandler {
             ul += peer.getULRate().rate(TimeUnit.SECONDS);
         }
 
-        logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
+        logger.info("{} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
                 new Object[]{
-            this.getState().name(),
+            getState().name(),
             getCompletedPieceCount(),
             getPieceCount(),
             String.format("%.2f", getCompletion()),
+            getSwarmHandler().getRequestedPieceCount(),
             getAvailablePieceCount(),
-            -42, // getRequestedPieceCount(),
-            connected,
+            getSwarmHandler().getConnectedPeerCount(),
             getSwarmHandler().getPeerCount(),
             String.format("%.2f", dl / 1024.0),
-            String.format("%.2f", ul / 1024.0),});
+            String.format("%.2f", ul / 1024.0)
+        });
         getSwarmHandler().info();
     }
 

@@ -159,7 +159,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
         LOG.info("Adding peers " + peerAddresses);
         Iterables.addAll(this.peers, peerAddresses);
-        run();
+        // run();
     }
 
     @Nonnull
@@ -920,8 +920,6 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
         handlePeerPipelineDiscard(peer);
 
-        peer.reset();
-
         LOG.debug("Peer {} went away with {} piece(s) [completed={}; available={}/{}]",
                 new Object[]{
             peer,
@@ -936,12 +934,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             getRequestedPieceCount(),
             getRequestedPieces() // This has to copy because logger might stringify it asynchronouly.
         });
+
+        connectedPeers.remove(peer.getHexPeerId(), peer);
+        connectedPeers.remove(peer.getRemoteAddress(), peer);
     }
 
     @Override
     public void handleIOException(PeerHandler peer, IOException ioe) {
         LOG.warn("I/O error while exchanging data with " + peer + ", "
                 + "closing connection with it!", ioe);
+        peer.close();
+        // This should be done by handlePeerDisconnected but let's double up.
         connectedPeers.remove(peer.getHexPeerId(), peer);
         connectedPeers.remove(peer.getRemoteAddress(), peer);
     }

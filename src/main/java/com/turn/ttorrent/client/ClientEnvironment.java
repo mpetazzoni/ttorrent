@@ -20,7 +20,6 @@ import com.turn.ttorrent.common.TorrentCreator;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -43,7 +42,10 @@ public class ClientEnvironment {
     private ScheduledExecutorService schedulerService;
 
     public ClientEnvironment() {
-        String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+        // String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+        byte[] tmp = new byte[20];  // Far too many, but who cares.
+        random.nextBytes(tmp);
+        String id = BITTORRENT_ID_PREFIX + Torrent.byteArrayToHexString(tmp);
         this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
 
     }

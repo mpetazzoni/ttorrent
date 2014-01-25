@@ -94,12 +94,12 @@ public class PeerHandler implements PeerMessageListener {
     private final EWMA upload = new EWMA(60);
     private final Object lock = new Object();
     @GuardedBy("lock")
-    private boolean bitfieldSent;
+    private boolean bitfieldSent = false;
     @GuardedBy("lock")
     private long keepaliveSent;
     @Nonnull
     @GuardedBy("lock")
-    private PieceHandler requestsSource;
+    private PieceHandler requestsSource = null;
     @GuardedBy("lock")
     private final Queue<PieceHandler.AnswerableRequestMessage> requestsSent = new LinkedList<PieceHandler.AnswerableRequestMessage>();
     @GuardedBy("lock")
@@ -110,15 +110,20 @@ public class PeerHandler implements PeerMessageListener {
     /**
      * Create a new sharing peer on a given torrent.
      *
+     * <p>
+     * Initially, peers are considered choked, choking, and neither interested
+     * nor interesting.
+     * </p>
+     *
      * @param ip The peer's IP address.
      * @param port The peer's port.
      * @param peer The peer.
      * @param torrent The torrent this peer exchanges with us on.
      */
-    // Deliberately specified in terms of interfaces, for testing.
     public PeerHandler(
             @Nonnull byte[] peerId,
             @Nonnull Channel channel,
+            // Deliberately specified in terms of interfaces, for testing.
             @Nonnull PeerPieceProvider provider,
             @Nonnull PeerActivityListener listener) {
         this.peerId = peerId;
@@ -128,29 +133,10 @@ public class PeerHandler implements PeerMessageListener {
 
         this.availablePieces = new BitSet(provider.getPieceCount());
 
-        reset();
-    }
-
-    /**
-     * Reset the peer state.
-     *
-     * <p>
-     * Initially, peers are considered choked, choking, and neither interested
-     * nor interesting.
-     * </p>
-     */
-    public void reset() {
         setFlag(Flag.CHOKING, true);
         setFlag(Flag.INTERESTING, false);
         setFlag(Flag.CHOKED, true);
         setFlag(Flag.INTERESTED, false);
-
-        synchronized (lock) {
-            this.bitfieldSent = false;
-            this.requestsSource = null;
-            this.requestsSent.clear();
-            this.requestsReceived.clear();
-        }
     }
 
     @Nonnull
@@ -161,6 +147,11 @@ public class PeerHandler implements PeerMessageListener {
     @Nonnull
     public String getHexPeerId() {
         return Torrent.byteArrayToHexString(getPeerId());
+    }
+
+    @Nonnull
+    public String getTextPeerId() {
+        return Torrent.byteArrayToText(getPeerId());
     }
 
     @Nonnull
@@ -600,7 +591,7 @@ public class PeerHandler implements PeerMessageListener {
     @Override
     public String toString() {
         // Channel c = getChannel();
-        return new StringBuilder(getHexPeerId())
+        return new StringBuilder(getTextPeerId())
                 .append(" [")
                 .append((isChoking() ? "C" : "c"))
                 .append((isInterested() ? "I" : "i"))

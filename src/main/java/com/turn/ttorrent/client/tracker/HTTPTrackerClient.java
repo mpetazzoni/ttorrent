@@ -20,6 +20,7 @@ import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.bcodec.StreamBDecoder;
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentHandler;
+import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
@@ -137,7 +138,7 @@ public class HTTPTrackerClient extends TrackerClient {
     @Override
     public void announce(
             AnnounceResponseListener listener,
-            TorrentHandler torrent,
+            TorrentMetadataProvider torrent,
             URI tracker,
             AnnounceRequestMessage.RequestEvent event,
             boolean inhibitEvents) throws AnnounceException {
