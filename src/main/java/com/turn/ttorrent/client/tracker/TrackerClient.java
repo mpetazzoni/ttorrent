@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentHandler;
+import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
@@ -68,7 +69,7 @@ public abstract class TrackerClient {
      */
     public abstract void announce(
             AnnounceResponseListener listener,
-            TorrentHandler torrent,
+            TorrentMetadataProvider torrent,
             URI tracker,
             AnnounceRequestMessage.RequestEvent event,
             boolean inhibitEvents) throws AnnounceException;

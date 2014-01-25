@@ -9,7 +9,6 @@ import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
-import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import org.junit.Test;

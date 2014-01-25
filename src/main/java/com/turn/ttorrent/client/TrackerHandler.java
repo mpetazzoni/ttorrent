@@ -69,12 +69,11 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         private long lastRecv;
         private long lastErr;
         /** Milliseconds, although protocol is in seconds. */
-        private long interval;
+        private long interval = 5000;
 
         public TrackerState(@Nonnull URI uri, int tier) {
             this.uri = uri;
             this.tier = tier;
-            setInterval(5);
         }
 
         /** In seconds. */
@@ -94,7 +93,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return uri + " [T" + tier + "]";
         }
     }
-    private final TorrentHandler torrent;
+    private final Client client;
+    private final TorrentMetadataProvider torrent;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
     private int currentClient;
     private AnnounceRequestMessage.RequestEvent event = AnnounceRequestMessage.RequestEvent.STARTED;
@@ -107,17 +107,18 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param torrent The torrent we're announcing about.
      * @param peer Our peer specification.
      */
-    public TrackerHandler(@Nonnull TorrentHandler torrent) {
+    public TrackerHandler(Client client, TorrentMetadataProvider torrent) {
+        this.client = client;
         this.torrent = torrent;
     }
 
     @Nonnull
-    public Client getClient() {
-        return torrent.getClient();
+    private Client getClient() {
+        return client;
     }
 
     @Nonnull
-    public ScheduledExecutorService getSchedulerService() {
+    private ScheduledExecutorService getSchedulerService() {
         return getClient().getEnvironment().getSchedulerService();
     }
 
@@ -214,7 +215,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         synchronized (lock) {
 
             int tier = 0;
-            for (List<URI> announceTier : torrent.getTorrent().getAnnounceList()) {
+            for (List<? extends URI> announceTier : torrent.getAnnounceList()) {
                 LOG.trace("Loading tier " + announceTier);
                 for (URI announceUri : announceTier) {
                     LOG.trace("Loading client for " + announceUri);
@@ -246,22 +247,29 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         LOG.info("Stopping TrackerHandler for {}", torrent);
         synchronized (lock) {
             event = AnnounceRequestMessage.RequestEvent.STOPPED;
-            future.cancel(false);
+            if (future != null)
+                future.cancel(false);
             run();
             trackers.clear();
         }
     }
 
     private void reschedule(@Nonnegative long delay) {
+        LOG.trace("Rescheduling tracker for {}", delay);
         synchronized (lock) {
-            if (event != AnnounceRequestMessage.RequestEvent.STOPPED)
+            if (event == AnnounceRequestMessage.RequestEvent.STOPPED)
                 return;
 
-            long delta = future.getDelay(TimeUnit.MILLISECONDS) - delay;
-            // Don't reschedule if it's "soon".
-            if (delta > 10 && delta < 100)
-                return;
-            future.cancel(false);
+            if (future != null) {
+                long delta = future.getDelay(TimeUnit.MILLISECONDS) - delay;
+                // Don't reschedule if it's "soon".
+                LOG.trace("Delta is {}", delta);
+                if (delta > 10 && delta < 500)
+                    return;
+                future.cancel(false);
+            }
+            if (delay < 500)
+                delay = 500;
             future = getSchedulerService().schedule(this, delay, TimeUnit.MILLISECONDS);
         }
     }
@@ -352,6 +360,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         LOG.info("Got {} peer(s) in tracker response.", peerAddresses.size());
         // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
-        torrent.getSwarmHandler().addPeers(peerAddresses);
+        torrent.addPeers(peerAddresses);
+        // torrent.getSwarmHandler().addPeers(peerAddresses);
     }
 }
