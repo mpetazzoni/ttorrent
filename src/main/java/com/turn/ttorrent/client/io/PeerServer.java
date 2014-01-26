@@ -65,7 +65,7 @@ public class PeerServer {
         b.option(ChannelOption.SO_BACKLOG, 128);
         b.childHandler(new PeerServerHandshakeHandler(client));
         b.childOption(ChannelOption.SO_KEEPALIVE, true);
-        b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
+        // b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         if (address != null) {
             future = b.bind(address).sync();
         } else {

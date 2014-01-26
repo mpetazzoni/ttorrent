@@ -32,6 +32,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PeerClientHandshakeHandler.class);
     private static final LoggingHandler wireLogger = new LoggingHandler("client-wire");
+    private static final LoggingHandler frameLogger = new LoggingHandler("client-frame");
     private static final LoggingHandler messageLogger = new LoggingHandler("client-message");
     @Nonnull
     private final byte[] infoHash;
@@ -52,6 +53,11 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
     @Override
     public LoggingHandler getWireLogger() {
         return wireLogger;
+    }
+
+    @Override
+    protected LoggingHandler getFrameLogger() {
+        return frameLogger;
     }
 
     @Override

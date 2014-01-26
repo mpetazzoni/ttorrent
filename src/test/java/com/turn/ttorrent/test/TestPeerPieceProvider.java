@@ -21,7 +21,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
 
     private final Torrent torrent;
     private final Piece[] pieces;
-    private final BitSet availablePieces;
+    private final BitSet completedPieces;
     private PieceHandler pieceHandler;
     private final Object lock = new Object();
 
@@ -30,7 +30,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
         this.pieces = new Piece[torrent.getPieceCount()];
         for (int i = 0; i < torrent.getPieceCount(); i++)
             pieces[i] = new Piece(torrent, i);
-        this.availablePieces = new BitSet(pieces.length);
+        this.completedPieces = new BitSet(pieces.length);
     }
 
     @Override
@@ -44,8 +44,17 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public BitSet getAvailablePieces() {
-        return availablePieces;
+    public BitSet getCompletedPieces() {
+        synchronized (lock) {
+            return (BitSet) completedPieces.clone();
+        }
+    }
+
+    @Override
+    public void andNotCompletedPieces(BitSet out) {
+        synchronized (lock) {
+            out.andNot(completedPieces);
+        }
     }
 
     @Override

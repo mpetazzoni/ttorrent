@@ -39,6 +39,7 @@ dependencies {
 	compile 'io.netty:netty-all:4.0.14.Final'
 	compile 'com.google.guava:guava:15.0'
 	compile 'net.sf.jopt-simple:jopt-simple:4.6'
+	compile 'com.yammer.metrics:metrics-core:2.2.0'
 
 	testCompile 'junit:junit:4.8.1'
 	testCompile 'org.easymock:easymock:3.2'

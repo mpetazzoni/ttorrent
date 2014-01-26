@@ -7,10 +7,12 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
+import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,11 +31,12 @@ public class ReplicationTest {
         tracker.start();
 
         File d_seed = TorrentTestUtils.newTorrentDir("c_seed");
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(d_seed, 12345678, true);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(d_seed, 1234567, true);
         creator.setAnnounce(tracker.getAnnounceUrl().toURI());
         Torrent torrent = creator.create();
 
-        tracker.announce(torrent);
+        TrackedTorrent trackedTorrent = tracker.announce(torrent);
+        trackedTorrent.setAnnounceInterval(100, TimeUnit.SECONDS);
 
         try {
 

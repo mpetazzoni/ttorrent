@@ -15,6 +15,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.CombinedChannelDuplexHandler;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.ReferenceCountUtil;
 import javax.annotation.Nonnull;
 
 /**
@@ -29,6 +30,9 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     protected abstract LoggingHandler getWireLogger();
 
     @Nonnull
+    protected abstract LoggingHandler getFrameLogger();
+
+    @Nonnull
     protected abstract LoggingHandler getMessageLogger();
 
     @Nonnull
@@ -40,6 +44,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
 
     protected void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
         pipeline.addLast(new CombinedChannelDuplexHandler(new PeerFrameDecoder(), frameEncoder));
+        // pipeline.addLast(getFrameLogger());
         pipeline.addLast(new PeerMessageCodec());
         pipeline.addLast(getMessageLogger());
         pipeline.addLast(new PeerMessageHandler(listener));
@@ -47,7 +52,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        ctx.pipeline().addFirst(getWireLogger());
+        // ctx.pipeline().addFirst(getWireLogger());
         super.channelRegistered(ctx);
     }
 
@@ -70,17 +75,21 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf in = (ByteBuf) msg;
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
-            return;
+        try {
+            ByteBuf in = (ByteBuf) msg;
+            if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
+                return;
 
-        int length = in.getUnsignedByte(0);
-        if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
-            return;
+            int length = in.getUnsignedByte(0);
+            if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
+                return;
 
-        HandshakeMessage request = new HandshakeMessage();
-        request.fromWire(in);
+            HandshakeMessage request = new HandshakeMessage();
+            request.fromWire(in);
 
-        process(ctx, request);
+            process(ctx, request);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
     }
 }
