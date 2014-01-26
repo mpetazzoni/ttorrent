@@ -78,9 +78,7 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
                 throw new IllegalStateException("Message type should have "
                         + "been properly defined by now.");
         }
-        // LOG.info("decode: " + buf);
         message.fromWire(buf);
-        // LOG.info("decode: " + message);
         out.add(message);
 
         if (buf.readableBytes() > 0)

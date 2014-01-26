@@ -468,7 +468,8 @@ public abstract class PeerMessage {
         @Override
         public void fromWire(ByteBuf in) {
             super.fromWire(in);
-            block = in.nioBuffer().slice();
+            block = in.nioBuffer();
+            in.readerIndex(in.writerIndex());
         }
 
         @Override

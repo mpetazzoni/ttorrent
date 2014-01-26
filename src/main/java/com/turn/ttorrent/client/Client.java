@@ -202,17 +202,23 @@ public class Client {
         // This lock guarantees that we are started or stopped.
         synchronized (lock) {
             torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
-            State s = getState();
-            switch (s) {
-                case STARTED:
-                    torrent.start();
-                    break;
-                case STOPPED:
-                    break;
-                default:
-                    throw new IllegalStateException("WAT? " + s);
-            }
+            if (getState() == State.STARTED)
+                torrent.start();
         }
+    }
+
+    public void removeTorrent(@Nonnull TorrentHandler torrent) {
+        synchronized (lock) {
+            torrents.remove(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
+            if (getState() == State.STARTED)
+                torrent.stop();
+        }
+    }
+
+    public TorrentHandler removeTorrent(@Nonnull byte[] infoHash) {
+        TorrentHandler torrent = torrents.get(Torrent.byteArrayToHexString(infoHash));
+        removeTorrent(torrent);
+        return torrent;
     }
 
     public void addClientListener(ClientListener listener) {

@@ -8,6 +8,7 @@ import com.google.common.io.Files;
 import com.google.common.io.InputSupplier;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
+import io.netty.util.ResourceLeakDetector;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +24,9 @@ import org.apache.commons.io.FileUtils;
  */
 public class TorrentTestUtils {
 
+    static {
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
+    }
     private static File ROOT;
 
     @Nonnull
@@ -30,20 +34,22 @@ public class TorrentTestUtils {
             throws IOException {
         if (ROOT != null)
             return ROOT;
-        File root = File.createTempFile("ttorrent", ".seed");
-        FileUtils.forceDeleteOnExit(root);
-        FileUtils.forceDelete(root);
-        FileUtils.forceMkdir(root);
-        ROOT = root;
-        return root;
+        File buildDir = new File("build/tmp");
+        FileUtils.forceMkdir(buildDir);
+        File rootDir = File.createTempFile("ttorrent", ".seed", buildDir);
+        FileUtils.forceDeleteOnExit(rootDir);
+        FileUtils.forceDelete(rootDir);
+        FileUtils.forceMkdir(rootDir);
+        ROOT = rootDir;
+        return rootDir;
     }
 
     @Nonnull
     public static File newTorrentDir(@Nonnull String name)
             throws IOException {
-        File dir = new File(newTorrentRoot(), name);
-        FileUtils.forceMkdir(dir);
-        return dir;
+        File torrentDir = new File(newTorrentRoot(), name);
+        FileUtils.forceMkdir(torrentDir);
+        return torrentDir;
     }
 
     @Nonnull

@@ -15,6 +15,9 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.google.common.annotations.VisibleForTesting;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 /**
@@ -24,6 +27,11 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 public class PeerFrameDecoder extends LengthFieldBasedFrameDecoder {
 
     public PeerFrameDecoder() {
-        super(Integer.MAX_VALUE, 0, PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
+        super(Integer.MAX_VALUE, 0, PeerMessage.MESSAGE_LENGTH_FIELD_SIZE, 0, 4);
+    }
+
+    @VisibleForTesting
+    /* pp */ ByteBuf _decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+        return (ByteBuf) super.decode(ctx, in);
     }
 }

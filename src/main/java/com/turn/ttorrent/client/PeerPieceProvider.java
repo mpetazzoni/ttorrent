@@ -20,7 +20,10 @@ import javax.annotation.Nonnull;
 public interface PeerPieceProvider {
 
     @Nonnull
-    public BitSet getAvailablePieces();
+    public BitSet getCompletedPieces();
+
+    /** Zero-copy. */
+    public void andNotCompletedPieces(@Nonnull BitSet out);
 
     @Nonnegative
     public int getPieceCount();

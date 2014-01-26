@@ -97,8 +97,14 @@ public class HandshakeMessage extends PeerMessage {
         return Torrent.byteArrayToHexString(data);
     }
 
+    private static String toText(@CheckForNull byte[] data) {
+        if (data == null)
+            return null;
+        return Torrent.byteArrayToText(data);
+    }
+
     @Override
     public String toString() {
-        return super.toString() + " P=" + toHex(getPeerId()) + " T=" + toHex(getInfoHash());
+        return super.toString() + " P=" + toText(getPeerId()) + " T=" + toHex(getInfoHash());
     }
 }

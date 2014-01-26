@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.peer.PeerMessageListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.SimpleChannelInboundHandler;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerMessageHandler extends SimpleChannelInboundHandler<PeerMessage> {
+public class PeerMessageHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerMessageHandler.class);
     private final PeerMessageListener listener;
@@ -36,8 +37,14 @@ public class PeerMessageHandler extends SimpleChannelInboundHandler<PeerMessage>
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, PeerMessage msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         LOG.info("Received " + msg + " for " + listener);
-        listener.handleMessage(msg);
+        PeerMessage message = (PeerMessage) msg;
+        listener.handleMessage(message);
+    }
+
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        listener.handleWritable();
     }
 }
