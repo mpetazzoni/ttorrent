@@ -251,6 +251,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
         synchronized (lock) {
             this.state = state;
         }
+        getClient().fireTorrentState(this, state);
     }
 
     /**
@@ -574,16 +575,14 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * @see TorrentByteStorage#finish
      */
     public synchronized void finish() throws IOException {
-        if (!this.isInitialized()) {
+        if (!this.isInitialized())
             throw new IllegalStateException("Torrent not yet initialized!");
-        }
-
-        if (!this.isComplete()) {
+        if (!this.isComplete())
             throw new IllegalStateException("Torrent download is not complete!");
-        }
 
-        this.bucket.finish();
+        bucket.finish();
         trackerHandler.complete();
+        setState(State.SEEDING);
     }
 
     public synchronized boolean isFinished() {

@@ -79,9 +79,9 @@ public class ReplicationTest {
 
             latch.await();
 
-            for (Client c : clients) {
+            for (Client c : clients)
                 c.stop();
-            }
+            c_seed.stop();
 
         } finally {
             tracker.stop();

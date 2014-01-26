@@ -851,7 +851,6 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         }
 
         Piece p = torrent.getPiece(piece);
-        LOG.info("Piece completed in torrent: {}", p);
         if (p.isValid()) {
             // Make sure the piece is marked as completed in the torrent
             // Note: this is required because the order the

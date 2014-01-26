@@ -270,7 +270,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             }
             if (delay < 500)
                 delay = 500;
-            // future = getSchedulerService().schedule(this, delay, TimeUnit.MILLISECONDS);
+            future = getSchedulerService().schedule(this, delay, TimeUnit.MILLISECONDS);
         }
     }
 
