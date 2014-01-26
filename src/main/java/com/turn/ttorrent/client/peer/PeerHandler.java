@@ -414,14 +414,14 @@ public class PeerHandler implements PeerMessageListener {
                             // and needs a proof against deadlock.
                             if (requestsSource == null)
                                 requestsSource = provider.getNextPieceToDownload(this);
-                            LOG.debug("RequestSource is {}", requestsSource);
+                            // LOG.debug("RequestSource is {}", requestsSource);
                             if (requestsSource == null) {
                                 LOG.debug("Peer {} has no request source; breaking request loop.", this);
                                 notInteresting();
                                 break REQUEST;
                             }
                             request = requestsSource.nextRequest();
-                            LOG.debug("Request is {}", request);
+                            // LOG.debug("Request is {}", request);
                             if (request == null)
                                 requestsSource = null;
                         }
@@ -595,7 +595,6 @@ public class PeerHandler implements PeerMessageListener {
 
                 download.update(blockLength);
                 listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
-                LOG.info("Reception is " + reception);
                 switch (reception) {
                     case VALID:
                     case INVALID:

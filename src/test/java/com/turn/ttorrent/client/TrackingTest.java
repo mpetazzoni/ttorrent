@@ -16,6 +16,7 @@ import java.net.SocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -50,7 +51,8 @@ public class TrackingTest {
         TrackerHandler trackerHandler = new TrackerHandler(client, torrentMetadataProvider);
         trackerHandler.start();
 
-        latch.await();
+        latch.await(30, TimeUnit.SECONDS);
+        assertEquals(0, latch.getCount());
 
         trackerHandler.stop();
         client.stop();
