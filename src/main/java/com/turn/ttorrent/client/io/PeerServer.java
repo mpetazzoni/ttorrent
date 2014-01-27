@@ -63,6 +63,8 @@ public class PeerServer {
         b.group(group);
         b.channel(NioServerSocketChannel.class);
         b.option(ChannelOption.SO_BACKLOG, 128);
+        b.option(ChannelOption.SO_REUSEADDR, true);
+        b.option(ChannelOption.TCP_NODELAY, true);
         b.childHandler(new PeerServerHandshakeHandler(client));
         b.childOption(ChannelOption.SO_KEEPALIVE, true);
         // b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));

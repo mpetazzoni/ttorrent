@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
@@ -239,14 +240,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @param peer The peer to connect to.
      */
     public void connect(SocketAddress address) {
-        // TODO
         LOG.info("Attempting to connect to {} for {}", address, torrent);
         getClient().getPeerClient().connect(this, torrent.getInfoHash(), address);
     }
 
     public void start() {
         synchronized (lock) {
-            future = getClient().getEnvironment().getSchedulerService().scheduleWithFixedDelay(this, 1, 1, TimeUnit.SECONDS);
+            future = getClient().getEnvironment().getSchedulerService().scheduleWithFixedDelay(this, 0, 1, TimeUnit.SECONDS);
         }
     }
 
@@ -260,7 +260,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // TODO: Periodic / step function.
     @Override
     public void run() {
-        LOG.info("Run.");
+        LOG.info("Run: peers={}, connected={}, completed={}/{}",
+                new Object[]{
+            peers, connectedPeers,
+            torrent.getCompletedPieceCount(), torrent.getPieceCount()
+        });
         boolean optimistic = false;
         synchronized (lock) {
             long now = System.currentTimeMillis();
@@ -270,18 +274,18 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             }
         }
 
-        // if (!torrent.isComplete()) {
-        for (SocketAddress peer : peers) {
-            // Attempt to connect to the peer if and only if:
-            //   - We're not already connected or connecting to it;
-            //   - We're not a seeder (we leave the responsibility
-            //	   of connecting to peers that need to download
-            //     something).
-            if (connectedPeers.containsKey(peer))
-                continue;
-            connect(peer);
+        if (!torrent.isComplete()) {
+            for (SocketAddress peer : peers) {
+                // Attempt to connect to the peer if and only if:
+                //   - We're not already connected or connecting to it;
+                //   - We're not a seeder (we leave the responsibility
+                //	   of connecting to peers that need to download
+                //     something).
+                if (connectedPeers.containsKey(peer))
+                    continue;
+                connect(peer);
+            }
         }
-        // }
 
         unchokePeers(optimistic);
     }
@@ -566,6 +570,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         SocketAddress remoteAddress = channel.remoteAddress();
         String remoteHexPeerId = Torrent.byteArrayToHexString(remotePeerId);
 
+        if (Arrays.equals(remotePeerId, getClient().getPeerId()))
+            throw new IllegalArgumentException("Cannot connect to self.");
+
+        // This is a valid InetAddress, but a random highport.
+        // peers.add(remoteAddress);
+
         // Peer peer = new Peer(remoteAddress, remotePeerId);
         LOG.trace("Searching for {}...", new Peer(remoteAddress, remotePeerId));
 
@@ -620,9 +630,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             PeerHandler prev_h = connectedPeers.put(peer.getHexPeerId(), peer);
             // TODO: Close prev_a and prev_h.
 
-            // Give the opportunity to unchoke the peer before calling it.
+            // Give the peer a chance to send a bitfield message.
             peer.run();
-            run();
         } catch (Exception e) {
             LOG.warn("Could not handle new peer connection "
                     + "with {}: {}", peer, e.getMessage());

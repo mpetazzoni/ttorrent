@@ -357,7 +357,7 @@ public class PeerHandler implements PeerMessageListener {
      */
     // TODO: Do we want to make sure only one person enters this FSM at a time?
     public void run() throws IOException {
-        LOG.trace("Step function in " + this);
+        // LOG.trace("Step function in " + this);
         Channel c = channel;
         boolean flush = false;
         try {
@@ -554,6 +554,7 @@ public class PeerHandler implements PeerMessageListener {
                     break;
                 }
 
+                // TODO: Ignore this condition for fast links.
                 if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
                     LOG.warn("Peer {} requested a block too big, "
                             + "terminating exchange.", this);

@@ -47,8 +47,7 @@ import org.slf4j.LoggerFactory;
  */
 public class Tracker {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(Tracker.class);
+    private static final Logger LOG = LoggerFactory.getLogger(Tracker.class);
     /** Request path handled by the tracker announce request handler. */
     public static final String ANNOUNCE_URL = "/announce";
     /** Default tracker listening port (BitTorrent's default is 6969). */
@@ -116,7 +115,7 @@ public class Tracker {
                     this.address.getPort(),
                     Tracker.ANNOUNCE_URL);
         } catch (MalformedURLException mue) {
-            logger.error("Could not build tracker URL: {}!", mue, mue);
+            LOG.error("Could not build tracker URL: {}!", mue, mue);
         }
 
         return null;
@@ -127,7 +126,7 @@ public class Tracker {
      */
     public void start() throws IOException {
         URL announceUrl = getAnnounceUrl();
-        logger.info("Starting BitTorrent tracker on {}...", announceUrl);
+        LOG.info("Starting BitTorrent tracker on {}...", announceUrl);
 
         if (this.connection == null) {
             // Creates a thread via: SocketConnection
@@ -167,7 +166,7 @@ public class Tracker {
             this.scheduler = null;
         }
 
-        logger.info("BitTorrent tracker closed.");
+        LOG.info("BitTorrent tracker closed.");
     }
 
     /**
@@ -196,13 +195,13 @@ public class Tracker {
         TrackedTorrent existing = this.torrents.get(torrent.getHexInfoHash());
 
         if (existing != null) {
-            logger.warn("Tracker already announced torrent for '{}' "
+            LOG.warn("Tracker already announced torrent for '{}' "
                     + "with hash {}.", existing.getName(), existing.getHexInfoHash());
             return existing;
         }
 
         this.torrents.put(torrent.getHexInfoHash(), torrent);
-        logger.info("Registered new torrent for '{}' with hash {}.",
+        LOG.info("Registered new torrent for '{}' with hash {}.",
                 torrent.getName(), torrent.getHexInfoHash());
         return torrent;
     }
@@ -272,9 +271,12 @@ public class Tracker {
 
         @Override
         public void run() {
+            int count = 0;
             for (TrackedTorrent torrent : torrents.values()) {
-                torrent.collectUnfreshPeers();
+                count += torrent.collectUnfreshPeers();
             }
+            if (count > 0)
+                LOG.debug("Collected {} stale peers.", count);
         }
     }
 }

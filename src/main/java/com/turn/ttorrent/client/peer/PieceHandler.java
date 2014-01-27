@@ -35,11 +35,11 @@ import org.slf4j.LoggerFactory;
  */
 public class PieceHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(PieceHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PieceHandler.class);
     /** Default block size is 2^14 bytes, or 16kB. */
     public static final int DEFAULT_BLOCK_SIZE = 16384;
     /** Max block request size is 2^17 bytes, or 131kB. */
-    public static final int MAX_BLOCK_SIZE = 131072;
+    public static final int MAX_BLOCK_SIZE = 128 * 1024;   // This is 131072 in most implementations.
     private final Piece piece;
     private final PeerPieceProvider provider;
     @GuardedBy("lock")
@@ -90,12 +90,13 @@ public class PieceHandler {
     @Nonnull
     private Reception receive(ByteBuffer block, int offset) throws IOException {
         int length = block.remaining();
+        LOG.debug("Received {}[{}]", offset, length);
 
         synchronized (lock) {
             // Make sure we actually needed any of these bytes.
             if (pieceRequiredBytes.nextSetBit(offset) >= offset + length) {
-                if (logger.isDebugEnabled())
-                    logger.debug("Discarding non-required block for " + piece);
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Discarding non-required block for " + piece);
                 return Reception.IGNORED;
             }
 
@@ -107,14 +108,14 @@ public class PieceHandler {
 
             boolean valid = piece.isValid(ByteBuffer.wrap(pieceData));
             if (!valid) {
-                logger.warn("Piece {} complete, but invalid. Not saving.", piece);
-                this.pieceRequiredBytes.set(0, piece.getLength());
+                LOG.warn("Piece {} complete, but invalid. Not saving.", piece);
+                this.pieceRequiredBytes.set(0, pieceData.length);
                 return Reception.INVALID;
             }
         }
 
-        if (logger.isDebugEnabled())
-            logger.debug("Piece {} complete, and valid.", piece);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Piece {} complete, and valid.", piece);
         provider.writeBlock(ByteBuffer.wrap(pieceData), piece.getIndex(), 0);
         piece.setValid(true);
         return Reception.VALID;
@@ -167,7 +168,7 @@ public class PieceHandler {
             }
             int length = Math.min(
                     blockSize,
-                    piece.getLength() - requestOffset);
+                    pieceData.length - requestOffset);
             return new AnswerableRequestMessage(piece.getIndex(), requestOffset, length);
         }
     }

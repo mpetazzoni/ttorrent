@@ -41,9 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TrackedPeer {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(TrackedPeer.class);
-    private static final int FRESH_TIME_SECONDS = 30;
+    private static final Logger LOG = LoggerFactory.getLogger(TrackedPeer.class);
     private final InetSocketAddress peerAddress;
     private final byte[] peerId;
     // TODO: The only reason to keep this reference here is to produce debug logs.
@@ -104,7 +102,7 @@ public class TrackedPeer {
             state = TrackedPeerState.COMPLETED;
 
         if (!state.equals(this.state)) {
-            logger.info("Peer {} {} download of {}.",
+            LOG.info("Peer {} {} download of {}.",
                     new Object[]{
                 this,
                 state.name().toLowerCase(),
@@ -158,12 +156,14 @@ public class TrackedPeer {
      * Non-fresh peers are automatically terminated and collected by the
      * Tracker.
      * </p>
+     * 
+     * @param now The current time.
+     * @param refresh The interval after which a peer is considered stale.
      */
-    public boolean isFresh(long now) {
-        // TODO: Shouldn't this use the announce interval from the tracked torrent?
+    public boolean isFresh(long now, long refresh) {
         synchronized (lock) {
             return (this.lastAnnounce > 0
-                    && (this.lastAnnounce + (FRESH_TIME_SECONDS * 1000) > now));
+                    && (this.lastAnnounce + refresh > now));
         }
     }
 }

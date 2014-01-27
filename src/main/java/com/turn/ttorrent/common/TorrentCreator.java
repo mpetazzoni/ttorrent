@@ -70,6 +70,7 @@ import org.slf4j.LoggerFactory;
 public class TorrentCreator {
 
     private static final Logger logger = LoggerFactory.getLogger(TorrentCreator.class);
+    public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
     /**
      * Determine how many threads to use for the piece hashing.
@@ -127,15 +128,10 @@ public class TorrentCreator {
         service.allowCoreThreadTimeOut(true);
         return service;
     }
-    private final ThreadLocal<MessageDigest> digest = new ThreadLocal<MessageDigest>() {
-        @Override
-        protected MessageDigest initialValue() {
-            return DigestUtils.getSha1Digest();
-        }
-    };
     private Executor executor;
     private final File parent;
     private List<File> files;
+    private int pieceLength = DEFAULT_PIECE_LENGTH;
     private List<List<URI>> announce = new ArrayList<List<URI>>();
     private String createdBy = getClass().getName();
 
@@ -149,6 +145,10 @@ public class TorrentCreator {
 
     public void setFiles(@Nonnull List<File> files) {
         this.files = files;
+    }
+
+    public void setPieceLength(@Nonnegative int pieceLength) {
+        this.pieceLength = pieceLength;
     }
 
     public void setAnnounce(@Nonnull List<List<URI>> announce) {
@@ -235,12 +235,12 @@ public class TorrentCreator {
 
         Map<String, BEValue> info = new TreeMap<String, BEValue>();
         info.put("name", new BEValue(parent.getName()));
-        info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+        info.put("piece length", new BEValue(pieceLength));
 
         if (files == null || files.isEmpty()) {
             long nbytes = parent.length();
             info.put("length", new BEValue(nbytes));
-            info.put("pieces", new BEValue(hashFiles(Arrays.asList(parent), nbytes)));
+            info.put("pieces", new BEValue(hashFiles(executor, Arrays.asList(parent), nbytes, pieceLength)));
         } else {
             List<BEValue> fileInfo = new LinkedList<BEValue>();
             long nbytes = 0L;
@@ -260,7 +260,7 @@ public class TorrentCreator {
                 fileInfo.add(new BEValue(fileMap));
             }
             info.put("files", new BEValue(fileInfo));
-            info.put("pieces", new BEValue(hashFiles(files, nbytes)));
+            info.put("pieces", new BEValue(hashFiles(executor, files, nbytes, pieceLength)));
         }
         torrent.put("info", new BEValue(info));
 
@@ -272,8 +272,14 @@ public class TorrentCreator {
      *
      * @author mpetazzoni
      */
-    private class ChunkHasher implements Runnable {
+    private static class ChunkHasher implements Runnable {
 
+        private final ThreadLocal<MessageDigest> digest = new ThreadLocal<MessageDigest>() {
+            @Override
+            protected MessageDigest initialValue() {
+                return DigestUtils.getSha1Digest();
+            }
+        };
         private final byte[] out;
         private final int piece;
         private final CountDownLatch latch;
@@ -289,7 +295,7 @@ public class TorrentCreator {
         @Override
         public void run() {
             try {
-                MessageDigest digest = TorrentCreator.this.digest.get();
+                MessageDigest digest = this.digest.get();
                 digest.update(this.data);
                 System.arraycopy(digest.digest(), 0, out, piece * Torrent.PIECE_HASH_SIZE, Torrent.PIECE_HASH_SIZE);
             } finally {
@@ -313,20 +319,20 @@ public class TorrentCreator {
      *
      * @param file The file to hash.
      */
-    public /* for testing */ byte[] hashFiles(List<File> files, long nbytes)
+    public /* for testing */ static byte[] hashFiles(Executor executor, List<File> files, long nbytes, int pieceLength)
             throws InterruptedException, IOException {
-        int npieces = (int) Math.ceil((double) nbytes / Torrent.PIECE_LENGTH);
+        int npieces = (int) Math.ceil((double) nbytes / pieceLength);
         byte[] out = new byte[Torrent.PIECE_HASH_SIZE * npieces];
         CountDownLatch latch = new CountDownLatch(npieces);
 
-        ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+        ByteBuffer buffer = ByteBuffer.allocate(pieceLength);
 
         long start = System.nanoTime();
         int piece = 0;
         for (File file : files) {
             logger.info("Hashing data from {} ({} pieces)...", new Object[]{
                 file.getName(),
-                (int) Math.ceil((double) file.length() / Torrent.PIECE_LENGTH)
+                (int) Math.ceil((double) file.length() / pieceLength)
             });
 
             FileInputStream fis = FileUtils.openInputStream(file);
@@ -338,7 +344,7 @@ public class TorrentCreator {
                     if (buffer.remaining() == 0) {
                         buffer.flip();
                         executor.execute(new ChunkHasher(out, piece, latch, buffer));
-                        buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+                        buffer = ByteBuffer.allocate(pieceLength);
                         piece++;
                     }
 

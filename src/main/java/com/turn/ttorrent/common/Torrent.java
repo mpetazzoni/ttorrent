@@ -69,7 +69,6 @@ public class Torrent {
     private static final Logger logger =
             LoggerFactory.getLogger(Torrent.class);
     /** Torrent file piece length (in bytes), we use 512 kB. */
-    public static final int PIECE_LENGTH = 512 * 1024;
     public static final int PIECE_HASH_SIZE = 20;
     /** The query parameters encoding when parsing byte strings. */
     public static final Charset BYTE_ENCODING = Charsets.ISO_8859_1;

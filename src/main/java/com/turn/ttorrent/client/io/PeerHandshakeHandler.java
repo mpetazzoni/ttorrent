@@ -17,6 +17,8 @@ import io.netty.channel.CombinedChannelDuplexHandler;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCountUtil;
 import javax.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -24,6 +26,7 @@ import javax.annotation.Nonnull;
  */
 public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PeerHandshakeHandler.class);
     protected static final PeerFrameEncoder frameEncoder = new PeerFrameEncoder();
 
     @Nonnull
@@ -46,7 +49,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
         pipeline.addLast(new CombinedChannelDuplexHandler(new PeerFrameDecoder(), frameEncoder));
         // pipeline.addLast(getFrameLogger());
         pipeline.addLast(new PeerMessageCodec());
-        pipeline.addLast(getMessageLogger());
+        // pipeline.addLast(getMessageLogger());
         pipeline.addLast(new PeerMessageHandler(listener));
     }
 

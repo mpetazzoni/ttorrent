@@ -39,7 +39,7 @@ public interface AnnounceResponseListener extends EventListener {
      * @param complete The number of seeders on this torrent.
      * @param incomplete The number of leechers on this torrent.
      */
-    public void handleAnnounceResponse(@Nonnull URI tracker, int interval, int complete, int incomplete);
+    public void handleAnnounceResponse(@Nonnull URI tracker, long interval, int complete, int incomplete);
 
     /**
      * Handle the discovery of new peers.

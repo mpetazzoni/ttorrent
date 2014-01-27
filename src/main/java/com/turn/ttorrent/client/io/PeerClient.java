@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
@@ -54,6 +53,8 @@ public class PeerClient {
         bootstrap.group(group);
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
+        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        bootstrap.option(ChannelOption.TCP_NODELAY, true);
         // bootstrap.option(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TimeUnit.SECONDS.toMillis(10));
     }
