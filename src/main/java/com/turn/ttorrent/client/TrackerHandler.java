@@ -77,8 +77,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         }
 
         /** In seconds. */
-        public void setInterval(int interval) {
-            this.interval = TimeUnit.SECONDS.toMillis(interval);
+        public void setInterval(long interval) {
+            this.interval = interval;
         }
 
         @CheckForSigned
@@ -315,7 +315,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param incomplete The number of leechers on this torrent.
      */
     @Override
-    public void handleAnnounceResponse(URI uri, int interval, int complete, int incomplete) {
+    public void handleAnnounceResponse(URI uri, long interval, int complete, int incomplete) {
         synchronized (lock) {
             TrackerState tracker = getTracker(uri);
             if (tracker == null)

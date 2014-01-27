@@ -11,8 +11,12 @@ import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,67 +28,64 @@ import org.slf4j.LoggerFactory;
 public class ReplicationTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReplicationTest.class);
+    private Tracker tracker;
+    private Torrent torrent;
+    private TrackedTorrent trackedTorrent;
+    private Client seed;
+    private final List<Client> leechers = new ArrayList<Client>();
 
-    @Test
-    public void testReplication() throws Exception {
-        Tracker tracker = new Tracker(new InetSocketAddress("localhost", 5674));
+    @Before
+    public void setUp() throws Exception {
+        tracker = new Tracker(new InetSocketAddress("localhost", 5674));
         tracker.start();
 
-        File d_seed = TorrentTestUtils.newTorrentDir("c_seed");
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(d_seed, 1234567, true);
+        File dir = TorrentTestUtils.newTorrentDir("ReplicationTest.seed");
+
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 1234567, true);
         creator.setAnnounce(tracker.getAnnounceUrl().toURI());
-        Torrent torrent = creator.create();
+        torrent = creator.create();
 
-        TrackedTorrent trackedTorrent = tracker.announce(torrent);
-        trackedTorrent.setAnnounceInterval(100, TimeUnit.SECONDS);
+        trackedTorrent = tracker.announce(torrent);
+        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
 
-        try {
+        seed = new Client(torrent, dir);
+    }
 
-            Client c_seed = new Client(torrent, d_seed);
-            c_seed.start();
+    @After
+    public void tearDown() throws Exception {
+        for (Client leecher : leechers)
+            leecher.stop();
+        seed.stop();
+        tracker.stop();
+    }
 
-            int nclients = 1;
-            final CountDownLatch latch = new CountDownLatch(nclients);
-
-            class CompletionListener extends ClientListenerAdapter {
-
-                private final Logger LOG = LoggerFactory.getLogger(CompletionListener.class);
-                private final TorrentHandler.State state;
-
-                public CompletionListener(TorrentHandler.State state) {
-                    this.state = state;
-                }
-
-                @Override
-                public void clientStateChanged(Client client, Client.State state) {
-                    LOG.info("client=" + client + ", state=" + state);
-                }
-
-                @Override
-                public void torrentStateChanged(Client client, TorrentHandler torrent, TorrentHandler.State state) {
-                    LOG.info("client=" + client + ", torrent=" + torrent + ", state=" + state);
-                    if (state == this.state)
-                        latch.countDown();
-                }
-            }
-
-            Client[] clients = new Client[nclients];
-            for (int i = 0; i < nclients; i++) {
-                File d = TorrentTestUtils.newTorrentDir("c" + i);
-                Client c = new Client(torrent, d);
-                c.addClientListener(new CompletionListener(TorrentHandler.State.SEEDING));
-                c.start();
-                clients[i] = c;
-            }
-
-            latch.await();
-
-            for (Client c : clients)
-                c.stop();
-            c_seed.stop();
-
-        } finally {
-            tracker.stop();
+    private void testReplication(int seed_delay, int nclients) throws Exception {
+        if (seed_delay <= 0) {
+            seed.start();
+            Thread.sleep(-seed_delay);
         }
+
+        CountDownLatch latch = new CountDownLatch(nclients);
+
+        for (int i = 0; i < nclients; i++) {
+            File d = TorrentTestUtils.newTorrentDir("ReplicationTest.client" + i);
+            Client c = new Client(torrent, d);
+            c.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
+            leechers.add(c);
+            c.start();
+        }
+
+        if (seed_delay > 0) {
+            Thread.sleep(seed_delay);
+            seed.start();
+        }
+
+        latch.await();
+    }
+
+    @Test
+    public void testReplicationMultipleLate() throws Exception {
+        trackedTorrent.setAnnounceInterval(100, TimeUnit.SECONDS);
+        testReplication(-500, 3);
     }
 }

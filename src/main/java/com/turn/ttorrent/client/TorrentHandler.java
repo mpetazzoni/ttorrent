@@ -212,6 +212,11 @@ public class TorrentHandler implements TorrentMetadataProvider {
         return getTorrent().getPieceLength();
     }
 
+    @Nonnegative
+    public long getPieceOffset(@Nonnegative int index) {
+        return (long) index * (long) torrent.getPieceLength();
+    }
+
     /**
      * @see Torrent#getPieceLength(int)
      */
@@ -478,7 +483,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
                     // TODO: Read the file sequentially and pass it to the validator.
                     // Otherwise we thrash the disk on validation.
                     ByteBuffer buffer = ByteBuffer.allocate(getPieceLength(index));
-                    bucket.read(buffer, piece.getOffset());
+                    bucket.read(buffer, getPieceOffset(index));
                     buffer.flip();
                     executor.execute(new Piece.Validator(pieces[index], buffer, latch));
 

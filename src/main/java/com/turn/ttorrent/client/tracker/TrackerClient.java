@@ -26,6 +26,7 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 public abstract class TrackerClient {
@@ -135,7 +136,7 @@ public abstract class TrackerClient {
                 tracker,
                 response.getComplete(),
                 response.getIncomplete(),
-                response.getInterval());
+                TimeUnit.SECONDS.toMillis(response.getInterval()));
         fireDiscoveredPeersEvent(Arrays.asList(listener),
                 tracker,
                 response.getPeerAddresses());
@@ -151,7 +152,7 @@ public abstract class TrackerClient {
     protected static void fireAnnounceResponseEvent(
             @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
             @Nonnull URI tracker,
-            int complete, int incomplete, int interval) {
+            int complete, int incomplete, long interval) {
         for (AnnounceResponseListener listener : listeners) {
             listener.handleAnnounceResponse(tracker, interval, complete, incomplete);
         }

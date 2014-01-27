@@ -468,8 +468,12 @@ public abstract class PeerMessage {
         @Override
         public void fromWire(ByteBuf in) {
             super.fromWire(in);
-            block = in.nioBuffer();
-            in.readerIndex(in.writerIndex());
+            block = ByteBuffer.allocate(in.readableBytes());
+            in.readBytes(block);
+            block.flip();
+            // We can't do this because netty recycles the buffer.
+            // block = in.nioBuffer();
+            // in.readerIndex(in.writerIndex());
         }
 
         @Override

@@ -63,13 +63,14 @@ public class TrackedTorrent {
     private final String name;
     @Nonnull
     private final String infoHash;
-    private int announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
+    private long announceInterval;
     /** Peers currently exchanging on this torrent. */
     private final ConcurrentMap<SocketAddress, TrackedPeer> peers = PlatformDependent.newConcurrentHashMap();
 
     public TrackedTorrent(String name, byte[] infoHash) {
         this.name = name;
         this.infoHash = Torrent.byteArrayToHexString(infoHash);
+        setAnnounceInterval(DEFAULT_ANNOUNCE_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     public TrackedTorrent(@Nonnull Torrent torrent) {
@@ -150,26 +151,15 @@ public class TrackedTorrent {
     }
 
     /**
-     * Remove unfresh peers from this torrent.
-     *
-     * <p>
-     * Collect and remove all non-fresh peers from this torrent. This is
-     * usually called by the periodic peer collector of the BitTorrent tracker.
-     * </p>
-     */
-    public void collectUnfreshPeers() {
-        long now = System.currentTimeMillis();
-        for (TrackedPeer peer : peers.values())
-            if (!peer.isFresh(now))
-                peers.remove(peer.getPeerAddress(), peer);
-    }
-
-    /**
-     * Get the announce interval for this torrent.
+     * Returns the announce interval for this torrent, in milliseconds.
      */
     @Nonnegative
-    public int getAnnounceInterval() {
+    public long getAnnounceInterval() {
         return this.announceInterval;
+    }
+
+    public long getPeerExpiryInterval() {
+        return getAnnounceInterval() * 2;
     }
 
     /**
@@ -177,15 +167,15 @@ public class TrackedTorrent {
      *
      * @param interval New announce interval, in seconds.
      */
-    public void setAnnounceInterval(int interval, TimeUnit unit) {
+    public void setAnnounceInterval(int interval, @Nonnull TimeUnit unit) {
         if (interval <= 0) {
             throw new IllegalArgumentException("Invalid announce interval");
         }
 
-        long announceInterval = unit.toSeconds(interval);
+        long announceInterval = unit.toMillis(interval);
         if (announceInterval < 0 || announceInterval > Integer.MAX_VALUE)
             throw new IllegalArgumentException("Illegal (overflow) timeunit " + announceInterval);
-        this.announceInterval = (int) announceInterval;
+        this.announceInterval = announceInterval;
     }
 
     /**
@@ -254,7 +244,7 @@ public class TrackedTorrent {
         long now = System.currentTimeMillis();
         for (TrackedPeer candidate : candidates) {
             // Collect unfresh peers, and obviously don't serve them as well.
-            if (!candidate.isFresh(now)) {
+            if (!candidate.isFresh(now, getPeerExpiryInterval())) {
                 LOG.debug("Collecting stale peer {}...", candidate.getPeerAddress());
                 peers.remove(candidate.getPeerAddress(), candidate);
                 continue;
@@ -278,8 +268,29 @@ public class TrackedTorrent {
         return out;
     }
 
+    /**
+     * Remove unfresh peers from this torrent.
+     *
+     * <p>
+     * Collect and remove all non-fresh peers from this torrent. This is
+     * usually called by the periodic peer collector of the BitTorrent tracker.
+     * </p>
+     */
+    @Nonnegative
+    public int collectUnfreshPeers() {
+        long now = System.currentTimeMillis();
+        int count = 0;
+        for (TrackedPeer peer : peers.values()) {
+            if (!peer.isFresh(now, getPeerExpiryInterval())) {
+                peers.remove(peer.getPeerAddress(), peer);
+                count++;
+            }
+        }
+        return count;
+    }
+
     @Override
     public String toString() {
-        return getName() + " (" + peers.size() + " peers)";
+        return getName() + " (" + peers.size() + " peers, interval=" + getAnnounceInterval() + ")";
     }
 }
