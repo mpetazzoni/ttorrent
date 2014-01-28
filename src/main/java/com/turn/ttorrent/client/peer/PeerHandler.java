@@ -82,7 +82,8 @@ public class PeerHandler implements PeerMessageListener {
     private final byte[] peerId;
     private final Channel channel;
     private final PeerPieceProvider provider;
-    private final PeerActivityListener listener;
+    private final PeerConnectionListener connectionListener;
+    private final PeerActivityListener activityListener;
     @GuardedBy("lock")
     private final BitSet availablePieces;
     // TODO: Convert to AtomicLongArray and allow some hysteresis on flag changes.
@@ -124,11 +125,13 @@ public class PeerHandler implements PeerMessageListener {
             @Nonnull Channel channel,
             // Deliberately specified in terms of interfaces, for testing.
             @Nonnull PeerPieceProvider provider,
-            @Nonnull PeerActivityListener listener) {
+            @Nonnull PeerConnectionListener connectionListener,
+            @Nonnull PeerActivityListener activityListener) {
         this.peerId = peerId;
         this.channel = channel;
         this.provider = provider;
-        this.listener = listener;
+        this.connectionListener = connectionListener;
+        this.activityListener = activityListener;
 
         this.availablePieces = new BitSet(provider.getPieceCount());
 
@@ -463,7 +466,7 @@ public class PeerHandler implements PeerMessageListener {
                         block), false);
                 upload.update(request.getLength());
 
-                listener.handleBlockSent(this, request.getPiece(), request.getOffset(), request.getLength());
+                activityListener.handleBlockSent(this, request.getPiece(), request.getOffset(), request.getLength());
             }
         } finally {
             if (flush)
@@ -487,13 +490,13 @@ public class PeerHandler implements PeerMessageListener {
                 setFlag(Flag.CHOKING, true);
                 LOG.trace("Peer {} is no longer accepting requests.", this);
                 cancelRequestsSent();
-                listener.handlePeerChoking(this);
+                activityListener.handlePeerChoking(this);
                 break;
 
             case UNCHOKE:
                 setFlag(Flag.CHOKING, false);
                 LOG.trace("Peer {} is now accepting requests.", this);
-                listener.handlePeerUnchoking(this);
+                activityListener.handlePeerUnchoking(this);
                 run();  // We might want something.
                 break;
 
@@ -515,7 +518,7 @@ public class PeerHandler implements PeerMessageListener {
                     this.availablePieces.set(message.getPiece());
                 }
 
-                listener.handlePieceAvailability(this, message.getPiece());
+                activityListener.handlePieceAvailability(this, message.getPiece());
                 run(); // We might now be interested.
                 break;
             }
@@ -532,7 +535,7 @@ public class PeerHandler implements PeerMessageListener {
                 }
 
                 // The copy from the message is independent, and thus threadsafe.
-                listener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
+                activityListener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
                 run();  // We might now be interested.
                 break;
             }
@@ -594,11 +597,11 @@ public class PeerHandler implements PeerMessageListener {
                     LOG.warn("Response received to unsent request: {}", message);
 
                 download.update(blockLength);
-                listener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
+                activityListener.handleBlockReceived(this, message.getPiece(), message.getOffset(), blockLength);
                 switch (reception) {
                     case VALID:
                     case INVALID:
-                        listener.handlePieceCompleted(this, message.getPiece(), reception);
+                        activityListener.handlePieceCompleted(this, message.getPiece(), reception);
                         break;
                 }
 
@@ -617,6 +620,11 @@ public class PeerHandler implements PeerMessageListener {
     @Override
     public void handleWritable() throws IOException {
         run();
+    }
+
+    @Override
+    public void handleDisconnect() throws IOException {
+        connectionListener.handlePeerDisconnected(this);
     }
 
     public void tick() {
