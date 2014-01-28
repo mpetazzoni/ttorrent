@@ -37,7 +37,7 @@ public interface PeerPieceProvider {
     public void andNotCompletedPieces(@Nonnull BitSet out);
 
     @CheckForNull
-    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer);
+    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer, @Nonnull BitSet interesting);
 
     /**
      * Read a piece block from the underlying byte storage.

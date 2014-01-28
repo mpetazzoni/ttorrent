@@ -65,7 +65,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public PieceHandler getNextPieceToDownload(PeerHandler peer) {
+    public PieceHandler getNextPieceToDownload(PeerHandler peer, BitSet interesting) {
         synchronized (lock) {
             PieceHandler out = pieceHandler;
             pieceHandler = null;
