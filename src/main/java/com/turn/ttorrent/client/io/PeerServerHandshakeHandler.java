@@ -61,7 +61,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     @Override
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
         LOG.info("Processing " + message);
-        if (Arrays.equals(message.getPeerId(), client.getPeerId())) {
+        if (Arrays.equals(message.getPeerId(), client.getLocalPeerId())) {
             ctx.close();
             throw new IllegalArgumentException("Connected to self?");
         }
@@ -76,7 +76,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         PeerConnectionListener listener = torrent.getSwarmHandler();
         LOG.info("Found torrent " + torrent);
 
-        HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getPeerId());
+        HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getLocalPeerId());
         ctx.writeAndFlush(toByteBuf(response));
 
         addPeer(ctx, message, listener);

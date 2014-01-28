@@ -17,6 +17,8 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.MetricsRegistry;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.util.Arrays;
 import java.util.Random;
@@ -38,6 +40,7 @@ public class ClientEnvironment {
     public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
     private final Random random = new Random();
     private final byte[] peerId;
+    private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
 
@@ -54,21 +57,30 @@ public class ClientEnvironment {
      * Get this client's peer specification.
      */
     @Nonnull
-    public byte[] getPeerId() {
+    public byte[] getLocalPeerId() {
         return peerId;
     }
 
     @Nonnull
-    public String getPeerName() {
-        return Torrent.byteArrayToText(getPeerId());
+    public String getLocalPeerName() {
+        return Torrent.byteArrayToText(getLocalPeerId());
+    }
+
+    @Nonnull
+    public MetricsRegistry getMetricsRegistry() {
+        return metricsRegistry;
+    }
+
+    public void setMetricsRegistry(@Nonnull MetricsRegistry metricsRegistry) {
+        this.metricsRegistry = metricsRegistry;
     }
 
     public void start() {
         {
-            executorService = TorrentCreator.newExecutor(getPeerName());
+            executorService = TorrentCreator.newExecutor(getLocalPeerName());
         }
         {
-            ThreadFactory factory = new DefaultThreadFactory("bittorrent-scheduler-" + getPeerName(), true);
+            ThreadFactory factory = new DefaultThreadFactory("bittorrent-scheduler-" + getLocalPeerName(), true);
             schedulerService = new ScheduledThreadPoolExecutor(1, factory);
         }
     }

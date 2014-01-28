@@ -39,7 +39,7 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
 
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            return EWMA.compare(a.getDLRate(), b.getDLRate());
+            return Rate.compare(a.getDLRate(), b.getDLRate());
         }
     }
 
@@ -56,7 +56,7 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
 
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            return EWMA.compare(a.getULRate(), b.getULRate());
+            return Rate.compare(a.getULRate(), b.getULRate());
         }
     }
 }

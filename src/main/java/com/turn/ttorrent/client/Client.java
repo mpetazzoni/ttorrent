@@ -97,8 +97,8 @@ public class Client {
     }
 
     @Nonnull
-    public byte[] getPeerId() {
-        return getEnvironment().getPeerId();
+    public byte[] getLocalPeerId() {
+        return getEnvironment().getLocalPeerId();
     }
 
     @Nonnull

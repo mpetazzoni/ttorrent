@@ -95,8 +95,9 @@ public class HTTPTrackerClient extends TrackerClient {
         }
 
         @Override
-        public void completed(final HttpResponse response) {
-            LOG.trace(request.getRequestLine() + "->" + response.getStatusLine());
+        public void completed(HttpResponse response) {
+            if (LOG.isTraceEnabled())
+                LOG.trace("{} -> {}", request.getRequestLine(), response.getStatusLine());
             try {
                 HTTPTrackerMessage message = toMessage(response, -1);
                 if (message != null)
@@ -109,12 +110,12 @@ public class HTTPTrackerClient extends TrackerClient {
         @Override
         public void failed(Exception e) {
             // TODO: Pass failure back to TrackerHandler.
-            LOG.trace("failed: " + request.getRequestLine(), e);
+            LOG.trace("Failed: " + request.getRequestLine(), e);
         }
 
         @Override
         public void cancelled() {
-            LOG.trace(request.getRequestLine() + " cancelled");
+            LOG.trace("Cancelled: {}", request.getRequestLine());
         }
     }
 
@@ -155,7 +156,7 @@ public class HTTPTrackerClient extends TrackerClient {
             HTTPAnnounceRequestMessage message =
                     new HTTPAnnounceRequestMessage(
                     torrent.getInfoHash(),
-                    getEnvironment().getPeerId(), getPeerAddress(),
+                    getEnvironment().getLocalPeerId(), getPeerAddress(),
                     torrent.getUploaded(), torrent.getDownloaded(), torrent.getLeft(),
                     true, false, event, AnnounceRequestMessage.DEFAULT_NUM_WANT);
             URI target = message.toURI(tracker);

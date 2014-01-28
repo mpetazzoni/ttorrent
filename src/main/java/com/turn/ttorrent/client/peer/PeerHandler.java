@@ -89,8 +89,8 @@ public class PeerHandler implements PeerMessageListener {
     private final AtomicIntegerArray flags = new AtomicIntegerArray(4);
     // @GuardedBy("requestsLock")
     // private final BlockingQueue<PeerMessage.RequestMessage> requests = new ArrayBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_REQUESTS_SENT);
-    private final EWMA download = new EWMA(60);
-    private final EWMA upload = new EWMA(60);
+    private final Rate download = new Rate(60);
+    private final Rate upload = new Rate(60);
     private final Object lock = new Object();
     @GuardedBy("lock")
     private boolean bitfieldSent = false;
@@ -159,12 +159,12 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Nonnull
-    public EWMA getDLRate() {
+    public Rate getDLRate() {
         return download;
     }
 
     @Nonnull
-    public EWMA getULRate() {
+    public Rate getULRate() {
         return upload;
     }
 
@@ -335,16 +335,17 @@ public class PeerHandler implements PeerMessageListener {
      */
     public int cancelRequestsSent() {
         // Set<PieceHandler> pieces = new HashSet<PieceHandler>();
+        int count = 0;
         synchronized (lock) {
-            int count = 0;
             for (PeerMessage.RequestMessage request : requestsSent) {
                 send(new PeerMessage.CancelMessage(request), false);
                 count++;
             }
             channel.flush();
             requestsSent.clear();
-            return count;
         }
+        LOG.trace("Cancelled {} remaining pending requests on {}.", count, this);
+        return count;
     }
 
     /**
@@ -616,6 +617,11 @@ public class PeerHandler implements PeerMessageListener {
     @Override
     public void handleWritable() throws IOException {
         run();
+    }
+
+    public void tick() {
+        upload.tick();
+        download.tick();
     }
 
     @Override

@@ -242,9 +242,9 @@ public class TrackedTorrent {
 
         List<Peer> out = new ArrayList<Peer>(numWant);
         long now = System.currentTimeMillis();
-        LOG.info("Client PeerAddress is " + client.getPeerAddress());
+        // LOG.info("Client PeerAddress is " + client.getPeerAddress());
         for (TrackedPeer candidate : candidates) {
-            LOG.info("Candidate PeerAddress is " + candidate.getPeerAddress());
+            // LOG.info("Candidate PeerAddress is " + candidate.getPeerAddress());
             // Collect unfresh peers, and obviously don't serve them as well.
             if (!candidate.isFresh(now, getPeerExpiryInterval())) {
                 LOG.debug("Collecting stale peer {}...", candidate.getPeerAddress());

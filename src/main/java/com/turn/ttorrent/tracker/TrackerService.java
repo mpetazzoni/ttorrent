@@ -22,6 +22,7 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 import com.turn.ttorrent.common.protocol.http.*;
 
+import com.yammer.metrics.core.Meter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -64,6 +65,12 @@ public class TrackerService implements Container {
     private static final Logger LOG = LoggerFactory.getLogger(TrackerService.class);
     private final String version;
     private final ConcurrentMap<String, TrackedTorrent> torrents;
+    private final Meter requestReceived;
+    private final Meter requestParseFailed;
+    private final Meter requestNoTorrent;
+    private final Meter requestInvalidEvent;
+    private final Meter requestUpdateFailed;
+    private final Meter requestResponseFailed;
 
     /**
      * Create a new TrackerService serving the given torrents.
@@ -71,9 +78,15 @@ public class TrackerService implements Container {
      * @param torrents The torrents this TrackerService should serve requests
      * for.
      */
-    TrackerService(String version, ConcurrentMap<String, TrackedTorrent> torrents) {
+    TrackerService(String version, ConcurrentMap<String, TrackedTorrent> torrents, TrackerMetrics metrics) {
         this.version = version;
         this.torrents = torrents;
+        this.requestReceived = metrics.addMeter("requestReceived", "requests", TimeUnit.SECONDS);
+        this.requestParseFailed = metrics.addMeter("requestParseFailed", "requests", TimeUnit.SECONDS);
+        this.requestNoTorrent = metrics.addMeter("requestNoTorrent", "requests", TimeUnit.SECONDS);
+        this.requestInvalidEvent = metrics.addMeter("requestInvalidEvent", "requests", TimeUnit.SECONDS);
+        this.requestUpdateFailed = metrics.addMeter("requestUpdateFailed", "requests", TimeUnit.SECONDS);
+        this.requestResponseFailed = metrics.addMeter("requestResponseFailed", "requests", TimeUnit.SECONDS);
     }
 
     /**
@@ -90,6 +103,8 @@ public class TrackerService implements Container {
      */
     @Override
     public void handle(Request request, Response response) {
+        this.requestReceived.mark();
+
         try {
             // Reject non-announce requests
             if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
@@ -145,6 +160,7 @@ public class TrackerService implements Container {
         try {
             announceRequest = this.parseQuery(request);
         } catch (MessageValidationException e) {
+            requestParseFailed.mark();
             LOG.error("Failed to parse request", e);
             this.serveError(response, body, Status.BAD_REQUEST,
                     e.getMessage());
@@ -156,6 +172,7 @@ public class TrackerService implements Container {
         // The requested torrent must be announced by the tracker.
         TrackedTorrent torrent = this.torrents.get(announceRequest.getHexInfoHash());
         if (torrent == null) {
+            requestNoTorrent.mark();
             LOG.warn("No such torrent: {}", announceRequest.getHexInfoHash());
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.UNKNOWN_TORRENT);
@@ -184,6 +201,7 @@ public class TrackerService implements Container {
         // client that would have had us register that peer on the torrent this
         // request refers to.
         if (event != null && client == null && !AnnounceRequestMessage.RequestEvent.STARTED.equals(event)) {
+            requestInvalidEvent.mark();
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.INVALID_EVENT);
             return;
@@ -198,6 +216,7 @@ public class TrackerService implements Container {
                     announceRequest.getDownloaded(),
                     announceRequest.getLeft());
         } catch (IllegalArgumentException e) {
+            requestUpdateFailed.mark();
             LOG.error("Failed to update torrent", e);
             this.serveError(response, body, Status.BAD_REQUEST,
                     ErrorMessage.FailureReason.INVALID_EVENT);
@@ -218,6 +237,7 @@ public class TrackerService implements Container {
             encoder.bencode(announceResponse.toBEValue());
             body.write(encoder.toByteArray());  // This is the raw network stream.
         } catch (Exception e) {
+            requestResponseFailed.mark();
             LOG.error("Failed to send response", e);
             this.serveError(response, body, Status.INTERNAL_SERVER_ERROR,
                     e.getMessage());

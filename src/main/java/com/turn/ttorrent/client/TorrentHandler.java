@@ -489,7 +489,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
             setState(State.ERROR);
             Throwables.propagateIfPossible(e, InterruptedException.class, IOException.class);
             throw Throwables.propagate(e);
-        } finally {
         }
     }
 

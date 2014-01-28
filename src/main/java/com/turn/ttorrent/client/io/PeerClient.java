@@ -73,7 +73,7 @@ public class PeerClient {
         final ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
-            bootstrap.handler(new PeerClientHandshakeHandler(listener, infoHash, client.getPeerId()));
+            bootstrap.handler(new PeerClientHandshakeHandler(listener, infoHash, client.getLocalPeerId()));
             future = bootstrap.connect(remoteAddress);
         }
         future.addListener(new ChannelFutureListener() {
