@@ -168,7 +168,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     }
 
     public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
-        LOG.info("Adding peers " + peerAddresses);
+        LOG.info("{}: Adding peers {}", getLocalPeerName(), peerAddresses);
         Iterables.addAll(this.peers, peerAddresses);
         // run();
     }
@@ -270,12 +270,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         }
     }
 
-    public boolean isRequestedPiece(int index) {
-        synchronized (lock) {
-            return requestedPieces.get(index);
-        }
-    }
-
+    /*
+     public boolean isRequestedPiece(int index) {
+     synchronized (lock) {
+     return requestedPieces.get(index);
+     }
+     }
+     */
     private void andNotRequestedPieces(@Nonnull BitSet b) {
         synchronized (lock) {
             b.andNot(requestedPieces);
@@ -305,8 +306,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
     public void stop() {
         synchronized (lock) {
-            if (future != null)
+            if (future != null) {
                 future.cancel(true);
+                future = null;
+            }
         }
     }
 
@@ -321,8 +324,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         });
         boolean optimistic = false;
         boolean tick = false;
+        long now = System.currentTimeMillis();
         synchronized (lock) {
-            long now = System.currentTimeMillis();
             if (optimisticUnchokeTime + OPTIMISTIC_UNCHOKE_DELAY < now) {
                 optimisticUnchokeTime = now;
                 optimistic = true;
@@ -366,6 +369,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @return A SharingPeer comparator that can be used to sort peers based on
      * the download or upload rate we get from them.
      */
+    @Nonnull
     private Comparator<PeerHandler> getPeerRateComparator() {
         switch (torrent.getState()) {
             case SHARING:
@@ -455,10 +459,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             for (PeerHandler peer : choked) {
                 if (optimistic && peer == randomPeer) {
                     LOG.debug("Optimistic unchoke of {}.", peer);
-                    continue;
+                    peer.unchoke();
+                } else {
+                    peer.choke();
                 }
-
-                peer.choke();
             }
         }
     }
@@ -472,8 +476,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         for (int i = interesting.nextSetBit(0); i >= 0;
                 i = interesting.nextSetBit(i + 1)) {
             int availability = availablePieces.get(i);
+            // This looks weird, but: The bit wouldn't be set in interesting if availability was 0.
+            // So we got a miscount somewhere (entirely possible) and we patch up here.
             if (availability == 0)
-                continue;
+                availability = 1;
+            // Now, !interesting.isEmpty() -> !rarest.isEmpty()
             if (availability > rarestAvailability)
                 continue;
             if (availability < rarestAvailability) {
@@ -518,7 +525,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // TODO: Call this.
     private void addPartiallyDownloadedPiece(@Nonnull Iterable<? extends PieceHandler> pieces) {
         synchronized (lock) {
-            Iterables.addAll(partialPieces, pieces);
+            for (PieceHandler piece : pieces)
+                if (!isCompletedPiece(piece.getIndex()))
+                    partialPieces.add(piece);
         }
     }
 
@@ -526,24 +535,30 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer) {
         BitSet interesting = peer.getAvailablePieces();
         int peerAvailable = interesting.cardinality();
+        torrent.andNotCompletedPieces(interesting);
 
         // TODO: We hold this lock for a LONG time. :-(
         // I'm fairly sure our lock acquisition order is peer then torrent.
         // We can't drop the lock earlier, else two peers will get the
         // same DownloadingPiece, and we don't reference those.
         synchronized (lock) {
-            Iterator<PieceHandler> it = partialPieces.iterator();
-            while (it.hasNext()) {
-                PieceHandler piece = it.next();
-                if (interesting.get(piece.getIndex())) {
-                    LOG.trace("Peer {} receiving partial piece {}",
-                            peer, piece);
-                    it.remove();
-                    return piece;
+            PARTIAL:
+            {
+                Iterator<PieceHandler> it = partialPieces.iterator();
+                while (it.hasNext()) {
+                    PieceHandler piece = it.next();
+                    if (interesting.get(piece.getIndex())) {
+                        LOG.trace("{}: Peer {} receiving partial piece {}", new Object[]{
+                            getLocalPeerName(),
+                            peer, piece
+                        });
+                        it.remove();
+                        return piece;
+                    }
                 }
             }
 
-            torrent.andNotCompletedPieces(interesting);
+            // TODO: Should this be before or after PARTIAL?
             this.andNotRequestedPieces(interesting);
             LOG.trace("{}: Peer {} has {}/{}/{} interesting piece(s).", new Object[]{
                 getLocalPeerName(),
@@ -574,12 +589,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
             BitSet rarestPieces = new BitSet(interesting.length());
             computeRarestPieces(rarestPieces, interesting);
-            if (rarestPieces.isEmpty()) // TODO: This should never happen if we aren't complete.
-                return null;
+            // Since interesting is nonempty, rarestPieces should be nonempty.
+            // We can violate that if we have a miscount of 0 in availablePieces.
             // Pick a random piece from the rarest pieces from this peer.
             int rarestIndex = getRandom().nextInt(rarestPieces.cardinality());
             SEARCH:
             {
+                // This loop will NEVER terminate "normally" because rarestIndex < rarestPieces.cardinality();
                 for (int i = rarestPieces.nextSetBit(0); i >= 0;
                         i = rarestPieces.nextSetBit(i + 1)) {
                     if (rarestIndex-- == 0) {
@@ -587,7 +603,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                         break SEARCH;
                     }
                 }
-                LOG.trace("No rare piece from {}!", peer);
+                // NOTREACHED
+                LOG.error("{}: No rare piece from {}!", getLocalPeerName(), peer);
                 return null;
             }
 
@@ -664,17 +681,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
-            LOG.trace("{}: Found peer (by peer ID): {}.", getLocalPeerName(), peerHandler);
+            LOG.trace("{}: Found peer (by PeerId): {}.", getLocalPeerName(), peerHandler);
             return null;
         }
 
         peerHandler = connectedPeers.get(remoteAddress);
         if (peerHandler != null) {
-            LOG.debug("{}: Found peer (by host ID): {}.", getLocalPeerName(), peerHandler);
+            LOG.debug("{}: Found peer (by SocketAddress): {}.", getLocalPeerName(), peerHandler);
             return null;
         }
 
-        peerHandler = new PeerHandler(remotePeerId, channel, this, this);
+        peerHandler = new PeerHandler(remotePeerId, channel, this, this, this);
         LOG.trace("{}: Created new peer: {}.", getLocalPeerName(), peerHandler);
 
         return peerHandler;
@@ -710,7 +727,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
             PeerHandler prev_a = connectedPeers.put(peer.getRemoteAddress(), peer);
             PeerHandler prev_h = connectedPeers.put(peer.getHexPeerId(), peer);
-            // TODO: Close prev_a and prev_h.
+            if (prev_a != null)
+                prev_a.close();
+            if (prev_h != null && prev_h != prev_a)
+                prev_h.close();
 
             // Give the peer a chance to send a bitfield message.
             peer.run();
@@ -733,7 +753,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     @Override
     public void handlePeerConnectionFailed(SocketAddress remoteAddress, Throwable cause) {
-        LOG.warn("Could not connect to {}: {}.", remoteAddress, cause.getMessage());
+        LOG.warn("{}: Could not connect to {}: {}.", new Object[]{
+            getLocalPeerName(),
+            remoteAddress, cause.getMessage()
+        });
         synchronized (connectedPeers) {
             PeerHandler peerHandler = connectedPeers.remove(remoteAddress);
             if (peerHandler != null)
@@ -934,6 +957,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // mark the piece as not requested anymore
         synchronized (lock) {
             requestedPieces.clear(piece);
+            // TODO: Not sure if this is required.
+            for (Iterator<PieceHandler> it = partialPieces.iterator(); it.hasNext(); /**/) {
+                PieceHandler partialPiece = it.next();
+                if (partialPiece.getIndex() == piece)
+                    it.remove();
+            }
         }
 
         LOG.debug("{}: Completed download of {} from {} ({}). We now have {}/{} pieces and {} outstanding requests: {}",

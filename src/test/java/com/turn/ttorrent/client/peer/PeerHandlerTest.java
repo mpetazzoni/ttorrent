@@ -64,7 +64,7 @@ public class PeerHandlerTest {
 
         TestPeerPieceProvider provider = new TestPeerPieceProvider(torrent);
         PeerActivityListener activityListener = EasyMock.createMock(PeerActivityListener.class);
-        PeerHandler peerHandler = new PeerHandler(peerId, channel, provider, activityListener);
+        PeerHandler peerHandler = new PeerHandler(peerId, channel, provider, connectionListener, activityListener);
 
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);

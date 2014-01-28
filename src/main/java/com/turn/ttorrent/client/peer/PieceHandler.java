@@ -44,7 +44,7 @@ public class PieceHandler {
     @GuardedBy("lock")
     private final byte[] pieceData;
     @GuardedBy("lock")
-    private final BitSet pieceRequiredBytes;    // We could do this with blocks, but why bother?
+    private final BitSet pieceRequiredBytes;    // We should do this with blocks.
     private static final int REQUEST_OFFSET_INIT = -1;
     private static final int REQUEST_OFFSET_FINI = -2;
     private int requestOffset = REQUEST_OFFSET_INIT;

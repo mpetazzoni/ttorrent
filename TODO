@@ -1,0 +1,12 @@
+Code required:
+
+1) Fix piece pipelining. Right now, only blocks pipeline.
+2) Handle partially downloaded pieces.
+3) Integrate with Yammer Metrics.
+4) Share more elegantly in endgame mode.
+5) Protocol extension to specify maximum block size - we want 1Mb.
+
+Tests required:
+
+Connect to peers which never offer anything.  Make sure rarestPiece is null.
+
