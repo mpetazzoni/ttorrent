@@ -19,17 +19,22 @@ import javax.annotation.Nonnull;
  */
 public interface PeerPieceProvider {
 
-    @Nonnull
-    public BitSet getCompletedPieces();
-
-    /** Zero-copy. */
-    public void andNotCompletedPieces(@Nonnull BitSet out);
-
     @Nonnegative
     public int getPieceCount();
 
     @Nonnull
-    public Piece getPiece(@Nonnegative int index);
+    public int getPieceLength(@Nonnegative int index);
+
+    @Nonnegative
+    public int getBlockLength();
+
+    @Nonnull
+    public BitSet getCompletedPieces();
+
+    public boolean isCompletedPiece(@Nonnegative int index);
+
+    /** Zero-copy. */
+    public void andNotCompletedPieces(@Nonnull BitSet out);
 
     @CheckForNull
     public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer);
@@ -60,4 +65,6 @@ public interface PeerPieceProvider {
      * Consumes the block.
      */
     public void writeBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset) throws IOException;
+
+    public boolean validateBlock(@Nonnegative ByteBuffer block, @Nonnegative int piece) throws IOException;
 }

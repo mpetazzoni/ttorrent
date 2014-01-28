@@ -116,6 +116,7 @@ public interface PeerActivityListener extends EventListener {
      * @param piece The piece in question.
      */
     public void handlePieceCompleted(@Nonnull PeerHandler peer,
-            @Nonnegative int piece)
+            @Nonnegative int piece,
+            @Nonnull PieceHandler.Reception reception)
             throws IOException;
 }

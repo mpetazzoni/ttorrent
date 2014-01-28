@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.io.PeerMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,7 +39,7 @@ public class PieceHandler {
     public static final int DEFAULT_BLOCK_SIZE = 16384;
     /** Max block request size is 2^17 bytes, or 131kB. */
     public static final int MAX_BLOCK_SIZE = 128 * 1024;   // This is 131072 in most implementations.
-    private final Piece piece;
+    private final int piece;
     private final PeerPieceProvider provider;
     @GuardedBy("lock")
     private final byte[] pieceData;
@@ -51,10 +50,10 @@ public class PieceHandler {
     private int requestOffset = REQUEST_OFFSET_INIT;
     private final Object lock = new Object();
 
-    public PieceHandler(@Nonnull Piece piece, @Nonnull PeerPieceProvider provider) {
-        this.piece = piece;
+    public PieceHandler(@Nonnull PeerPieceProvider provider, @Nonnegative int piece) {
         this.provider = provider;
-        this.pieceData = new byte[piece.getLength()];
+        this.piece = piece;
+        this.pieceData = new byte[provider.getPieceLength(piece)];
         this.pieceRequiredBytes = new BitSet(pieceData.length);
         this.pieceRequiredBytes.set(0, pieceData.length);  // It's easier to find 1s than 0s.
     }
@@ -64,7 +63,7 @@ public class PieceHandler {
      */
     @Nonnegative
     public int getIndex() {
-        return piece.getIndex();
+        return piece;
     }
 
     public static enum Reception {
@@ -106,7 +105,7 @@ public class PieceHandler {
             if (!pieceRequiredBytes.isEmpty())
                 return Reception.INCOMPLETE;
 
-            boolean valid = piece.isValid(ByteBuffer.wrap(pieceData));
+            boolean valid = provider.validateBlock(ByteBuffer.wrap(pieceData), piece);
             if (!valid) {
                 LOG.warn("Piece {} complete, but invalid. Not saving.", piece);
                 this.pieceRequiredBytes.set(0, pieceData.length);
@@ -116,8 +115,7 @@ public class PieceHandler {
 
         if (LOG.isDebugEnabled())
             LOG.debug("Piece {} complete, and valid.", piece);
-        provider.writeBlock(ByteBuffer.wrap(pieceData), piece.getIndex(), 0);
-        piece.setValid(true);
+        provider.writeBlock(ByteBuffer.wrap(pieceData), piece, 0);
         return Reception.VALID;
     }
 
@@ -154,22 +152,22 @@ public class PieceHandler {
     /** Returns null once when all blocks have been requested, then cycles. */
     @CheckForNull
     public AnswerableRequestMessage nextRequest() {
-        int blockSize = DEFAULT_BLOCK_SIZE;
+        int blockLength = provider.getBlockLength();
         synchronized (lock) {
             if (requestOffset == REQUEST_OFFSET_FINI)
                 return null;
             else if (requestOffset == REQUEST_OFFSET_INIT)
                 requestOffset = pieceRequiredBytes.nextSetBit(0);
             else
-                requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockSize);
+                requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockLength);
             if (requestOffset < 0) {
                 requestOffset = REQUEST_OFFSET_FINI;
                 return null;
             }
             int length = Math.min(
-                    blockSize,
+                    blockLength,
                     pieceData.length - requestOffset);
-            return new AnswerableRequestMessage(piece.getIndex(), requestOffset, length);
+            return new AnswerableRequestMessage(piece, requestOffset, length);
         }
     }
 

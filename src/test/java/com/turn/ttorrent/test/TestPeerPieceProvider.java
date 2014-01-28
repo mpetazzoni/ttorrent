@@ -5,7 +5,6 @@
 package com.turn.ttorrent.test;
 
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.common.Torrent;
@@ -20,17 +19,13 @@ import java.util.BitSet;
 public class TestPeerPieceProvider implements PeerPieceProvider {
 
     private final Torrent torrent;
-    private final Piece[] pieces;
     private final BitSet completedPieces;
     private PieceHandler pieceHandler;
     private final Object lock = new Object();
 
     public TestPeerPieceProvider(Torrent torrent) {
         this.torrent = torrent;
-        this.pieces = new Piece[torrent.getPieceCount()];
-        for (int i = 0; i < torrent.getPieceCount(); i++)
-            pieces[i] = new Piece(torrent, i);
-        this.completedPieces = new BitSet(pieces.length);
+        this.completedPieces = new BitSet(torrent.getPieceCount());
     }
 
     @Override
@@ -39,14 +34,26 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public Piece getPiece(int index) {
-        return pieces[index];
+    public int getPieceLength(int index) {
+        return torrent.getPieceLength(index);
+    }
+
+    @Override
+    public int getBlockLength() {
+        return PieceHandler.DEFAULT_BLOCK_SIZE;
     }
 
     @Override
     public BitSet getCompletedPieces() {
         synchronized (lock) {
             return (BitSet) completedPieces.clone();
+        }
+    }
+
+    @Override
+    public boolean isCompletedPiece(int index) {
+        synchronized (lock) {
+            return completedPieces.get(index);
         }
     }
 
@@ -73,7 +80,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     public void setPieceHandler(int piece) {
-        setPieceHandler(new PieceHandler(getPiece(piece), this));
+        setPieceHandler(new PieceHandler(this, piece));
     }
 
     @Override
@@ -86,5 +93,10 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     public void writeBlock(ByteBuffer block, int piece, int offset) throws IOException {
         // Apparently consume the block.
         block.position(block.limit());
+    }
+
+    @Override
+    public boolean validateBlock(ByteBuffer block, int piece) throws IOException {
+        return true;
     }
 }

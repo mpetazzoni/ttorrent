@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.client.Piece;
 
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.common.Torrent;
@@ -443,10 +442,9 @@ public class PeerHandler implements PeerMessageListener {
                         break;
                 }
 
-                Piece piece = provider.getPiece(request.getPiece());
-                if (!piece.isValid()) {
+                if (!provider.isCompletedPiece(request.getPiece())) {
                     LOG.warn("Peer {} requested invalid piece {}, "
-                            + "terminating exchange.", this, piece);
+                            + "terminating exchange.", this, request.getPiece());
                     close();
                     break;
                 }
@@ -599,7 +597,7 @@ public class PeerHandler implements PeerMessageListener {
                 switch (reception) {
                     case VALID:
                     case INVALID:
-                        listener.handlePieceCompleted(this, message.getPiece());
+                        listener.handlePieceCompleted(this, message.getPiece(), reception);
                         break;
                 }
 

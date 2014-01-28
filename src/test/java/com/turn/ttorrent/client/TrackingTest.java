@@ -30,14 +30,14 @@ public class TrackingTest {
         tracker.start();
 
         File dir = TorrentTestUtils.newTorrentDir("c_seed");
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 12345678, true);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 12345678);
         creator.setAnnounce(tracker.getAnnounceUrl().toURI());
         Torrent torrent = creator.create();
 
         TrackedTorrent trackedTorrent = tracker.announce(torrent);
         trackedTorrent.setAnnounceInterval(1, TimeUnit.MILLISECONDS);
 
-        Client client = new Client();
+        Client client = new Client(getClass().getSimpleName());
         client.start();
 
         final CountDownLatch latch = new CountDownLatch(2);

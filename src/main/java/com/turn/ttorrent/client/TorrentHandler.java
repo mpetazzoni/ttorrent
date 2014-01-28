@@ -15,14 +15,15 @@
  */
 package com.turn.ttorrent.client;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.PeerHandler;
+import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
-import com.turn.ttorrent.common.TorrentCreator;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -61,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TorrentHandler implements TorrentMetadataProvider {
 
-    private static final Logger logger = LoggerFactory.getLogger(TorrentHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TorrentHandler.class);
 
     public enum State {
 
@@ -79,9 +80,9 @@ public class TorrentHandler implements TorrentMetadataProvider {
     private final SwarmHandler swarmHandler;
     @Nonnull
     private State state = State.WAITING;
-    private Piece[] pieces;
     // private SortedSet<Piece> rarest;
     private BitSet completedPieces = new BitSet();
+    private int blockLength = PieceHandler.DEFAULT_BLOCK_SIZE;
     private double maxUploadRate = 0.0;
     private double maxDownloadRate = 0.0;
     private final Object lock = new Object();
@@ -163,8 +164,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * destination directory does not exist and can't be created.
      * @throws IOException If the torrent file cannot be read or decoded.
      */
-    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket)
-            throws IOException {
+    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket) {
         this.client = client;
         this.torrent = torrent;
         this.bucket = bucket;
@@ -225,6 +225,15 @@ public class TorrentHandler implements TorrentMetadataProvider {
         return getTorrent().getPieceLength(index);
     }
 
+    @Nonnegative
+    public int getBlockLength() {
+        return blockLength;
+    }
+
+    public void setBlockLength(@Nonnegative int blockLength) {
+        this.blockLength = blockLength;
+    }
+
     @Override
     public List<? extends List<? extends URI>> getAnnounceList() {
         return getTorrent().getAnnounceList();
@@ -257,21 +266,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
             this.state = state;
         }
         getClient().fireTorrentState(this, state);
-    }
-
-    /**
-     * Retrieve a piece object by index.
-     *
-     * @param index The index of the piece in this torrent.
-     */
-    @Nonnull
-    public Piece getPiece(@Nonnegative int index) {
-        if (!isInitialized())
-            throw new IllegalStateException("Torrent not initialized yet.");
-        if (index >= getPieceCount())
-            throw new IllegalArgumentException("Invalid piece index!");
-        // Don't need to lock here again because isInitialized() raised it.
-        return this.pieces[index];
     }
 
     /**
@@ -314,41 +308,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
     public void andNotCompletedPieces(BitSet b) {
         synchronized (lock) {
             b.andNot(completedPieces);
-        }
-    }
-
-    /**
-     * Return a copy of the bit field of available pieces for this torrent.
-     *
-     * <p>
-     * Available pieces are pieces available in the swarm, and it does not
-     * include our own pieces.
-     * </p>
-     */
-    @Nonnull
-    public BitSet getAvailablePieces() {
-        if (!this.isInitialized())
-            throw new IllegalStateException("Torrent not yet initialized!");
-
-        BitSet availablePieces = new BitSet(getPieceCount());
-        synchronized (lock) {
-            for (Piece piece : pieces) {
-                if (piece.isAvailable())
-                    availablePieces.set(piece.getIndex());
-            }
-        }
-
-        return availablePieces;
-    }
-
-    @Nonnegative
-    public int getAvailablePieceCount() {
-        synchronized (lock) {
-            int count = 0;
-            for (Piece piece : pieces)
-                if (piece.isAvailable())
-                    count++;
-            return count;
         }
     }
 
@@ -455,9 +414,15 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * the pieces array.
      * </p>
      */
-    public void init() throws InterruptedException, IOException {
-        if (this.isInitialized())
-            throw new IllegalStateException("Torrent was already initialized!");
+    @VisibleForTesting
+    /* pp */ void init() throws InterruptedException, IOException {
+        {
+            State s = getState();
+            if (s != State.WAITING) {
+                LOG.info("Restarting torrent from state " + s);
+                return;
+            }
+        }
         setState(State.VALIDATING);
 
         try {
@@ -465,60 +430,54 @@ public class TorrentHandler implements TorrentMetadataProvider {
 
             long size = getSize();
             // Store in a local so we can update with minimal synchronization.
-            Piece[] pieces = new Piece[npieces];
             BitSet completedPieces = new BitSet(npieces);
             long completedSize = 0;
 
-            ThreadPoolExecutor executor = TorrentCreator.newExecutor();
-
+            ThreadPoolExecutor executor = client.getEnvironment().getExecutorService();
+            // TorrentCreator.newExecutor("TorrentHandlerInit");
             try {
-                logger.info("Analyzing local data for {} ({} pieces)...",
+                LOG.info("Analyzing local data for {} ({} pieces)...",
                         new Object[]{getName(), npieces});
 
                 int step = 10;
                 CountDownLatch latch = new CountDownLatch(npieces);
                 for (int index = 0; index < npieces; index++) {
-                    Piece piece = new Piece(torrent, index);
-                    pieces[index] = piece;
                     // TODO: Read the file sequentially and pass it to the validator.
                     // Otherwise we thrash the disk on validation.
                     ByteBuffer buffer = ByteBuffer.allocate(getPieceLength(index));
                     bucket.read(buffer, getPieceOffset(index));
                     buffer.flip();
-                    executor.execute(new Piece.Validator(pieces[index], buffer, latch));
+                    executor.execute(new PieceValidator(torrent, index, buffer, completedPieces, latch));
 
                     if (index / (float) npieces * 100f > step) {
-                        logger.info("  ... {}% complete", step);
+                        LOG.info("  ... {}% complete", step);
                         step += 10;
                     }
                 }
                 latch.await();
 
-                for (Piece piece : pieces) {
-                    if (piece.isValid()) {
-                        completedPieces.set(piece.getIndex());
-                        completedSize += getPieceLength(piece.getIndex());
-                    }
+                for (int i = completedPieces.nextSetBit(0); i >= 0;
+                        i = completedPieces.nextSetBit(i + 1)) {
+                    completedSize += getPieceLength(i);
                 }
             } finally {
                 // Request orderly executor shutdown and wait for hashing tasks to
                 // complete.
-                executor.shutdown();
-                executor.awaitTermination(1, TimeUnit.SECONDS);
+                // executor.shutdown();
+                // executor.awaitTermination(1, TimeUnit.SECONDS);
             }
 
-            logger.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
+            LOG.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
                     new Object[]{
                 getName(),
                 completedSize,
                 size,
                 String.format("%.1f", (100f * (completedSize / (float) size))),
                 completedPieces.cardinality(),
-                pieces.length
+                getPieceCount()
             });
 
             synchronized (lock) {
-                this.pieces = pieces;
                 this.completedPieces = completedPieces;
             }
 
@@ -552,14 +511,14 @@ public class TorrentHandler implements TorrentMetadataProvider {
             ul += peer.getULRate().rate(TimeUnit.SECONDS);
         }
 
-        logger.info("{} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
+        LOG.info("{} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
                 new Object[]{
             getState().name(),
             getCompletedPieceCount(),
             getPieceCount(),
             String.format("%.2f", getCompletion()),
             getSwarmHandler().getRequestedPieceCount(),
-            getAvailablePieceCount(),
+            getSwarmHandler().getAvailablePieceCount(),
             getSwarmHandler().getConnectedPeerCount(),
             getSwarmHandler().getPeerCount(),
             String.format("%.2f", dl / 1024.0),
@@ -590,15 +549,15 @@ public class TorrentHandler implements TorrentMetadataProvider {
         setState(State.SEEDING);
     }
 
-    public synchronized boolean isFinished() {
-        return this.isComplete() && this.bucket.isFinished();
+    public boolean isFinished() {
+        return isComplete() && bucket.isFinished();
     }
 
     /**
      * Tells whether this torrent has been fully downloaded, or is fully
      * available locally.
      */
-    public synchronized boolean isComplete() {
+    public boolean isComplete() {
         return getCompletedPieceCount() == getPieceCount();
     }
 
@@ -612,7 +571,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
         this.bucket.close();
     }
 
-    public void start() {
+    public void start() throws InterruptedException, IOException {
+        init();
         trackerHandler.start();
         swarmHandler.start();
     }

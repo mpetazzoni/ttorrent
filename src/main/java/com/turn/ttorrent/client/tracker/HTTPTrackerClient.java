@@ -36,6 +36,7 @@ import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnull;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.config.RequestConfig;
@@ -189,14 +190,18 @@ public class HTTPTrackerClient extends TrackerClient {
             InputStream in = entity.getContent();
             if (in == null)
                 return null;
-            StreamBDecoder decoder = new StreamBDecoder(in);
-            BEValue value = decoder.bdecodeMap();
-            Map<String, BEValue> params = value.getMap();
-            // TODO: "warning message"
-            if (params.containsKey("failure reason"))
-                return HTTPTrackerErrorMessage.fromBEValue(params);
-            else
-                return HTTPAnnounceResponseMessage.fromBEValue(params);
+            try {
+                StreamBDecoder decoder = new StreamBDecoder(in);
+                BEValue value = decoder.bdecodeMap();
+                Map<String, BEValue> params = value.getMap();
+                // TODO: "warning message"
+                if (params.containsKey("failure reason"))
+                    return HTTPTrackerErrorMessage.fromBEValue(params);
+                else
+                    return HTTPAnnounceResponseMessage.fromBEValue(params);
+            } finally {
+                IOUtils.closeQuietly(in);
+            }
         } catch (InvalidBEncodingException e) {
             throw new IOException("Failed to parse response " + response, e);
         } catch (TrackerMessage.MessageValidationException e) {

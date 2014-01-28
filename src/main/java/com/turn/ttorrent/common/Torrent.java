@@ -27,7 +27,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -351,7 +353,7 @@ public class Torrent {
      * </p>
      */
     @Nonnegative
-    public int getPieceLength(int index) {
+    public int getPieceLength(@Nonnegative int index) {
         // The last piece may be shorter than the torrent's global piece
         // length. Let's make sure we get the right piece length in any
         // situation.
@@ -363,6 +365,21 @@ public class Torrent {
     @Nonnull
     public byte[] getPiecesHashes() {
         return piecesHashes;
+    }
+
+    @Nonnull
+    public byte[] getPieceHash(@Nonnegative int index) {
+        byte[] hashes = getPiecesHashes();
+        int offset = index * PIECE_HASH_SIZE;
+        return Arrays.copyOfRange(hashes, offset, offset + PIECE_HASH_SIZE);
+    }
+
+    public boolean isPieceValid(@Nonnegative int index, @Nonnull ByteBuffer data) {
+        if (data.remaining() != getPieceLength(index))
+            throw new IllegalArgumentException("Validating piece " + index + " expected " + getPieceLength(index) + ", not " + data.remaining());
+        MessageDigest digest = DigestUtils.getSha1Digest();
+        digest.update(data);
+        return Arrays.equals(digest.digest(), getPieceHash(index));
     }
 
     /**

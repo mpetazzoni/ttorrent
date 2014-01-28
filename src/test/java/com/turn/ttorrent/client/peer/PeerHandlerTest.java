@@ -36,10 +36,10 @@ public class PeerHandlerTest {
     public void testPeerHandler() throws Exception {
         byte[] peerId = Arrays.copyOf(new byte[]{1, 2, 3, 4, 5, 6}, 20);
         File dir = TorrentTestUtils.newTorrentDir("PeerHandlerTest-server");
-        Torrent torrent = TorrentTestUtils.newTorrent(dir, 12345, true);
+        Torrent torrent = TorrentTestUtils.newTorrent(dir, 12345);
 
         LocalAddress address = new LocalAddress("test");
-        LocalEventLoopGroup group = new LocalEventLoopGroup();
+        LocalEventLoopGroup group = new LocalEventLoopGroup(1);
         SERVER:
         {
             Client client = new Client(torrent, dir);
