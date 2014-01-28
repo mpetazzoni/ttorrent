@@ -89,7 +89,7 @@ public class PieceHandler {
     @Nonnull
     private Reception receive(ByteBuffer block, int offset) throws IOException {
         int length = block.remaining();
-        LOG.debug("Received {}[{}]", offset, length);
+        // LOG.debug("Received {}[{}]", offset, length);
 
         synchronized (lock) {
             // Make sure we actually needed any of these bytes.
@@ -113,8 +113,8 @@ public class PieceHandler {
             }
         }
 
-        if (LOG.isDebugEnabled())
-            LOG.debug("Piece {} complete, and valid.", piece);
+        // if (LOG.isDebugEnabled())
+        // LOG.debug("Piece {} complete, and valid.", piece);
         provider.writeBlock(ByteBuffer.wrap(pieceData), piece, 0);
         return Reception.VALID;
     }

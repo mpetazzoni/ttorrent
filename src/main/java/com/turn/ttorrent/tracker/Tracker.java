@@ -17,6 +17,10 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
 
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.Gauge;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.MetricsRegistry;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -28,6 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
@@ -58,10 +63,13 @@ public class Tracker {
     private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
     private final InetSocketAddress address;
     private final String version;
+    private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
     /** The in-memory repository of torrents tracked. */
     private final ConcurrentMap<String, TrackedTorrent> torrents = new ConcurrentHashMap<String, TrackedTorrent>();
+    private TrackerMetrics metrics;
     private Connection connection;
     private ScheduledExecutorService scheduler;
+    private final Object lock = new Object();
 
     /**
      * Create a new BitTorrent tracker listening at the given address on the
@@ -71,7 +79,7 @@ public class Tracker {
      * @throws IOException Throws an <em>IOException</em> if the tracker
      * cannot be initialized.
      */
-    public Tracker(InetAddress address) throws IOException {
+    public Tracker(@Nonnull InetAddress address) throws IOException {
         this(new InetSocketAddress(address, DEFAULT_TRACKER_PORT),
                 DEFAULT_VERSION_STRING);
     }
@@ -83,7 +91,7 @@ public class Tracker {
      * @throws IOException Throws an <em>IOException</em> if the tracker
      * cannot be initialized.
      */
-    public Tracker(InetSocketAddress address) throws IOException {
+    public Tracker(@Nonnull InetSocketAddress address) throws IOException {
         this(address, DEFAULT_VERSION_STRING);
     }
 
@@ -95,7 +103,7 @@ public class Tracker {
      * @throws IOException Throws an <em>IOException</em> if the tracker
      * cannot be initialized.
      */
-    public Tracker(InetSocketAddress address, String version)
+    public Tracker(@Nonnull InetSocketAddress address, @Nonnull String version)
             throws IOException {
         this.address = address;
         this.version = version;
@@ -108,42 +116,64 @@ public class Tracker {
      * This has the form http://host:port/announce.
      * </p>
      */
+    @CheckForNull
     public URL getAnnounceUrl() {
         try {
             return new URL("http",
                     this.address.getAddress().getCanonicalHostName(),
                     this.address.getPort(),
                     Tracker.ANNOUNCE_URL);
-        } catch (MalformedURLException mue) {
-            LOG.error("Could not build tracker URL: {}!", mue, mue);
+        } catch (MalformedURLException e) {
+            LOG.error("Could not build tracker URL: " + e, e);
         }
 
         return null;
+    }
+
+    @Nonnull
+    public MetricsRegistry getMetricsRegistry() {
+        return metricsRegistry;
+    }
+
+    public void setMetricsRegistry(@Nonnull MetricsRegistry metricsRegistry) {
+        this.metricsRegistry = metricsRegistry;
     }
 
     /**
      * Start the tracker thread.
      */
     public void start() throws IOException {
-        URL announceUrl = getAnnounceUrl();
-        LOG.info("Starting BitTorrent tracker on {}...", announceUrl);
+        synchronized (lock) {
+            URL announceUrl = getAnnounceUrl();
+            LOG.info("Starting BitTorrent tracker on {}...", announceUrl);
 
-        if (this.connection == null) {
-            // Creates a thread via: SocketConnection
-            // -> ListenerManager -> Listener
-            // -> DirectReactor -> ActionDistributor -> Daemon
-            this.connection = new SocketConnection(
-                    new TrackerService(version, this.torrents));
-            this.connection.connect(address);
-        }
+            if (this.metrics == null) {
+                this.metrics = new TrackerMetrics(getMetricsRegistry(), address);
 
-        if (this.scheduler == null || this.scheduler.isShutdown()) {
-            // TODO: Set a thread timeout, nothing is time critical.
-            this.scheduler = new ScheduledThreadPoolExecutor(1);
-            this.scheduler.scheduleWithFixedDelay(new PeerCollector(),
-                    PEER_COLLECTION_FREQUENCY_SECONDS,
-                    PEER_COLLECTION_FREQUENCY_SECONDS,
-                    TimeUnit.SECONDS);
+                metrics.addGauge("torrentCount", new Gauge<Integer>() {
+                    @Override
+                    public Integer value() {
+                        return torrents.size();
+                    }
+                });
+            }
+
+            if (this.connection == null) {
+                // Creates a thread via: SocketConnection
+                // -> ListenerManager -> Listener
+                // -> DirectReactor -> ActionDistributor -> Daemon
+                this.connection = new SocketConnection(new TrackerService(version, torrents, metrics));
+                this.connection.connect(address);
+            }
+
+            if (this.scheduler == null || this.scheduler.isShutdown()) {
+                // TODO: Set a thread timeout, nothing is time critical.
+                this.scheduler = new ScheduledThreadPoolExecutor(1);
+                this.scheduler.scheduleWithFixedDelay(new PeerCollector(),
+                        PEER_COLLECTION_FREQUENCY_SECONDS,
+                        PEER_COLLECTION_FREQUENCY_SECONDS,
+                        TimeUnit.SECONDS);
+            }
         }
     }
 
@@ -156,14 +186,21 @@ public class Tracker {
      * </p>
      */
     public void stop() throws IOException {
-        if (this.connection != null) {
-            this.connection.close();
-            this.connection = null;
-        }
+        synchronized (lock) {
+            if (this.metrics != null) {
+                this.metrics.shutdown();
+                this.metrics = null;
+            }
 
-        if (this.scheduler != null) {
-            this.scheduler.shutdownNow();
-            this.scheduler = null;
+            if (this.connection != null) {
+                this.connection.close();
+                this.connection = null;
+            }
+
+            if (this.scheduler != null) {
+                this.scheduler.shutdownNow();
+                this.scheduler = null;
+            }
         }
 
         LOG.info("BitTorrent tracker closed.");

@@ -130,9 +130,9 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     @VisibleForTesting
     /* pp */ TrackerClient getTrackerClient(@Nonnull URI tracker) {
         String scheme = tracker.getScheme();
-        LOG.trace("Tracker scheme is " + scheme);
+        // LOG.trace("Tracker scheme is " + scheme);
         if ("http".equals(scheme) || "https".equals(scheme)) {
-            LOG.trace("Looking for HttpTrackerClient");
+            // LOG.trace("Looking for HttpTrackerClient");
             return getClient().getHttpTrackerClient();
             // } else if ("udp".equals(scheme)) {
             // TODO: Check we have an ipv4 address before allowing the UDP protocol.
@@ -255,7 +255,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
 
     private void reschedule(@Nonnegative long delay) {
-        LOG.trace("Rescheduling tracker for {}", delay);
+        // LOG.trace("Rescheduling tracker for {}", delay);
         synchronized (lock) {
             if (event == AnnounceRequestMessage.RequestEvent.STOPPED)
                 return;

@@ -47,9 +47,9 @@ public class ReplicationTest {
         torrent = creator.create();
 
         trackedTorrent = tracker.announce(torrent);
-        trackedTorrent.setAnnounceInterval(10, TimeUnit.SECONDS);
+        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
 
-        seed = new Client("RT-s");
+        seed = new Client("RT-s-");
         TorrentHandler sharedTorrent = new TorrentHandler(seed, torrent, dir);
         sharedTorrent.setBlockLength(64);
         seed.addTorrent(sharedTorrent);
@@ -73,7 +73,7 @@ public class ReplicationTest {
 
         for (int i = 0; i < nclients; i++) {
             File d = TorrentTestUtils.newTorrentDir("ReplicationTest.client" + i);
-            Client c = new Client("RT-c" + i);
+            Client c = new Client("RT-c" + i + "-");
             TorrentHandler sharedTorrent = new TorrentHandler(c, torrent, d);
             sharedTorrent.setBlockLength(64);
             c.addTorrent(sharedTorrent);
@@ -91,8 +91,22 @@ public class ReplicationTest {
     }
 
     @Test
-    public void testReplicationMultipleLate() throws Exception {
-        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
+    public void testReplicationSingleEarly() throws Exception {
+        testReplication(-500, 1);
+    }
+
+    @Test
+    public void testReplicationSingleLate() throws Exception {
+        testReplication(500, 1);
+    }
+
+    @Test
+    public void testReplicationMultipleEarly() throws Exception {
         testReplication(-500, 3);
+    }
+
+    @Test
+    public void testReplicationMultipleLate() throws Exception {
+        testReplication(500, 3);
     }
 }
