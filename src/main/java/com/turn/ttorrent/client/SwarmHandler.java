@@ -532,10 +532,8 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     }
 
     @Override
-    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer) {
-        BitSet interesting = peer.getAvailablePieces();
-        int peerAvailable = interesting.cardinality();
-        torrent.andNotCompletedPieces(interesting);
+    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer, @Nonnull BitSet peerInteresting) {
+        int peerAvailable = peer.getAvailablePieceCount();
 
         // TODO: We hold this lock for a LONG time. :-(
         // I'm fairly sure our lock acquisition order is peer then torrent.
@@ -547,7 +545,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 Iterator<PieceHandler> it = partialPieces.iterator();
                 while (it.hasNext()) {
                     PieceHandler piece = it.next();
-                    if (interesting.get(piece.getIndex())) {
+                    if (peerInteresting.get(piece.getIndex())) {
                         LOG.trace("{}: Peer {} receiving partial piece {}", new Object[]{
                             getLocalPeerName(),
                             peer, piece
@@ -559,6 +557,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             }
 
             // TODO: Should this be before or after PARTIAL?
+            BitSet interesting = (BitSet) peerInteresting.clone();
             this.andNotRequestedPieces(interesting);
             LOG.trace("{}: Peer {} has {}/{}/{} interesting piece(s).", new Object[]{
                 getLocalPeerName(),
@@ -575,7 +574,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                     return null;
                 }
 
-                interesting = peer.getAvailablePieces();
+                interesting = (BitSet) peerInteresting.clone();
                 torrent.andNotCompletedPieces(interesting);
                 LOG.trace("{}: Possible end-game, we're about to request a piece "
                         + "that was already requested from another peer.",

@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
 public class PeerHandler implements PeerMessageListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerHandler.class);
-    private static final int MAX_REQUESTS_SENT = 1;
+    private static final int MAX_REQUESTS_SENT = 50;
     private static final int MAX_REQUESTS_RCVD = 100;
 
     private static enum Flag {
@@ -380,6 +380,16 @@ public class PeerHandler implements PeerMessageListener {
                     }
                 }
 
+                BitSet interesting = getAvailablePieces();
+                provider.andNotCompletedPieces(interesting);
+                INTERESTING:
+                {
+                    if (interesting.isEmpty())
+                        notInteresting();
+                    else
+                        interesting();
+                }
+
                 EXPIRE:
                 {
                     long then = System.currentTimeMillis() - 30000;
@@ -389,18 +399,10 @@ public class PeerHandler implements PeerMessageListener {
                         if (requestSent.getRequestTime() < then) {
                             LOG.warn("Peer {} request {} timed out.", this, requestSent);
                             it.remove();
+                        } else {
+                            interesting.clear(requestSent.getPiece());
                         }
                     }
-                }
-
-                INTERESTING:
-                {
-                    BitSet interesting = getAvailablePieces();
-                    provider.andNotCompletedPieces(interesting);
-                    if (interesting.isEmpty())
-                        notInteresting();
-                    else
-                        interesting();
                 }
 
                 REQUEST:
@@ -416,11 +418,10 @@ public class PeerHandler implements PeerMessageListener {
                             // This calls a significant piece of infrastructure elsewhere,
                             // and needs a proof against deadlock.
                             if (requestsSource == null)
-                                requestsSource = provider.getNextPieceToDownload(this);
+                                requestsSource = provider.getNextPieceToDownload(this, interesting);
                             // LOG.debug("RequestSource is {}", requestsSource);
                             if (requestsSource == null) {
                                 LOG.debug("Peer {} has no request source; breaking request loop.", this);
-                                notInteresting();
                                 break REQUEST;
                             }
                             request = requestsSource.nextRequest();
@@ -428,9 +429,8 @@ public class PeerHandler implements PeerMessageListener {
                             if (request == null)
                                 requestsSource = null;
                         }
-                        interesting();
                         requestsSent.add(request);
-                        // TODO: findbugs thinks this can be null, but I don't.
+                        // TODO: findbugs thinks request can be null, but I don't see how.
                         flush = true;
                         send(request, false);
                     }
@@ -630,6 +630,7 @@ public class PeerHandler implements PeerMessageListener {
     public void tick() {
         upload.tick();
         download.tick();
+        // TODO: Keepalives.
     }
 
     @Override

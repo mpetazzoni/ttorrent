@@ -41,7 +41,7 @@ public class ReplicationTest {
 
         File dir = TorrentTestUtils.newTorrentDir("ReplicationTest.seed");
 
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 12670);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126070);
         creator.setAnnounce(tracker.getAnnounceUrl().toURI());
         creator.setPieceLength(512);
         torrent = creator.create();

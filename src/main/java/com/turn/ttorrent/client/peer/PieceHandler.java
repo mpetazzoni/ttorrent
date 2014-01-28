@@ -128,7 +128,7 @@ public class PieceHandler {
         }
 
         @Nonnull
-        public PieceHandler getDownloadingPiece() {
+        public PieceHandler getPieceHandler() {
             return PieceHandler.this;
         }
 
