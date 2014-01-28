@@ -19,7 +19,6 @@ import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.bcodec.StreamBDecoder;
 import com.turn.ttorrent.client.ClientEnvironment;
-import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
@@ -100,7 +99,8 @@ public class HTTPTrackerClient extends TrackerClient {
             LOG.trace(request.getRequestLine() + "->" + response.getStatusLine());
             try {
                 HTTPTrackerMessage message = toMessage(response, -1);
-                handleTrackerAnnounceResponse(listener, tracker, message, false);
+                if (message != null)
+                    handleTrackerAnnounceResponse(listener, tracker, message, false);
             } catch (Exception e) {
                 failed(e);
             }
