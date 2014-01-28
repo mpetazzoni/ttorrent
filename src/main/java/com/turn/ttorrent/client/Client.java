@@ -79,15 +79,15 @@ public class Client {
      *
      * @param torrent The torrent to download and share.
      */
-    public Client() {
-        this.environment = new ClientEnvironment();
+    public Client(String peerName) {
+        this.environment = new ClientEnvironment(peerName);
     }
 
     /**
      * A convenience constructor to start with a single torrent.
      */
     public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException, InterruptedException {
-        this();
+        this(torrent.getName());
         addTorrent(new TorrentHandler(this, torrent, outputDir));
     }
 
@@ -142,6 +142,7 @@ public class Client {
      }
      */
     public void start() throws Exception {
+        LOG.info("BitTorrent client [{}] starting...", this);
         synchronized (lock) {
             setState(State.STARTING);
 
@@ -161,13 +162,13 @@ public class Client {
             for (TorrentHandler torrent : torrents.values())
                 torrent.start();
 
-            LOG.info("BitTorrent client [{}] started...", this);
-
             setState(State.STARTED);
         }
+        LOG.info("BitTorrent client [{}] started...", this);
     }
 
     public void stop() throws Exception {
+        LOG.info("BitTorrent client [{}] stopping...", this);
         synchronized (lock) {
             setState(State.STOPPING);
 
@@ -189,6 +190,7 @@ public class Client {
 
             setState(State.STOPPED);
         }
+        LOG.info("BitTorrent client [{}] stopped...", this);
     }
 
     @CheckForNull
@@ -198,7 +200,6 @@ public class Client {
     }
 
     public void addTorrent(@Nonnull TorrentHandler torrent) throws IOException, InterruptedException {
-        torrent.init();
         // This lock guarantees that we are started or stopped.
         synchronized (lock) {
             torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);

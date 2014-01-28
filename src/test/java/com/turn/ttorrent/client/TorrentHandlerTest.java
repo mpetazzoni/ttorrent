@@ -24,15 +24,21 @@ public class TorrentHandlerTest {
     @Test
     public void testTorrentHandler() throws Exception {
         File d_seed = TorrentTestUtils.newTorrentDir("TorrentHandlerTest");
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(d_seed, 12345678, true);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(d_seed, 12345678);
         Torrent torrent = creator.create();
 
-        Client client = new Client();
+        Client client = new Client(getClass().getSimpleName());
         TorrentHandler torrentHandler = new TorrentHandler(client, torrent, d_seed);
         client.addTorrent(torrentHandler);
+        client.getEnvironment().start();
+        try {
+            torrentHandler.init();
 
-        assertTrue("We have pieces.", torrentHandler.getPieceCount() > 0);
-        assertTrue("We are complete, i.e. a seed.", torrentHandler.isComplete());
-        LOG.info("Available is " + torrentHandler.getCompletedPieces());
+            assertTrue("We have pieces.", torrentHandler.getPieceCount() > 0);
+            assertTrue("We are complete, i.e. a seed.", torrentHandler.isComplete());
+            LOG.info("Available is " + torrentHandler.getCompletedPieces());
+        } finally {
+            client.getEnvironment().stop();
+        }
     }
 }

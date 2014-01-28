@@ -116,10 +116,10 @@ public class TorrentCreator {
      * enough that JVM ergonomics keeps the eden size small.
      */
     @Nonnull
-    public static ThreadPoolExecutor newExecutor() {
+    public static ThreadPoolExecutor newExecutor(@Nonnull String peerName) {
         int threads = getHashingThreadsCount();
         logger.info("Creating ExecutorService with {} threads", new Object[]{threads});
-        ThreadFactory factory = new DefaultThreadFactory("bittorrent-executor", true);
+        ThreadFactory factory = new DefaultThreadFactory("bittorrent-executor-" + peerName, true);
         ThreadPoolExecutor service = new ThreadPoolExecutor(0, threads,
                 1L, TimeUnit.SECONDS,
                 new ArrayBlockingQueue<Runnable>(threads * 3),
@@ -172,7 +172,7 @@ public class TorrentCreator {
 
     private void validate() {
         if (executor == null)
-            executor = newExecutor();
+            executor = newExecutor("TorrentCreator-" + parent);
         if (files == null) {
             validate(parent);
         } else {

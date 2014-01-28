@@ -41,14 +41,18 @@ public class ReplicationTest {
 
         File dir = TorrentTestUtils.newTorrentDir("ReplicationTest.seed");
 
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 1234567, true);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 12670);
         creator.setAnnounce(tracker.getAnnounceUrl().toURI());
+        creator.setPieceLength(512);
         torrent = creator.create();
 
         trackedTorrent = tracker.announce(torrent);
-        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
+        trackedTorrent.setAnnounceInterval(10, TimeUnit.SECONDS);
 
-        seed = new Client(torrent, dir);
+        seed = new Client("RT-s");
+        TorrentHandler sharedTorrent = new TorrentHandler(seed, torrent, dir);
+        sharedTorrent.setBlockLength(64);
+        seed.addTorrent(sharedTorrent);
     }
 
     @After
@@ -69,7 +73,10 @@ public class ReplicationTest {
 
         for (int i = 0; i < nclients; i++) {
             File d = TorrentTestUtils.newTorrentDir("ReplicationTest.client" + i);
-            Client c = new Client(torrent, d);
+            Client c = new Client("RT-c" + i);
+            TorrentHandler sharedTorrent = new TorrentHandler(c, torrent, d);
+            sharedTorrent.setBlockLength(64);
+            c.addTorrent(sharedTorrent);
             c.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
             leechers.add(c);
             c.start();
@@ -85,7 +92,7 @@ public class ReplicationTest {
 
     @Test
     public void testReplicationMultipleLate() throws Exception {
-        trackedTorrent.setAnnounceInterval(100, TimeUnit.SECONDS);
+        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
         testReplication(-500, 3);
     }
 }

@@ -8,8 +8,6 @@ import com.turn.ttorrent.test.TestPeerPieceProvider;
 import com.google.common.math.IntMath;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.client.Piece;
-import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
@@ -30,22 +28,17 @@ public class PieceHandlerTest {
     @Test
     public void testPiece() throws Exception {
         File dir = TorrentTestUtils.newTorrentDir("PieceHandlerTest");
-        Torrent torrent = TorrentTestUtils.newTorrent(dir, 465432, true);
+        Torrent torrent = TorrentTestUtils.newTorrent(dir, 465432);
 
-        Client client = new Client();
-        TorrentHandler torrentHandler = new TorrentHandler(client, torrent, new File("build/tmp"));
-        torrentHandler.init();
-
-        Piece piece = torrentHandler.getPiece(0);
         PeerPieceProvider provider = new TestPeerPieceProvider(torrent);
-        PieceHandler pieceHandler = new PieceHandler(piece, provider);
-        int blockCount = IntMath.divide(torrentHandler.getPieceLength(0), PieceHandler.DEFAULT_BLOCK_SIZE, RoundingMode.UP);
+        PieceHandler pieceHandler = new PieceHandler(provider, 0);
+        int blockCount = IntMath.divide(torrent.getPieceLength(0), PieceHandler.DEFAULT_BLOCK_SIZE, RoundingMode.UP);
 
         for (int i = 0; i < blockCount; i++) {
             PieceHandler.AnswerableRequestMessage request = pieceHandler.nextRequest();
             LOG.info("Request is " + request);
             assertNotNull(request);
-            request.validate(torrentHandler);
+            request.validate(provider);
         }
 
         for (int i = 0; i < 2; i++) {

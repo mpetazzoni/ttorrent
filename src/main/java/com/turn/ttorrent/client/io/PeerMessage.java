@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.TorrentHandler;
 import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
@@ -103,7 +104,7 @@ public abstract class PeerMessage {
      *
      * @param torrent The torrent this message is about.
      */
-    public PeerMessage validate(TorrentHandler torrent)
+    public PeerMessage validate(PeerPieceProvider torrent)
             throws MessageValidationException {
         return this;
     }
@@ -249,7 +250,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public HaveMessage validate(TorrentHandler torrent)
+        public HaveMessage validate(PeerPieceProvider torrent)
                 throws MessageValidationException {
             if (this.piece >= 0 && this.piece < torrent.getPieceCount())
                 return this;
@@ -315,7 +316,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public BitfieldMessage validate(TorrentHandler torrent)
+        public BitfieldMessage validate(PeerPieceProvider torrent)
                 throws MessageValidationException {
             if (this.bitfield.length() > torrent.getPieceCount())
                 throw new MessageValidationException(this);
@@ -368,7 +369,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public AbstractPieceMessage validate(TorrentHandler torrent)
+        public AbstractPieceMessage validate(PeerPieceProvider torrent)
                 throws MessageValidationException {
             if (getPiece() < 0)
                 throw new MessageValidationException(this);

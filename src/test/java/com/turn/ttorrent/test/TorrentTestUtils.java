@@ -36,7 +36,7 @@ public class TorrentTestUtils {
             return ROOT;
         File buildDir = new File("build/tmp");
         FileUtils.forceMkdir(buildDir);
-        File rootDir = File.createTempFile("ttorrent", ".seed", buildDir);
+        File rootDir = File.createTempFile("ttorrent", ".tmp", buildDir);
         FileUtils.forceDeleteOnExit(rootDir);
         FileUtils.forceDelete(rootDir);
         FileUtils.forceMkdir(rootDir);
@@ -48,33 +48,29 @@ public class TorrentTestUtils {
     public static File newTorrentDir(@Nonnull String name)
             throws IOException {
         File torrentDir = new File(newTorrentRoot(), name);
+        if (torrentDir.exists())
+            FileUtils.forceDelete(torrentDir);
         FileUtils.forceMkdir(torrentDir);
         return torrentDir;
     }
 
     @Nonnull
-    public static TorrentCreator newTorrentCreator(@Nonnull File dir, @Nonnegative final long size, boolean random)
+    public static TorrentCreator newTorrentCreator(@Nonnull File dir, @Nonnegative final long size)
             throws IOException, InterruptedException {
         File file = new File(dir, "torrent-data-file");
-        if (random) {
-            Files.copy(new InputSupplier<InputStream>() {
-                @Override
-                public InputStream getInput() throws IOException {
-                    return new RandomInputStream(size);
-                }
-            }, file);
-        } else {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            raf.setLength(size);
-            raf.close();
-        }
+        Files.copy(new InputSupplier<InputStream>() {
+            @Override
+            public InputStream getInput() throws IOException {
+                return new PatternInputStream(size);
+            }
+        }, file);
 
         return new TorrentCreator(file);
     }
 
     @Nonnull
-    public static Torrent newTorrent(@Nonnull File dir, @Nonnegative long size, boolean random)
+    public static Torrent newTorrent(@Nonnull File dir, @Nonnegative long size)
             throws IOException, InterruptedException, URISyntaxException {
-        return newTorrentCreator(dir, size, random).create();
+        return newTorrentCreator(dir, size).create();
     }
 }

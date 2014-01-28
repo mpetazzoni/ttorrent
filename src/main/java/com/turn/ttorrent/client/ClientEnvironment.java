@@ -41,11 +41,11 @@ public class ClientEnvironment {
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
 
-    public ClientEnvironment() {
+    public ClientEnvironment(@CheckForNull String peerName) {
         // String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
         byte[] tmp = new byte[20];  // Far too many, but who cares.
         random.nextBytes(tmp);
-        String id = BITTORRENT_ID_PREFIX + Torrent.byteArrayToHexString(tmp);
+        String id = BITTORRENT_ID_PREFIX + (peerName != null ? peerName : "") + Torrent.byteArrayToHexString(tmp);
         this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
 
     }
@@ -58,12 +58,17 @@ public class ClientEnvironment {
         return peerId;
     }
 
+    @Nonnull
+    public String getPeerName() {
+        return Torrent.byteArrayToText(getPeerId());
+    }
+
     public void start() {
         {
-            executorService = TorrentCreator.newExecutor();
+            executorService = TorrentCreator.newExecutor(getPeerName());
         }
         {
-            ThreadFactory factory = new DefaultThreadFactory("bittorrent-scheduler", true);
+            ThreadFactory factory = new DefaultThreadFactory("bittorrent-scheduler-" + getPeerName(), true);
             schedulerService = new ScheduledThreadPoolExecutor(1, factory);
         }
     }

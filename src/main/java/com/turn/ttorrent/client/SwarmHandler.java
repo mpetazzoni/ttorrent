@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -112,6 +113,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     private final ConcurrentMap<Object, PeerHandler> connectedPeers = PlatformDependent.newConcurrentHashMap();
     private final AtomicLong uploaded = new AtomicLong(0);
     private final AtomicLong downloaded = new AtomicLong(0);
+    private final AtomicIntegerArray availablePieces;
     @GuardedBy("lock")
     private final BitSet requestedPieces;
     @GuardedBy("lock")
@@ -136,8 +138,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      *
      * @param torrent The torrent shared by this client.
      */
-    SwarmHandler(@Nonnull TorrentHandler torrent) throws IOException {
+    SwarmHandler(@Nonnull TorrentHandler torrent) {
         this.torrent = torrent;
+        this.availablePieces = new AtomicIntegerArray(torrent.getPieceCount());
         this.requestedPieces = new BitSet(torrent.getPieceCount());
         // this.rarestPieces = new BitSet(torrent.getPieceCount());
     }
@@ -200,6 +203,31 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         return downloaded.get();
     }
 
+    @Nonnegative
+    public int getAvailablePieceCount() {
+        int count = 0;
+        for (int i = 0; i < torrent.getPieceCount(); i++) {
+            if (this.availablePieces.get(i) > 0)
+                count++;
+        }
+        return count;
+    }
+
+    public int setAvailablePiece(@Nonnegative int piece, boolean available) {
+        if (available) {
+            return availablePieces.incrementAndGet(piece);
+        } else {
+            for (;;) {
+                int current = availablePieces.get(piece);
+                if (current <= 0)
+                    return 0;
+                int next = current - 1;
+                if (availablePieces.compareAndSet(piece, current, next))
+                    return next;
+            }
+        }
+    }
+
     /**
      * Return a copy of the requested pieces bitset.
      */
@@ -260,8 +288,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // TODO: Periodic / step function.
     @Override
     public void run() {
-        LOG.info("Run: peers={}, connected={}, completed={}/{}",
+        LOG.info("Run({}): peers={}, connected={}, completed={}/{}",
                 new Object[]{
+            Torrent.byteArrayToText(getClient().getPeerId()),
             peers, connectedPeers,
             torrent.getCompletedPieceCount(), torrent.getPieceCount()
         });
@@ -403,13 +432,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     /**
      * Computes the set of rarest pieces from the interesting set.
      */
-    private static int computeRarestPieces(@Nonnull TorrentHandler torrent, @Nonnull BitSet rarest, @Nonnull BitSet interesting) {
+    private int computeRarestPieces(@Nonnull BitSet rarest, @Nonnull BitSet interesting) {
         rarest.clear();
         int rarestAvailability = Integer.MAX_VALUE;
         for (int i = interesting.nextSetBit(0); i >= 0;
                 i = interesting.nextSetBit(i + 1)) {
-            Piece piece = torrent.getPiece(i);
-            int availability = piece.getAvailability();
+            int availability = availablePieces.get(i);
             if (availability == 0)
                 continue;
             if (availability > rarestAvailability)
@@ -429,13 +457,23 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     }
 
     @Override
-    public Piece getPiece(int index) {
-        return torrent.getPiece(index);
+    public int getPieceLength(int index) {
+        return torrent.getPieceLength(index);
+    }
+
+    @Override
+    public int getBlockLength() {
+        return torrent.getBlockLength();
     }
 
     @Override
     public BitSet getCompletedPieces() {
         return torrent.getCompletedPieces();
+    }
+
+    @Override
+    public boolean isCompletedPiece(int index) {
+        return torrent.isCompletedPiece(index);
     }
 
     @Override
@@ -496,18 +534,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             }
 
             BitSet rarestPieces = new BitSet(interesting.length());
-            computeRarestPieces(torrent, rarestPieces, interesting);
+            computeRarestPieces(rarestPieces, interesting);
             if (rarestPieces.isEmpty()) // TODO: This should never happen if we aren't complete.
                 return null;
             // Pick a random piece from the rarest pieces from this peer.
             int rarestIndex = getRandom().nextInt(rarestPieces.cardinality());
-            Piece rarestPiece;
             SEARCH:
             {
                 for (int i = rarestPieces.nextSetBit(0); i >= 0;
                         i = rarestPieces.nextSetBit(i + 1)) {
                     if (rarestIndex-- == 0) {
-                        rarestPiece = torrent.getPiece(i);
+                        rarestIndex = i;
                         break SEARCH;
                     }
                 }
@@ -515,17 +552,17 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 return null;
             }
 
-            requestedPieces.set(rarestPiece.getIndex());
+            requestedPieces.set(rarestIndex);
 
             LOG.trace("Requesting {} from {}, we now have {} outstanding request(s): {}",
                     new Object[]{
-                rarestPiece,
+                rarestIndex,
                 peer,
                 getRequestedPieceCount(),
                 getRequestedPieces()
             });
 
-            return new PieceHandler(rarestPiece, this);
+            return new PieceHandler(this, rarestIndex);
         }
     }
 
@@ -550,6 +587,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         ioBlock(block, piece, offset);
         long rawOffset = torrent.getTorrent().getPieceOffset(piece) + offset;
         torrent.getBucket().write(block, rawOffset);
+    }
+
+    @Override
+    public boolean validateBlock(ByteBuffer block, int piece) throws IOException {
+        LOG.trace("Validating data for {}...", this);
+        return torrent.getTorrent().isPieceValid(piece, block);
     }
 
     /** PeerConnectionListener handler(s). ********************************/
@@ -577,7 +620,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // peers.add(remoteAddress);
 
         // Peer peer = new Peer(remoteAddress, remotePeerId);
-        LOG.trace("Searching for {}...", new Peer(remoteAddress, remotePeerId));
+        LOG.trace("Searching for address {}, peerId {}...", remoteAddress, Torrent.byteArrayToHexString(remotePeerId));
 
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
@@ -725,8 +768,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      */
     @Override
     public void handlePieceAvailability(PeerHandler peer, int piece) {
-        Piece p = torrent.getPiece(piece);
-        /* int availability = */ p.seenAt(peer);
+        setAvailablePiece(piece, true);
         LOG.trace("Peer {} now has {} [{}/{}].",
                 new Object[]{
             peer,
@@ -740,7 +782,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             peer,
             peer.getAvailablePieceCount(),
             torrent.getCompletedPieceCount(),
-            torrent.getAvailablePieceCount(),
+            getAvailablePieceCount(),
             torrent.getPieceCount()
         });
     }
@@ -761,13 +803,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     @Override
     public void handleBitfieldAvailability(PeerHandler peer,
             BitSet prevAvailablePieces,
-            BitSet availablePieces) {
+            BitSet currAvailablePieces) {
 
         LOG.trace("Recorded message from {} with {} "
                 + "pieces(s) [{}/{}].",
                 new Object[]{
             peer,
-            availablePieces.cardinality(),
+            currAvailablePieces.cardinality(),
             peer.getAvailablePieceCount(),
             torrent.getPieceCount()
         });
@@ -775,19 +817,19 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // Record that the peer no longer has all the pieces it previously told us it had.
         for (int i = prevAvailablePieces.nextSetBit(0); i >= 0;
                 i = prevAvailablePieces.nextSetBit(i + 1)) {
-            if (!availablePieces.get(i))
-                torrent.getPiece(i).noLongerAt(peer);
+            if (!currAvailablePieces.get(i))
+                setAvailablePiece(i, false);
         }
 
         // Record that the peer has all the pieces it told us it had.
-        for (int i = availablePieces.nextSetBit(0); i >= 0;
-                i = availablePieces.nextSetBit(i + 1)) {
+        for (int i = currAvailablePieces.nextSetBit(0); i >= 0;
+                i = currAvailablePieces.nextSetBit(i + 1)) {
             if (!prevAvailablePieces.get(i))
-                torrent.getPiece(i).seenAt(peer);
+                setAvailablePiece(i, true);
         }
 
         // Determine if the peer is interesting for us or not, and notify it.
-        BitSet interesting = availablePieces;
+        BitSet interesting = currAvailablePieces;
         torrent.andNotCompletedPieces(interesting);
         this.andNotRequestedPieces(interesting);
 
@@ -802,10 +844,10 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 + "[completed={}; available={}/{}].",
                 new Object[]{
             peer,
-            availablePieces.cardinality(),
+            currAvailablePieces.cardinality(),
             interesting.cardinality(),
             torrent.getCompletedPieceCount(),
-            torrent.getAvailablePieceCount(),
+            getAvailablePieceCount(),
             torrent.getPieceCount()
         });
     }
@@ -851,7 +893,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
      * @param piece The piece in question.
      */
     @Override
-    public void handlePieceCompleted(PeerHandler peer, int piece)
+    public void handlePieceCompleted(PeerHandler peer, int piece, PieceHandler.Reception reception)
             throws IOException {
         // Regardless of validity, record the number of bytes downloaded and
         // mark the piece as not requested anymore
@@ -859,8 +901,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             requestedPieces.clear(piece);
         }
 
-        Piece p = torrent.getPiece(piece);
-        if (p.isValid()) {
+        if (reception == PieceHandler.Reception.VALID) {
             // Make sure the piece is marked as completed in the torrent
             // Note: this is required because the order the
             // PeerActivityListeners are called is not defined, and we
@@ -884,7 +925,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                     piece, peer);
         }
 
-        if (this.torrent.isComplete()) {
+        if (torrent.isComplete()) {
             LOG.info("Last piece validated and completed, finishing download...");
 
             // Cancel all remaining outstanding requests
@@ -895,7 +936,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             }
 
             // TODO: This need locking.
-            this.torrent.finish();
+            torrent.finish();
             LOG.info("Download is complete and finalized.");
         }
 
@@ -927,10 +968,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         });
 
         BitSet availablePieces = peer.getAvailablePieces();
-
         for (int i = availablePieces.nextSetBit(0); i >= 0;
                 i = availablePieces.nextSetBit(i + 1)) {
-            torrent.getPiece(i).noLongerAt(peer);
+            setAvailablePiece(i, false);
         }
 
         handlePeerPipelineDiscard(peer);
@@ -940,7 +980,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             peer,
             peer.getAvailablePieceCount(),
             torrent.getCompletedPieceCount(),
-            torrent.getAvailablePieceCount(),
+            getAvailablePieceCount(),
             torrent.getPieceCount()
         });
         LOG.trace("We now have {} piece(s) and {} outstanding request(s): {}",
