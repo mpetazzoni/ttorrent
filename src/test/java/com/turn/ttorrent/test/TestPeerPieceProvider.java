@@ -77,7 +77,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public PieceHandler getNextPieceHandler(PeerHandler peer, BitSet interesting) {
+    public Iterable<PieceHandler.AnswerableRequestMessage> getNextPieceHandler(PeerHandler peer, BitSet interesting) {
         synchronized (lock) {
             PieceHandler out = pieceHandler;
             pieceHandler = null;
@@ -86,7 +86,7 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public void addRequestTimeout(PieceHandler.AnswerableRequestMessage request) {
+    public void addRequestTimeout(Iterable<? extends PieceHandler.AnswerableRequestMessage> requests) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

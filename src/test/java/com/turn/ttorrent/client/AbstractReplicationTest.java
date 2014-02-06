@@ -62,6 +62,7 @@ public class AbstractReplicationTest {
             leecher.stop();
         seed.stop();
         tracker.stop();
+        Thread.sleep(1000); // Wait for socket release.
     }
 
     @Nonnull
