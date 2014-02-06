@@ -15,8 +15,8 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.PeerPieceProvider;
-import com.turn.ttorrent.client.TorrentHandler;
 import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
@@ -381,6 +381,7 @@ public abstract class PeerMessage {
         }
 
         public boolean answers(@Nonnull AbstractPieceMessage message) {
+            Preconditions.checkNotNull(message, "Message was null.");
             return getPiece() == message.getPiece()
                     && getOffset() == message.getOffset()
                     && getLength() == message.getLength();
