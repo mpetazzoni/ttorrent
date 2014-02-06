@@ -322,12 +322,13 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     // TODO: Periodic / step function.
     @Override
     public void run() {
-        LOG.info("{}: Run: peers={}, connected={}, completed={}/{}",
-                new Object[]{
-            getLocalPeerName(),
-            peers, connectedPeers,
-            torrent.getCompletedPieceCount(), torrent.getPieceCount()
-        });
+        if (LOG.isTraceEnabled())
+            LOG.trace("{}: Run: peers={}, connected={}, completed={}/{}",
+                    new Object[]{
+                getLocalPeerName(),
+                peers, connectedPeers,
+                torrent.getCompletedPieceCount(), torrent.getPieceCount()
+            });
         boolean optimistic = false;
         boolean tick = false;
         long now = System.currentTimeMillis();
@@ -583,14 +584,15 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
                 interesting = (BitSet) peerInteresting.clone();
                 torrent.andNotCompletedPieces(interesting);
-                LOG.debug("{}: Possible end-game, we're about to request a piece "
-                        + "that was already requested from another peer.",
-                        getLocalPeerName());
+                if (LOG.isTraceEnabled())
+                    LOG.trace("{}: Possible end-game, we're about to request a piece "
+                            + "that was already requested from another peer.",
+                            getLocalPeerName());
             }
 
             if (interesting.isEmpty()) {
-                if (LOG.isDebugEnabled())
-                    LOG.debug("{}: No interesting piece from {}!", getLocalPeerName(), peer);
+                if (LOG.isTraceEnabled())
+                    LOG.trace("{}: No interesting piece from {}!", getLocalPeerName(), peer);
                 return null;
             }
 

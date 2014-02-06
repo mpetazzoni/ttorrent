@@ -71,8 +71,8 @@ import org.slf4j.LoggerFactory;
 public class PeerHandler implements PeerMessageListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerHandler.class);
-    private static final int MAX_REQUESTS_SENT = 50;
-    private static final int MIN_REQUESTS_SENT = 4;
+    private static final int MAX_REQUESTS_SENT = 100;
+    private static final int MIN_REQUESTS_SENT = 16;
     private static final int MAX_REQUESTS_RCVD = 100;
 
     private static enum Flag {
@@ -418,7 +418,7 @@ public class PeerHandler implements PeerMessageListener {
                                 this, requestSent
                             });
                             provider.addRequestTimeout(requestSent);
-                            requestsSentLimit = Math.max((int) (requestsSentLimit / 0.8), MIN_REQUESTS_SENT);
+                            requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
                             it.remove();
                         } else {
                             interesting.clear(requestSent.getPiece());
@@ -462,7 +462,12 @@ public class PeerHandler implements PeerMessageListener {
                         }
 
                         PieceHandler.AnswerableRequestMessage request = requestsSource.next();
-                        // LOG.info("Adding " + request + " from " + requestsSource);
+                        if (LOG.isTraceEnabled())
+                            LOG.trace("{}: Adding {} from {}, queue={}/{}", new Object[]{
+                                provider.getLocalPeerName(),
+                                request, requestsSource,
+                                requestsSent.size(), requestsSentLimit
+                            });
                         interesting.clear(request.getPiece());  // Don't pick up the same piece on the next iteration.
                         request.setRequestTime();
                         requestsSent.add(request);
@@ -509,7 +514,8 @@ public class PeerHandler implements PeerMessageListener {
         } finally {
             if (flush)
                 channel.flush();
-            // LOG.info("After run: requestsSent={}", requestsSent);
+            if (LOG.isTraceEnabled())
+                LOG.trace("After run: requestsSent={}", requestsSent);
         }
     }
 
@@ -635,7 +641,7 @@ public class PeerHandler implements PeerMessageListener {
                 if (request != null)
                     reception = request.answer(message);
                 else
-                    LOG.warn("{}: Response received to unsent request: {} (sent={})", new Object[] {
+                    LOG.warn("{}: Response received to unsent request: {} (sent={})", new Object[]{
                         provider.getLocalPeerName(),
                         message, requestsSent.size()
                     });
