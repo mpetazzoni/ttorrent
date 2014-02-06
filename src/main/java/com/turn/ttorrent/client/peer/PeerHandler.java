@@ -24,10 +24,13 @@ import io.netty.channel.Channel;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.Queue;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import javax.annotation.CheckForNull;
@@ -105,11 +108,11 @@ public class PeerHandler implements PeerMessageListener {
     private Iterator<PieceHandler.AnswerableRequestMessage> requestsSource = Iterators.emptyIterator();
     // @GuardedBy("lock")   // It's now a concurrent structure.
     // The limit should be irrelevant, it's just to protect us.
-    private final Queue<PieceHandler.AnswerableRequestMessage> requestsSent = new LinkedBlockingQueue<PieceHandler.AnswerableRequestMessage>(MAX_REQUESTS_SENT * 2);
+    private final BlockingQueue<PieceHandler.AnswerableRequestMessage> requestsSent = new LinkedBlockingQueue<PieceHandler.AnswerableRequestMessage>(MAX_REQUESTS_SENT * 2);
     @GuardedBy("lock")
     private int requestsSentLimit = MAX_REQUESTS_SENT;
     // @GuardedBy("lock")   // Also now a concurrent structure.
-    private final Queue<PeerMessage.RequestMessage> requestsReceived = new ArrayBlockingQueue<PeerMessage.RequestMessage>(MAX_REQUESTS_RCVD);
+    private final BlockingQueue<PeerMessage.RequestMessage> requestsReceived = new ArrayBlockingQueue<PeerMessage.RequestMessage>(MAX_REQUESTS_RCVD);
 
     /**
      * Create a new sharing peer on a given torrent.
@@ -205,7 +208,12 @@ public class PeerHandler implements PeerMessageListener {
         // return flags.compareAndSet(flag.ordinal(), value ? 0 : 1, value ? 1 : 0);
     }
 
-    // TODO: These four methods need to be atomic.
+    // Only for SwarmHandler. :-(
+    @Nonnull
+    public Collection<? extends PieceHandler.AnswerableRequestMessage> getRequestsSent() {
+        return requestsSent;
+    }
+
     /**
      * Choke this peer.
      *
@@ -271,6 +279,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     public void close() {
+        rejectRequestsSent();
         channel.close();
     }
 
@@ -330,6 +339,17 @@ public class PeerHandler implements PeerMessageListener {
         removeRequestMessage(request, requestsReceived.iterator());
     }
 
+    private void rejectRequests(Collection<? extends PieceHandler.AnswerableRequestMessage> requests) {
+        if (!requests.isEmpty())
+            provider.addRequestTimeout(requests);
+    }
+
+    public void rejectRequestsSent() {
+        List<PieceHandler.AnswerableRequestMessage> requestsRejected = new ArrayList<PieceHandler.AnswerableRequestMessage>();
+        requestsSent.drainTo(requestsRejected);
+        rejectRequests(requestsRejected);
+    }
+
     /**
      * Cancel all pending requests.
      *
@@ -345,22 +365,19 @@ public class PeerHandler implements PeerMessageListener {
      */
     public int cancelRequestsSent() {
         // Set<PieceHandler> pieces = new HashSet<PieceHandler>();
-        int count = 0;
-        for (;;) {
-            PeerMessage.RequestMessage request = requestsSent.poll();
-            if (request == null)
-                break;
-            send(new PeerMessage.CancelMessage(request), false);
-            count++;
-        }
-        if (count > 0)
+        List<PieceHandler.AnswerableRequestMessage> requestsRejected = new ArrayList<PieceHandler.AnswerableRequestMessage>();
+        requestsSent.drainTo(requestsRejected);
+        for (PieceHandler.AnswerableRequestMessage requestRejected : requestsRejected)
+            send(new PeerMessage.CancelMessage(requestRejected), false);
+        rejectRequests(requestsRejected);
+        if (!requestsRejected.isEmpty())
             channel.flush();
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Cancelled {} remaining pending requests on {}.", new Object[]{
                 provider.getLocalPeerName(),
-                count, this
+                requestsRejected.size(), this
             });
-        return count;
+        return requestsRejected.size();
     }
 
     /**
@@ -409,6 +426,7 @@ public class PeerHandler implements PeerMessageListener {
                 EXPIRE:
                 {
                     long then = System.currentTimeMillis() - 10000;
+                    List<PieceHandler.AnswerableRequestMessage> requestsExpired = new ArrayList<PieceHandler.AnswerableRequestMessage>();
                     Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
                     while (it.hasNext()) {
                         PieceHandler.AnswerableRequestMessage requestSent = it.next();
@@ -417,13 +435,14 @@ public class PeerHandler implements PeerMessageListener {
                                 provider.getLocalPeerName(),
                                 this, requestSent
                             });
-                            provider.addRequestTimeout(requestSent);
+                            requestsExpired.add(requestSent);
                             requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
                             it.remove();
                         } else {
                             interesting.clear(requestSent.getPiece());
                         }
                     }
+                    rejectRequests(requestsExpired);
                 }
 
                 // Makes new requests.

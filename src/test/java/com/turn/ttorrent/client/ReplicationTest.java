@@ -6,6 +6,7 @@ package com.turn.ttorrent.client;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,23 +40,27 @@ public class ReplicationTest extends AbstractReplicationTest {
         await(latch);
     }
 
+    // @Ignore
     @Test
     public void testReplicationSingleEarly() throws Exception {
         trackedTorrent.setAnnounceInterval(1, TimeUnit.MINUTES);
         testReplication(-500, 1);
     }
 
+    // @Ignore
     @Test
     public void testReplicationSingleLate() throws Exception {
         testReplication(500, 1);
     }
 
+    // @Ignore
     @Test
     public void testReplicationMultipleEarly() throws Exception {
         trackedTorrent.setAnnounceInterval(1, TimeUnit.MINUTES);
         testReplication(-500, 3);
     }
 
+    // @Ignore
     @Test
     public void testReplicationMultipleLate() throws Exception {
         testReplication(500, 3);

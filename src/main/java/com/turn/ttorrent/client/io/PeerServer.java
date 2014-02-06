@@ -26,7 +26,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -40,7 +39,7 @@ public class PeerServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerServer.class);
     public static final int PORT_RANGE_START = 6881;
-    public static final int PORT_RANGE_END = 6889;
+    public static final int PORT_RANGE_END = 6999;
     public static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
     private final Client client;
     @CheckForNull
@@ -84,7 +83,7 @@ public class PeerServer {
                         x = e;
                     }
                 }
-                throw x;
+                throw new IOException("Failed to find an address to bind in range [" + PORT_RANGE_START + "," + PORT_RANGE_END + "]", x);
             }
         }
     }
