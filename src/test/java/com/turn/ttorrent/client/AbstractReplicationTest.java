@@ -37,7 +37,7 @@ public class AbstractReplicationTest {
 
     @Before
     public void setUp() throws Exception {
-        tracker = new Tracker(new InetSocketAddress("localhost", 5674));
+        tracker = new Tracker(new InetSocketAddress("localhost", 0));
         tracker.start();
 
         File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");

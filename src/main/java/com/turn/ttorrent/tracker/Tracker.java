@@ -19,12 +19,12 @@ import com.turn.ttorrent.common.Torrent;
 
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.MetricName;
 import com.yammer.metrics.core.MetricsRegistry;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.SocketAddress;
 import java.net.URL;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,6 +68,7 @@ public class Tracker {
     private final ConcurrentMap<String, TrackedTorrent> torrents = new ConcurrentHashMap<String, TrackedTorrent>();
     private TrackerMetrics metrics;
     private Connection connection;
+    private SocketAddress connectionAddress;
     private ScheduledExecutorService scheduler;
     private final Object lock = new Object();
 
@@ -119,9 +120,15 @@ public class Tracker {
     @CheckForNull
     public URL getAnnounceUrl() {
         try {
+            InetSocketAddress listenAddress;
+            SocketAddress a = this.connectionAddress;   // In case we bound ephemerally.
+            if (a instanceof InetSocketAddress)         // Also covers == null.
+                listenAddress = (InetSocketAddress) a;
+            else
+                listenAddress = address;
             return new URL("http",
-                    this.address.getAddress().getCanonicalHostName(),
-                    this.address.getPort(),
+                    listenAddress.getAddress().getCanonicalHostName(),
+                    listenAddress.getPort(),
                     Tracker.ANNOUNCE_URL);
         } catch (MalformedURLException e) {
             LOG.error("Could not build tracker URL: " + e, e);
@@ -163,7 +170,7 @@ public class Tracker {
                 // -> ListenerManager -> Listener
                 // -> DirectReactor -> ActionDistributor -> Daemon
                 this.connection = new SocketConnection(new TrackerService(version, torrents, metrics));
-                this.connection.connect(address);
+                connectionAddress = this.connection.connect(address);
             }
 
             if (this.scheduler == null || this.scheduler.isShutdown()) {
@@ -196,6 +203,8 @@ public class Tracker {
                 this.connection.close();
                 this.connection = null;
             }
+
+            this.connectionAddress = null;
 
             if (this.scheduler != null) {
                 this.scheduler.shutdownNow();
