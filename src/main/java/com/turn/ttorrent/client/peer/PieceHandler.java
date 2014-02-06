@@ -15,12 +15,14 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.UnmodifiableIterator;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerMessage;
+import com.turn.ttorrent.client.peer.PieceHandler.AnswerableRequestMessage;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -32,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PieceHandler {
+public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PieceHandler.class);
     /** Default block size is 2^14 bytes, or 16kB. */
@@ -41,13 +43,11 @@ public class PieceHandler {
     public static final int MAX_BLOCK_SIZE = 128 * 1024;   // This is 131072 in most implementations.
     private final int piece;
     private final PeerPieceProvider provider;
+    // TODO: Maintain the set of peers which sent us data, so we can bin bad peers.
     @GuardedBy("lock")
     private final byte[] pieceData;
     @GuardedBy("lock")
     private final BitSet pieceRequiredBytes;    // We should do this with blocks.
-    private static final int REQUEST_OFFSET_INIT = -1;
-    private static final int REQUEST_OFFSET_FINI = -2;
-    private int requestOffset = REQUEST_OFFSET_INIT;
     private final Object lock = new Object();
 
     public PieceHandler(@Nonnull PeerPieceProvider provider, @Nonnegative int piece) {
@@ -121,7 +121,8 @@ public class PieceHandler {
 
     public class AnswerableRequestMessage extends PeerMessage.RequestMessage {
 
-        private final long requestTime = System.currentTimeMillis();
+        // This is written before PeerHandler.requestsSent and read afterwards.
+        private long requestTime = -1;
 
         public AnswerableRequestMessage(int piece, int offset, int length) {
             super(piece, offset, length);
@@ -136,39 +137,73 @@ public class PieceHandler {
             return requestTime;
         }
 
+        public void setRequestTime() {
+            requestTime = System.currentTimeMillis();
+        }
+
         // TODO: Make public, and call when appropriate.
         private void cancel() {
             // TODO: Add to partial set.
         }
 
         @Nonnull
-        public Reception answer(PeerMessage.PieceMessage response) throws IOException {
+        public Reception answer(@Nonnull PeerMessage.PieceMessage response) throws IOException {
             if (!response.answers(this))
                 throw new IllegalArgumentException("Not an answer: request=" + this + ", response=" + response);
             return receive(response.getBlock(), response.getOffset());
         }
+
+        @Override
+        public int hashCode() {
+            return PieceHandler.this.hashCode() << 16 ^ getOffset() << 8 ^ getLength();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (null == obj)
+                return false;
+            if (!getClass().equals(obj.getClass()))
+                return false;
+            AnswerableRequestMessage other = (AnswerableRequestMessage) obj;
+            return getPieceHandler()== other.getPieceHandler()
+                    && getOffset() == other.getOffset()
+                    && getLength() == other.getLength();
+        }
+    }
+    private static final int REQUEST_OFFSET_INIT = -1;
+    private static final int REQUEST_OFFSET_FINI = -2;
+
+    private class AnswerableRequestIterator extends AbstractIterator<AnswerableRequestMessage> {
+
+        private int requestOffset = REQUEST_OFFSET_INIT;
+
+        @Override
+        protected AnswerableRequestMessage computeNext() {
+            int blockLength = provider.getBlockLength();
+            synchronized (lock) {
+                if (requestOffset == REQUEST_OFFSET_FINI)
+                    return endOfData();
+                else if (requestOffset == REQUEST_OFFSET_INIT)
+                    requestOffset = pieceRequiredBytes.nextSetBit(0);
+                else
+                    requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockLength);
+                if (requestOffset < 0) {
+                    requestOffset = REQUEST_OFFSET_FINI;
+                    return endOfData();
+                }
+                int length = Math.min(
+                        blockLength,
+                        pieceData.length - requestOffset);
+                return new AnswerableRequestMessage(piece, requestOffset, length);
+            }
+        }
     }
 
-    /** Returns null once when all blocks have been requested, then cycles. */
-    @CheckForNull
-    public AnswerableRequestMessage nextRequest() {
-        int blockLength = provider.getBlockLength();
-        synchronized (lock) {
-            if (requestOffset == REQUEST_OFFSET_FINI)
-                return null;
-            else if (requestOffset == REQUEST_OFFSET_INIT)
-                requestOffset = pieceRequiredBytes.nextSetBit(0);
-            else
-                requestOffset = pieceRequiredBytes.nextSetBit(requestOffset + blockLength);
-            if (requestOffset < 0) {
-                requestOffset = REQUEST_OFFSET_FINI;
-                return null;
-            }
-            int length = Math.min(
-                    blockLength,
-                    pieceData.length - requestOffset);
-            return new AnswerableRequestMessage(piece, requestOffset, length);
-        }
+    @Override
+    public UnmodifiableIterator<AnswerableRequestMessage> iterator() {
+        return new AnswerableRequestIterator();
     }
 
     @Override

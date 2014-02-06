@@ -62,7 +62,7 @@ status = project.hasProperty('preferredStatus')?project.preferredStatus:(version
 
 	test {
 		systemProperty 'org.apache.commons.logging.Log', 'org.apache.commons.logging.impl.SimpleLog'
-		systemProperty 'org.apache.commons.logging.simplelog.defaultlog', 'all'
+		systemProperty 'org.apache.commons.logging.simplelog.defaultlog', 'debug'
 		systemProperty 'org.apache.commons.logging.diagnostics.dest', 'STDERR'
 
 		testLogging {

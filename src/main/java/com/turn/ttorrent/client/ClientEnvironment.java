@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.yammer.metrics.Metrics;
@@ -43,6 +44,7 @@ public class ClientEnvironment {
     private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
+    private Instrumentation peerInstrumentation = new Instrumentation();
 
     public ClientEnvironment(@CheckForNull String peerName) {
         // String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
@@ -115,5 +117,14 @@ public class ClientEnvironment {
     @Nonnull
     public ScheduledExecutorService getSchedulerService() {
         return schedulerService;
+    }
+
+    @Nonnull
+    public Instrumentation getInstrumentation() {
+        return peerInstrumentation;
+    }
+
+    public void setInstrumentation(@Nonnull Instrumentation peerInstrumentation) {
+        this.peerInstrumentation = peerInstrumentation;
     }
 }

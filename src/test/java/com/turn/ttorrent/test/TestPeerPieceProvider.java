@@ -7,6 +7,7 @@ package com.turn.ttorrent.test;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
+import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.common.Torrent;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,6 +19,7 @@ import java.util.BitSet;
  */
 public class TestPeerPieceProvider implements PeerPieceProvider {
 
+    private final Instrumentation instrumentation = new Instrumentation();
     private final Torrent torrent;
     private final BitSet completedPieces;
     private PieceHandler pieceHandler;
@@ -26,6 +28,16 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     public TestPeerPieceProvider(Torrent torrent) {
         this.torrent = torrent;
         this.completedPieces = new BitSet(torrent.getPieceCount());
+    }
+
+    @Override
+    public Instrumentation getInstrumentation() {
+        return instrumentation;
+    }
+
+    @Override
+    public String getLocalPeerName() {
+        return "<TestPeerPieceProvider>";
     }
 
     @Override
@@ -65,12 +77,17 @@ public class TestPeerPieceProvider implements PeerPieceProvider {
     }
 
     @Override
-    public PieceHandler getNextPieceToDownload(PeerHandler peer, BitSet interesting) {
+    public PieceHandler getNextPieceHandler(PeerHandler peer, BitSet interesting) {
         synchronized (lock) {
             PieceHandler out = pieceHandler;
             pieceHandler = null;
             return out;
         }
+    }
+
+    @Override
+    public void addRequestTimeout(PieceHandler.AnswerableRequestMessage request) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     public void setPieceHandler(PieceHandler pieceHandler) {

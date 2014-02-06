@@ -22,6 +22,7 @@ import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -234,6 +235,12 @@ public class Client {
     public void fireTorrentState(@Nonnull TorrentHandler torrent, @Nonnull TorrentHandler.State state) {
         for (ClientListener listener : listeners)
             listener.torrentStateChanged(this, torrent, state);
+    }
+
+    public void info(boolean verbose) {
+        for (Map.Entry<String, TorrentHandler> e : torrents.entrySet()) {
+            e.getValue().info(verbose);
+        }
     }
     /**
      * Main client loop.

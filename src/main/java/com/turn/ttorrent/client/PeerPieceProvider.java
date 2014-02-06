@@ -6,6 +6,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
+import com.turn.ttorrent.client.peer.Instrumentation;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -18,6 +19,12 @@ import javax.annotation.Nonnull;
  * @author shevek
  */
 public interface PeerPieceProvider {
+
+    @Nonnull
+    public Instrumentation getInstrumentation();
+
+    @Nonnull
+    public String getLocalPeerName();
 
     @Nonnegative
     public int getPieceCount();
@@ -37,7 +44,9 @@ public interface PeerPieceProvider {
     public void andNotCompletedPieces(@Nonnull BitSet out);
 
     @CheckForNull
-    public PieceHandler getNextPieceToDownload(@Nonnull PeerHandler peer, @Nonnull BitSet interesting);
+    public Iterable<PieceHandler.AnswerableRequestMessage> getNextPieceHandler(@Nonnull PeerHandler peer, @Nonnull BitSet interesting);
+
+    public void addRequestTimeout(@Nonnull PieceHandler.AnswerableRequestMessage request);
 
     /**
      * Read a piece block from the underlying byte storage.

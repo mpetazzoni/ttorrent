@@ -178,6 +178,11 @@ public class TorrentHandler implements TorrentMetadataProvider {
     }
 
     @Nonnull
+    private String getLocalPeerName() {
+        return getClient().getEnvironment().getLocalPeerName();
+    }
+
+    @Nonnull
     public Torrent getTorrent() {
         return torrent;
     }
@@ -502,7 +507,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * completion and current transmission rates.
      * </p>
      */
-    public void info() {
+    public void info(boolean verbose) {
         double dl = 0;
         double ul = 0;
         for (PeerHandler peer : getSwarmHandler().getConnectedPeers()) {
@@ -510,9 +515,11 @@ public class TorrentHandler implements TorrentMetadataProvider {
             ul += peer.getULRate().rate(TimeUnit.SECONDS);
         }
 
-        LOG.info("{} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
+        LOG.info("{} {} {} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
                 new Object[]{
+            getLocalPeerName(),
             getState().name(),
+            Torrent.byteArrayToHexString(getInfoHash()),
             getCompletedPieceCount(),
             getPieceCount(),
             String.format("%.2f", getCompletion()),
@@ -523,7 +530,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
             String.format("%.2f", dl / 1024.0),
             String.format("%.2f", ul / 1024.0)
         });
-        getSwarmHandler().info();
+        getSwarmHandler().info(verbose);
     }
 
     /**
@@ -538,9 +545,9 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * @see TorrentByteStorage#finish
      */
     public synchronized void finish() throws IOException {
-        if (!this.isInitialized())
+        if (!isInitialized())
             throw new IllegalStateException("Torrent not yet initialized!");
-        if (!this.isComplete())
+        if (!isComplete())
             throw new IllegalStateException("Torrent download is not complete!");
 
         bucket.finish();
@@ -579,5 +586,10 @@ public class TorrentHandler implements TorrentMetadataProvider {
     public void stop() {
         trackerHandler.stop();
         swarmHandler.stop();
+    }
+
+    @Override
+    public String toString() {
+        return Torrent.byteArrayToHexString(getInfoHash()) + " [" + getCompletedPieceCount() + "/" + getPieceCount() + "]";
     }
 }
