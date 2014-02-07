@@ -357,7 +357,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             tracker.lastRecv = System.currentTimeMillis();
         }
 
-        LOG.info("Got {} peer(s) in tracker response.", peerAddresses.size());
+        // LOG.trace("Got {} peer(s) in tracker response.", peerAddresses.size());
         // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
         torrent.addPeers(peerAddresses);

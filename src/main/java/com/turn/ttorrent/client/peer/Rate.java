@@ -17,19 +17,16 @@ package com.turn.ttorrent.client.peer;
 
 import com.yammer.metrics.stats.EWMA;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
 import static java.lang.Math.exp;
 
 /**
  *
  * @author shevek
  */
-public class Rate extends EWMA implements Comparable<Rate> {
+public class Rate extends EWMA {
 
-    public static int compare(@Nonnull Rate a, @Nonnull Rate b) {
-        return Double.compare(a.rate(TimeUnit.SECONDS), b.rate(TimeUnit.SECONDS));
-    }
     public static final int INTERVAL = 5;
+    public static final long INTERVAL_MS = TimeUnit.SECONDS.toMillis(INTERVAL);
 
     public Rate(int seconds) {
         this(1 - exp(-INTERVAL / seconds), INTERVAL, TimeUnit.SECONDS);
@@ -37,11 +34,6 @@ public class Rate extends EWMA implements Comparable<Rate> {
 
     public Rate(double alpha, long interval, TimeUnit intervalUnit) {
         super(alpha, interval, intervalUnit);
-    }
-
-    @Override
-    public int compareTo(Rate o) {
-        return compare(this, o);
     }
 
     @Override

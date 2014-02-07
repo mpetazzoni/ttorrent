@@ -48,7 +48,7 @@ public class AbstractReplicationTest {
         torrent = creator.create();
 
         trackedTorrent = tracker.announce(torrent);
-        trackedTorrent.setAnnounceInterval(4, TimeUnit.SECONDS);
+        trackedTorrent.setAnnounceInterval(60, TimeUnit.SECONDS);
 
         seed = new Client("S-");
         TorrentHandler sharedTorrent = new TorrentHandler(seed, torrent, dir);
@@ -79,7 +79,7 @@ public class AbstractReplicationTest {
 
     protected void await(@Nonnull CountDownLatch latch) throws InterruptedException {
         for (;;) {
-            if (latch.await(1, TimeUnit.SECONDS))
+            if (latch.await(5, TimeUnit.SECONDS))
                 break;
             seed.info(true);
             for (Client c : leechers)

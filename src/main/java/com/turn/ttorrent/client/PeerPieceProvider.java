@@ -46,7 +46,7 @@ public interface PeerPieceProvider {
     @CheckForNull
     public Iterable<PieceHandler.AnswerableRequestMessage> getNextPieceHandler(@Nonnull PeerHandler peer, @Nonnull BitSet interesting);
 
-    public void addRequestTimeout(@Nonnull Iterable<? extends PieceHandler.AnswerableRequestMessage> requests);
+    public int addRequestTimeout(@Nonnull Iterable<? extends PieceHandler.AnswerableRequestMessage> requests);
 
     /**
      * Read a piece block from the underlying byte storage.

@@ -15,8 +15,11 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.yammer.metrics.stats.EWMA;
 import java.io.Serializable;
 import java.util.Comparator;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 
 /**
  *
@@ -25,6 +28,10 @@ import java.util.Comparator;
 public abstract class RateComparator implements Comparator<PeerHandler>, Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    private static int compare(@Nonnull Rate a, @Nonnull Rate b) {
+        return Double.compare(a.rate(TimeUnit.SECONDS), b.rate(TimeUnit.SECONDS));
+    }
 
     /**
      * Download rate comparator.
@@ -37,9 +44,19 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
      */
     public static class DLRateComparator extends RateComparator {
 
+        private static double rate(PeerHandler peer) {
+            double rate = peer.getDLRate().rate(TimeUnit.SECONDS);
+            rate += peer.getRequestsSentCount();
+            if (!peer.isChoked(0))
+                rate = (rate + 100) * 1.5;
+            return rate;
+        }
+
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            return Rate.compare(a.getDLRate(), b.getDLRate());
+            double ra = rate(a);
+            double rb = rate(b);
+            return Double.compare(rb, ra);
         }
     }
 
@@ -54,9 +71,18 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
      */
     public static class ULRateComparator extends RateComparator {
 
+        private static double rate(PeerHandler peer) {
+            double rate = peer.getDLRate().rate(TimeUnit.SECONDS);
+            if (!peer.isChoked(0))
+                rate = (rate + 100) * 1.5;
+            return rate;
+        }
+
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            return Rate.compare(a.getULRate(), b.getULRate());
+            double ra = rate(a);
+            double rb = rate(b);
+            return Double.compare(rb, ra);
         }
     }
 }

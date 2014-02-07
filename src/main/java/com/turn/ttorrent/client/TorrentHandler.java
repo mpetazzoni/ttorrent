@@ -441,8 +441,9 @@ public class TorrentHandler implements TorrentMetadataProvider {
             ThreadPoolExecutor executor = client.getEnvironment().getExecutorService();
             // TorrentCreator.newExecutor("TorrentHandlerInit");
             try {
-                LOG.info("Analyzing local data for {} ({} pieces)...",
-                        new Object[]{getName(), npieces});
+                LOG.info("{}: Analyzing local data for {} ({} pieces)...", new Object[]{
+                    getLocalPeerName(), getName(), npieces
+                });
 
                 int step = 10;
                 CountDownLatch latch = new CountDownLatch(npieces);
@@ -455,7 +456,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
                     executor.execute(new PieceValidator(torrent, index, buffer, completedPieces, latch));
 
                     if (index / (float) npieces * 100f > step) {
-                        LOG.info("  ... {}% complete", step);
+                        LOG.info("{}:  ... {}% complete", getLocalPeerName(), step);
                         step += 10;
                     }
                 }
@@ -472,11 +473,10 @@ public class TorrentHandler implements TorrentMetadataProvider {
                 // executor.awaitTermination(1, TimeUnit.SECONDS);
             }
 
-            LOG.debug("{}: we have {}/{} bytes ({}%) [{}/{} pieces].",
+            LOG.debug("{}: {}: we have {}/{} bytes ({}%) [{}/{} pieces].",
                     new Object[]{
-                getName(),
-                completedSize,
-                size,
+                getLocalPeerName(), getName(),
+                completedSize, size,
                 String.format("%.1f", (100f * (completedSize / (float) size))),
                 completedPieces.cardinality(),
                 getPieceCount()
@@ -508,28 +508,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * </p>
      */
     public void info(boolean verbose) {
-        double dl = 0;
-        double ul = 0;
-        for (PeerHandler peer : getSwarmHandler().getConnectedPeers()) {
-            dl += peer.getDLRate().rate(TimeUnit.SECONDS);
-            ul += peer.getULRate().rate(TimeUnit.SECONDS);
-        }
-
-        LOG.info("{} {} {} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
-                new Object[]{
-            getLocalPeerName(),
-            getState().name(),
-            Torrent.byteArrayToHexString(getInfoHash()),
-            getCompletedPieceCount(),
-            getPieceCount(),
-            String.format("%.2f", getCompletion()),
-            getSwarmHandler().getRequestedPieceCount(),
-            getSwarmHandler().getAvailablePieceCount(),
-            getSwarmHandler().getConnectedPeerCount(),
-            getSwarmHandler().getPeerCount(),
-            String.format("%.2f", dl / 1024.0),
-            String.format("%.2f", ul / 1024.0)
-        });
         getSwarmHandler().info(verbose);
     }
 
