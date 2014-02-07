@@ -128,6 +128,7 @@ public class PeerHandler implements PeerMessageListener {
      * @param peer The peer.
      * @param torrent The torrent this peer exchanges with us on.
      */
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public PeerHandler(
             @Nonnull byte[] remotePeerId,
             @Nonnull Channel channel,
@@ -150,6 +151,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Nonnull
+    @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getRemotePeerId() {
         return remotePeerId;
     }
@@ -160,7 +162,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Nonnull
-    public String getTextRemotePeerId() {
+    private String getTextRemotePeerId() {
         return Torrent.byteArrayToText(getRemotePeerId());
     }
 

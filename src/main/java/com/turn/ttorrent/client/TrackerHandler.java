@@ -88,6 +88,11 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return then - System.currentTimeMillis();
         }
 
+        @Nonnegative
+        public long getRescheduleDelay() {
+            return Math.max(getDelay(), 2000);
+        }
+
         @Override
         public String toString() {
             return uri + " [T" + tier + "]";
@@ -301,7 +306,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 LOG.error("Failed to announce to " + tracker, e);
                 moveToNextTracker();
             } finally {
-                reschedule(tracker.getDelay());
+                reschedule(tracker.getRescheduleDelay());
             }
         }
     }
@@ -322,7 +327,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 return;
             tracker.lastRecv = System.currentTimeMillis();
             tracker.setInterval(interval);
-            reschedule(tracker.getDelay());
+            reschedule(tracker.getRescheduleDelay());
         }
     }
 

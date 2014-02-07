@@ -363,6 +363,7 @@ public class Torrent {
     }
 
     @Nonnull
+    @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getPiecesHashes() {
         return piecesHashes;
     }
@@ -393,6 +394,7 @@ public class Torrent {
      * Return the hash of the B-encoded meta-info structure of this torrent.
      */
     @Nonnull
+    @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getInfoHash() {
         return this.info_hash;
     }

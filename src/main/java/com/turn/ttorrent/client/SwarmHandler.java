@@ -782,7 +782,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void handlePeerConnectionFailed(SocketAddress remoteAddress, Throwable cause) {
         LOG.warn("{}: Could not connect to {}: {}.", new Object[]{
             getLocalPeerName(),
-            remoteAddress, cause.getMessage()
+            remoteAddress, (cause == null) ? "(cause not specified)" : cause.getMessage()
         });
         // No need to clean up the connectedPeers map here -
         // PeerHandler is only created in PeerHandshakeHandler.

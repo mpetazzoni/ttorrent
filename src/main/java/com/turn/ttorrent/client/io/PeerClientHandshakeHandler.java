@@ -41,6 +41,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
     @Nonnull
     private final PeerConnectionListener listener;
 
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public PeerClientHandshakeHandler(
             @Nonnull PeerConnectionListener listener,
             @Nonnull byte[] infoHash,

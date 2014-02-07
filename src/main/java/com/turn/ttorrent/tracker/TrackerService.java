@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -275,9 +277,9 @@ public class TrackerService implements Container {
             for (String pair : uri.split("[?]")[1].split("&")) {
                 String[] keyval = pair.split("[=]", 2);
                 if (keyval.length == 1) {
-                    this.parseParam(params, keyval[0], null);
+                    parseParam(params, keyval[0], null);
                 } else {
-                    this.parseParam(params, keyval[0], keyval[1]);
+                    parseParam(params, keyval[0], keyval[1]);
                 }
             }
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -292,9 +294,12 @@ public class TrackerService implements Container {
         return HTTPAnnounceRequestMessage.fromParams(params);
     }
 
-    private void parseParam(Map<String, String> params, String key, String value) {
+    private void parseParam(@Nonnull Map<String, String> params, @Nonnull String key, @CheckForNull String value) {
         try {
-            value = URLDecoder.decode(value, Torrent.BYTE_ENCODING_NAME);
+            if (value != null)
+                value = URLDecoder.decode(value, Torrent.BYTE_ENCODING_NAME);
+            else
+                value = "";
             params.put(key, value);
         } catch (UnsupportedEncodingException uee) {
             // Ignore, act like parameter was not there

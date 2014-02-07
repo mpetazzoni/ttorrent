@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,7 +147,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
                         + "to break directory jail!");
             }
 
-            actual.getParentFile().mkdirs();
+            FileUtils.forceMkdir(actual.getParentFile());
             files.add(new FileStorage(actual, offset, file.size));
             offset += file.size;
         }
