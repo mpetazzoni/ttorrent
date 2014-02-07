@@ -64,7 +64,7 @@ public class HandshakeMessage extends PeerMessage {
     @Override
     public void fromWire(ByteBuf in) {
         int pstrlen = in.readUnsignedByte();
-        if (pstrlen < 0 || in.readableBytes() != BASE_HANDSHAKE_LENGTH + pstrlen - 1)
+        if (pstrlen < 0 || in.readableBytes() < BASE_HANDSHAKE_LENGTH + pstrlen - 1)
             throw new IllegalArgumentException("Incorrect handshake message length (pstrlen=" + pstrlen + ") !");
 
         // Check the protocol identification string
