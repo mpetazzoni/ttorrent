@@ -60,7 +60,8 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
 
     @Override
     protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
-        LOG.info("Processing " + message);
+        if (LOG.isTraceEnabled())
+            LOG.trace("Processing {}", message);
         if (Arrays.equals(message.getPeerId(), client.getLocalPeerId())) {
             ctx.close();
             throw new IllegalArgumentException("Connected to self?");
@@ -69,12 +70,13 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         // We are a server.
         TorrentHandler torrent = client.getTorrent(message.getInfoHash());
         if (torrent == null) {
-            LOG.warn("Unknown torrent " + message);
+            LOG.warn("Unknown torrent {}", message);
             ctx.close();
             return;
         }
         PeerConnectionListener listener = torrent.getSwarmHandler();
-        LOG.info("Found torrent " + torrent);
+        if (LOG.isTraceEnabled())
+            LOG.trace("Found torrent {}", torrent);
 
         HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getLocalPeerId());
         ctx.writeAndFlush(toByteBuf(response));
