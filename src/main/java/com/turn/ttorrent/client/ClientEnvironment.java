@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.Instrumentation;
+import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.yammer.metrics.Metrics;
@@ -59,6 +60,7 @@ public class ClientEnvironment {
      * Get this client's peer specification.
      */
     @Nonnull
+    @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getLocalPeerId() {
         return peerId;
     }

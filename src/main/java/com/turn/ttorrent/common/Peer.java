@@ -70,6 +70,7 @@ public class Peer {
      *
      * @param address The peer's address, with port.
      */
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public Peer(@Nonnull SocketAddress address, @CheckForNull byte[] peerId) {
         if (!isValidIpAddress(address))
             throw new IllegalArgumentException("Invalid SocketAddress: " + address);
@@ -83,6 +84,7 @@ public class Peer {
      * Returns the raw peer ID.
      */
     @CheckForNull
+    @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getPeerId() {
         return this.peerId;
     }

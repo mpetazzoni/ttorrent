@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.SuppressWarnings;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import javax.annotation.CheckForNull;
@@ -29,7 +30,7 @@ import org.apache.commons.io.Charsets;
 public class HandshakeMessage extends PeerMessage {
 
     public static final int BASE_HANDSHAKE_LENGTH = 49;
-    public static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(Torrent.BYTE_ENCODING);
+    private static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(Torrent.BYTE_ENCODING);
     private byte[] protocolName;
     private final byte[] reserved = new byte[8];
     private byte[] infoHash; // 20
@@ -38,6 +39,7 @@ public class HandshakeMessage extends PeerMessage {
     public HandshakeMessage() {
     }
 
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public HandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
         if (infoHash.length != 20)
             throw new IllegalArgumentException("InfoHash length should be 20, not " + infoHash.length);
@@ -53,10 +55,12 @@ public class HandshakeMessage extends PeerMessage {
         return Type.HANDSHAKE;
     }
 
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public byte[] getInfoHash() {
         return infoHash;
     }
 
+    @SuppressWarnings("EI_EXPOSE_REP2")
     public byte[] getPeerId() {
         return peerId;
     }

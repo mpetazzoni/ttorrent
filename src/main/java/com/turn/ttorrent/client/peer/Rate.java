@@ -28,7 +28,7 @@ public class Rate extends EWMA {
     public static final int INTERVAL = 5;
     public static final long INTERVAL_MS = TimeUnit.SECONDS.toMillis(INTERVAL);
 
-    public Rate(int seconds) {
+    public Rate(double seconds) {
         this(1 - exp(-INTERVAL / seconds), INTERVAL, TimeUnit.SECONDS);
     }
 

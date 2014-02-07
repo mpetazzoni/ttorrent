@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 /**
@@ -47,10 +48,14 @@ public abstract class AbstractBDecoder {
     @Nonnull
     public BEValue bdecode()
             throws IOException {
-        return bdecode(false);
+        // Cannot return null if called with false.
+        BEValue value = bdecode(false);
+        if (value == null)
+            throw new NullPointerException("Unexpected null from bdecode(false)");
+        return value;
     }
 
-    @Nonnull
+    @CheckForNull
     private BEValue bdecode(boolean end)
             throws IOException {
         byte b = readByte();
