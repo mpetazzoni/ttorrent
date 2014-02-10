@@ -30,6 +30,7 @@ Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
   Compact peer lists are supported in both the client and the tracker.
   Currently the tracker only supports sending back compact peer lists
   to an announce request.
+* `BEP#0024`: Tracker Returns External IP
 
 History
 -------

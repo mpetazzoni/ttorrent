@@ -77,15 +77,19 @@ public class Client {
 
     /**
      * Initialize the BitTorrent client.
-     *
-     * @param torrent The torrent to download and share.
      */
-    public Client(String peerName) {
+    public Client() {
+        this(null);
+    }
+
+    public Client(@CheckForNull String peerName) {
         this.environment = new ClientEnvironment(peerName);
     }
 
     /**
      * A convenience constructor to start with a single torrent.
+     * 
+     * @param torrent The torrent to download and share.
      */
     public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException, InterruptedException {
         this(torrent.getName());
@@ -217,13 +221,20 @@ public class Client {
         }
     }
 
+    @CheckForNull
+    public TorrentHandler removeTorrent(@Nonnull Torrent torrent) {
+        return removeTorrent(torrent.getInfoHash());
+    }
+
+    @CheckForNull
     public TorrentHandler removeTorrent(@Nonnull byte[] infoHash) {
         TorrentHandler torrent = torrents.get(Torrent.byteArrayToHexString(infoHash));
-        removeTorrent(torrent);
+        if (torrent != null)
+            removeTorrent(torrent);
         return torrent;
     }
 
-    public void addClientListener(ClientListener listener) {
+    public void addClientListener(@Nonnull ClientListener listener) {
         listeners.add(listener);
     }
 

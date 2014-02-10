@@ -426,6 +426,13 @@ public class Torrent {
         return count;
     }
 
+    @Nonnull
+    public byte[] toByteArray() throws IOException {
+        BytesBEncoder encoder = new BytesBEncoder();
+        encoder.bencode(decoded);
+        return encoder.toByteArray();
+    }
+
     /**
      * Save this torrent meta-info structure into a .torrent file.
      *

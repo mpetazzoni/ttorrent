@@ -16,6 +16,7 @@
 package com.turn.ttorrent.bcodec;
 
 import io.netty.buffer.ByteBuf;
+import java.io.IOException;
 
 /**
  *

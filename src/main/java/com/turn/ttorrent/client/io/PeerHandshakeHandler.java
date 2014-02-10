@@ -39,8 +39,8 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     protected abstract LoggingHandler getMessageLogger();
 
     @Nonnull
-    protected ByteBuf toByteBuf(@Nonnull HandshakeMessage message) {
-        ByteBuf buf = Unpooled.buffer(HandshakeMessage.BASE_HANDSHAKE_LENGTH + 64);
+    protected ByteBuf toByteBuf(@Nonnull PeerHandshakeMessage message) {
+        ByteBuf buf = Unpooled.buffer(PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH + 64);
         message.toWire(buf);
         return buf;
     }
@@ -59,9 +59,9 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
         super.channelRegistered(ctx);
     }
 
-    protected abstract void process(@Nonnull ChannelHandlerContext ctx, @Nonnull HandshakeMessage message);
+    protected abstract void process(@Nonnull ChannelHandlerContext ctx, @Nonnull PeerHandshakeMessage message);
 
-    protected void addPeer(@Nonnull ChannelHandlerContext ctx, @Nonnull HandshakeMessage message,
+    protected void addPeer(@Nonnull ChannelHandlerContext ctx, @Nonnull PeerHandshakeMessage message,
             @Nonnull PeerConnectionListener listener) {
         Channel channel = ctx.channel();
         PeerHandler peer = listener.handlePeerConnectionCreated(channel, message.getPeerId());
@@ -80,14 +80,14 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
             ByteBuf in = (ByteBuf) msg;
-            if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH)
+            if (in.readableBytes() < PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH)
                 return;
 
             int length = in.getUnsignedByte(0);
-            if (in.readableBytes() < HandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
+            if (in.readableBytes() < PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
                 return;
 
-            HandshakeMessage request = new HandshakeMessage();
+            PeerHandshakeMessage request = new PeerHandshakeMessage();
             request.fromWire(in);
 
             process(ctx, request);
