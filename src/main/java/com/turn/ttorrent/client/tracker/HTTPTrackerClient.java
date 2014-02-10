@@ -142,7 +142,7 @@ public class HTTPTrackerClient extends TrackerClient {
             AnnounceResponseListener listener,
             TorrentMetadataProvider torrent,
             URI tracker,
-            AnnounceRequestMessage.RequestEvent event,
+            TrackerMessage.AnnounceEvent event,
             boolean inhibitEvents) throws AnnounceException {
         LOG.info("Announcing{} to tracker with {}U/{}D/{}L bytes...",
                 new Object[]{

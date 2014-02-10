@@ -50,7 +50,7 @@ public class UDPAnnounceRequestMessage
     private long downloaded;
     private long uploaded;
     private long left;
-    private RequestEvent event;
+    private AnnounceEvent event;
     private int numWant;
     private int key;
 
@@ -74,7 +74,7 @@ public class UDPAnnounceRequestMessage
             byte[] infoHash,
             byte[] peerId, InetSocketAddress peerAddress,
             long downloaded, long uploaded, long left,
-            RequestEvent event, int numWant, int key) {
+            AnnounceEvent event, int numWant, int key) {
         this();
 
         getIp4Address(peerAddress);
@@ -128,17 +128,7 @@ public class UDPAnnounceRequestMessage
     }
 
     @Override
-    public boolean getCompact() {
-        return true;
-    }
-
-    @Override
-    public boolean getNoPeerIds() {
-        return true;
-    }
-
-    @Override
-    public RequestEvent getEvent() {
+    public AnnounceEvent getEvent() {
         return this.event;
     }
 
@@ -164,7 +154,7 @@ public class UDPAnnounceRequestMessage
         uploaded = in.readLong();
         left = in.readLong();
 
-        event = RequestEvent.getById(in.readInt());
+        event = AnnounceEvent.getById(in.readInt());
         if (event == null)
             throw new MessageValidationException("Invalid event type in announce request!");
 

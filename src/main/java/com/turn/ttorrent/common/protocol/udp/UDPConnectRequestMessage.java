@@ -25,8 +25,7 @@ import io.netty.buffer.ByteBuf;
  * @author mpetazzoni
  */
 public class UDPConnectRequestMessage
-        extends UDPTrackerMessage.UDPTrackerRequestMessage
-        implements TrackerMessage.ConnectionRequestMessage {
+        extends UDPTrackerMessage.UDPTrackerRequestMessage {
 
     private static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
     private static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;

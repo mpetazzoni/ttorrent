@@ -53,15 +53,14 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     private final long left;
     private final boolean compact;
     private final boolean noPeerId;
-    private final RequestEvent event;
+    private final AnnounceEvent event;
     private final int numWant;
 
     public HTTPAnnounceRequestMessage(
             byte[] infoHash,
             byte[] peerId, InetSocketAddress peerAddress,
             long uploaded, long downloaded, long left,
-            boolean compact, boolean noPeerId, RequestEvent event, int numWant) {
-        super(Type.ANNOUNCE_REQUEST);
+            boolean compact, boolean noPeerId, AnnounceEvent event, int numWant) {
         this.infoHash = infoHash;
         this.peerId = peerId;
         this.peerAddress = peerAddress;
@@ -109,18 +108,16 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         return this.left;
     }
 
-    @Override
     public boolean getCompact() {
         return this.compact;
     }
 
-    @Override
     public boolean getNoPeerIds() {
         return this.noPeerId;
     }
 
     @Override
-    public RequestEvent getEvent() {
+    public AnnounceEvent getEvent() {
         return this.event;
     }
 
@@ -156,7 +153,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
                 .append("&no_peer_id=").append(getNoPeerIds() ? 1 : 0);
 
         if (getEvent() != null
-                && !RequestEvent.NONE.equals(getEvent())) {
+                && !AnnounceEvent.NONE.equals(getEvent())) {
             url.append("&event=").append(getEvent().getEventName());
         }
 
@@ -192,9 +189,9 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
         int numWant = toInt(params, "numwant", AnnounceRequestMessage.DEFAULT_NUM_WANT, null);
         String ip = toString(params, "ip", null);
 
-        RequestEvent event = RequestEvent.NONE;
+        AnnounceEvent event = AnnounceEvent.NONE;
         if (params.containsKey("event"))
-            event = RequestEvent.getByName(params.get("event"));
+            event = AnnounceEvent.getByName(params.get("event"));
 
         InetSocketAddress address = new InetSocketAddress(ip, port);
         return new HTTPAnnounceRequestMessage(infoHash,

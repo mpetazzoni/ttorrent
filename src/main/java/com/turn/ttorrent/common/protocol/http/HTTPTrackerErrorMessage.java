@@ -34,7 +34,6 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage implements Error
     private final String reason;
 
     public HTTPTrackerErrorMessage(String reason) {
-        super(Type.ERROR);
         this.reason = reason;
     }
 

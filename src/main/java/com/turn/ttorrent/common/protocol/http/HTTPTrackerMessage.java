@@ -28,10 +28,6 @@ import javax.annotation.Nonnull;
  */
 public abstract class HTTPTrackerMessage extends TrackerMessage {
 
-    protected HTTPTrackerMessage(Type type) {
-        super(type);
-    }
-
     protected static String toString(@Nonnull Map<String, String> params, @Nonnull String key, @CheckForNull ErrorMessage.FailureReason error) throws MessageValidationException {
         String text = params.get(key);
         if (text != null)
