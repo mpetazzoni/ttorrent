@@ -27,7 +27,7 @@ import org.apache.commons.io.Charsets;
  *
  * @author shevek
  */
-public class HandshakeMessage extends PeerMessage {
+public class PeerHandshakeMessage extends PeerMessage {
 
     public static final int BASE_HANDSHAKE_LENGTH = 49;
     private static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(Torrent.BYTE_ENCODING);
@@ -36,11 +36,11 @@ public class HandshakeMessage extends PeerMessage {
     private byte[] infoHash; // 20
     private byte[] peerId; // 20
 
-    public HandshakeMessage() {
+    public PeerHandshakeMessage() {
     }
 
     @SuppressWarnings("EI_EXPOSE_REP2")
-    public HandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
+    public PeerHandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
         if (infoHash.length != 20)
             throw new IllegalArgumentException("InfoHash length should be 20, not " + infoHash.length);
         if (peerId.length != 20)
@@ -74,7 +74,7 @@ public class HandshakeMessage extends PeerMessage {
         // Check the protocol identification string
         protocolName = new byte[pstrlen];
         in.readBytes(protocolName);
-        if (!Arrays.equals(protocolName, HandshakeMessage.BITTORRENT_PROTOCOL_IDENTIFIER))
+        if (!Arrays.equals(protocolName, BITTORRENT_PROTOCOL_IDENTIFIER))
             throw new IllegalArgumentException("Unknown protocol " + new String(protocolName, Charsets.ISO_8859_1));
 
         // Ignore reserved bytes

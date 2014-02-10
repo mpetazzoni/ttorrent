@@ -40,43 +40,48 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
             return;
         }
 
-        byte typeCode = buf.readByte();
-        Type type = Type.get(typeCode);
-        if (type == null)
-            throw new PeerMessage.MessageValidationException(null);
+        byte type = buf.readByte();
 
         PeerMessage message;
         switch (type) {
-            case CHOKE:
+            case 0:
                 message = new PeerMessage.ChokeMessage();
                 break;
-            case UNCHOKE:
+            case 1:
                 message = new PeerMessage.UnchokeMessage();
                 break;
-            case INTERESTED:
+            case 2:
                 message = new PeerMessage.InterestedMessage();
                 break;
-            case NOT_INTERESTED:
+            case 3:
                 message = new PeerMessage.NotInterestedMessage();
                 break;
-            case HAVE:
+            case 4:
                 message = new PeerMessage.HaveMessage();
                 break;
-            case BITFIELD:
+            case 5:
                 message = new PeerMessage.BitfieldMessage();
                 break;
-            case REQUEST:
+            case 6:
                 message = new PeerMessage.RequestMessage();
                 break;
-            case PIECE:
+            case 7:
                 message = new PeerMessage.PieceMessage();
                 break;
-            case CANCEL:
+            case 8:
                 message = new PeerMessage.CancelMessage();
                 break;
+            case 20:
+                byte extendedType = buf.readByte();
+                switch (extendedType) {
+                    case 0:
+                        message = new PeerExtendedMessage.HandshakeMessage();
+                        break;
+                    default:
+                        throw new IOException("Unknown extended message type " + extendedType);
+                }
             default:
-                throw new IllegalStateException("Message type should have "
-                        + "been properly defined by now.");
+                throw new IOException("Unknown message type " + type);
         }
         message.fromWire(buf);
         out.add(message);

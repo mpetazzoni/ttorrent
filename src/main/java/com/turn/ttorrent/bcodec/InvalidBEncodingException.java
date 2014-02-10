@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.turn.ttorrent.bcodec;
 
 import java.io.IOException;
-
 
 /**
  * Exception thrown when a B-encoded stream cannot be decoded.
@@ -26,9 +24,17 @@ import java.io.IOException;
  */
 public class InvalidBEncodingException extends IOException {
 
-	public static final long serialVersionUID = -1;
+    public static final long serialVersionUID = -1;
 
-	public InvalidBEncodingException(String message) {
-		super(message);
-	}
+    public InvalidBEncodingException(String message) {
+        super(message);
+    }
+
+    public InvalidBEncodingException(Throwable cause) {
+        super(cause);
+    }
+
+    public InvalidBEncodingException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

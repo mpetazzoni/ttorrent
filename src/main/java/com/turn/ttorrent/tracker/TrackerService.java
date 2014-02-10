@@ -229,6 +229,7 @@ public class TrackerService implements Container {
         HTTPAnnounceResponseMessage announceResponse;
         try {
             announceResponse = new HTTPAnnounceResponseMessage(
+                    request.getClientAddress().getAddress().getAddress(),
                     (int) TimeUnit.MILLISECONDS.toSeconds(torrent.getAnnounceInterval()),
                     // TrackedTorrent.MIN_ANNOUNCE_INTERVAL_SECONDS,
                     // this.version,
@@ -236,7 +237,7 @@ public class TrackerService implements Container {
                     torrent.leechers(),
                     torrent.getSomePeers(client, announceRequest.getNumWant()));
             BytesBEncoder encoder = new BytesBEncoder();
-            encoder.bencode(announceResponse.toBEValue());
+            encoder.bencode(announceResponse.toBEValue(announceRequest.getCompact()));
             body.write(encoder.toByteArray());  // This is the raw network stream.
         } catch (Exception e) {
             requestResponseFailed.mark();

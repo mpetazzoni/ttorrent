@@ -68,13 +68,13 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        HandshakeMessage response = new HandshakeMessage(infoHash, peerId);
+        PeerHandshakeMessage response = new PeerHandshakeMessage(infoHash, peerId);
         ctx.writeAndFlush(toByteBuf(response));
         super.channelActive(ctx);
     }
 
     @Override
-    protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
+    protected void process(ChannelHandlerContext ctx, PeerHandshakeMessage message) {
         // We were the connecting client.
         if (!Arrays.equals(infoHash, message.getInfoHash())) {
             logger.warn("InfoHash mismatch: requested " + Torrent.byteArrayToHexString(infoHash) + " but received " + message);

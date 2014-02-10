@@ -53,6 +53,10 @@ public class Peer {
         if (ia == null)
             return false;
         byte[] ba = ia.getAddress();
+        return isValidIpAddress(ba);
+    }
+
+    public static boolean isValidIpAddress(@CheckForNull byte[] ba) {
         if (ba == null)
             return false;
         for (byte b : ba)

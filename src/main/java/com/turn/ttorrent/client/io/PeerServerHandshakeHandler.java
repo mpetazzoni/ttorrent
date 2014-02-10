@@ -59,7 +59,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     }
 
     @Override
-    protected void process(ChannelHandlerContext ctx, HandshakeMessage message) {
+    protected void process(ChannelHandlerContext ctx, PeerHandshakeMessage message) {
         if (LOG.isTraceEnabled())
             LOG.trace("Processing {}", message);
         if (Arrays.equals(message.getPeerId(), client.getLocalPeerId())) {
@@ -78,7 +78,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         if (LOG.isTraceEnabled())
             LOG.trace("Found torrent {}", torrent);
 
-        HandshakeMessage response = new HandshakeMessage(torrent.getInfoHash(), client.getLocalPeerId());
+        PeerHandshakeMessage response = new PeerHandshakeMessage(torrent.getInfoHash(), client.getLocalPeerId());
         ctx.writeAndFlush(toByteBuf(response));
 
         addPeer(ctx, message, listener);

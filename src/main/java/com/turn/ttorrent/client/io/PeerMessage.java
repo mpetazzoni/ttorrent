@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import io.netty.buffer.ByteBuf;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.BitSet;
@@ -63,7 +64,8 @@ public abstract class PeerMessage {
         BITFIELD(5),
         REQUEST(6),
         PIECE(7),
-        CANCEL(8);
+        CANCEL(8),
+        EXTENDED(20);
         private byte id;
 
         Type(int id) {
@@ -71,26 +73,18 @@ public abstract class PeerMessage {
         }
 
         public byte getTypeByte() {
-            return this.id;
-        }
-
-        public static Type get(byte c) {
-            for (Type t : Type.values()) {
-                if (t.getTypeByte() == c) {
-                    return t;
-                }
-            }
-            return null;
+            return id;
         }
     };
 
+    @Nonnull
     public abstract Type getType();
 
     /** Reads everything except the length and type code. */
-    public abstract void fromWire(ByteBuf in);
+    public abstract void fromWire(@Nonnull ByteBuf in) throws IOException;
 
     /** Writes everything except the length. */
-    public void toWire(ByteBuf out) {
+    public void toWire(@Nonnull ByteBuf out) throws IOException {
         out.writeByte(getType().getTypeByte());
     }
 
@@ -244,7 +238,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             out.writeInt(piece);
         }
@@ -307,7 +301,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             byte[] bytes = bitfield.toByteArray();
             for (int i = 0; i < bytes.length; i++)
@@ -362,7 +356,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             out.writeInt(piece);
             out.writeInt(offset);
@@ -428,7 +422,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             out.writeInt(length);
         }
@@ -479,7 +473,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             out.writeBytes(block);
         }
@@ -523,7 +517,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out) throws IOException {
             super.toWire(out);
             out.writeInt(length);
         }
