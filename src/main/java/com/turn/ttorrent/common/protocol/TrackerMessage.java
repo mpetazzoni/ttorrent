@@ -40,46 +40,64 @@ import javax.annotation.Nonnull;
 public abstract class TrackerMessage {
 
     /**
-     * Message type.
+     * Announce request event types.
+     *
+     * <p>
+     * When the client starts exchanging on a torrent, it must contact the
+     * torrent's tracker with a 'started' announce request, which notifies the
+     * tracker this client now exchanges on this torrent (and thus allows the
+     * tracker to report the existence of this peer to other clients).
+     * </p>
+     *
+     * <p>
+     * When the client stops exchanging, or when its download completes, it must
+     * also send a specific announce request. Otherwise, the client must send an
+     * eventless (NONE), periodic announce request to the tracker at an
+     * interval specified by the tracker itself, allowing the tracker to
+     * refresh this peer's status and acknowledge that it is still there.
+     * </p>
      */
-    public enum Type {
+    public static enum AnnounceEvent {
 
-        UNKNOWN(-1),
-        CONNECT_REQUEST(0),
-        CONNECT_RESPONSE(0),
-        ANNOUNCE_REQUEST(1),
-        ANNOUNCE_RESPONSE(1),
-        SCRAPE_REQUEST(2),
-        SCRAPE_RESPONSE(2),
-        ERROR(3);
-        // This is the ActionId for the UDP protocol. Do not screw with it.
+        NONE(0),
+        COMPLETED(1),
+        STARTED(2),
+        STOPPED(3);
         private final int id;
 
-        Type(int id) {
+        AnnounceEvent(int id) {
             this.id = id;
+        }
+
+        public String getEventName() {
+            return this.name().toLowerCase();
         }
 
         public int getId() {
             return this.id;
         }
+
+        @CheckForNull
+        public static AnnounceEvent getByName(@CheckForNull String name) {
+            // TODO: Use valueOf(toUpperCase()).
+            for (AnnounceEvent type : AnnounceEvent.values()) {
+                if (type.name().equalsIgnoreCase(name)) {
+                    return type;
+                }
+            }
+            return null;
+        }
+
+        @CheckForNull
+        public static AnnounceEvent getById(int id) {
+            for (AnnounceEvent type : AnnounceEvent.values()) {
+                if (type.getId() == id) {
+                    return type;
+                }
+            }
+            return null;
+        }
     };
-    private final Type type;
-
-    /**
-     * Constructor for the base tracker message type.
-     *
-     * @param type The message type.
-     */
-    protected TrackerMessage(Type type) {
-        this.type = type;
-    }
-
-    /**
-     * Returns the type of this tracker message.
-     */
-    public Type getType() {
-        return this.type;
-    }
 
     /**
      * Generic exception for message format and message validation exceptions.
@@ -98,32 +116,6 @@ public abstract class TrackerMessage {
     }
 
     /**
-     * Base interface for connection request messages.
-     *
-     * <p>
-     * This interface must be implemented by all subtypes of connection request
-     * messages for the various tracker protocols.
-     * </p>
-     *
-     * @author mpetazzoni
-     */
-    public interface ConnectionRequestMessage {
-    };
-
-    /**
-     * Base interface for connection response messages.
-     *
-     * <p>
-     * This interface must be implemented by all subtypes of connection
-     * response messages for the various tracker protocols.
-     * </p>
-     *
-     * @author mpetazzoni
-     */
-    public interface ConnectionResponseMessage {
-    };
-
-    /**
      * Base interface for announce request messages.
      *
      * <p>
@@ -136,64 +128,6 @@ public abstract class TrackerMessage {
     public interface AnnounceRequestMessage {
 
         public static final int DEFAULT_NUM_WANT = 50;
-
-        /**
-         * Announce request event types.
-         *
-         * <p>
-         * When the client starts exchanging on a torrent, it must contact the
-         * torrent's tracker with a 'started' announce request, which notifies the
-         * tracker this client now exchanges on this torrent (and thus allows the
-         * tracker to report the existence of this peer to other clients).
-         * </p>
-         *
-         * <p>
-         * When the client stops exchanging, or when its download completes, it must
-         * also send a specific announce request. Otherwise, the client must send an
-         * eventless (NONE), periodic announce request to the tracker at an
-         * interval specified by the tracker itself, allowing the tracker to
-         * refresh this peer's status and acknowledge that it is still there.
-         * </p>
-         */
-        public enum RequestEvent {
-
-            NONE(0),
-            COMPLETED(1),
-            STARTED(2),
-            STOPPED(3);
-            private final int id;
-
-            RequestEvent(int id) {
-                this.id = id;
-            }
-
-            public String getEventName() {
-                return this.name().toLowerCase();
-            }
-
-            public int getId() {
-                return this.id;
-            }
-
-            @CheckForNull
-            public static RequestEvent getByName(@CheckForNull String name) {
-                for (RequestEvent type : RequestEvent.values()) {
-                    if (type.name().equalsIgnoreCase(name)) {
-                        return type;
-                    }
-                }
-                return null;
-            }
-
-            public static RequestEvent getById(int id) {
-                for (RequestEvent type : RequestEvent.values()) {
-                    if (type.getId() == id) {
-                        return type;
-                    }
-                }
-                return null;
-            }
-        };
 
         public byte[] getInfoHash();
 
@@ -209,11 +143,7 @@ public abstract class TrackerMessage {
 
         public long getLeft();
 
-        public boolean getCompact();
-
-        public boolean getNoPeerIds();
-
-        public RequestEvent getEvent();
+        public AnnounceEvent getEvent();
 
         public int getNumWant();
     };

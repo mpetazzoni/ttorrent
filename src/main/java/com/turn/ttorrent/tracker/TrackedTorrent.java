@@ -17,8 +17,8 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
 
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceEvent;
 import io.netty.util.internal.PlatformDependent;
 import java.io.UnsupportedEncodingException;
 
@@ -197,23 +197,23 @@ public class TrackedTorrent {
      * @param left The peer's reported left to download byte count.
      * @return The peer that sent us the announce request.
      */
-    public TrackedPeer update(RequestEvent event,
+    public TrackedPeer update(AnnounceEvent event,
             InetSocketAddress peerAddress, byte[] peerId,
             long uploaded, long downloaded, long left) throws UnsupportedEncodingException {
         TrackedPeerState state = TrackedPeerState.UNKNOWN;
 
         TrackedPeer trackedPeer;
-        if (RequestEvent.STARTED.equals(event)) {
+        if (AnnounceEvent.STARTED.equals(event)) {
             trackedPeer = new TrackedPeer(peerAddress, peerId);
             state = TrackedPeerState.STARTED;
             this.addPeer(trackedPeer);
-        } else if (RequestEvent.STOPPED.equals(event)) {
+        } else if (AnnounceEvent.STOPPED.equals(event)) {
             trackedPeer = removePeer(peerAddress);
             state = TrackedPeerState.STOPPED;
-        } else if (RequestEvent.COMPLETED.equals(event)) {
+        } else if (AnnounceEvent.COMPLETED.equals(event)) {
             trackedPeer = getPeer(peerAddress);
             state = TrackedPeerState.COMPLETED;
-        } else if (RequestEvent.NONE.equals(event)) {
+        } else if (AnnounceEvent.NONE.equals(event)) {
             trackedPeer = getPeer(peerAddress);
             // TODO: There is a chance this will change COMPLETED -> STARTED
             state = TrackedPeerState.STARTED;

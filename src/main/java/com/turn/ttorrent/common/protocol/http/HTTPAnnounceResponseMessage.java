@@ -65,7 +65,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
             @Nonnull byte[] clientAddress,
             int interval, int complete, int incomplete,
             @Nonnull List<? extends Peer> peers) {
-        super(Type.ANNOUNCE_RESPONSE);
         this.clientAddress = clientAddress;
         this.interval = interval;
         this.complete = complete;

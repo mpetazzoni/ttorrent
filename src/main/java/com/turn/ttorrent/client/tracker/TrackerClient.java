@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.client.ClientEnvironment;
-import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -72,7 +71,7 @@ public abstract class TrackerClient {
             AnnounceResponseListener listener,
             TorrentMetadataProvider torrent,
             URI tracker,
-            AnnounceRequestMessage.RequestEvent event,
+            TrackerMessage.AnnounceEvent event,
             boolean inhibitEvents) throws AnnounceException;
 
     public void start() throws Exception {
@@ -93,8 +92,8 @@ public abstract class TrackerClient {
     /**
      * Formats an announce event into a usable string.
      */
-    public static String formatAnnounceEvent(AnnounceRequestMessage.RequestEvent event) {
-        return AnnounceRequestMessage.RequestEvent.NONE.equals(event)
+    public static String formatAnnounceEvent(TrackerMessage.AnnounceEvent event) {
+        return TrackerMessage.AnnounceEvent.NONE.equals(event)
                 ? ""
                 : String.format(" %s", event.name());
     }
@@ -115,7 +114,7 @@ public abstract class TrackerClient {
     protected void handleTrackerAnnounceResponse(
             @Nonnull AnnounceResponseListener listener,
             @Nonnull URI tracker,
-            @Nonnull TrackerMessage message,
+            @Nonnull TrackerMessage message, // AnnounceResponse or Error
             boolean inhibitEvents) throws AnnounceException {
         if (message instanceof ErrorMessage) {
             ErrorMessage error = (ErrorMessage) message;
@@ -123,8 +122,7 @@ public abstract class TrackerClient {
         }
 
         if (!(message instanceof AnnounceResponseMessage)) {
-            throw new AnnounceException("Unexpected tracker message type "
-                    + message.getType().name() + "!");
+            throw new AnnounceException("Unexpected tracker message " + message);
         }
 
         if (inhibitEvents) {

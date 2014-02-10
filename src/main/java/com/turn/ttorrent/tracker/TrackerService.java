@@ -19,7 +19,8 @@ import com.turn.ttorrent.bcodec.BytesBEncoder;
 import com.turn.ttorrent.bcodec.StreamBEncoder;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
 import com.turn.ttorrent.common.protocol.http.*;
 
 import com.yammer.metrics.core.Meter;
@@ -177,11 +178,11 @@ public class TrackerService implements Container {
             requestNoTorrent.mark();
             LOG.warn("No such torrent: {}", announceRequest.getHexInfoHash());
             this.serveError(response, body, Status.BAD_REQUEST,
-                    ErrorMessage.FailureReason.UNKNOWN_TORRENT);
+                    TrackerMessage.ErrorMessage.FailureReason.UNKNOWN_TORRENT);
             return;
         }
 
-        AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
+        TrackerMessage.AnnounceEvent event = announceRequest.getEvent();
 
         InetSocketAddress peerAddress = announceRequest.getPeerAddress();
         if (!Peer.isValidIpAddress(peerAddress))
@@ -192,9 +193,9 @@ public class TrackerService implements Container {
         // is operating. If we don't have a peer for this announce, it means
         // the tracker restarted while the client was running. Consider this
         // announce request as a 'started' event.
-        if ((event == null || AnnounceRequestMessage.RequestEvent.NONE.equals(event))
+        if ((event == null || TrackerMessage.AnnounceEvent.NONE.equals(event))
                 && client == null) {
-            event = AnnounceRequestMessage.RequestEvent.STARTED;
+            event = TrackerMessage.AnnounceEvent.STARTED;
         }
 
         // If an event other than 'started' is specified and we also haven't
@@ -202,10 +203,10 @@ public class TrackerService implements Container {
         // previous 'started' announce request should have been made by the
         // client that would have had us register that peer on the torrent this
         // request refers to.
-        if (event != null && client == null && !AnnounceRequestMessage.RequestEvent.STARTED.equals(event)) {
+        if (event != null && client == null && !TrackerMessage.AnnounceEvent.STARTED.equals(event)) {
             requestInvalidEvent.mark();
             this.serveError(response, body, Status.BAD_REQUEST,
-                    ErrorMessage.FailureReason.INVALID_EVENT);
+                    TrackerMessage.ErrorMessage.FailureReason.INVALID_EVENT);
             return;
         }
 
@@ -221,7 +222,7 @@ public class TrackerService implements Container {
             requestUpdateFailed.mark();
             LOG.error("Failed to update torrent", e);
             this.serveError(response, body, Status.BAD_REQUEST,
-                    ErrorMessage.FailureReason.INVALID_EVENT);
+                    TrackerMessage.ErrorMessage.FailureReason.INVALID_EVENT);
             return;
         }
 
@@ -352,7 +353,7 @@ public class TrackerService implements Container {
      * @param reason The failure reason reported by the tracker.
      */
     private void serveError(Response response, OutputStream body,
-            Status status, ErrorMessage.FailureReason reason) throws IOException {
+            Status status, TrackerMessage.ErrorMessage.FailureReason reason) throws IOException {
         this.serveError(response, body, status, reason.getMessage());
     }
 }

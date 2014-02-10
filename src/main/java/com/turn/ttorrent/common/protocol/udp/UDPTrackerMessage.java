@@ -28,10 +28,43 @@ import javax.annotation.Nonnull;
  */
 public abstract class UDPTrackerMessage extends TrackerMessage {
 
+    /**
+     * Message type.
+     */
+    public enum Type {
+
+        UNKNOWN(-1),
+        CONNECT_REQUEST(0),
+        CONNECT_RESPONSE(0),
+        ANNOUNCE_REQUEST(1),
+        ANNOUNCE_RESPONSE(1),
+        SCRAPE_REQUEST(2),
+        SCRAPE_RESPONSE(2),
+        ERROR(3);
+        // This is the ActionId for the UDP protocol. Do not screw with it.
+        private final int id;
+
+        Type(int id) {
+            this.id = id;
+        }
+
+        public int getId() {
+            return this.id;
+        }
+    };
+    private final Type type;
     private int transactionId;
 
     private UDPTrackerMessage(Type type) {
-        super(type);
+        this.type = type;
+    }
+
+    /**
+     * Returns the type of this tracker message.
+     */
+    @Nonnull
+    public Type getType() {
+        return type;
     }
 
     public final int getActionId() {

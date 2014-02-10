@@ -15,10 +15,8 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.ByteBuffer;
 
 /**
  * The connection response message for the UDP tracker protocol.
@@ -26,8 +24,7 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class UDPConnectResponseMessage
-        extends UDPTrackerMessage.UDPTrackerResponseMessage
-        implements TrackerMessage.ConnectionResponseMessage {
+        extends UDPTrackerMessage.UDPTrackerResponseMessage {
 
     private static final int UDP_CONNECT_RESPONSE_MESSAGE_SIZE = 16;
     private long connectionId;

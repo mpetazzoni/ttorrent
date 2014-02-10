@@ -18,7 +18,8 @@ package com.turn.ttorrent.client;
 import com.google.common.annotations.VisibleForTesting;
 import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
 import com.turn.ttorrent.client.tracker.TrackerClient;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.net.SocketAddress;
 import java.net.URI;
@@ -102,7 +103,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     private final TorrentMetadataProvider torrent;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
     private int currentClient;
-    private AnnounceRequestMessage.RequestEvent event = AnnounceRequestMessage.RequestEvent.STARTED;
+    private TrackerMessage.AnnounceEvent event = TrackerMessage.AnnounceEvent.STARTED;
     private ScheduledFuture<?> future;
     private final Object lock = new Object();
 
@@ -236,14 +237,14 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             LOG.info("Initialized announce sub-system with {} trackers on {}.",
                     new Object[]{trackers.size(), torrent});
 
-            event = AnnounceRequestMessage.RequestEvent.STARTED;
+            event = TrackerMessage.AnnounceEvent.STARTED;
             run();
         }
     }
 
     public void complete() {
         synchronized (lock) {
-            event = AnnounceRequestMessage.RequestEvent.COMPLETED;
+            event = TrackerMessage.AnnounceEvent.COMPLETED;
             // run();
         }
     }
@@ -251,7 +252,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     public void stop() {
         LOG.info("Stopping TrackerHandler for {}", torrent);
         synchronized (lock) {
-            event = AnnounceRequestMessage.RequestEvent.STOPPED;
+            event = TrackerMessage.AnnounceEvent.STOPPED;
             if (future != null)
                 future.cancel(false);
             run();
@@ -262,7 +263,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     private void reschedule(@Nonnegative long delay) {
         // LOG.trace("Rescheduling tracker for {}", delay);
         synchronized (lock) {
-            if (event == AnnounceRequestMessage.RequestEvent.STOPPED)
+            if (event == TrackerMessage.AnnounceEvent.STOPPED)
                 return;
 
             if (future != null) {
@@ -334,7 +335,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     @Override
     public void handleAnnounceFailed(URI uri) {
         synchronized (lock) {
-            if (event == AnnounceRequestMessage.RequestEvent.STOPPED)
+            if (event == TrackerMessage.AnnounceEvent.STOPPED)
                 return;
             TrackerState tracker = getTracker(uri);
             if (tracker == null)
