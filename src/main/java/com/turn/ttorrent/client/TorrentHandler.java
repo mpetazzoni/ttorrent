@@ -17,8 +17,8 @@ package com.turn.ttorrent.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
+import com.google.common.io.Files;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
@@ -38,7 +38,6 @@ import java.util.List;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -131,21 +130,24 @@ public class TorrentHandler implements TorrentMetadataProvider {
     @Nonnull
     private static TorrentByteStorage toStorage(@Nonnull Torrent torrent, @CheckForNull File parent)
             throws IOException {
-        if (parent == null || !parent.isDirectory()) {
-            throw new IllegalArgumentException("Invalid parent directory!");
-        }
+        if (parent == null)
+            throw new NullPointerException("No parent directory given.");
 
         String parentPath = parent.getCanonicalPath();
+
+        if (!torrent.isMultifile() && parent.isFile())
+            return new FileStorage(parent, torrent.getSize());
 
         List<FileStorage> files = new LinkedList<FileStorage>();
         long offset = 0L;
         for (Torrent.TorrentFile file : torrent.getFiles()) {
-            File actual = new File(parent, file.file.getPath());
-
-            if (!actual.getCanonicalPath().startsWith(parentPath)) {
-                throw new SecurityException("Torrent file path attempted "
-                        + "to break directory jail!");
-            }
+            // TODO: Files.simplifyPath() is a security check here to avoid jail-escape.
+            // However, it uses "/" not File.separator internally.
+            String path = Files.simplifyPath("/" + file.path);
+            File actual = new File(parent, path);
+            String actualPath = actual.getCanonicalPath();
+            if (!actualPath.startsWith(parentPath))
+                throw new SecurityException("Torrent file path attempted to break directory jail: " + actualPath + " is not within " + parentPath);
 
             FileUtils.forceMkdir(actual.getParentFile());
             files.add(new FileStorage(actual, offset, file.size));

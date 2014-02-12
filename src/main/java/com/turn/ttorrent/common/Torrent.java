@@ -83,11 +83,11 @@ public class Torrent {
      */
     public static class TorrentFile {
 
-        public final File file;
+        public final String path;
         public final long size;
 
-        public TorrentFile(File file, long size) {
-            this.file = file;
+        public TorrentFile(@Nonnull String path, @Nonnegative long size) {
+            this.path = path;
             this.size = size;
         }
     }
@@ -205,20 +205,19 @@ public class Torrent {
         if (this.decoded_info.containsKey("files")) {
             for (BEValue file : this.decoded_info.get("files").getList()) {
                 Map<String, BEValue> fileInfo = file.getMap();
-                StringBuilder path = new StringBuilder();
+                StringBuilder path = new StringBuilder(this.name);
                 for (BEValue pathElement : fileInfo.get("path").getList()) {
-                    path.append(File.separator)
-                            .append(pathElement.getString());
+                    path.append(File.separator).append(pathElement.getString());
                 }
                 this.files.add(new TorrentFile(
-                        new File(this.name, path.toString()),
+                        path.toString(),
                         fileInfo.get("length").getLong()));
             }
         } else {
             // For single-file torrents, the name of the torrent is
             // directly the name of the file.
             this.files.add(new TorrentFile(
-                    new File(this.name),
+                    this.name,
                     this.decoded_info.get("length").getLong()));
         }
 
@@ -266,7 +265,7 @@ public class Torrent {
                 logger.debug("    {}. {} ({} byte(s))",
                         new Object[]{
                     String.format("%2d", ++i),
-                    file.file.getPath(),
+                    file.path,
                     String.format("%,d", file.size)
                 });
             }
@@ -309,10 +308,12 @@ public class Torrent {
     /**
      * Get the total size of this torrent.
      */
+    @Nonnegative
     public long getSize() {
         return this.size;
     }
 
+    @Nonnull
     public List<TorrentFile> getFiles() {
         return files;
     }
@@ -326,7 +327,7 @@ public class Torrent {
     public List<String> getFilenames() {
         List<String> filenames = new ArrayList<String>(files.size());
         for (TorrentFile file : this.files)
-            filenames.add(file.file.getPath());
+            filenames.add(file.path);
         return filenames;
     }
 

@@ -27,6 +27,7 @@ public class TorrentTestUtils {
     static {
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.PARANOID);
     }
+    public static final String FILENAME = "torrent-data-file";
     private static File ROOT;
 
     @Nonnull
@@ -57,7 +58,7 @@ public class TorrentTestUtils {
     @Nonnull
     public static TorrentCreator newTorrentCreator(@Nonnull File dir, @Nonnegative final long size)
             throws IOException, InterruptedException {
-        File file = new File(dir, "torrent-data-file");
+        File file = new File(dir, FILENAME);
         Files.copy(new InputSupplier<InputStream>() {
             @Override
             public InputStream getInput() throws IOException {
