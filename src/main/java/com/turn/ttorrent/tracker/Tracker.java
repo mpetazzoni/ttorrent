@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.google.common.net.InetAddresses;
 import com.turn.ttorrent.common.Torrent;
 
 import com.yammer.metrics.Metrics;
@@ -110,24 +111,26 @@ public class Tracker {
         this.version = version;
     }
 
+    public InetSocketAddress getListenAddress() {
+        SocketAddress a = this.connectionAddress;   // In case we bound ephemerally.
+        if (a instanceof InetSocketAddress)         // Also covers == null.
+            return (InetSocketAddress) a;
+        return address;
+    }
+
     /**
      * Returns the full announce URL served by this tracker.
      *
      * <p>
-     * This has the form http://host:port/announce.
+     * This has the form http://ip:port/announce.
      * </p>
      */
     @CheckForNull
     public URL getAnnounceUrl() {
         try {
-            InetSocketAddress listenAddress;
-            SocketAddress a = this.connectionAddress;   // In case we bound ephemerally.
-            if (a instanceof InetSocketAddress)         // Also covers == null.
-                listenAddress = (InetSocketAddress) a;
-            else
-                listenAddress = address;
+            InetSocketAddress listenAddress = getListenAddress();
             return new URL("http",
-                    listenAddress.getAddress().getCanonicalHostName(),
+                    InetAddresses.toUriString(listenAddress.getAddress()),
                     listenAddress.getPort(),
                     Tracker.ANNOUNCE_URL);
         } catch (MalformedURLException e) {
