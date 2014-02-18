@@ -27,6 +27,17 @@ apply from: file('gradle/license.gradle')
 
 apply plugin: 'java'
 apply plugin: 'application'
+apply plugin: 'eclipse'
+eclipse {
+    classpath {
+	downloadSources = true
+    }
+  
+    jdt {
+	sourceCompatibility = 1.7
+        targetCompatibility = 1.7
+    }
+}
 
 dependencies {
 	compile 'com.google.code.findbugs:jsr305:2.0.2'
