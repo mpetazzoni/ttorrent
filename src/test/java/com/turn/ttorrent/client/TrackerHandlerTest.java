@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
  *
  * @author shevek
  */
-public class TrackingTest {
+public class TrackerHandlerTest {
 
     @Test
     public void testTracking() throws Exception {
@@ -32,7 +32,7 @@ public class TrackingTest {
         try {
             File dir = TorrentTestUtils.newTorrentDir("c_seed");
             TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 12345678);
-            creator.setAnnounce(tracker.getAnnounceUrl().toURI());
+            creator.setAnnounceList(tracker.getAnnounceUris());
             Torrent torrent = creator.create();
 
             TrackedTorrent trackedTorrent = tracker.announce(torrent);
@@ -43,7 +43,7 @@ public class TrackingTest {
 
             try {
                 final CountDownLatch latch = new CountDownLatch(2);
-                TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), tracker.getAnnounceUrl().toURI()) {
+                TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), tracker.getAnnounceUris()) {
                     @Override
                     public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
                         super.addPeers(peerAddresses);
