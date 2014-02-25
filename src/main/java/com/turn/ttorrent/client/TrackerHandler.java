@@ -77,6 +77,11 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             this.tier = tier;
         }
 
+        @Nonnull
+        public URI getUri() {
+            return uri;
+        }
+
         /** In seconds. */
         public void setInterval(long interval) {
             this.interval = interval;

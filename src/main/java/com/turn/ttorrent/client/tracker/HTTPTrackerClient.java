@@ -111,6 +111,7 @@ public class HTTPTrackerClient extends TrackerClient {
         public void failed(Exception e) {
             // TODO: Pass failure back to TrackerHandler.
             LOG.trace("Failed: " + request.getRequestLine(), e);
+            listener.handleAnnounceFailed(tracker);
         }
 
         @Override

@@ -79,7 +79,7 @@ public class ClientEnvironment {
         this.metricsRegistry = metricsRegistry;
     }
 
-    public void start() {
+    public void start() throws Exception {
         {
             executorService = TorrentCreator.newExecutor(getLocalPeerName());
         }
