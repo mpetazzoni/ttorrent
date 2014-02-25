@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +44,7 @@ public class AbstractReplicationTest {
         File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
 
         TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126071);
-        creator.setAnnounce(tracker.getAnnounceUrl().toURI());
+        creator.setAnnounceList(tracker.getAnnounceUris());
         creator.setPieceLength(512);
         torrent = creator.create();
 

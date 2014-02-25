@@ -23,7 +23,6 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import joptsimple.OptionParser;
@@ -88,7 +87,7 @@ public class TorrentMain {
         TorrentCreator creator = new TorrentCreator(options.valueOf(inputOption));
         if (!files.isEmpty())
             creator.setFiles(files);
-        creator.setAnnounce(Arrays.asList(options.valuesOf(announceOption)));
+        creator.setAnnounceList(options.valuesOf(announceOption));
         Torrent torrent = creator.create();
 
         File file = options.valueOf(outputOption);

@@ -18,11 +18,11 @@ import javax.annotation.Nonnull;
 public class TestTorrentMetadataProvider implements TorrentMetadataProvider {
 
     private final byte[] infoHash;
-    private final URI uri;
+    private final List<URI> uris;
 
-    public TestTorrentMetadataProvider(@Nonnull byte[] infoHash, @Nonnull URI uri) {
+    public TestTorrentMetadataProvider(@Nonnull byte[] infoHash, @Nonnull List<URI> uris) {
         this.infoHash = infoHash;
-        this.uri = uri;
+        this.uris = uris;
     }
 
     @Override
@@ -32,7 +32,7 @@ public class TestTorrentMetadataProvider implements TorrentMetadataProvider {
 
     @Override
     public List<? extends List<? extends URI>> getAnnounceList() {
-        return Arrays.asList(Arrays.asList(uri));
+        return Arrays.asList(uris);
     }
 
     @Override

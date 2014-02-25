@@ -135,6 +135,10 @@ public class TorrentCreator {
     private List<List<URI>> announce = new ArrayList<List<URI>>();
     private String createdBy = getClass().getName();
 
+    /*
+     * @param parent The parent directory or location of the torrent files,
+     * also used as the torrent's name.
+     */
     public TorrentCreator(@Nonnull File parent) {
         this.parent = parent;
     }
@@ -143,6 +147,9 @@ public class TorrentCreator {
         this.executor = executor;
     }
 
+    /*
+     * @param files The files to add into this torrent.
+     */
     public void setFiles(@Nonnull List<File> files) {
         this.files = files;
     }
@@ -151,14 +158,26 @@ public class TorrentCreator {
         this.pieceLength = pieceLength;
     }
 
-    public void setAnnounce(@Nonnull List<List<URI>> announce) {
+    public void setAnnounceList(@Nonnull List<URI> announce) {
+        setAnnounceTiers(Arrays.asList(announce));
+    }
+
+    public void setAnnounceTiers(@Nonnull List<List<URI>> announce) {
         this.announce = announce;
     }
 
+    /*
+     * @param announce The announce URIs organized as tiers that will 
+     * be used for this torrent.
+     */
     public void setAnnounce(@Nonnull URI... announce) {
-        this.announce = Arrays.asList(Arrays.asList(announce));
+        setAnnounceList(Arrays.asList(announce));
     }
 
+    /*
+     * @param createdBy The creator's name, or any string identifying the
+     * torrent's creator.
+     */
     public void setCreatedBy(@Nonnull String createdBy) {
         this.createdBy = createdBy;
     }
@@ -185,20 +204,10 @@ public class TorrentCreator {
      * Helper method to create a {@link Torrent} object for a set of files.
      *
      * <p>
-     * Hash the given files to create the multi-file {@link Torrent} object
+     * Hash the given files to create the {@link Torrent} object
      * representing the Torrent meta-info about them, needed for announcing
-     * and/or sharing these files. Since we created the torrent, we're
-     * considering we'll be a full initial seeder for it.
+     * and/or sharing these files.
      * </p>
-     *
-     * @param parent The parent directory or location of the torrent files,
-     * also used as the torrent's name.
-     * @param files The files to add into this torrent.
-     * @param announce The announce URI that will be used for this torrent.
-     * @param announceList The announce URIs organized as tiers that will 
-     * be used for this torrent
-     * @param createdBy The creator's name, or any string identifying the
-     * torrent's creator.
      */
     @Nonnull
     public Torrent create() throws InterruptedException, IOException, URISyntaxException {
@@ -215,7 +224,7 @@ public class TorrentCreator {
         if (announce != null) {
             List<URI> announceFlat = new ArrayList<URI>();
             List<BEValue> announceTiers = new LinkedList<BEValue>();
-            for (List<URI> trackers : announce) {
+            for (List<? extends URI> trackers : announce) {
                 List<BEValue> announceTier = new LinkedList<BEValue>();
                 for (URI tracker : trackers) {
                     announceFlat.add(tracker);
@@ -317,7 +326,7 @@ public class TorrentCreator {
      * This is used for creating Torrent meta-info structures from a file.
      * </p>
      *
-     * @param file The file to hash.
+     * @param files The file to hash.
      */
     public /* for testing */ static byte[] hashFiles(Executor executor, List<File> files, long nbytes, int pieceLength)
             throws InterruptedException, IOException {

@@ -169,7 +169,7 @@ public class Client {
 
             setState(State.STARTED);
         }
-        LOG.info("BitTorrent client [{}] started...", this);
+        LOG.info("BitTorrent client [{}] started.", this);
     }
 
     public void stop() throws Exception {
@@ -195,7 +195,7 @@ public class Client {
 
             setState(State.STOPPED);
         }
-        LOG.info("BitTorrent client [{}] stopped...", this);
+        LOG.info("BitTorrent client [{}] stopped.", this);
     }
 
     @CheckForNull
