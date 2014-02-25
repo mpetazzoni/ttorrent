@@ -13,6 +13,9 @@ import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
@@ -63,5 +66,49 @@ public class TrackerHandlerTest {
         } finally {
             tracker.stop();
         }
+    }
+
+    @Test
+    public void testFailover() throws Exception {
+        Client client = new Client(getClass().getSimpleName());
+        client.start();
+
+        try {
+            byte[] infoHash = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
+            URI uri0 = new URI("http://localhost:100/announce");  // Deliberately invalid.
+            URI uri1 = new URI("http://localhost:101/announce");  // Deliberately invalid.
+            List<URI> uris = Arrays.asList(uri0, uri1);
+            TestTorrentMetadataProvider metadataProvider = new TestTorrentMetadataProvider(infoHash, uris);
+            TrackerHandler trackerHandler = new TrackerHandler(client, metadataProvider) {
+                @Override
+                public void run() {
+                }
+            };
+            trackerHandler.start();
+
+            try {
+
+                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                trackerHandler.handleAnnounceFailed(uri1);
+                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+
+                trackerHandler.handleAnnounceFailed(uri0);
+                assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
+                trackerHandler.handleAnnounceFailed(uri0);
+                assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
+
+                trackerHandler.handleAnnounceFailed(uri1);
+                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                trackerHandler.handleAnnounceFailed(uri1);
+                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+
+            } finally {
+                trackerHandler.stop();
+            }
+
+        } finally {
+            client.stop();
+        }
+
     }
 }

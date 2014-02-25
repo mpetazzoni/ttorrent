@@ -30,7 +30,7 @@ import javax.annotation.Nonnull;
  */
 public interface AnnounceResponseListener extends EventListener {
 
-    public void handleAnnounceFailed(@Nonnull URI uri);
+    public void handleAnnounceFailed(@Nonnull URI tracker);
 
     /**
      * Handle an announce response event.
