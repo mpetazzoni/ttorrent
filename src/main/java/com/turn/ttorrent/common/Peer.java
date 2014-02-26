@@ -15,14 +15,11 @@
  */
 package com.turn.ttorrent.common;
 
-import com.turn.ttorrent.bcodec.BEValue;
-import java.io.UnsupportedEncodingException;
+import com.google.common.net.InetAddresses;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnull;
@@ -41,6 +38,8 @@ import javax.annotation.Nonnull;
  * @author mpetazzoni
  */
 public class Peer {
+
+    public static final int PEER_ID_LENGTH = 20;
 
     public static boolean isValidIpAddress(@CheckForNull SocketAddress sa) {
         if (!(sa instanceof InetSocketAddress))
@@ -78,8 +77,8 @@ public class Peer {
     public Peer(@Nonnull SocketAddress address, @CheckForNull byte[] peerId) {
         if (!isValidIpAddress(address))
             throw new IllegalArgumentException("Invalid SocketAddress: " + address);
-        if (peerId != null && peerId.length != 20)
-            throw new IllegalArgumentException("PeerId length should be 20, not " + peerId.length);
+        if (peerId != null && peerId.length != PEER_ID_LENGTH)
+            throw new IllegalArgumentException("PeerId length should be " + PEER_ID_LENGTH + ", not " + peerId.length);
         this.address = address;
         this.peerId = peerId;
     }
@@ -193,32 +192,12 @@ public class Peer {
     }
 
     /**
-     * Returns a BEValue representing this peer for inclusion in an
-     * announce reply from the tracker.
-     *
-     * The returned BEValue is a dictionary containing the peer ID (in its
-     * original byte-encoded form), the peer's IP and the peer's port.
-     */
-    // TODO: Use this for noncompact tracking.
-    public BEValue toBEValue() throws UnsupportedEncodingException {
-        Map<String, BEValue> out = new HashMap<String, BEValue>();
-        byte[] peerId = getPeerId();
-        if (peerId != null)
-            out.put("peer id", new BEValue(peerId));
-        String ip = getIpString();
-        if (ip != null)
-            out.put("ip", new BEValue(ip, Torrent.BYTE_ENCODING));
-        int port = getPort();
-        if (port != -1)
-            out.put("port", new BEValue(port));
-        return new BEValue(out);
-    }
-
-    /**
      * Returns a human-readable representation of this peer.
      */
     @Override
     public String toString() {
+        // TODO: Use InetAddresses.toUriString() when possible.
+        // Right now this generates peer:///1.2.3.4/ which has three slashes in it.
         StringBuilder s = new StringBuilder("peer://")
                 .append(getAddress())
                 .append("/");

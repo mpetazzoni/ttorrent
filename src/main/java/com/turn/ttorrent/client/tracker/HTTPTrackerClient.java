@@ -103,14 +103,17 @@ public class HTTPTrackerClient extends TrackerClient {
                 if (message != null)
                     handleTrackerAnnounceResponse(listener, tracker, message, false);
             } catch (Exception e) {
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Failed to handle announce response", e);
                 failed(e);
             }
         }
 
         @Override
         public void failed(Exception e) {
-            if (LOG.isTraceEnabled())
-                LOG.trace("Failed: {} -> {}", request.getRequestLine(), e);
+            // This error wasn't necessarily reported elsewhere.
+            if (LOG.isDebugEnabled())
+                LOG.debug("Failed: {} -> {}", request.getRequestLine(), e);
             // TODO: Pass failure back to TrackerHandler.
             // LOG.trace("Failed: " + request.getRequestLine(), e);
             listener.handleAnnounceFailed(tracker, "HTTP failed: " + e);
