@@ -14,13 +14,15 @@ programs.
 
 Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
 
-* `BEP#0003`: The BitTorrent protocol specification  
+* `BEP#0003`: The BitTorrent protocol specification (complete)
   This is the base official protocol specification, which Ttorrent implements
   fully.
+* `BEP#0007`: IPv6 Tracker Extension (partial)
+* `BEP#0010`: Extension Protocol (partial)
 * `BEP#0012`: Multi-tracker metadata extension  
   Full support for the `announce-list` meta-info key providing a tiered tracker
   list.
-* `BEP#0015`: UDP Tracker Protocol for BitTorrent  
+* `BEP#0015`: UDP Tracker Protocol for BitTorrent (partial)
   The UDP tracker protocol is fully supported in the BitTorrent client to make
   announce requests to UDP trackers. UDP tracker support itself is planned.
 * `BEP#0020`: Peer ID conventions  

@@ -208,6 +208,7 @@ public abstract class TrackerMessage {
 
             UNKNOWN_TORRENT("The requested torrent does not exist on this tracker"),
             MISSING_HASH("Missing info hash"),
+            MISSING_PEER_ADDRESS("Missing peer address"),
             MISSING_PEER_ID("Missing peer ID"),
             MISSING_PORT("Missing port"),
             INVALID_EVENT("Unexpected event for peer state"),
