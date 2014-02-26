@@ -25,6 +25,7 @@ import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
+import com.turn.ttorrent.common.TorrentUtils;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -570,6 +571,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
 
     @Override
     public String toString() {
-        return Torrent.byteArrayToHexString(getInfoHash()) + " [" + getCompletedPieceCount() + "/" + getPieceCount() + "]";
+        return TorrentUtils.toHex(getInfoHash()) + " [" + getCompletedPieceCount() + "/" + getPieceCount() + "]";
     }
 }

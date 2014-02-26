@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.SuppressWarnings;
+import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import javax.annotation.CheckForNull;
@@ -95,20 +96,8 @@ public class PeerHandshakeMessage extends PeerMessage {
         out.writeBytes(peerId);
     }
 
-    private static String toHex(@CheckForNull byte[] data) {
-        if (data == null)
-            return null;
-        return Torrent.byteArrayToHexString(data);
-    }
-
-    private static String toText(@CheckForNull byte[] data) {
-        if (data == null)
-            return null;
-        return Torrent.byteArrayToText(data);
-    }
-
     @Override
     public String toString() {
-        return super.toString() + " P=" + toText(getPeerId()) + " T=" + toHex(getInfoHash());
+        return super.toString() + " P=" + TorrentUtils.toTextOrNull(getPeerId()) + " T=" + TorrentUtils.toHexOrNull(getInfoHash());
     }
 }

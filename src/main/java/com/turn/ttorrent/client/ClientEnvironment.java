@@ -19,6 +19,7 @@ import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -51,7 +52,7 @@ public class ClientEnvironment {
         // String id = BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
         byte[] tmp = new byte[20];  // Far too many, but who cares.
         random.nextBytes(tmp);
-        String id = BITTORRENT_ID_PREFIX + (peerName != null ? peerName : "") + Torrent.byteArrayToHexString(tmp);
+        String id = BITTORRENT_ID_PREFIX + (peerName != null ? peerName : "") + TorrentUtils.toHex(tmp);
         this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
 
     }
@@ -67,7 +68,7 @@ public class ClientEnvironment {
 
     @Nonnull
     public String getLocalPeerName() {
-        return Torrent.byteArrayToText(getLocalPeerId());
+        return TorrentUtils.toText(getLocalPeerId());
     }
 
     @Nonnull

@@ -5,7 +5,7 @@
 package com.turn.ttorrent.test;
 
 import com.turn.ttorrent.client.TorrentMetadataProvider;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.List;
@@ -56,6 +56,6 @@ public class TestTorrentMetadataProvider implements TorrentMetadataProvider {
 
     @Override
     public String toString() {
-        return "TestTorrentMetadataProvider(" + Torrent.byteArrayToHexString(getInfoHash()) + ")";
+        return "TestTorrentMetadataProvider(" + TorrentUtils.toHex(getInfoHash()) + ")";
     }
 }

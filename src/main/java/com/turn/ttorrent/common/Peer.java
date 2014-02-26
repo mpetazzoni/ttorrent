@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.common;
 
-import com.google.common.net.InetAddresses;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -104,7 +103,7 @@ public class Peer {
         byte[] peerId = getPeerId();
         if (peerId == null)
             return null;
-        return Torrent.byteArrayToHexString(peerId);
+        return TorrentUtils.toHex(peerId);
     }
 
     /**

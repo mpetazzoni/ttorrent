@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.PeerPieceProvider;
 
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -158,12 +159,12 @@ public class PeerHandler implements PeerMessageListener {
 
     @Nonnull
     public String getHexRemotePeerId() {
-        return Torrent.byteArrayToHexString(getRemotePeerId());
+        return TorrentUtils.toHex(getRemotePeerId());
     }
 
     @Nonnull
     private String getTextRemotePeerId() {
-        return Torrent.byteArrayToText(getRemotePeerId());
+        return TorrentUtils.toText(getRemotePeerId());
     }
 
     @Nonnull
