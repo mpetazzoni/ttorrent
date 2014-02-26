@@ -91,6 +91,7 @@ public class Client {
      * 
      * @param torrent The torrent to download and share.
      */
+    @Deprecated // I never much liked this constructor.
     public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException, InterruptedException {
         this(torrent.getName());
         addTorrent(new TorrentHandler(this, torrent, outputDir));
@@ -132,12 +133,12 @@ public class Client {
 
     @Nonnull
     public HTTPTrackerClient getHttpTrackerClient() {
-        synchronized (lock) {
-            HTTPTrackerClient h = httpTrackerClient;
-            if (h == null)
-                throw new IllegalStateException("No HTTPTrackerClient - bad state: " + this);
-            return h;
-        }
+        // Not locked, as should only be read after a happen-before event.
+        // Causes a deadlock against stop() as called from TrackerHandler.
+        HTTPTrackerClient h = httpTrackerClient;
+        if (h == null)
+            throw new IllegalStateException("No HTTPTrackerClient - bad state: " + this);
+        return h;
     }
 
     /*

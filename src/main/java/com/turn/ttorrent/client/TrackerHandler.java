@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
 import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
 import com.turn.ttorrent.client.tracker.TrackerClient;
 
@@ -57,7 +58,11 @@ import org.slf4j.LoggerFactory;
  */
 public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
-    protected static final Logger LOG = LoggerFactory.getLogger(TrackerHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TrackerHandler.class);
+
+    public static final long DELAY_DEFAULT = 5000;
+    public static final long DELAY_MIN = 500;
+    public static final long DELAY_RESCHEDULE_DELTA = 100;
 
     @VisibleForTesting
     /* pp */ static class TrackerState {
@@ -70,7 +75,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         private long lastRecv;
         private long lastErr;
         /** Milliseconds, although protocol is in seconds. */
-        private long interval = 5000;
+        private long interval = DELAY_DEFAULT;
 
         public TrackerState(@Nonnull URI uri, int tier) {
             this.uri = uri;
@@ -96,18 +101,18 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
         @Nonnegative
         public long getRescheduleDelay() {
-            return Math.max(getDelay(), 2000);
+            return Math.max(getDelay(), DELAY_MIN); // Could use 0 here.
         }
 
         @Override
         public String toString() {
-            return uri + " [T" + tier + "]";
+            return uri + " (tier=" + tier + ", interval=" + interval + ")";
         }
     }
     private final Client client;
     private final TorrentMetadataProvider torrent;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
-    private int currentClient;
+    private int trackerIndex;
     private TrackerMessage.AnnounceEvent event = TrackerMessage.AnnounceEvent.STARTED;
     private ScheduledFuture<?> future;
     private final Object lock = new Object();
@@ -178,7 +183,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     @VisibleForTesting
     /* pp */ TrackerState getCurrentTracker() {
         synchronized (lock) {
-            return trackers.get(currentClient);
+            return trackers.get(trackerIndex);
         }
     }
 
@@ -191,16 +196,16 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     @VisibleForTesting
     /* pp */ void promoteCurrentTracker() {
         synchronized (lock) {
-            int currentTier = trackers.get(currentClient).tier;
+            int currentTier = trackers.get(trackerIndex).tier;
             int idx;
-            for (idx = currentClient - 1; idx >= 0; idx--) {
+            for (idx = trackerIndex - 1; idx >= 0; idx--) {
                 if (trackers.get(idx).tier != currentTier) {
                     idx++;
                     break;
                 }
             }
-            Collections.swap(trackers, currentClient, idx);
-            currentClient = idx;
+            Collections.swap(trackers, trackerIndex, idx);
+            trackerIndex = idx;
         }
     }
 
@@ -213,23 +218,38 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * </p>
      */
     @VisibleForTesting
-    /* pp */ void moveToNextTracker() {
+    /* pp */ boolean moveToNextTracker(@Nonnull TrackerState curr, @Nonnull String reason) {
+        TrackerState prev, next;
         synchronized (lock) {
-            if (++currentClient >= trackers.size())
-                currentClient = 0;
+            prev = getCurrentTracker();
+            if (curr != prev)
+                return false;
+            if (++trackerIndex >= trackers.size())
+                trackerIndex = 0;
+            next = getCurrentTracker();
         }
+        LOG.info("Moved tracker: {} -> {}: {}",
+                new Object[]{
+            prev, next, reason
+        });
+        if (LOG.isDebugEnabled())
+            LOG.debug("{}", this);
+        return true;
     }
 
     /********** Event drivers *****/
     public void start() {
-        LOG.info("Starting TrackerHandler for {}", torrent);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Starting TrackerHandler for {}", torrent);
         synchronized (lock) {
 
             int tier = 0;
             for (List<? extends URI> announceTier : torrent.getAnnounceList()) {
-                LOG.trace("Loading tier " + announceTier);
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Loading tier {}", announceTier);
                 for (URI announceUri : announceTier) {
-                    LOG.trace("Loading client for " + announceUri);
+                    if (LOG.isTraceEnabled())
+                        LOG.trace("Loading client for {}", announceUri);
                     if (getTrackerClient(announceUri) != null) {
                         trackers.add(new TrackerState(announceUri, tier));
                     } else {
@@ -243,6 +263,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                     new Object[]{trackers.size(), torrent});
 
             event = TrackerMessage.AnnounceEvent.STARTED;
+            if (LOG.isDebugEnabled())
+                LOG.debug("Started TrackerHandler {}", this);
             run();
         }
     }
@@ -265,23 +287,29 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         }
     }
 
-    private void reschedule(@Nonnegative long delay) {
+    private void reschedule(@Nonnegative long requestedDelay) {
         // LOG.trace("Rescheduling tracker for {}", delay);
         synchronized (lock) {
             if (event == TrackerMessage.AnnounceEvent.STOPPED)
                 return;
 
             if (future != null) {
-                long delta = future.getDelay(TimeUnit.MILLISECONDS) - delay;
+                long actualDelay = future.getDelay(TimeUnit.MILLISECONDS);
+                long delta = actualDelay - requestedDelay;
                 // Don't reschedule if it's "soon".
-                LOG.trace("Delta is {}", delta);
-                if (delta > 10 && delta < 500)
-                    return;
+                if (LOG.isTraceEnabled())
+                    LOG.trace("Reschedule: requested={}, actual={}, delta={}", new Object[]{
+                        requestedDelay, actualDelay, delta
+                    });
+                if (actualDelay > 0)
+                    if (Math.abs(delta) < DELAY_RESCHEDULE_DELTA)
+                        return;
                 future.cancel(false);
             }
-            if (delay < 500)
-                delay = 500;
-            future = getSchedulerService().schedule(this, delay, TimeUnit.MILLISECONDS);
+
+            if (requestedDelay < DELAY_MIN)
+                requestedDelay = DELAY_MIN;
+            future = getSchedulerService().schedule(this, requestedDelay, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -302,18 +330,21 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      */
     @Override
     public void run() {
+        TrackerState tracker;
         synchronized (lock) {
-            TrackerState tracker = getCurrentTracker();
-            try {
-                TrackerClient client = getTrackerClient(tracker.uri);
-                client.announce(this, torrent, tracker.uri, event, false);
+            tracker = getCurrentTracker();
+        }
+        try {
+            TrackerClient client = getTrackerClient(tracker.uri);
+            client.announce(this, torrent, tracker.uri, event, false);
+            synchronized (lock) {
                 tracker.lastSend = System.currentTimeMillis();
-            } catch (Exception e) {
-                LOG.error("Failed to announce to " + tracker, e);
-                moveToNextTracker();
-            } finally {
-                reschedule(tracker.getRescheduleDelay());
             }
+        } catch (Exception e) {
+            LOG.error("Failed to announce to " + tracker, e);
+            moveToNextTracker(tracker, "Announce threw " + e);
+        } finally {
+            reschedule(tracker.getRescheduleDelay());
         }
     }
 
@@ -338,7 +369,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
 
     @Override
-    public void handleAnnounceFailed(URI uri) {
+    public void handleAnnounceFailed(URI uri, String reason) {
         synchronized (lock) {
             if (event == TrackerMessage.AnnounceEvent.STOPPED)
                 return;
@@ -346,10 +377,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             if (tracker == null)
                 return;
             tracker.lastErr = System.currentTimeMillis();
-            if (tracker == getCurrentTracker()) {
-                moveToNextTracker();
-                run();
-            }
+            moveToNextTracker(tracker, "Announce failed to " + uri + ": " + reason);
+            reschedule(getCurrentTracker().getRescheduleDelay());
         }
     }
 
@@ -373,5 +402,16 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
         torrent.addPeers(peerAddresses);
         // torrent.getSwarmHandler().addPeers(peerAddresses);
+    }
+
+    @Override
+    public String toString() {
+        synchronized (lock) {
+            return Objects.toStringHelper(this)
+                    .add("trackers", trackers)
+                    .add("trackerIndex", trackerIndex)
+                    .add("event", event)
+                    .toString();
+        }
     }
 }
