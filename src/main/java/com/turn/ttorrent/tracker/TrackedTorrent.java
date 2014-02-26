@@ -18,6 +18,7 @@ package com.turn.ttorrent.tracker;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceEvent;
 import io.netty.util.internal.PlatformDependent;
 import java.io.UnsupportedEncodingException;
@@ -67,9 +68,9 @@ public class TrackedTorrent {
     /** Peers currently exchanging on this torrent. */
     private final ConcurrentMap<SocketAddress, TrackedPeer> peers = PlatformDependent.newConcurrentHashMap();
 
-    public TrackedTorrent(String name, byte[] infoHash) {
+    public TrackedTorrent(@CheckForNull String name, @Nonnull byte[] infoHash) {
         this.name = name;
-        this.infoHash = Torrent.byteArrayToHexString(infoHash);
+        this.infoHash = TorrentUtils.toHex(infoHash);
         setAnnounceInterval(DEFAULT_ANNOUNCE_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 

@@ -19,6 +19,7 @@ import com.turn.ttorrent.client.tracker.HTTPTrackerClient;
 import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -201,14 +202,14 @@ public class Client {
 
     @CheckForNull
     public TorrentHandler getTorrent(@Nonnull byte[] infoHash) {
-        String hexInfoHash = Torrent.byteArrayToHexString(infoHash);
+        String hexInfoHash = TorrentUtils.toHex(infoHash);
         return torrents.get(hexInfoHash);
     }
 
     public void addTorrent(@Nonnull TorrentHandler torrent) throws IOException, InterruptedException {
         // This lock guarantees that we are started or stopped.
         synchronized (lock) {
-            torrents.put(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
+            torrents.put(TorrentUtils.toHex(torrent.getInfoHash()), torrent);
             if (getState() == State.STARTED)
                 torrent.start();
         }
@@ -216,7 +217,7 @@ public class Client {
 
     public void removeTorrent(@Nonnull TorrentHandler torrent) {
         synchronized (lock) {
-            torrents.remove(Torrent.byteArrayToHexString(torrent.getInfoHash()), torrent);
+            torrents.remove(TorrentUtils.toHex(torrent.getInfoHash()), torrent);
             if (getState() == State.STARTED)
                 torrent.stop();
         }
@@ -229,7 +230,7 @@ public class Client {
 
     @CheckForNull
     public TorrentHandler removeTorrent(@Nonnull byte[] infoHash) {
-        TorrentHandler torrent = torrents.get(Torrent.byteArrayToHexString(infoHash));
+        TorrentHandler torrent = torrents.get(TorrentUtils.toHex(infoHash));
         if (torrent != null)
             removeTorrent(torrent);
         return torrent;

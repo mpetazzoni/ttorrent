@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import io.netty.buffer.ByteBuf;
@@ -99,7 +99,7 @@ public class UDPAnnounceRequestMessage
 
     @Override
     public String getHexInfoHash() {
-        return Torrent.byteArrayToHexString(this.infoHash);
+        return TorrentUtils.toHex(this.infoHash);
     }
 
     @Override

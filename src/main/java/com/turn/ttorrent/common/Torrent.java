@@ -41,7 +41,6 @@ import java.util.Set;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.WillNotClose;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
@@ -405,7 +404,7 @@ public class Torrent {
      */
     @Nonnull
     public String getHexInfoHash() {
-        return Torrent.byteArrayToHexString(this.info_hash);
+        return TorrentUtils.toHex(this.info_hash);
     }
 
     /**
@@ -455,33 +454,11 @@ public class Torrent {
      */
     @Override
     public String toString() {
-        return this.getName();
+        return getName();
     }
 
-    public static byte[] hash(byte[] data) {
+    @Nonnull
+    public static byte[] hash(@Nonnull byte[] data) {
         return DigestUtils.sha1(data);
-    }
-
-    /**
-     * Convert a byte string to a string containing an hexadecimal
-     * representation of the original data.
-     *
-     * @param bytes The byte array to convert.
-     */
-    @Nonnull
-    public static String byteArrayToHexString(@Nonnull byte[] bytes) {
-        return new String(Hex.encodeHex(bytes, false));
-    }
-
-    @Nonnull
-    public static String byteArrayToText(@Nonnull byte[] bytes) {
-        StringBuilder buf = new StringBuilder();
-        for (byte b : bytes) {
-            if (Character.isValidCodePoint(b))
-                buf.append((char) b);
-            else
-                buf.append("\\x").append((int) b);
-        }
-        return buf.toString();
     }
 }

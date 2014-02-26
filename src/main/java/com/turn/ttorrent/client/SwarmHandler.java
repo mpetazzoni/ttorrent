@@ -25,7 +25,7 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
 import io.netty.util.internal.PlatformDependent;
 import java.io.IOException;
@@ -354,7 +354,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                     continue;
                 byte[] remotePeerId = peerInformation.remotePeerId;
                 if (remotePeerId != null)
-                    if (connectedPeers.containsKey(Torrent.byteArrayToHexString(remotePeerId)))
+                    if (connectedPeers.containsKey(TorrentUtils.toHex(remotePeerId)))
                         continue;
                 connect(e.getKey());
             }
@@ -698,7 +698,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     @Override
     public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] remotePeerId) {
         SocketAddress remoteAddress = channel.remoteAddress();
-        String remoteHexPeerId = Torrent.byteArrayToHexString(remotePeerId);
+        String remoteHexPeerId = TorrentUtils.toHex(remotePeerId);
 
         if (Arrays.equals(remotePeerId, getClient().getLocalPeerId()))
             throw new IllegalArgumentException("Cannot connect to self.");
@@ -707,7 +707,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // peers.add(remoteAddress);
 
         // Peer peer = new Peer(remoteAddress, remotePeerId);
-        // LOG.trace("Searching for address {}, peerId {}...", remoteAddress, Torrent.byteArrayToHexString(remotePeerId));
+        // LOG.trace("Searching for address {}, peerId {}...", remoteAddress, TorrentUtils.toHex(remotePeerId));
 
         PeerInformation peerInformation = knownPeers.get(remoteAddress);
         if (peerInformation != null)
@@ -1093,7 +1093,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 new Object[]{
             getLocalPeerName(),
             torrent.getState().name(),
-            Torrent.byteArrayToHexString(torrent.getInfoHash()),
+            TorrentUtils.toHex(torrent.getInfoHash()),
             torrent.getCompletedPieceCount(),
             getPieceCount(),
             String.format("%.2f", torrent.getCompletion()),

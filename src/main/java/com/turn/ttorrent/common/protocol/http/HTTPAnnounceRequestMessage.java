@@ -18,6 +18,7 @@ package com.turn.ttorrent.common.protocol.http;
 import com.google.common.base.Objects;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 
 import java.io.IOException;
@@ -80,7 +81,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
     @Override
     public String getHexInfoHash() {
-        return Torrent.byteArrayToHexString(this.infoHash);
+        return TorrentUtils.toHex(this.infoHash);
     }
 
     @Override
@@ -203,8 +204,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .add("infoHash", infoHash)
-                .add("peerId", Torrent.byteArrayToHexString(peerId))
+                .add("infoHash", getHexInfoHash())
+                .add("peerId", TorrentUtils.toHex(peerId))
                 .add("peerAddress", peerAddress)
                 .add("uploaded", uploaded)
                 .add("downloaded", downloaded)

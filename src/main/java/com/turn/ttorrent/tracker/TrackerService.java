@@ -186,9 +186,13 @@ public class TrackerService implements Container {
         TrackerMessage.AnnounceEvent event = announceRequest.getEvent();
 
         InetSocketAddress peerAddress = announceRequest.getPeerAddress();
-        if (!Peer.isValidIpAddress(peerAddress))
-            peerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerAddress.getPort());
         if (!Peer.isValidIpAddress(peerAddress)) {
+            InetSocketAddress discoveredPeerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerAddress.getPort());
+            LOG.debug("Peer specified address {}; using {} instead.", peerAddress, discoveredPeerAddress);
+            peerAddress = discoveredPeerAddress;
+        }
+        if (!Peer.isValidIpAddress(peerAddress)) {
+            LOG.debug("Peer address is invalid: {}", peerAddress);
             this.serveError(response, body, Status.BAD_REQUEST,
                     TrackerMessage.ErrorMessage.FailureReason.MISSING_PEER_ADDRESS);
         }
