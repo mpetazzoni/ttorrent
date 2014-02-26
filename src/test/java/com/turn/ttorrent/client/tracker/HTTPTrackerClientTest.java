@@ -31,7 +31,7 @@ public class HTTPTrackerClientTest {
 
     private static final Log LOG = LogFactory.getLog(HTTPTrackerClientTest.class);
     private final byte[] infoHash = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
-    private final List<URI> uris = new ArrayList<URI>();
+    private final List<List<URI>> uris = new ArrayList<List<URI>>();
     private final TorrentMetadataProvider metadataProvider = new TestTorrentMetadataProvider(infoHash, uris);
     private final ClientEnvironment environment = new ClientEnvironment(getClass().getSimpleName());
 
@@ -63,8 +63,8 @@ public class HTTPTrackerClientTest {
         }
 
         @Override
-        public void handleAnnounceFailed(URI tracker) {
-            LOG.info("Failed: " + tracker);
+        public void handleAnnounceFailed(URI tracker, String reason) {
+            LOG.info("Failed: " + tracker + ": " + reason);
             failed.getAndIncrement();
             latch.countDown();
         }
