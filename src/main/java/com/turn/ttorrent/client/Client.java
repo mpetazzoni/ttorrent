@@ -160,7 +160,7 @@ public class Client {
             peerClient = new PeerClient(this);
             peerClient.start();
 
-            httpTrackerClient = new HTTPTrackerClient(environment, peerServer.getLocalAddress());
+            httpTrackerClient = new HTTPTrackerClient(environment, peerServer.getLocalAddresses());
             httpTrackerClient.start();
 
             // udpTrackerClient = new UDPTrackerClient(environment, peer);

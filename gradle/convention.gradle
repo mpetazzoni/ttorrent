@@ -73,7 +73,7 @@ status = project.hasProperty('preferredStatus')?project.preferredStatus:(version
 				exceptionFormat "full"
 				showStandardStreams true
 			} else {
-				events "skipped", "failed"
+				events "started", "skipped", "failed"
 			}
 
 			debug {

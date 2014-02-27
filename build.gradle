@@ -44,7 +44,7 @@ dependencies {
 	compile 'org.slf4j:slf4j-api:1.7.5'
 	compile 'commons-io:commons-io:2.4'
 	// compile 'net.sf:jargs:1.0'
-	compile 'org.simpleframework:simple:4.1.21'
+	compile 'org.simpleframework:simple:5.1.6'
 	compile 'commons-codec:commons-codec:1.8'
 	compile 'org.apache.httpcomponents:httpasyncclient:4.0'
 	compile 'io.netty:netty-all:4.0.14.Final'

@@ -15,27 +15,32 @@
  */
 package com.turn.ttorrent.client.tracker;
 
+import com.google.common.collect.Iterables;
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
+import com.turn.ttorrent.common.protocol.InetSocketAddressComparator;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 public abstract class TrackerClient {
 
     private final ClientEnvironment environment;
-    private final InetSocketAddress peerAddress;
+    private final Iterable<? extends InetSocketAddress> peerAddresses;
 
-    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull InetSocketAddress peerAddress) {
+    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Iterable<? extends InetSocketAddress> peerAddresses) {
         this.environment = environment;
-        this.peerAddress = peerAddress;
+        this.peerAddresses = peerAddresses;
     }
 
     @Nonnull
@@ -43,10 +48,13 @@ public abstract class TrackerClient {
         return environment;
     }
 
-    /** Might only have a port. */
+    /** Returns a fresh, concrete list. */
     @Nonnull
-    protected InetSocketAddress getPeerAddress() {
-        return peerAddress;
+    protected List<InetSocketAddress> getPeerAddresses() {
+        List<InetSocketAddress> out = new ArrayList<InetSocketAddress>();
+        Iterables.addAll(out, this.peerAddresses);
+        Collections.sort(out, InetSocketAddressComparator.INSTANCE);
+        return out;
     }
 
     /**
