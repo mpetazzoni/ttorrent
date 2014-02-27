@@ -15,36 +15,36 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.turn.ttorrent.bcodec.BytesBEncoder;
-import com.turn.ttorrent.bcodec.StreamBEncoder;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.protocol.http.*;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
-import com.turn.ttorrent.common.protocol.http.*;
-
 import com.yammer.metrics.core.Meter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.simpleframework.http.core.Container;
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
 import org.simpleframework.http.Status;
-import org.simpleframework.http.core.Container;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tracker service to serve the tracker's announce requests.
@@ -112,8 +112,7 @@ public class TrackerService implements Container {
         try {
             // Reject non-announce requests
             if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
-                response.setCode(404);
-                response.setText("Not Found");
+                response.setStatus(Status.NOT_FOUND);
                 return;
             }
         } catch (Exception e) {
@@ -127,7 +126,7 @@ public class TrackerService implements Container {
             this.process(request, response, body);
             body.flush();
         } catch (Exception e) {
-            LOG.warn("Error while writing response: {}!", e.getMessage());
+            LOG.warn("Error while writing response!", e);
         } finally {
             IOUtils.closeQuietly(body);
         }
@@ -137,7 +136,7 @@ public class TrackerService implements Container {
      * Process the announce request.
      *
      * <p>
-     * This method attemps to read and parse the incoming announce request into
+     * This method attempts to read and parse the incoming announce request into
      * an announce request message, then creates the appropriate announce
      * response message and sends it back to the client.
      * </p>
@@ -149,8 +148,8 @@ public class TrackerService implements Container {
     private void process(Request request, Response response,
             OutputStream body) throws IOException {
         // Prepare the response headers.
-        response.set("Content-Type", "text/plain");
-        response.set("Server", this.version);
+        response.setContentType("text/plain");
+        response.setValue("Server", this.version);
         response.setDate("Date", System.currentTimeMillis());
 
         /**
@@ -162,7 +161,7 @@ public class TrackerService implements Container {
          */
         HTTPAnnounceRequestMessage announceRequest;
         try {
-            announceRequest = this.parseQuery(request);
+            announceRequest = this.parseRequest(request);
         } catch (MessageValidationException e) {
             requestParseFailed.mark();
             LOG.error("Failed to parse request", e);
@@ -177,27 +176,38 @@ public class TrackerService implements Container {
         TrackedTorrent torrent = this.torrents.get(announceRequest.getHexInfoHash());
         if (torrent == null) {
             requestNoTorrent.mark();
-            LOG.warn("No such torrent: {}", announceRequest.getHexInfoHash());
+            LOG.warn("No such torrent: {}: Have {}", announceRequest.getHexInfoHash(), this.torrents.keySet());
             this.serveError(response, body, Status.BAD_REQUEST,
                     TrackerMessage.ErrorMessage.FailureReason.UNKNOWN_TORRENT);
             return;
         }
 
-        TrackerMessage.AnnounceEvent event = announceRequest.getEvent();
-
-        InetSocketAddress peerAddress = announceRequest.getPeerAddress();
-        if (!Peer.isValidIpAddress(peerAddress)) {
-            InetSocketAddress discoveredPeerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerAddress.getPort());
-            LOG.debug("Peer specified address {}; using {} instead.", peerAddress, discoveredPeerAddress);
-            peerAddress = discoveredPeerAddress;
+        int peerPort = -1;
+        List<InetSocketAddress> peerAddresses = announceRequest.getPeerAddresses();
+        Iterator<InetSocketAddress> peerAddressIterator = peerAddresses.iterator();
+        while (peerAddressIterator.hasNext()) {
+            InetSocketAddress peerAddress = peerAddressIterator.next();
+            if (peerPort == -1)
+                peerPort = peerAddress.getPort();
+            if (!Peer.isValidIpAddress(peerAddress)) {
+                LOG.debug("Peer specified invalid address {}", peerAddress);
+                peerAddressIterator.remove();
+            }
         }
-        if (!Peer.isValidIpAddress(peerAddress)) {
-            LOG.debug("Peer address is invalid: {}", peerAddress);
+        if (peerPort == -1) {
+            LOG.debug("Peer specified no valid address.");
             this.serveError(response, body, Status.BAD_REQUEST,
                     TrackerMessage.ErrorMessage.FailureReason.MISSING_PEER_ADDRESS);
         }
-        TrackedPeer client = torrent.getPeer(peerAddress);
+        if (peerAddresses.isEmpty()) {
+            InetSocketAddress peerAddress = new InetSocketAddress(request.getClientAddress().getAddress(), peerPort);
+            LOG.debug("Peer specified no valid address; using {} instead.", peerAddress);
+            peerAddresses.add(peerAddress);
+        }
 
+        TrackedPeer client = torrent.getPeer(announceRequest.getPeerId());
+
+        TrackerMessage.AnnounceEvent event = announceRequest.getEvent();
         // When no event is specified, it's a periodic update while the client
         // is operating. If we don't have a peer for this announce, it means
         // the tracker restarted while the client was running. Consider this
@@ -222,8 +232,8 @@ public class TrackerService implements Container {
         // Update the torrent according to the announce event
         try {
             client = torrent.update(event,
-                    peerAddress,
                     announceRequest.getPeerId(),
+                    peerAddresses,
                     announceRequest.getUploaded(),
                     announceRequest.getDownloaded(),
                     announceRequest.getLeft());
@@ -275,17 +285,29 @@ public class TrackerService implements Container {
      * Tracker HTTP protocol.
      * </p>
      *
-     * @param request The request's full URI, including query parameters.
+     * @param request The Request object.
      * @return The {@link AnnounceRequestMessage} representing the client's
      * announce request.
      */
-    private HTTPAnnounceRequestMessage parseQuery(Request request)
-            throws IOException, MessageValidationException {
-        Map<String, String> params = new HashMap<String, String>();
+    @Nonnull
+    @VisibleForTesting
+    /* pp */ static HTTPAnnounceRequestMessage parseRequest(Request request)
+            throws MessageValidationException {
+        String uri = request.getAddress().toString();
+        String query = uri.split("[?]")[1];
+        Multimap<String, String> params = parseQuery(query);
+        return HTTPAnnounceRequestMessage.fromParams(params);
+    }
+
+    @Nonnull
+    @VisibleForTesting
+    public static Multimap<String, String> parseQuery(String query) {
+        Multimap<String, String> params = ArrayListMultimap.create();
+        Splitter ampersand = Splitter.on('&').omitEmptyStrings();
+        // Splitter equals = Splitter.on('=').limit(2);
 
         try {
-            String uri = request.getAddress().toString();
-            for (String pair : uri.split("[?]")[1].split("&")) {
+            for (String pair : ampersand.split(query)) {
                 String[] keyval = pair.split("[=]", 2);
                 if (keyval.length == 1) {
                     parseParam(params, keyval[0], null);
@@ -296,16 +318,10 @@ public class TrackerService implements Container {
         } catch (ArrayIndexOutOfBoundsException e) {
             params.clear();
         }
-
-        // Make sure we have the peer IP, fallbacking on the request's source
-        // address if the peer didn't provide it.
-        if (!params.containsKey("ip"))
-            params.put("ip", request.getClientAddress().getAddress().getHostAddress());
-
-        return HTTPAnnounceRequestMessage.fromParams(params);
+        return params;
     }
 
-    private void parseParam(@Nonnull Map<String, String> params, @Nonnull String key, @CheckForNull String value) {
+    private static void parseParam(@Nonnull Multimap<String, String> params, @Nonnull String key, @CheckForNull String value) {
         try {
             if (value != null)
                 value = URLDecoder.decode(value, Torrent.BYTE_ENCODING_NAME);
@@ -330,12 +346,12 @@ public class TrackerService implements Container {
      */
     private void serveError(Response response, OutputStream body,
             Status status, HTTPTrackerErrorMessage error) throws IOException {
-        response.setCode(status.getCode());
-        response.setText(status.getDescription());
+        response.setStatus(status);
         LOG.warn("Could not process announce request ({}) !",
                 error.getReason());
-        StreamBEncoder encoder = new StreamBEncoder(body);
+        BytesBEncoder encoder = new BytesBEncoder();
         encoder.bencode(error.toBEValue());
+        body.write(encoder.toByteArray());  // This is the raw network stream.
     }
 
     /**

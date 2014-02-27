@@ -13,6 +13,7 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -70,9 +71,13 @@ public class HTTPTrackerClientTest {
         }
     }
 
+    private Iterable<InetSocketAddress> newPeerAddresses() {
+        return Collections.singleton(new InetSocketAddress(17));
+    }
+
     @Test
     public void testConnectionRefused() throws Exception {
-        HTTPTrackerClient client = new HTTPTrackerClient(environment, new InetSocketAddress(17));
+        HTTPTrackerClient client = new HTTPTrackerClient(environment, newPeerAddresses());
         client.start();
         try {
             ResponseListener listener = new ResponseListener();
@@ -87,7 +92,7 @@ public class HTTPTrackerClientTest {
 
     @Test
     public void testConnectionTimeout() throws Exception {
-        HTTPTrackerClient client = new HTTPTrackerClient(environment, new InetSocketAddress(17));
+        HTTPTrackerClient client = new HTTPTrackerClient(environment, newPeerAddresses());
         client.start();
         try {
             ResponseListener listener = new ResponseListener();

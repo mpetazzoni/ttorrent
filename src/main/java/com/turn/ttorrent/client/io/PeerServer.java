@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
@@ -26,6 +27,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -101,5 +103,10 @@ public class PeerServer {
     public InetSocketAddress getLocalAddress() {
         ServerSocketChannel channel = (ServerSocketChannel) future.channel();
         return channel.localAddress();
+    }
+
+    @Nonnull
+    public Iterable<? extends InetSocketAddress> getLocalAddresses() throws SocketException {
+        return TorrentUtils.getSpecificAddresses(getLocalAddress());
     }
 }

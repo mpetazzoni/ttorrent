@@ -58,8 +58,8 @@ public class HTTPTrackerClient extends TrackerClient {
     protected static final Logger LOG = LoggerFactory.getLogger(HTTPTrackerClient.class);
     private CloseableHttpAsyncClient httpclient;
 
-    public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull InetSocketAddress peerAddress) {
-        super(environment, peerAddress);
+    public HTTPTrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Iterable<? extends InetSocketAddress> peerAddresses) {
+        super(environment, peerAddresses);
     }
 
     @Override
@@ -163,7 +163,7 @@ public class HTTPTrackerClient extends TrackerClient {
             HTTPAnnounceRequestMessage message =
                     new HTTPAnnounceRequestMessage(
                     torrent.getInfoHash(),
-                    getEnvironment().getLocalPeerId(), getPeerAddress(),
+                    getEnvironment().getLocalPeerId(), getPeerAddresses(),
                     torrent.getUploaded(), torrent.getDownloaded(), torrent.getLeft(),
                     true, false, event, AnnounceRequestMessage.DEFAULT_NUM_WANT);
             URI target = message.toURI(tracker);

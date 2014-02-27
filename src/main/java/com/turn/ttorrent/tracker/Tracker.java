@@ -19,6 +19,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.net.InetAddresses;
 import com.turn.ttorrent.common.Torrent;
 
+import com.turn.ttorrent.common.TorrentUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.MetricsRegistry;
@@ -44,8 +45,12 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.CheckForNull;
 import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnull;
+import org.simpleframework.http.core.Container;
+import org.simpleframework.http.core.ContainerServer;
+import org.simpleframework.transport.Server;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 import org.slf4j.Logger;
@@ -139,25 +144,9 @@ public class Tracker {
 
     private void add(@Nonnull Set<? super InetSocketAddress> out, @Nonnull InetSocketAddress in) throws SocketException {
         // LOG.info("Looking for addresses from " + in);
-        InetAddress addr = in.getAddress();
-        if (addr.isAnyLocalAddress()) {
-            for (NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (iface.isLoopback())
-                    continue;
-                if (!iface.isUp())
-                    continue;
-                for (InetAddress ifaddr : Collections.list(iface.getInetAddresses())) {
-                    // LOG.info("ifaddr=" + ifaddr + " iftype=" + ifaddr.getClass() + " atype=" + addr.getClass());
-                    if (ifaddr.isLoopbackAddress())
-                        continue;
-                    // If we prefer the IPv6 stack, then addr.getClass() is Inet6Address
-                    // if (!ifaddr.getClass().equals(addr.getClass())) continue;
-                    out.add(new InetSocketAddress(ifaddr, in.getPort()));
-                }
-            }
-        } else {
-            out.add(in);
-        }
+        InetAddress inaddr = in.getAddress();
+        for (InetAddress address : TorrentUtils.getSpecificAddresses(inaddr))
+            out.add(new InetSocketAddress(address, in.getPort()));
     }
 
     @Nonnull
@@ -165,7 +154,7 @@ public class Tracker {
         Set<InetSocketAddress> out = new HashSet<InetSocketAddress>();
         for (Map.Entry<InetSocketAddress, Listener> e : listeners.entrySet()) {
             SocketAddress a = e.getValue().connectionAddress;   // In case we bound ephemerally.
-            if (a instanceof InetSocketAddress)         // Also covers == null.
+            if (a instanceof InetSocketAddress)         // Also ensures != null.
                 add(out, (InetSocketAddress) a);
             else
                 add(out, e.getKey());
@@ -243,7 +232,9 @@ public class Tracker {
                     // Creates a thread via: SocketConnection
                     // -> ListenerManager -> Listener
                     // -> DirectReactor -> ActionDistributor -> Daemon
-                    listener.connection = new SocketConnection(new TrackerService(version, torrents, metrics));
+                    Container container = new TrackerService(version, torrents, metrics);
+                    Server server = new ContainerServer(container);
+                    listener.connection = new SocketConnection(server);
                     listener.connectionAddress = listener.connection.connect(e.getKey());
                 }
             }
@@ -318,7 +309,8 @@ public class Tracker {
      * different from the supplied Torrent object if the tracker already
      * contained a torrent with the same hash.
      */
-    public synchronized TrackedTorrent announce(TrackedTorrent torrent) {
+    @Nonnull
+    public synchronized TrackedTorrent announce(@Nonnull TrackedTorrent torrent) {
         TrackedTorrent existing = this.torrents.get(torrent.getHexInfoHash());
 
         if (existing != null) {
@@ -334,7 +326,7 @@ public class Tracker {
     }
 
     @Nonnull
-    public TrackedTorrent announce(Torrent torrent) {
+    public TrackedTorrent announce(@Nonnull Torrent torrent) {
         return announce(new TrackedTorrent(torrent));
     }
 
@@ -343,10 +335,9 @@ public class Tracker {
      *
      * @param torrent The Torrent object to stop tracking.
      */
-    public synchronized void remove(Torrent torrent) {
-        if (torrent == null) {
+    public void remove(@CheckForNull Torrent torrent) {
+        if (torrent == null)
             return;
-        }
 
         this.torrents.remove(torrent.getHexInfoHash());
     }
@@ -357,10 +348,9 @@ public class Tracker {
      * @param torrent The Torrent object to stop tracking.
      * @param delay The delay, in milliseconds, before removing the torrent.
      */
-    public synchronized void remove(Torrent torrent, long delay) {
-        if (torrent == null) {
+    public void remove(Torrent torrent, long delay) {
+        if (torrent == null)
             return;
-        }
 
         scheduler.schedule(new TorrentRemover(torrent), delay, TimeUnit.SECONDS);
     }

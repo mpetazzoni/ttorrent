@@ -135,8 +135,7 @@ public abstract class TrackerMessage {
 
         public byte[] getPeerId();
 
-        public InetSocketAddress getPeerAddress();
-
+        // public InetSocketAddress getPeerAddress();
         public long getUploaded();
 
         public long getDownloaded();

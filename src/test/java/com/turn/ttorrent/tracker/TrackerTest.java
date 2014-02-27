@@ -6,6 +6,7 @@ package com.turn.ttorrent.tracker;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import javax.annotation.Nonnull;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
@@ -18,7 +19,7 @@ public class TrackerTest {
 
     private static final Log LOG = LogFactory.getLog(TrackerTest.class);
 
-    private void test(Tracker tracker) throws Exception {
+    private void test(@Nonnull Tracker tracker) throws Exception {
         LOG.info("Before start: " + tracker.getAnnounceUris());
         tracker.start();
         try {

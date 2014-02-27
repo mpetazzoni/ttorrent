@@ -24,8 +24,8 @@ import io.netty.util.internal.PlatformDependent;
 import java.io.UnsupportedEncodingException;
 
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
@@ -66,7 +66,7 @@ public class TrackedTorrent {
     private final String infoHash;
     private long announceInterval;
     /** Peers currently exchanging on this torrent. */
-    private final ConcurrentMap<SocketAddress, TrackedPeer> peers = PlatformDependent.newConcurrentHashMap();
+    private final ConcurrentMap<String, TrackedPeer> peers = PlatformDependent.newConcurrentHashMap();
 
     public TrackedTorrent(@CheckForNull String name, @Nonnull byte[] infoHash) {
         this.name = name;
@@ -102,8 +102,8 @@ public class TrackedTorrent {
      * @param peerId The hexadecimal representation of the peer's ID.
      */
     @CheckForNull
-    public TrackedPeer getPeer(@Nonnull SocketAddress address) {
-        return peers.get(address);
+    public TrackedPeer getPeer(@Nonnull byte[] peerId) {
+        return peers.get(TorrentUtils.toHex(peerId));
     }
 
     /**
@@ -112,7 +112,7 @@ public class TrackedTorrent {
      * @param peer The new Peer involved with this torrent.
      */
     public void addPeer(@Nonnull TrackedPeer peer) {
-        this.peers.put(peer.getPeerAddress(), peer);
+        this.peers.put(TorrentUtils.toHex(peer.getPeerId()), peer);
     }
 
     /**
@@ -120,8 +120,8 @@ public class TrackedTorrent {
      *
      * @param peerId The hexadecimal representation of the peer's ID.
      */
-    public TrackedPeer removePeer(@Nonnull SocketAddress address) {
-        return peers.remove(address);
+    public TrackedPeer removePeer(@Nonnull byte[] peerId) {
+        return peers.remove(TorrentUtils.toHex(peerId));
     }
 
     /**
@@ -198,31 +198,34 @@ public class TrackedTorrent {
      * @param left The peer's reported left to download byte count.
      * @return The peer that sent us the announce request.
      */
+    @CheckForNull
     public TrackedPeer update(AnnounceEvent event,
-            InetSocketAddress peerAddress, byte[] peerId,
+            byte[] peerId, List<? extends InetSocketAddress> peerAddresses,
             long uploaded, long downloaded, long left) throws UnsupportedEncodingException {
         TrackedPeerState state = TrackedPeerState.UNKNOWN;
 
         TrackedPeer trackedPeer;
         if (AnnounceEvent.STARTED.equals(event)) {
-            trackedPeer = new TrackedPeer(peerAddress, peerId);
+            trackedPeer = new TrackedPeer(peerId);
             state = TrackedPeerState.STARTED;
             this.addPeer(trackedPeer);
         } else if (AnnounceEvent.STOPPED.equals(event)) {
-            trackedPeer = removePeer(peerAddress);
+            trackedPeer = removePeer(peerId);
             state = TrackedPeerState.STOPPED;
         } else if (AnnounceEvent.COMPLETED.equals(event)) {
-            trackedPeer = getPeer(peerAddress);
+            trackedPeer = getPeer(peerId);
             state = TrackedPeerState.COMPLETED;
         } else if (AnnounceEvent.NONE.equals(event)) {
-            trackedPeer = getPeer(peerAddress);
+            trackedPeer = getPeer(peerId);
             // TODO: There is a chance this will change COMPLETED -> STARTED
             state = TrackedPeerState.STARTED;
         } else {
             throw new IllegalArgumentException("Unexpected announce event type!");
         }
 
-        trackedPeer.update(this, state, uploaded, downloaded, left);
+        // This can be null if we STOPPED an unknown peer.
+        if (trackedPeer != null)
+            trackedPeer.update(this, state, peerAddresses, uploaded, downloaded, left);
         return trackedPeer;
     }
 
@@ -248,21 +251,22 @@ public class TrackedTorrent {
             // LOG.info("Candidate PeerAddress is " + candidate.getPeerAddress());
             // Collect unfresh peers, and obviously don't serve them as well.
             if (!candidate.isFresh(now, getPeerExpiryInterval())) {
-                LOG.debug("Collecting stale peer {}...", candidate.getPeerAddress());
-                peers.remove(candidate.getPeerAddress(), candidate);
+                LOG.debug("Collecting stale peer {}...", candidate.getPeerAddresses());
+                peers.remove(candidate.getPeerId(), candidate);
                 continue;
             }
 
             // Don't include the requesting peer in the answer.
-            if (client.getPeerAddress().equals(candidate.getPeerAddress())) {
+            if (Arrays.equals(client.getPeerId(), candidate.getPeerId())) {
                 if (!client.equals(candidate)) {
                     LOG.debug("Collecting superceded peer {}...", candidate);
-                    removePeer(candidate.getPeerAddress());
+                    removePeer(candidate.getPeerId());
                 }
                 continue;
             }
 
-            out.add(new Peer(candidate.getPeerAddress(), candidate.getPeerId()));
+            for (InetSocketAddress peerAddress : candidate.getPeerAddresses())
+                out.add(new Peer(peerAddress, candidate.getPeerId()));
             if (out.size() >= numWant)
                 break;
         }
@@ -285,7 +289,7 @@ public class TrackedTorrent {
         int count = 0;
         for (TrackedPeer peer : peers.values()) {
             if (!peer.isFresh(now, getPeerExpiryInterval())) {
-                peers.remove(peer.getPeerAddress(), peer);
+                peers.remove(peer.getPeerId(), peer);
                 count++;
             }
         }

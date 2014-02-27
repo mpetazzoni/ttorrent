@@ -15,9 +15,12 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.google.common.collect.Iterables;
 import com.turn.ttorrent.common.Peer;
 
 import java.net.InetSocketAddress;
+import java.util.HashSet;
+import java.util.Set;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +45,12 @@ import org.slf4j.LoggerFactory;
 public class TrackedPeer {
 
     private static final Logger LOG = LoggerFactory.getLogger(TrackedPeer.class);
-    private final InetSocketAddress peerAddress;
     private final byte[] peerId;
-    // TODO: The only reason to keep this reference here is to produce debug logs.
-    private long uploaded;
-    private long downloaded;
-    private long left;
-    private TrackedPeerState state;
+    private final Set<InetSocketAddress> peerAddresses = new HashSet<InetSocketAddress>();
+    private TrackedPeerState state = TrackedPeerState.UNKNOWN;
+    private long uploaded = 0;
+    private long downloaded = 0;
+    private long left = 0;
     private long lastAnnounce = System.currentTimeMillis();
     // We need a happen-before relationship for multiple threads.
     private final Object lock = new Object();
@@ -59,28 +61,18 @@ public class TrackedPeer {
      * @param peer The remote peer.
      * @param torrent The torrent this peer exchanges on.
      */
-    public TrackedPeer(@Nonnull InetSocketAddress peerAddress, @Nonnull byte[] peerId) {
-        if (!Peer.isValidIpAddress(peerAddress))
-            throw new IllegalArgumentException("Useless SocketAddress: " + peerAddress);
-        this.peerAddress = peerAddress;
+    public TrackedPeer(@Nonnull byte[] peerId) {
         this.peerId = peerId;
-
-        // Instantiated peers start in the UNKNOWN state.
-        this.state = TrackedPeerState.UNKNOWN;
-
-        this.uploaded = 0;
-        this.downloaded = 0;
-        this.left = 0;
-    }
-
-    @Nonnull
-    public InetSocketAddress getPeerAddress() {
-        return peerAddress;
     }
 
     @Nonnull
     public byte[] getPeerId() {
         return peerId;
+    }
+
+    @Nonnull
+    public Set<? extends InetSocketAddress> getPeerAddresses() {
+        return peerAddresses;
     }
 
     /**
@@ -97,7 +89,7 @@ public class TrackedPeer {
      * @param downloaded Downloaded byte count, as reported by the peer.
      * @param left Left-to-download byte count, as reported by the peer.
      */
-    public void update(@Nonnull TrackedTorrent torrent, TrackedPeerState state, long uploaded, long downloaded, long left) {
+    public void update(@Nonnull TrackedTorrent torrent, TrackedPeerState state, Iterable<? extends InetSocketAddress> peerAddresses, long uploaded, long downloaded, long left) {
         if (TrackedPeerState.STARTED.equals(state) && left == 0)
             state = TrackedPeerState.COMPLETED;
 
@@ -111,11 +103,12 @@ public class TrackedPeer {
         }
 
         synchronized (lock) {
+            Iterables.addAll(this.peerAddresses, peerAddresses);
             this.state = state;
-            this.lastAnnounce = System.currentTimeMillis();
             this.uploaded = uploaded;
             this.downloaded = downloaded;
             this.left = left;
+            this.lastAnnounce = System.currentTimeMillis();
         }
     }
 
