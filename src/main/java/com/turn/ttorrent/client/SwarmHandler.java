@@ -15,6 +15,8 @@
  */
 package com.turn.ttorrent.client;
 
+import com.google.common.primitives.Bytes;
+import com.google.common.primitives.UnsignedBytes;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
 
@@ -29,6 +31,8 @@ import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
 import io.netty.util.internal.PlatformDependent;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -97,6 +101,16 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         @CheckForNull
         private volatile byte[] remotePeerId;
         private volatile long reconnectTime;
+
+        public void setReconnectTime(@Nonnull Random r, long reconnectTime) {
+            // 5000 estimates that we won't have more than 5 valid IPs for a given target.
+            this.reconnectTime = reconnectTime + r.nextInt(5000);
+        }
+
+        @Override
+        public String toString() {
+            return "RemotePeerId=" + TorrentUtils.toHexOrNull(remotePeerId) + ", reconnectTime=" + reconnectTime;
+        }
     }
     /** Peers unchoking frequency, in seconds. Current BitTorrent specification
      * recommends 10 seconds to avoid choking fibrilation. */
@@ -185,8 +199,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peerAddresses);
-        for (SocketAddress peerAddress : peerAddresses)
-            knownPeers.putIfAbsent(peerAddress, new PeerInformation());
+        long now = System.currentTimeMillis();
+        for (SocketAddress peerAddress : peerAddresses) {
+            PeerInformation peerInformation = new PeerInformation();
+            peerInformation.setReconnectTime(getRandom(), now);
+            knownPeers.putIfAbsent(peerAddress, peerInformation);
+        }
         // run();
     }
 
@@ -350,12 +368,18 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             //     something).
             for (Map.Entry<SocketAddress, PeerInformation> e : knownPeers.entrySet()) {
                 PeerInformation peerInformation = e.getValue();
+                if (LOG.isDebugEnabled())
+                    LOG.debug("{}: At {}, considering {} -> {}", new Object[]{
+                        getLocalPeerName(), now,
+                        e.getKey(), peerInformation
+                    });
                 if (peerInformation.reconnectTime > now)
                     continue;
                 byte[] remotePeerId = peerInformation.remotePeerId;
                 if (remotePeerId != null)
                     if (connectedPeers.containsKey(TorrentUtils.toHex(remotePeerId)))
                         continue;
+                peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
                 connect(e.getKey());
             }
         }
@@ -366,7 +390,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         for (PeerHandler peer : getConnectedPeers()) {
             try {
                 // This is the call which is likely to cause the most trouble.
-                peer.run();
+                peer.run("swarm tick");
             } catch (IOException e) {
                 LOG.error(getLocalPeerName() + ": Peer " + peer + " threw.", e);
             }
@@ -437,6 +461,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         // not connected to.
         List<PeerHandler> candidates = new ArrayList<PeerHandler>();
         for (PeerHandler peer : getConnectedPeers()) {
+            // TODO: Panic-check that it's still connected?
             if (peer.isInterested())
                 candidates.add(peer);
             else
@@ -716,7 +741,9 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
             if (LOG.isTraceEnabled())
-                LOG.trace("{}: Found peer (by PeerId): {}.", getLocalPeerName(), peerHandler);
+                LOG.trace("{}: Found existing peer for {}: {}.", new Object[]{
+                    getLocalPeerName(), remoteAddress, peerHandler
+                });
             return null;
         }
 
@@ -728,39 +755,135 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     }
 
     /**
+     * Chooses, deterministically, between two PeerHandlers, such that both
+     * ends of a connection will make the same deterministic choice.
+     *
+     * Attempts to prefer link-local IPv6 addresses.
+     */
+    private static class PeerConnectionComparator implements Comparator<PeerHandler> {
+
+        public static final PeerConnectionComparator INSTANCE = new PeerConnectionComparator();
+
+        private static int score(@Nonnull InetAddress a) {
+            if (a.isLinkLocalAddress())
+                return 2;   // Most beloved, if we can get it.
+            if (a.isLoopbackAddress())
+                return 10;  // Only if we can't get something better.
+            if (a.isAnyLocalAddress())
+                return 100; // Avoid.
+            if (a.isMulticastAddress())
+                return 200; // Never.
+            return 4;   // Regular address.
+        }
+
+        private static int compare(@Nonnull InetAddress a1, @Nonnull InetAddress a2) {
+            byte[] b1 = a1.getAddress();
+            byte[] b2 = a2.getAddress();
+            // Use the longer address.
+            int cmp = -Integer.compare(b1.length, b2.length);
+            if (cmp != 0)
+                return cmp;
+            // Use the lower address.
+            for (int i = 0; i < b1.length; i++) {
+                cmp = b2[i] - b1[i];
+                if (cmp != 0)
+                    return cmp;
+            }
+            return 0;
+        }
+
+        @Nonnull
+        private static InetAddress choose(@Nonnull InetAddress a1, @Nonnull InetAddress a2) {
+            int cmp = compare(a1, a2);
+            return cmp < 0 ? a1 : a2;
+        }
+
+        @Override
+        public int compare(PeerHandler o1, PeerHandler o2) {
+            SocketAddress s1 = o1.getRemoteAddress();
+            SocketAddress s2 = o2.getRemoteAddress();
+            if (!(s1 instanceof InetSocketAddress)) {
+                if (s2 instanceof InetSocketAddress)
+                    return 1;
+                return 0;
+            } else if (!(s2 instanceof InetSocketAddress)) {
+                return -1;
+            }
+            InetAddress a1 = ((InetSocketAddress) s1).getAddress();
+            InetAddress a2 = ((InetSocketAddress) s2).getAddress();
+            // Longer addresses are preferred: IPv6.
+            int cmp = -Integer.compare(a1.getAddress().length, a2.getAddress().length);
+            if (cmp != 0)
+                return cmp;
+            cmp = Integer.compare(score(a1), score(a2));
+            if (cmp != 0)
+                return cmp;
+
+            // OK, we ran out of smart ideas. Let's do something very deterministic.
+            InetAddress e1 = choose(a1, ((InetSocketAddress) o1.getLocalAddress()).getAddress());
+            InetAddress e2 = choose(a2, ((InetSocketAddress) o2.getLocalAddress()).getAddress());
+            return compare(e1, e2);
+        }
+    }
+
+    /**
      * Handle a new peer connection.
      *
      * <p>
      * This handler is called once the connection has been successfully
      * established and the handshake exchange made. This generally simply means
      * binding the peer to the socket, which will put in place the communication
-     * thread and logic with this peer.
+     * logic with this peer.
      * </p>
      *
-     * @param channel The connected socket channel to the remote peer. Note
+     * @param peer The connected remote peer. Note
      * that if the peer somehow rejected our handshake reply, this socket might
      * very soon get closed, but this is handled down the road.
-     * @param peerId The byte-encoded peerId extracted from the peer's
-     * handshake, after validation.
-     * @see com.turn.ttorrent.client.peer.SharingPeer
+     *
+     * @see PeerHandler
      */
     @Override
     public void handlePeerConnectionReady(PeerHandler peer) {
         try {
-            LOG.debug("{}: New peer connection with {} [{}/{}].",
-                    new Object[]{
-                getLocalPeerName(),
-                peer,
-                getConnectedPeerCount(),
-                getPeerCount()
-            });
+            if (LOG.isDebugEnabled())
+                LOG.debug("{}: New peer connection with {} [{}/{}].",
+                        new Object[]{
+                    getLocalPeerName(), peer,
+                    getConnectedPeerCount(), getPeerCount()
+                });
 
-            PeerHandler prev = connectedPeers.put(peer.getHexRemotePeerId(), peer);
-            if (prev != null)
-                prev.close();
+            peer.getRemoteAddress();
+
+            for (;;) {
+                // See whether we are already connected.
+                PeerHandler prev = connectedPeers.putIfAbsent(peer.getHexRemotePeerId(), peer);
+                if (prev != null && prev != peer) {
+                    // If so, choose a connection deterministically.
+                    int cmp = PeerConnectionComparator.INSTANCE.compare(prev, peer);
+                    if (cmp > 0) {
+                        // If the new connection wins, use it. Retry if failed.
+                        if (!connectedPeers.replace(peer.getHexRemotePeerId(), prev, peer))
+                            continue;
+                        PeerHandler tmp = prev;
+                        prev = peer;
+                        peer = tmp;
+                    }
+                    // Close the connection we don't want.
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("{}: Closing duplicate peer connection {} : {} [{}/{}]", new Object[]{
+                            getLocalPeerName(), peer, prev,
+                            getConnectedPeerCount(), getPeerCount()
+                        });
+                    peer.close("duplicate connection");
+                    // If we didn't replace the peer, don't call the step function.
+                    if (cmp <= 0)
+                        return;
+                }
+                break;
+            }
 
             // Give the peer a chance to send a bitfield message.
-            peer.run();
+            peer.run("new connection");
         } catch (Exception e) {
             LOG.warn("Could not handle new peer connection "
                     + "with {}: {}", peer, e.getMessage());
@@ -789,7 +912,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
         PeerInformation peerInformation = knownPeers.get(remoteAddress);
         if (peerInformation != null)
-            peerInformation.reconnectTime = System.currentTimeMillis() + RECONNECT_DELAY;
+            peerInformation.setReconnectTime(getRandom(), System.currentTimeMillis() + RECONNECT_DELAY);
+        LOG.debug("{}: PeerInformation {} -> {}", new Object[]{
+            getLocalPeerName(),
+            remoteAddress, peerInformation
+        });
     }
 
     /** PeerActivityListener handler(s). *************************************/
@@ -913,10 +1040,11 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
          */
 
         if (LOG.isTraceEnabled())
-            LOG.trace("Peer {} contributes {} piece(s) ({} interesting) "
+            LOG.trace("{}: Peer {} contributes {} piece(s) ({} interesting) "
                     + "[completed={}; available={}/{}] "
                     + "[connected={}/{}]",
                     new Object[]{
+                getLocalPeerName(),
                 peer,
                 currAvailablePieces.cardinality(),
                 interesting.cardinality(),
@@ -926,6 +1054,16 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                 getConnectedPeerCount(),
                 getPeerCount()
             });
+
+        // Fast unchoking: TODO: Move to somewhere more useful.
+        if (connectedPeers.size() < MAX_DOWNLOADERS_UNCHOKE) {
+            if (LOG.isDebugEnabled())
+                LOG.debug("{}: Fast-unchoking {}.", new Object[]{
+                    getLocalPeerName(), peer
+                });
+            peer.unchoke();
+        }
+
     }
 
     /**
@@ -1061,14 +1199,15 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
 
         connectedPeers.remove(peer.getHexRemotePeerId(), peer);
 
+        long now = System.currentTimeMillis();
         PeerInformation peerInformation = knownPeers.get(peer.getRemoteAddress());
         if (peerInformation != null)
-            peerInformation.reconnectTime = System.currentTimeMillis() + RECONNECT_DELAY;
+            peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
         else
             for (Map.Entry<SocketAddress, PeerInformation> e : knownPeers.entrySet()) {
                 peerInformation = e.getValue();
                 if (Arrays.equals(peerInformation.remotePeerId, peer.getRemotePeerId()))
-                    peerInformation.reconnectTime = System.currentTimeMillis() + RECONNECT_DELAY;
+                    peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
             }
     }
 
@@ -1076,7 +1215,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
     public void handleIOException(PeerHandler peer, IOException ioe) {
         LOG.warn("I/O error while exchanging data with " + peer + ", "
                 + "closing connection with it!", ioe);
-        peer.close();
+        peer.close("I/O error");
         // This should be done by handlePeerDisconnected but let's double up.
         connectedPeers.remove(peer.getHexRemotePeerId(), peer);
     }

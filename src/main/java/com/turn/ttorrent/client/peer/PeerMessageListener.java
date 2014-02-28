@@ -30,9 +30,10 @@ public interface PeerMessageListener extends EventListener {
 
     public void handleMessage(@Nonnull PeerMessage msg) throws IOException;
 
+    public void handleReadComplete() throws IOException;
+
     public void handleWritable() throws IOException;
 
     public void handleDisconnect() throws IOException;
-
     // public void handleException(@Nonnull Exception exception);
 }

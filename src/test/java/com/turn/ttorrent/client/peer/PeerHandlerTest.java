@@ -68,7 +68,7 @@ public class PeerHandlerTest {
 
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
-        peerHandler.run();
+        peerHandler.run("test 0");
         EasyMock.verify(activityListener, connectionListener);
 
         if (true)
@@ -77,12 +77,12 @@ public class PeerHandlerTest {
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
         provider.setPieceHandler(0);
-        peerHandler.run();
+        peerHandler.run("test 1");
         EasyMock.verify(activityListener, connectionListener);
 
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
-        peerHandler.run();
+        peerHandler.run("test 2");
         EasyMock.verify(activityListener, connectionListener);
 
     }

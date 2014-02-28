@@ -20,7 +20,6 @@ import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.apache.commons.io.Charsets;
 

@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -71,7 +73,8 @@ public class Client {
     private PeerClient peerClient;
     private HTTPTrackerClient httpTrackerClient;
     // private UDPTrackerClient udpTrackerClient;
-    // TODO: Search ports for a free port.
+    private long reportInterval = -1;
+    private Future<?> reportFuture = null;
     private final ConcurrentMap<String, TorrentHandler> torrents = new ConcurrentHashMap<String, TorrentHandler>();
     private final List<ClientListener> listeners = new CopyOnWriteArrayList<ClientListener>();
     private final Object lock = new Object();
@@ -142,6 +145,31 @@ public class Client {
         return h;
     }
 
+    public long getReportInterval() {
+        return reportInterval;
+    }
+
+    public void setReportInterval(long reportInterval, TimeUnit unit) {
+        this.reportInterval = unit.toMillis(reportInterval);
+        rereport();
+    }
+
+    public void rereport() {
+        synchronized (lock) {
+            if (reportFuture != null)
+                reportFuture.cancel(false);
+            if (getState() == State.STARTED && reportInterval > 0)
+                reportFuture = getEnvironment().getSchedulerService().scheduleWithFixedDelay(new Runnable() {
+                    @Override
+                    public void run() {
+                        info(true);
+                    }
+                }, 0, reportInterval, TimeUnit.MILLISECONDS);
+            else
+                reportFuture = null;
+        }
+    }
+
     /*
      @Nonnull
      public UDPTrackerClient getUdpTrackerClient() {
@@ -170,6 +198,8 @@ public class Client {
                 torrent.start();
 
             setState(State.STARTED);
+
+            rereport();
         }
         LOG.info("BitTorrent client [{}] started.", this);
     }
@@ -178,6 +208,8 @@ public class Client {
         LOG.info("BitTorrent client [{}] stopping...", this);
         synchronized (lock) {
             setState(State.STOPPING);
+
+            rereport();
 
             for (TorrentHandler torrent : torrents.values())
                 torrent.stop();

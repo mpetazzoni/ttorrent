@@ -43,8 +43,15 @@ public class PeerMessageHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        if (ctx.channel().isOpen())
+            listener.handleReadComplete();
+    }
+
+    @Override
     public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-        listener.handleWritable();
+        if (ctx.channel().isWritable())
+            listener.handleWritable();
     }
 
     @Override

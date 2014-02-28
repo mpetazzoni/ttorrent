@@ -19,7 +19,6 @@ import com.google.common.collect.Iterators;
 import com.turn.ttorrent.client.PeerPieceProvider;
 
 import com.turn.ttorrent.client.io.PeerMessage;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
 import java.io.IOException;
@@ -79,6 +78,7 @@ public class PeerHandler implements PeerMessageListener {
     private static final int MAX_REQUESTS_SENT = 100;
     private static final int MIN_REQUESTS_SENT = 16;
     private static final int MAX_REQUESTS_RCVD = 100;
+    private static final int MAX_REQUESTS_TIME = 32000;
 
     private static enum Flag {
         // We decide about them:
@@ -113,6 +113,8 @@ public class PeerHandler implements PeerMessageListener {
     private final BlockingQueue<PieceHandler.AnswerableRequestMessage> requestsSent = new LinkedBlockingQueue<PieceHandler.AnswerableRequestMessage>(MAX_REQUESTS_SENT * 2);
     @GuardedBy("lock")
     private int requestsSentLimit = MAX_REQUESTS_SENT;
+    @GuardedBy("lock")
+    private long requestsExpiredAt = 0;
     // @GuardedBy("lock")   // Also now a concurrent structure.
     private final BlockingQueue<PeerMessage.RequestMessage> requestsReceived = new ArrayBlockingQueue<PeerMessage.RequestMessage>(MAX_REQUESTS_RCVD);
 
@@ -165,6 +167,11 @@ public class PeerHandler implements PeerMessageListener {
     @Nonnull
     private String getTextRemotePeerId() {
         return TorrentUtils.toText(getRemotePeerId());
+    }
+
+    @Nonnull
+    public SocketAddress getLocalAddress() {
+        return channel.localAddress();
     }
 
     @Nonnull
@@ -296,8 +303,12 @@ public class PeerHandler implements PeerMessageListener {
         return getFlag(Flag.INTERESTED, 0);
     }
 
-    public void close() {
-        rejectRequestsSent("connection closed");
+    public void close(@Nonnull String reason) {
+        rejectRequestsSent("connection closed: " + reason);
+        LOG.debug("{}: Closing {}: {}", new Object[]{
+            provider.getLocalPeerName(),
+            this, reason
+        });
         channel.close();
     }
 
@@ -409,9 +420,11 @@ public class PeerHandler implements PeerMessageListener {
      * Re-fill the pipeline to get download the next blocks from the peer.
      * </p>
      */
-    // TODO: Do we want to make sure only one person enters this FSM at a time?
-    public void run() throws IOException {
-        // LOG.trace("Step function in " + this);
+    public void run(String reason) throws IOException {
+        if (LOG.isTraceEnabled())
+            LOG.trace("{}: Step function in {}: {}", new Object[]{
+                provider.getLocalPeerName(), this, reason
+            });
         Channel c = channel;
         boolean flush = false;
         try {
@@ -420,14 +433,14 @@ public class PeerHandler implements PeerMessageListener {
 
                 BITFIELD:
                 {
-                    if (!c.isWritable()) {
-                        LOG.debug("{}: Peer {} channel {} not writable for bitfield.", new Object[]{
-                            provider.getLocalPeerName(),
-                            this, c
-                        });
-                        return;
-                    }
                     if (!bitfieldSent) {
+                        if (!c.isWritable()) {
+                            LOG.debug("{}: Peer {} channel {} not writable for bitfield.", new Object[]{
+                                provider.getLocalPeerName(),
+                                this, c
+                            });
+                            return;
+                        }
                         flush = true;
                         send(new PeerMessage.BitfieldMessage(provider.getCompletedPieces()), false);
                         bitfieldSent = true;
@@ -447,25 +460,29 @@ public class PeerHandler implements PeerMessageListener {
                 // Expires dead requests, and marks live ones uninteresting.
                 EXPIRE:
                 {
-                    long then = System.currentTimeMillis() - 16000;
-                    List<PieceHandler.AnswerableRequestMessage> requestsExpired = new ArrayList<PieceHandler.AnswerableRequestMessage>();
-                    Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
-                    while (it.hasNext()) {
-                        PieceHandler.AnswerableRequestMessage requestSent = it.next();
-                        if (requestSent.getRequestTime() < then) {
-                            if (LOG.isTraceEnabled())
-                                LOG.trace("{}: Peer {} request {} timed out.", new Object[]{
-                                    provider.getLocalPeerName(),
-                                    this, requestSent
-                                });
-                            requestsExpired.add(requestSent);
-                            requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
-                            it.remove();
-                        } else {
-                            interesting.clear(requestSent.getPiece());
+                    long now = System.currentTimeMillis();
+                    if (requestsExpiredAt < now - MAX_REQUESTS_TIME >> 2) {
+                        long then = now - MAX_REQUESTS_TIME;
+                        List<PieceHandler.AnswerableRequestMessage> requestsExpired = new ArrayList<PieceHandler.AnswerableRequestMessage>();
+                        Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
+                        while (it.hasNext()) {
+                            PieceHandler.AnswerableRequestMessage requestSent = it.next();
+                            if (requestSent.getRequestTime() < then) {
+                                if (LOG.isTraceEnabled())
+                                    LOG.trace("{}: Peer {} request {} timed out.", new Object[]{
+                                        provider.getLocalPeerName(),
+                                        this, requestSent
+                                    });
+                                requestsExpired.add(requestSent);
+                                requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
+                                it.remove();
+                            } else {
+                                interesting.clear(requestSent.getPiece());
+                            }
                         }
+                        rejectRequests(requestsExpired, "requests expired");
+                        requestsExpiredAt = now;
                     }
-                    rejectRequests(requestsExpired, "requests expired");
                 }
 
                 // Makes new requests.
@@ -537,7 +554,7 @@ public class PeerHandler implements PeerMessageListener {
                         provider.getLocalPeerName(),
                         this, request.getPiece()
                     });
-                    close();
+                    close("requested piece we don't have");
                     break;
                 }
 
@@ -591,7 +608,7 @@ public class PeerHandler implements PeerMessageListener {
                 if (LOG.isTraceEnabled())
                     LOG.trace("{}: Peer {} is now accepting requests.", provider.getLocalPeerName(), this);
                 activityListener.handlePeerUnchoking(this);
-                run();  // We might want something.
+                // run();  // We might want something.
                 break;
 
             case INTERESTED:
@@ -616,7 +633,7 @@ public class PeerHandler implements PeerMessageListener {
                 }
 
                 activityListener.handlePieceAvailability(this, message.getPiece());
-                run(); // We might now be interested.
+                // run(); // We might now be interested.
                 break;
             }
 
@@ -633,7 +650,7 @@ public class PeerHandler implements PeerMessageListener {
 
                 // The copy from the message is independent, and thus threadsafe.
                 activityListener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
-                run();  // We might now be interested.
+                // run();  // We might now be interested.
                 break;
             }
 
@@ -653,15 +670,17 @@ public class PeerHandler implements PeerMessageListener {
                         provider.getLocalPeerName(), this,
                         choked, (now - choked), now
                     });
-                    close();
+                    close("ignored choking");
                     break;
                 }
 
                 // TODO: Ignore this condition for fast links.
                 if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
-                    LOG.warn("{}: Peer {} requested a block too big, terminating exchange.",
-                            provider.getLocalPeerName(), this);
-                    close();
+                    LOG.warn("{}: Peer {} requested a block too big ({}), terminating exchange.", new Object[]{
+                        provider.getLocalPeerName(), this,
+                        message.getLength()
+                    });
+                    close("requested hueg block");
                     break;
                 }
 
@@ -673,7 +692,7 @@ public class PeerHandler implements PeerMessageListener {
                     break;
                 }
 
-                run();
+                // run();
                 break;
             }
 
@@ -708,7 +727,7 @@ public class PeerHandler implements PeerMessageListener {
                         break;
                 }
 
-                run();
+                // run();
                 break;
             }
 
@@ -721,8 +740,13 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Override
+    public void handleReadComplete() throws IOException {
+        run("read complete");
+    }
+
+    @Override
     public void handleWritable() throws IOException {
-        run();
+        run("writable");
     }
 
     @Override
@@ -740,6 +764,7 @@ public class PeerHandler implements PeerMessageListener {
     public String toString() {
         // Channel c = getChannel();
         StringBuilder buf = new StringBuilder(getTextRemotePeerId());
+        buf.append('(').append(getRemoteAddress()).append(')');
         buf
                 .append(" [R=")
                 .append((isChoking() ? "C" : "c"))

@@ -17,7 +17,8 @@ public class InetAddressComparator implements Comparator<InetAddress> {
 
     public static final InetAddressComparator INSTANCE = new InetAddressComparator();
 
-    private int compare(boolean b1, boolean b2) {
+    /** True sorts before false. */
+    public static int compare(boolean b1, boolean b2) {
         if (b1 == b2)
             return 0;
         if (b1)
@@ -26,8 +27,8 @@ public class InetAddressComparator implements Comparator<InetAddress> {
         return 1;
     }
 
-    private int score(@Nonnull InetAddress a) {
-        // In increasing order of preference.
+    private static int score(@Nonnull InetAddress a) {
+        // Least likely to be a valid target address.
         if (a.isAnyLocalAddress())
             return 10;
         if (a.isMulticastAddress())
@@ -37,6 +38,7 @@ public class InetAddressComparator implements Comparator<InetAddress> {
         if (a.isLinkLocalAddress())
             return 2;
         return 0;
+        // Most likely to be a valid target address.
     }
 
     @Override
@@ -47,9 +49,6 @@ public class InetAddressComparator implements Comparator<InetAddress> {
         if (cmp != 0)
             return cmp;
         // Avoid loopbacks.
-        cmp = Integer.compare(score(o1), score(o2));
-        if (cmp != 0)
-            return cmp;
-        return 0;
+        return Integer.compare(score(o1), score(o2));
     }
 }
