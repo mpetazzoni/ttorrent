@@ -252,7 +252,7 @@ public class TrackedTorrent {
             // Collect unfresh peers, and obviously don't serve them as well.
             if (!candidate.isFresh(now, getPeerExpiryInterval())) {
                 LOG.debug("Collecting stale peer {}...", candidate.getPeerAddresses());
-                peers.remove(candidate.getPeerId(), candidate);
+                peers.remove(TorrentUtils.toHex(candidate.getPeerId()), candidate);
                 continue;
             }
 
@@ -289,7 +289,7 @@ public class TrackedTorrent {
         int count = 0;
         for (TrackedPeer peer : peers.values()) {
             if (!peer.isFresh(now, getPeerExpiryInterval())) {
-                peers.remove(peer.getPeerId(), peer);
+                peers.remove(TorrentUtils.toHex(peer.getPeerId()), peer);
                 count++;
             }
         }
