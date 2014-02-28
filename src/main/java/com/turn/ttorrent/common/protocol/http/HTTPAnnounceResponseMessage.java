@@ -231,7 +231,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
             ByteBuffer peer6Data = ByteBuffer.allocate(peers.size() * 18);
 
             for (Peer peer : peers) {
-                LOG.info("Adding peer " + peer);
+                // LOG.info("Adding peer " + peer);
                 byte[] ip = peer.getIpBytes();
                 if (ip == null)
                     continue;
@@ -259,7 +259,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
             List<BEValue> peerList = new ArrayList<BEValue>();
 
             for (Peer peer : peers) {
-                LOG.info("Adding peer " + peer);
+                // LOG.info("Adding peer " + peer);
 
                 Map<String, BEValue> peerItem = new HashMap<String, BEValue>();
                 byte[] peerId = peer.getPeerId();

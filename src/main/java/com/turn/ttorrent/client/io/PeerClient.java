@@ -57,6 +57,7 @@ public class PeerClient {
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
         // bootstrap.option(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TimeUnit.SECONDS.toMillis(10));
+        // bootstrap.option(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, (int) TimeUnit.SECONDS.toMillis(10));
     }
 
     public void stop() throws InterruptedException {
