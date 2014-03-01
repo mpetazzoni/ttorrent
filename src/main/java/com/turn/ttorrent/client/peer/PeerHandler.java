@@ -17,8 +17,8 @@ package com.turn.ttorrent.client.peer;
 
 import com.google.common.collect.Iterators;
 import com.turn.ttorrent.client.PeerPieceProvider;
-
 import com.turn.ttorrent.client.io.PeerMessage;
+import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
 import java.io.IOException;

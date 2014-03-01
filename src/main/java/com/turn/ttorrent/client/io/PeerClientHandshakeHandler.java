@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
+import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;

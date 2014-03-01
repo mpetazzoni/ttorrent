@@ -15,8 +15,6 @@
  */
 package com.turn.ttorrent.client;
 
-import com.google.common.primitives.Bytes;
-import com.google.common.primitives.UnsignedBytes;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
 
@@ -857,29 +855,35 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             for (;;) {
                 // See whether we are already connected.
                 PeerHandler prev = connectedPeers.putIfAbsent(peer.getHexRemotePeerId(), peer);
-                if (prev != null && prev != peer) {
-                    // If so, choose a connection deterministically.
-                    int cmp = PeerConnectionComparator.INSTANCE.compare(prev, peer);
-                    if (cmp > 0) {
-                        // If the new connection wins, use it. Retry if failed.
-                        if (!connectedPeers.replace(peer.getHexRemotePeerId(), prev, peer))
-                            continue;
-                        PeerHandler tmp = prev;
-                        prev = peer;
-                        peer = tmp;
-                    }
-                    // Close the connection we don't want.
+                // Simple success.
+                if (prev == null)
+                    break;
+                // Some weird race which is simple success, but can't happen.
+                if (prev == peer)
+                    break;
+                // If so, choose a connection deterministically.
+                int cmp = PeerConnectionComparator.INSTANCE.compare(prev, peer);
+                // We didn't like the new connection.
+                if (cmp <= 0) {
                     if (LOG.isDebugEnabled())
                         LOG.debug("{}: Closing duplicate peer connection {} : {} [{}/{}]", new Object[]{
                             getLocalPeerName(), peer, prev,
                             getConnectedPeerCount(), getPeerCount()
                         });
                     peer.close("duplicate connection");
-                    // If we didn't replace the peer, don't call the step function.
-                    if (cmp <= 0)
-                        return;
+                    return;
                 }
-                break;
+                // Try to use the new connection.
+                if (connectedPeers.replace(peer.getHexRemotePeerId(), prev, peer)) {
+                    if (LOG.isDebugEnabled())
+                        LOG.debug("{}: Closing superceded peer connection {} : {} [{}/{}]", new Object[]{
+                            getLocalPeerName(), prev, peer,
+                            getConnectedPeerCount(), getPeerCount()
+                        });
+                    peer.close("superceded connection");
+                    break;
+                }
+                // We preferred the new connection, but replace() failed. Try again.
             }
 
             // Give the peer a chance to send a bitfield message.
