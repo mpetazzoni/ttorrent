@@ -880,7 +880,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
                             getLocalPeerName(), prev, peer,
                             getConnectedPeerCount(), getPeerCount()
                         });
-                    peer.close("superceded connection");
+                    prev.close("superceded connection");
                     break;
                 }
                 // We preferred the new connection, but replace() failed. Try again.
