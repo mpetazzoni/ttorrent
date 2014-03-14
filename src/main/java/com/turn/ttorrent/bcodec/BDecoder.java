@@ -99,8 +99,7 @@ public class BDecoder {
 	 * @param data The {@link ByteBuffer} to read from.
 	 */
 	public static BEValue bdecode(ByteBuffer data) throws IOException {
-		return BDecoder.bdecode(new AutoCloseInputStream(
-			new ByteArrayInputStream(data.array())));
+		return BDecoder.bdecode(new ByteArrayInputStream(data.array()));
 	}
 
 	/**
