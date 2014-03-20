@@ -6,6 +6,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.Cleanable;
 import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
@@ -19,6 +20,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -666,6 +668,32 @@ public class ClientTest {
     });
     assertTrue(cleanablesCount.get(SharingPeer.class).get() < 5);
     assertTrue(cleanablesCount.get(SharedTorrent.class).get() == 0);
+  }
+
+  public void test_connect_to_unknown_host() throws InterruptedException, NoSuchAlgorithmException, IOException {
+    final File torrent = new File("src/test/resources/torrents/file1.jar.torrent");
+    final TrackedTorrent tt = TrackedTorrent.load(torrent);
+    final Client seeder = createAndStartClient();
+    final Client leecher = createAndStartClient();
+    final TrackedTorrent announce = tracker.announce(tt);
+    final Random random = new Random();
+    final File leechFolder = tempFiles.createTempDir();
+
+    for (int i=0; i<40; i++) {
+      byte[] data = new byte[20];
+      random.nextBytes(data);
+      announce.addPeer(new TrackedPeer(tt, "my_unknown_and_unreachablehost" + i, 6881, ByteBuffer.wrap(data)));
+    }
+    seeder.addTorrent(completeTorrent("file1.jar.torrent"));
+    final SharedTorrent incompleteTorrent = incompleteTorrent("file1.jar.torrent", leechFolder);
+    leecher.addTorrent(incompleteTorrent);
+    new WaitFor(10*1000){
+
+      @Override
+      protected boolean condition() {
+        return incompleteTorrent.isComplete();
+      }
+    };
   }
 
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
