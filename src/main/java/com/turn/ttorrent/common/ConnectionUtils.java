@@ -32,6 +32,8 @@ public class ConnectionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionUtils.class);
 
+  private static final int MAX_CONNECTION_ATTEMPTS = 5;
+
 
   /**
    * Validate an expected handshake on a connection.
@@ -104,9 +106,13 @@ public class ConnectionUtils {
     try {
       logger.debug("Connecting to {}...", peerInfo);
       channel = SocketChannel.open(address);
-      while (!channel.isConnected()) {
+      int connectionAttempts = 0;
+      while (!channel.isConnected() && ++connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
         Thread.sleep(50);
       }
+       if (!channel.isConnected()){
+         throw new RuntimeException(String.format("Connect to %s timed out", peerInfo.getAddress()));
+       }
 
       logger.trace("Connected. Sending handshake to {}...", peerInfo);
       channel.configureBlocking(true);

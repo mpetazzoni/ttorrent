@@ -67,8 +67,10 @@ public class ConnectionHandler implements TorrentConnectionListener{
   private static final Logger logger =
     LoggerFactory.getLogger(ConnectionHandler.class);
 
-  private static final int OUTBOUND_CONNECTIONS_POOL_SIZE = 20;
-  private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 10;
+  private static final int OUTBOUND_CONNECTIONS_CORE_POOL_SIZE = 1;
+  private static final int OUTBOUND_CONNECTIONS_MAX_POOL_SIZE = 20;
+  private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 60;
+  private static final int MAX_CONNECTIONS_REQUESTS_POOL_SIZE=100;
 
 
   private final ConcurrentMap<String, SharedTorrent> torrents;
@@ -121,12 +123,13 @@ public class ConnectionHandler implements TorrentConnectionListener{
   public void start() {
 
     if (this.executor == null || this.executor.isShutdown()) {
+      final LinkedBlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(MAX_CONNECTIONS_REQUESTS_POOL_SIZE);
       this.executor = new ThreadPoolExecutor(
-        OUTBOUND_CONNECTIONS_POOL_SIZE,
-        OUTBOUND_CONNECTIONS_POOL_SIZE,
+              OUTBOUND_CONNECTIONS_CORE_POOL_SIZE,
+              OUTBOUND_CONNECTIONS_MAX_POOL_SIZE,
         OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS,
         TimeUnit.SECONDS,
-        new LinkedBlockingQueue<Runnable>(),
+              workQueue,
         new ConnectorThreadFactory());
     }
 
@@ -221,7 +224,7 @@ public class ConnectionHandler implements TorrentConnectionListener{
    */
   private static class ConnectorThreadFactory implements ThreadFactory {
 
-    private int number = 0;
+    private volatile int number = 0;
 
     @Override
     public Thread newThread(Runnable r) {
