@@ -120,12 +120,38 @@ public class Client extends Observable implements Runnable,
 	 * @param torrent The torrent to download and share.
 	 */
 	public Client(InetAddress address, SharedTorrent torrent)
+			throws UnknownHostException, IOException {
+		init(address, torrent, null);
+	}
+
+	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param address The address to bind to.
+	 * @param torrent The torrent to download and share.
+	 */
+	public Client(InetAddress address, SharedTorrent torrent, String clientId)
+			throws UnknownHostException, IOException {
+		init(address, torrent, clientId);
+	}
+
+	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param address The address to bind to.
+	 * @param torrent The torrent to download and share.
+	 * @param clientId The 12-character ASCII ID of this client.
+	 */
+	private void init(InetAddress address, SharedTorrent torrent, String clientId)
 		throws UnknownHostException, IOException {
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
-		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
-			.toString().split("-")[4];
+		if ((clientId == null) || (clientId.length() != 12)) { 
+			// use default method to create client ID
+			clientId = UUID.randomUUID().toString().split("-")[4];
+		}
+		String id = Client.BITTORRENT_ID_PREFIX + clientId;
 
 		// Initialize the incoming connection handler and register ourselves to
 		// it.
