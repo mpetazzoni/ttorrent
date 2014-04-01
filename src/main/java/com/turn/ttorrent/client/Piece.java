@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.client;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;

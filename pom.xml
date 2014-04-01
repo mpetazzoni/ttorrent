@@ -82,6 +82,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.4</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.simpleframework</groupId>
 			<artifactId>simple</artifactId>
 			<version>4.1.21</version>

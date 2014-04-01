@@ -15,10 +15,10 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import org.apache.commons.codec.binary.Hex;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,7 +44,7 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
       try {
         final byte[] array = data.array();
         if (array != null && array.length > 0) {
-          msg.append("decoded hex message: " + HexBin.encode(array));
+          msg.append("decoded hex message: " + Hex.encodeHexString(array));
         } else {
           msg.append("message is null");
         }

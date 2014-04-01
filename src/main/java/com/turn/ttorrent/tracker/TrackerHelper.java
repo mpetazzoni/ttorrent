@@ -1,6 +1,5 @@
 package com.turn.ttorrent.tracker;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
 import com.turn.ttorrent.client.CommunicationListener;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
 import com.turn.ttorrent.client.announce.HTTPTrackerClient;
@@ -8,6 +7,8 @@ import com.turn.ttorrent.client.peer.MessageListener;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 
 import java.io.File;
 import java.io.IOException;
@@ -149,7 +150,11 @@ public class TrackerHelper {
     return new TorrentHash() {
       @Override
       public byte[] getInfoHash() {
-        return HexBin.decode(hashString);
+        try {
+          return Hex.decodeHex(hashString.toCharArray());
+        } catch (DecoderException e) {
+          return null;
+        }
       }
 
       @Override
@@ -273,12 +278,12 @@ public class TrackerHelper {
     private final byte[] myHashBytes;
     private final String myHashString;
 
-    public SimpleTorrentInfo(String hashString) {
-      this(0, 0, 1, HexBin.decode(hashString), hashString);
+    public SimpleTorrentInfo(String hashString) throws DecoderException {
+      this(0, 0, 1, Hex.decodeHex(hashString.toCharArray()), hashString);
     }
 
     public SimpleTorrentInfo(byte[] hashBytes) {
-      this(0, 0, 1, hashBytes, HexBin.encode(hashBytes));
+      this(0, 0, 1, hashBytes, Hex.encodeHexString(hashBytes));
     }
 
     public SimpleTorrentInfo(long uploaded, long downloaded, long left, byte[] hashBytes, String hashString) {

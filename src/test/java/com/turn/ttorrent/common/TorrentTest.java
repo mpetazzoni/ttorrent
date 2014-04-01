@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.HexBin;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
 import org.testng.annotations.Test;
 
@@ -47,7 +47,7 @@ public class TorrentTest {
     final byte[] expectedBytesLinux = FileUtils.readFileToByteArray(torrentFileLinux);
     final byte[] actualBytes = t.getEncoded();
 
-    assertTrue(HexBin.encode(expectedBytesWin).equals(HexBin.encode(actualBytes)) || HexBin.encode(expectedBytesLinux).equals(HexBin.encode(actualBytes)));
+    assertTrue(Hex.encodeHexString(expectedBytesWin).equals(Hex.encodeHexString(actualBytes)) || Hex.encodeHexString(expectedBytesLinux).equals(Hex.encodeHexString(actualBytes)));
   }
 
   public void testFilenames() throws IOException, NoSuchAlgorithmException {
