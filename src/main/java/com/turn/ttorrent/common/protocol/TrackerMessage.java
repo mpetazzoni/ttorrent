@@ -15,11 +15,15 @@
  */
 package com.turn.ttorrent.common.protocol;
 
+import com.google.common.base.Function;
 import com.turn.ttorrent.common.Peer;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Collection;
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 
 /**
  * BitTorrent tracker protocol messages representations.
@@ -35,256 +39,190 @@ import java.util.List;
  */
 public abstract class TrackerMessage {
 
-	/**
-	 * Message type.
-	 */
-	public enum Type {
-		UNKNOWN(-1),
-		CONNECT_REQUEST(0),
-		CONNECT_RESPONSE(0),
-		ANNOUNCE_REQUEST(1),
-		ANNOUNCE_RESPONSE(1),
-		SCRAPE_REQUEST(2),
-		SCRAPE_RESPONSE(2),
-		ERROR(3);
+    /**
+     * Announce request event types.
+     *
+     * <p>
+     * When the client starts exchanging on a torrent, it must contact the
+     * torrent's tracker with a 'started' announce request, which notifies the
+     * tracker this client now exchanges on this torrent (and thus allows the
+     * tracker to report the existence of this peer to other clients).
+     * </p>
+     *
+     * <p>
+     * When the client stops exchanging, or when its download completes, it must
+     * also send a specific announce request. Otherwise, the client must send an
+     * eventless (NONE), periodic announce request to the tracker at an
+     * interval specified by the tracker itself, allowing the tracker to
+     * refresh this peer's status and acknowledge that it is still there.
+     * </p>
+     */
+    public static enum AnnounceEvent {
 
-		private final int id;
+        NONE(0),
+        COMPLETED(1),
+        STARTED(2),
+        STOPPED(3);
+        private final int id;
 
-		Type(int id) {
-			this.id = id;
-		}
+        AnnounceEvent(int id) {
+            this.id = id;
+        }
 
-		public int getId() {
-			return this.id;
-		}
-	};
+        public String getEventName() {
+            return this.name().toLowerCase();
+        }
 
-	private final Type type;
-	private final ByteBuffer data;
+        public int getId() {
+            return this.id;
+        }
 
-	/**
-	 * Constructor for the base tracker message type.
-	 *
-	 * @param type The message type.
-	 * @param data A byte buffer containing the binary data of the message (a
-	 * B-encoded map, a UDP packet data, etc.).
-	 */
-	protected TrackerMessage(Type type, ByteBuffer data) {
-		this.type = type;
-		this.data = data;
-		if (this.data != null) {
-			this.data.rewind();
-		}
-	}
+        @CheckForNull
+        public static AnnounceEvent getByName(@CheckForNull String name) {
+            // TODO: Use valueOf(toUpperCase()).
+            for (AnnounceEvent type : AnnounceEvent.values()) {
+                if (type.name().equalsIgnoreCase(name)) {
+                    return type;
+                }
+            }
+            return null;
+        }
 
-	/**
-	 * Returns the type of this tracker message.
-	 */
-	public Type getType() {
-		return this.type;
-	}
+        @CheckForNull
+        public static AnnounceEvent getById(int id) {
+            for (AnnounceEvent type : AnnounceEvent.values()) {
+                if (type.getId() == id) {
+                    return type;
+                }
+            }
+            return null;
+        }
+    };
 
-	/**
-	 * Returns the encoded binary data for this message.
-	 */
-	public ByteBuffer getData() {
-		return this.data;
-	}
+    /**
+     * Generic exception for message format and message validation exceptions.
+     */
+    public static class MessageValidationException extends Exception {
 
-	/**
-	 * Generic exception for message format and message validation exceptions.
-	 */
-	public static class MessageValidationException extends Exception {
+        static final long serialVersionUID = -1;
 
-		static final long serialVersionUID = -1;
+        public MessageValidationException(String s) {
+            super(s);
+        }
 
-		public MessageValidationException(String s) {
-			super(s);
-		}
+        public MessageValidationException(String s, Throwable cause) {
+            super(s, cause);
+        }
+    }
 
-		public MessageValidationException(String s, Throwable cause) {
-			super(s, cause);
-		}
+    /**
+     * Base interface for announce request messages.
+     *
+     * <p>
+     * This interface must be implemented by all subtypes of announce request
+     * messages for the various tracker protocols.
+     * </p>
+     *
+     * @author mpetazzoni
+     */
+    public interface AnnounceRequestMessage {
 
-	}
+        public static final int DEFAULT_NUM_WANT = 50;
 
+        public byte[] getInfoHash();
 
-	/**
-	 * Base interface for connection request messages.
-	 *
-	 * <p>
-	 * This interface must be implemented by all subtypes of connection request
-	 * messages for the various tracker protocols.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public interface ConnectionRequestMessage {
+        public String getHexInfoHash();
 
-	};
+        public byte[] getPeerId();
 
+        // public InetSocketAddress getPeerAddress();
+        public long getUploaded();
 
-	/**
-	 * Base interface for connection response messages.
-	 *
-	 * <p>
-	 * This interface must be implemented by all subtypes of connection
-	 * response messages for the various tracker protocols.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public interface ConnectionResponseMessage {
+        public long getDownloaded();
 
-	};
+        public long getLeft();
 
+        public AnnounceEvent getEvent();
 
-	/**
-	 * Base interface for announce request messages.
-	 *
-	 * <p>
-	 * This interface must be implemented by all subtypes of announce request
-	 * messages for the various tracker protocols.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public interface AnnounceRequestMessage {
+        public int getNumWant();
+    };
 
-		public static final int DEFAULT_NUM_WANT = 50;
+    /**
+     * Base interface for announce response messages.
+     *
+     * <p>
+     * This interface must be implemented by all subtypes of announce response
+     * messages for the various tracker protocols.
+     * </p>
+     *
+     * @author mpetazzoni
+     */
+    public interface AnnounceResponseMessage {
 
-		/**
-		 * Announce request event types.
-		 *
-		 * <p>
-		 * When the client starts exchanging on a torrent, it must contact the
-		 * torrent's tracker with a 'started' announce request, which notifies the
-		 * tracker this client now exchanges on this torrent (and thus allows the
-		 * tracker to report the existence of this peer to other clients).
-		 * </p>
-		 *
-		 * <p>
-		 * When the client stops exchanging, or when its download completes, it must
-		 * also send a specific announce request. Otherwise, the client must send an
-		 * eventless (NONE), periodic announce request to the tracker at an
-		 * interval specified by the tracker itself, allowing the tracker to
-		 * refresh this peer's status and acknowledge that it is still there.
-		 * </p>
-		 */
-		public enum RequestEvent {
-			NONE(0),
-			COMPLETED(1),
-			STARTED(2),
-			STOPPED(3);
+        public static final Function<Peer, SocketAddress> PEERADDRESS = new Function<Peer, SocketAddress>() {
+            @Override
+            public SocketAddress apply(Peer input) {
+                return input.getAddress();
+            }
+        };
 
-			private final int id;
-			RequestEvent(int id) {
-				this.id = id;
-			}
+        @Nonnegative
+        public int getInterval();
 
-			public String getEventName() {
-				return this.name().toLowerCase();
-			}
+        @Nonnegative
+        public int getComplete();
 
-			public int getId() {
-				return this.id;
-			}
+        @Nonnegative
+        public int getIncomplete();
 
-			public static RequestEvent getByName(String name) {
-				for (RequestEvent type : RequestEvent.values()) {
-					if (type.name().equalsIgnoreCase(name)) {
-						return type;
-					}
-				}
-				return null;
-			}
+        @Nonnull
+        public Collection<? extends Peer> getPeers();
 
-			public static RequestEvent getById(int id) {
-				for (RequestEvent type : RequestEvent.values()) {
-					if (type.getId() == id) {
-						return type;
-					}
-				}
-				return null;
-			}
-		};
+        @Nonnull
+        public Collection<? extends SocketAddress> getPeerAddresses();
+    };
 
-		public byte[] getInfoHash();
-		public String getHexInfoHash();
-		public byte[] getPeerId();
-		public String getHexPeerId();
-		public int getPort();
-		public long getUploaded();
-		public long getDownloaded();
-		public long getLeft();
-		public boolean getCompact();
-		public boolean getNoPeerIds();
-		public RequestEvent getEvent();
+    /**
+     * Base interface for tracker error messages.
+     *
+     * <p>
+     * This interface must be implemented by all subtypes of tracker error
+     * messages for the various tracker protocols.
+     * </p>
+     *
+     * @author mpetazzoni
+     */
+    public interface ErrorMessage {
 
-		public String getIp();
-		public int getNumWant();
-	};
+        /**
+         * The various tracker error states.
+         *
+         * <p>
+         * These errors are reported by the tracker to a client when expected
+         * parameters or conditions are not present while processing an
+         * announce request from a BitTorrent client.
+         * </p>
+         */
+        public enum FailureReason {
 
+            UNKNOWN_TORRENT("The requested torrent does not exist on this tracker"),
+            MISSING_HASH("Missing info hash"),
+            MISSING_PEER_ADDRESS("Missing peer address"),
+            MISSING_PEER_ID("Missing peer ID"),
+            MISSING_PORT("Missing port"),
+            INVALID_EVENT("Unexpected event for peer state"),
+            NOT_IMPLEMENTED("Feature not implemented");
+            private String message;
 
-	/**
-	 * Base interface for announce response messages.
-	 *
-	 * <p>
-	 * This interface must be implemented by all subtypes of announce response
-	 * messages for the various tracker protocols.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public interface AnnounceResponseMessage {
+            FailureReason(String message) {
+                this.message = message;
+            }
 
-		public int getInterval();
-		public int getComplete();
-		public int getIncomplete();
-		public List<Peer> getPeers();
-	};
+            public String getMessage() {
+                return this.message;
+            }
+        };
 
-
-	/**
-	 * Base interface for tracker error messages.
-	 *
-	 * <p>
-	 * This interface must be implemented by all subtypes of tracker error
-	 * messages for the various tracker protocols.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	public interface ErrorMessage {
-
-		/**
-		 * The various tracker error states.
-		 *
-		 * <p>
-		 * These errors are reported by the tracker to a client when expected
-		 * parameters or conditions are not present while processing an
-		 * announce request from a BitTorrent client.
-		 * </p>
-		 */
-		public enum FailureReason {
-			UNKNOWN_TORRENT("The requested torrent does not exist on this tracker"),
-			MISSING_HASH("Missing info hash"),
-			MISSING_PEER_ID("Missing peer ID"),
-			MISSING_PORT("Missing port"),
-			INVALID_EVENT("Unexpected event for peer state"),
-			NOT_IMPLEMENTED("Feature not implemented");
-
-			private String message;
-
-			FailureReason(String message) {
-				this.message = message;
-			}
-
-			public String getMessage() {
-				return this.message;
-			}
-		};
-
-		public String getReason();
-	};
+        public String getReason();
+    };
 }

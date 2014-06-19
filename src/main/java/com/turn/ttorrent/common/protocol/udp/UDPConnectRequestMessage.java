@@ -17,8 +17,7 @@ package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
-import java.nio.ByteBuffer;
-
+import io.netty.buffer.ByteBuf;
 
 /**
  * The connection request message for the UDP tracker protocol.
@@ -26,64 +25,30 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class UDPConnectRequestMessage
-	extends UDPTrackerMessage.UDPTrackerRequestMessage
-	implements TrackerMessage.ConnectionRequestMessage {
+        extends UDPTrackerMessage.UDPTrackerRequestMessage {
 
-	private static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
-	private static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;
+    private static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
+    private static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;
 
-	private final long connectionId = UDP_CONNECT_REQUEST_MAGIC;
-	private final int actionId = Type.CONNECT_REQUEST.getId();
-	private final int transactionId;
+    public UDPConnectRequestMessage() {
+        super(Type.CONNECT_REQUEST);
+        setConnectionId(UDP_CONNECT_REQUEST_MAGIC);
+    }
 
-	private UDPConnectRequestMessage(ByteBuffer data, int transactionId) {
-		super(Type.CONNECT_REQUEST, data);
-		this.transactionId = transactionId;
-	}
+    public UDPConnectRequestMessage(int transactionId) {
+        this();
+        setTransactionId(transactionId);
+    }
 
-	public long getConnectionId() {
-		return this.connectionId;
-	}
+    @Override
+    public void fromWire(ByteBuf in) throws MessageValidationException {
+        _fromWire(in, UDP_CONNECT_REQUEST_MESSAGE_SIZE);
+        if (getConnectionId() != UDP_CONNECT_REQUEST_MAGIC)
+            throw new MessageValidationException("Packet contained bad ConnectionId: " + this);
+    }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
-
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
-
-	public static UDPConnectRequestMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() != UDP_CONNECT_REQUEST_MESSAGE_SIZE) {
-			throw new MessageValidationException(
-				"Invalid connect request message size!");
-		}
-
-		if (data.getLong() != UDP_CONNECT_REQUEST_MAGIC) {
-			throw new MessageValidationException(
-				"Invalid connection ID in connection request!");
-		}
-
-		if (data.getInt() != Type.CONNECT_REQUEST.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for connection request!");
-		}
-
-		return new UDPConnectRequestMessage(data,
-			data.getInt() // transactionId
-		);
-	}
-
-	public static UDPConnectRequestMessage craft(int transactionId) {
-		ByteBuffer data = ByteBuffer
-			.allocate(UDP_CONNECT_REQUEST_MESSAGE_SIZE);
-		data.putLong(UDP_CONNECT_REQUEST_MAGIC);
-		data.putInt(Type.CONNECT_REQUEST.getId());
-		data.putInt(transactionId);
-		return new UDPConnectRequestMessage(data,
-			transactionId);
-	}
+    @Override
+    public void toWire(ByteBuf out) {
+        _toWire(out);
+    }
 }

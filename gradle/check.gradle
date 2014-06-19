@@ -1,0 +1,22 @@
+// Checkstyle
+// apply plugin: 'checkstyle'
+// checkstyle {
+//     ignoreFailures = true 
+//     configFile = rootProject.file('codequality/checkstyle.xml')
+// }
+
+// FindBugs
+apply plugin: 'findbugs'
+findbugs {
+    ignoreFailures = true
+}
+findbugsTest.enabled = false
+
+// PMD
+// apply plugin: 'pmd'
+// tasks.withType(Pmd) { reports.html.enabled true }
+
+apply plugin: 'cobertura'
+cobertura {
+    coverageFormats = [ 'html', 'xml' ]
+}

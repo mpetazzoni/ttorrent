@@ -15,25 +15,32 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
+import com.google.common.base.Objects;
+import com.google.common.collect.Collections2;
+import com.google.common.net.InetAddresses;
+import com.turn.ttorrent.bcodec.BEUtils;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The announce response message from an HTTP tracker.
@@ -41,170 +48,246 @@ import java.util.Map;
  * @author mpetazzoni
  */
 public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
-	implements AnnounceResponseMessage {
+        implements AnnounceResponseMessage {
 
-	private final int interval;
-	private final int complete;
-	private final int incomplete;
-	private final List<Peer> peers;
+    private static final Logger LOG = LoggerFactory.getLogger(HTTPAnnounceResponseMessage.class);
+    public static final String EXTERNAL_IP = "external ip";
+    public static final String INTERVAL = "interval";
+    public static final String COMPLETE = "complete";
+    public static final String INCOMPLETE = "incomplete";
+    public static final String PEERS = "peers";
+    public static final String PEERS6 = "peers6";
+    public static final String PEER_IP = "ip";
+    public static final String PEER_PORT = "port";
+    public static final String PEER_ID = "peer id";
+    private final InetAddress clientAddress;
+    private final int interval;
+    private final int complete;
+    private final int incomplete;
+    private final List<? extends Peer> peers;
 
-	private HTTPAnnounceResponseMessage(ByteBuffer data,
-		int interval, int complete, int incomplete, List<Peer> peers) {
-		super(Type.ANNOUNCE_RESPONSE, data);
-		this.interval = interval;
-		this.complete = complete;
-		this.incomplete = incomplete;
-		this.peers = peers;
-	}
+    public HTTPAnnounceResponseMessage(
+            @CheckForNull InetAddress clientAddress,
+            int interval, int complete, int incomplete,
+            @Nonnull List<? extends Peer> peers) {
+        this.clientAddress = clientAddress;
+        this.interval = interval;
+        this.complete = complete;
+        this.incomplete = incomplete;
+        this.peers = peers;
+    }
 
-	@Override
-	public int getInterval() {
-		return this.interval;
-	}
+    @Override
+    public int getInterval() {
+        return this.interval;
+    }
 
-	@Override
-	public int getComplete() {
-		return this.complete;
-	}
+    @Override
+    public int getComplete() {
+        return this.complete;
+    }
 
-	@Override
-	public int getIncomplete() {
-		return this.incomplete;
-	}
+    @Override
+    public int getIncomplete() {
+        return this.incomplete;
+    }
 
-	@Override
-	public List<Peer> getPeers() {
-		return this.peers;
-	}
+    @Override
+    public Collection<? extends Peer> getPeers() {
+        return peers;
+    }
 
-	public static HTTPAnnounceResponseMessage parse(ByteBuffer data)
-		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
-		}
+    @Override
+    public Collection<? extends SocketAddress> getPeerAddresses() {
+        return Collections2.transform(getPeers(), PEERADDRESS);
+    }
 
-		Map<String, BEValue> params = decoded.getMap();
+    @Nonnull
+    public static HTTPAnnounceResponseMessage fromBEValue(@Nonnull Map<String, BEValue> params)
+            throws IOException, MessageValidationException {
 
-		if (params.get("interval") == null) {
-			throw new MessageValidationException(
-				"Tracker message missing mandatory field 'interval'!");
-		}
+        if (params.get(INTERVAL) == null) {
+            throw new MessageValidationException(
+                    "Tracker message missing mandatory field 'interval'!");
+        }
 
-		try {
-			List<Peer> peers;
+        try {
+            byte[] clientAddressBytes = BEUtils.getBytes(params.get(EXTERNAL_IP));
+            InetAddress clientAddress = null;
+            if (clientAddressBytes != null)
+                clientAddress = InetAddress.getByAddress(clientAddressBytes);
 
-			try {
-				// First attempt to decode a compact response, since we asked
-				// for it.
-				peers = toPeerList(params.get("peers").getBytes());
-			} catch (InvalidBEncodingException ibee) {
-				// Fall back to peer list, non-compact response, in case the
-				// tracker did not support compact responses.
-				peers = toPeerList(params.get("peers").getList());
-			}
+            List<Peer> peers = new ArrayList<Peer>();
 
-			return new HTTPAnnounceResponseMessage(data,
-				params.get("interval").getInt(),
-				params.get("complete") != null ? params.get("complete").getInt() : 0,
-				params.get("incomplete") != null ? params.get("incomplete").getInt() : 0,
-				peers);
-		} catch (InvalidBEncodingException ibee) {
-			throw new MessageValidationException("Invalid response " +
-				"from tracker!", ibee);
-		} catch (UnknownHostException uhe) {
-			throw new MessageValidationException("Invalid peer " +
-				"in tracker response!", uhe);
-		}
-	}
+            BEValue peers4 = params.get(PEERS);
+            if (peers4 == null) {
+            } else if (peers4.getValue() instanceof List) {
+                toPeerList(peers, peers4.getList());
+            } else if (peers4.getValue() instanceof byte[]) {
+                toPeerList(peers, peers4.getBytes(), 4);
+            }
 
-	/**
-	 * Build a peer list as a list of {@link Peer}s from the
-	 * announce response's peer list (in non-compact mode).
-	 *
-	 * @param peers The list of {@link BEValue}s dictionaries describing the
-	 * peers from the announce response.
-	 * @return A {@link List} of {@link Peer}s representing the
-	 * peers' addresses. Peer IDs are lost, but they are not crucial.
-	 */
-	private static List<Peer> toPeerList(List<BEValue> peers)
-		throws InvalidBEncodingException {
-		List<Peer> result = new LinkedList<Peer>();
+            BEValue peers6 = params.get(PEERS6);
+            if (peers6 == null) {
+            } else if (peers6.getValue() instanceof byte[]) {
+                toPeerList(peers, peers6.getBytes(), 16);
+            }
 
-		for (BEValue peer : peers) {
-			Map<String, BEValue> peerInfo = peer.getMap();
-			result.add(new Peer(
-				peerInfo.get("ip").getString(Torrent.BYTE_ENCODING),
-				peerInfo.get("port").getInt()));
-		}
+            return new HTTPAnnounceResponseMessage(
+                    clientAddress,
+                    BEUtils.getInt(params.get(INTERVAL), 60),
+                    BEUtils.getInt(params.get(COMPLETE), 0),
+                    BEUtils.getInt(params.get(INCOMPLETE), 0),
+                    peers);
+        } catch (InvalidBEncodingException ibee) {
+            throw new MessageValidationException("Invalid response "
+                    + "from tracker!", ibee);
+        } catch (UnknownHostException uhe) {
+            throw new MessageValidationException("Invalid peer "
+                    + "in tracker response!", uhe);
+        }
+    }
 
-		return result;
-	}
+    /**
+     * Build a peer list as a list of {@link Peer}s from the
+     * announce response's peer list (in non-compact mode).
+     *
+     * @param peers The list of {@link BEValue}s dictionaries describing the
+     * peers from the announce response.
+     * @return A {@link List} of {@link Peer}s representing the
+     * peers' addresses. Peer IDs are lost, but they are not crucial.
+     */
+    @Nonnull
+    private static void toPeerList(@Nonnull List<Peer> out, @Nonnull List<BEValue> peers) {
+        for (BEValue peer : peers) {
+            try {
+                Map<String, BEValue> peerInfo = peer.getMap();
+                String ip = BEUtils.getString(peerInfo.get(PEER_IP));
+                int port = BEUtils.getInt(peerInfo.get(PEER_PORT), -1);
+                if (ip == null || port < 0) {
+                    LOG.warn("Invalid peer " + peer);
+                    continue;
+                }
+                InetAddress inaddr = InetAddresses.forString(ip);
+                InetSocketAddress saddr = new InetSocketAddress(inaddr, port);
 
-	/**
-	 * Build a peer list as a list of {@link Peer}s from the
-	 * announce response's binary compact peer list.
-	 *
-	 * @param data The bytes representing the compact peer list from the
-	 * announce response.
-	 * @return A {@link List} of {@link Peer}s representing the
-	 * peers' addresses. Peer IDs are lost, but they are not crucial.
-	 */
-	private static List<Peer> toPeerList(byte[] data)
-		throws InvalidBEncodingException, UnknownHostException {
-		if (data.length % 6 != 0) {
-			throw new InvalidBEncodingException("Invalid peers " +
-				"binary information string!");
-		}
+                byte[] peerId = BEUtils.getBytes(peerInfo.get(PEER_ID));
+                out.add(new Peer(saddr, peerId));
+            } catch (InvalidBEncodingException e) {
+                LOG.error("Failed to parse peer from " + peer, e);
+            } catch (NullPointerException e) {
+                LOG.error("Failed to parse peer from " + peer, e);
+            } catch (IllegalArgumentException e) {
+                LOG.error("Failed to parse peer from " + peer, e);
+            }
+        }
+    }
 
-		List<Peer> result = new LinkedList<Peer>();
-		ByteBuffer peers = ByteBuffer.wrap(data);
+    /**
+     * Build a peer list as a list of {@link Peer}s from the
+     * announce response's binary compact peer list.
+     *
+     * @param data The bytes representing the compact peer list from the
+     * announce response.
+     * @return A {@link List} of {@link Peer}s representing the
+     * peers' addresses. Peer IDs are lost, but they are not crucial.
+     */
+    @Nonnull
+    private static void toPeerList(List<Peer> out, @Nonnull byte[] data, int addrlen)
+            throws InvalidBEncodingException, UnknownHostException {
+        if (data.length % (addrlen + 2) != 0) {
+            throw new InvalidBEncodingException(
+                    "Invalid peers binary information string!");
+        }
 
-		for (int i=0; i < data.length / 6 ; i++) {
-			byte[] ipBytes = new byte[4];
-			peers.get(ipBytes);
-			InetAddress ip = InetAddress.getByAddress(ipBytes);
-			int port =
-				(0xFF & (int)peers.get()) << 8 |
-				(0xFF & (int)peers.get());
-			result.add(new Peer(new InetSocketAddress(ip, port)));
-		}
+        int addrcount = data.length / (addrlen + 2);
+        ByteBuffer peers = ByteBuffer.wrap(data);
 
-		return result;
-	}
+        byte[] ipBytes = new byte[addrlen];
+        for (int i = 0; i < addrcount; i++) {
+            peers.get(ipBytes);
+            int port = peers.getShort() & 0xFFFF;
+            try {
+                InetAddress ip = InetAddress.getByAddress(ipBytes);
+                out.add(new Peer(new InetSocketAddress(ip, port), null));
+            } catch (IllegalArgumentException e) {
+                LOG.error("Failed to parse peer from " + Arrays.toString(ipBytes) + ", " + port, e);
+            }
+        }
+    }
 
-	/**
-	 * Craft a compact announce response message.
-	 *
-	 * @param interval
-	 * @param minInterval
-	 * @param trackerId
-	 * @param complete
-	 * @param incomplete
-	 * @param peers
-	 */
-	public static HTTPAnnounceResponseMessage craft(int interval,
-		int minInterval, String trackerId, int complete, int incomplete,
-		List<Peer> peers) throws IOException, UnsupportedEncodingException {
-		Map<String, BEValue> response = new HashMap<String, BEValue>();
-		response.put("interval", new BEValue(interval));
-		response.put("complete", new BEValue(complete));
-		response.put("incomplete", new BEValue(incomplete));
+    @Nonnull
+    public Map<String, BEValue> toBEValue(boolean compact, boolean noPeerIds) {
+        Map<String, BEValue> params = new HashMap<String, BEValue>();
+        // TODO: "min interval", "tracker id"
+        if (Peer.isValidIpAddress(clientAddress))
+            params.put(EXTERNAL_IP, new BEValue(clientAddress.getAddress()));
+        params.put(INTERVAL, new BEValue(interval));
+        params.put(COMPLETE, new BEValue(complete));
+        params.put(INCOMPLETE, new BEValue(incomplete));
 
-		ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
-		for (Peer peer : peers) {
-			byte[] ip = peer.getRawIp();
-			if (ip == null || ip.length != 4) {
-				continue;
-			}
-			data.put(ip);
-			data.putShort((short)peer.getPort());
-		}
-		response.put("peers", new BEValue(data.array()));
+        if (compact) {
+            ByteBuffer peer4Data = ByteBuffer.allocate(peers.size() * 6);
+            ByteBuffer peer6Data = ByteBuffer.allocate(peers.size() * 18);
 
-		return new HTTPAnnounceResponseMessage(
-			BEncoder.bencode(response),
-			interval, complete, incomplete, peers);
-	}
+            for (Peer peer : peers) {
+                // LOG.info("Adding peer " + peer);
+                byte[] ip = peer.getIpBytes();
+                if (ip == null)
+                    continue;
+                if (ip.length == 4) {
+                    peer4Data.put(ip);
+                    peer4Data.putShort((short) peer.getPort());
+                } else if (ip.length == 16) {
+                    peer6Data.put(ip);
+                    peer6Data.putShort((short) peer.getPort());
+                } else {
+                    LOG.warn("Cannot encode peer " + peer);
+                }
+            }
+
+            if (peer4Data.position() > 0) {
+                byte[] buf = Arrays.copyOf(peer4Data.array(), peer4Data.position());
+                params.put(PEERS, new BEValue(buf));
+            }
+
+            if (peer6Data.position() > 0) {
+                byte[] buf = Arrays.copyOf(peer6Data.array(), peer6Data.position());
+                params.put(PEERS6, new BEValue(buf));
+            }
+        } else {
+            List<BEValue> peerList = new ArrayList<BEValue>();
+
+            for (Peer peer : peers) {
+                // LOG.info("Adding peer " + peer);
+
+                Map<String, BEValue> peerItem = new HashMap<String, BEValue>();
+                byte[] peerId = peer.getPeerId();
+                if (peerId != null)
+                    peerItem.put(PEER_ID, new BEValue(peerId));
+                String ip = peer.getIpString();
+                if (ip != null)
+                    peerItem.put(PEER_IP, new BEValue(ip, Torrent.BYTE_ENCODING));
+                int port = peer.getPort();
+                if (port != -1)
+                    peerItem.put(PEER_PORT, new BEValue(port));
+                peerList.add(new BEValue(peerItem));
+            }
+
+            params.put(PEERS, new BEValue(peerList));
+        }
+
+        return params;
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("clientAddress", clientAddress)
+                .add("interval", getInterval())
+                .add("complete", getComplete())
+                .add("incomplete", getIncomplete())
+                .add("peers", getPeers())
+                .toString();
+    }
 }

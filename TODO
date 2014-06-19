@@ -1,0 +1,11 @@
+Code required:
+
+1) Integrate more with Yammer Metrics.
+2) Protocol extension to specify maximum block size - we want 1Mb.
+3) Keepalives.
+4) PEX
+
+Tests required:
+
+Connect to peers which never offer anything.  Make sure rarestPiece is null.
+

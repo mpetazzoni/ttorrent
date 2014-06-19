@@ -1,0 +1,58 @@
+// Establish version and status
+ext.githubProjectName = rootProject.name // Change if github project name is not the same as the root project's name
+group = "org.anarres.${githubProjectName}"
+
+buildscript {
+    repositories {
+        // mavenLocal()
+        mavenCentral()
+		// maven { url 'http://jcenter.bintray.com' }
+    }
+    apply from: file('gradle/buildscript.gradle'), to: buildscript 
+}
+
+allprojects {
+    repositories { 
+        // mavenLocal()
+        mavenCentral()
+		// maven { url: 'http://jcenter.bintray.com' }
+    }
+}
+
+apply from: file('gradle/convention.gradle')
+apply from: file('gradle/maven.gradle')
+apply from: file('gradle/check.gradle')
+apply from: file('gradle/license.gradle')
+// apply from: file('gradle/release.gradle')
+
+apply plugin: 'java'
+apply plugin: 'application'
+
+apply plugin: 'eclipse'
+eclipse {
+	classpath {
+		downloadSources = true
+	}
+	jdt {
+		sourceCompatibility = 1.6
+		targetCompatibility = 1.6
+	}
+}
+
+dependencies {
+	compile 'com.google.code.findbugs:jsr305:2.0.2'
+	compile 'org.slf4j:slf4j-api:1.7.5'
+	compile 'commons-io:commons-io:2.4'
+	// compile 'net.sf:jargs:1.0'
+	compile 'org.simpleframework:simple:5.1.6'
+	compile 'commons-codec:commons-codec:1.8'
+	compile 'org.apache.httpcomponents:httpasyncclient:4.0'
+	compile 'io.netty:netty-all:4.0.14.Final'
+	compile 'com.google.guava:guava:15.0'
+	compile 'net.sf.jopt-simple:jopt-simple:4.6'
+	compile 'com.yammer.metrics:metrics-core:2.2.0'
+
+	testCompile 'junit:junit:4.8.1'
+	testCompile 'org.easymock:easymock:3.2'
+	testRuntime 'org.slf4j:slf4j-jcl:1.7.5'
+}

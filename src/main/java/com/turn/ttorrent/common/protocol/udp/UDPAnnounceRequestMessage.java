@@ -15,14 +15,14 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
+import io.netty.buffer.ByteBuf;
 import java.net.InetAddress;
-import java.net.Inet4Address;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-
+import javax.annotation.Nonnull;
 
 /**
  * The announce request message for the UDP tracker protocol.
@@ -30,224 +30,162 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class UDPAnnounceRequestMessage
-	extends UDPTrackerMessage.UDPTrackerRequestMessage
-	implements TrackerMessage.AnnounceRequestMessage {
+        extends UDPTrackerMessage.UDPTrackerRequestMessage
+        implements TrackerMessage.AnnounceRequestMessage {
 
-	private static final int UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE = 98;
+    @Nonnull
+    private static byte[] getIp4Address(InetSocketAddress peerAddress) {
+        InetAddress address = peerAddress.getAddress();
+        if (address == null)
+            return new byte[4];
+        byte[] ip = address.getAddress();
+        if (ip.length != 4)
+            throw new IllegalArgumentException("Cannot express in UDP: " + peerAddress);
+        return ip;
+    }
+    private static final int UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE = 98;
+    private byte[] infoHash;
+    private byte[] peerId;
+    private InetSocketAddress peerAddress;
+    private long downloaded;
+    private long uploaded;
+    private long left;
+    private AnnounceEvent event;
+    private int numWant;
+    private int key;
 
-	private final long connectionId;
-	private final int actionId = Type.ANNOUNCE_REQUEST.getId();
-	private final int transactionId;
-	private final byte[] infoHash;
-	private final byte[] peerId;
-	private final long downloaded;
-	private final long uploaded;
-	private final long left;
-	private final RequestEvent event;
-	private final InetAddress ip;
-	private final int numWant;
-	private final int key;
-	private final short port;
+    public UDPAnnounceRequestMessage() {
+        super(Type.ANNOUNCE_REQUEST);
 
-	private UDPAnnounceRequestMessage(ByteBuffer data, long connectionId,
-		int transactionId, byte[] infoHash, byte[] peerId, long downloaded,
-		long uploaded, long left, RequestEvent event, InetAddress ip,
-		int key, int numWant, short port) {
-		super(Type.ANNOUNCE_REQUEST, data);
-		this.connectionId = connectionId;
-		this.transactionId = transactionId;
-		this.infoHash = infoHash;
-		this.peerId = peerId;
-		this.downloaded = downloaded;
-		this.uploaded = uploaded;
-		this.left = left;
-		this.event = event;
-		this.ip = ip;
-		this.key = key;
-		this.numWant = numWant;
-		this.port = port;
-	}
+        /*
+         if (infoHash.length != 20 || peerId.length != 20) {
+         throw new IllegalArgumentException();
+         }
 
-	public long getConnectionId() {
-		return this.connectionId;
-	}
+         if (!(ip instanceof Inet4Address)) {
+         throw new IllegalArgumentException("Only IPv4 addresses are "
+         + "supported by the UDP tracer protocol!");
+         }
+         */
+    }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
+    public UDPAnnounceRequestMessage(
+            long connectionId, int transactionId,
+            byte[] infoHash,
+            byte[] peerId, InetSocketAddress peerAddress,
+            long downloaded, long uploaded, long left,
+            AnnounceEvent event, int numWant, int key) {
+        this();
 
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
+        getIp4Address(peerAddress);
 
-	@Override
-	public byte[] getInfoHash() {
-		return this.infoHash;
-	}
+        setConnectionId(connectionId);
+        setTransactionId(transactionId);
+        this.infoHash = infoHash;
+        this.peerId = peerId;
+        this.peerAddress = peerAddress;
+        this.downloaded = downloaded;
+        this.uploaded = uploaded;
+        this.left = left;
+        this.event = event;
+        this.numWant = numWant;
+        this.key = key;
+    }
 
-	@Override
-	public String getHexInfoHash() {
-		return Torrent.byteArrayToHexString(this.infoHash);
-	}
+    @Override
+    public byte[] getInfoHash() {
+        return this.infoHash;
+    }
 
-	@Override
-	public byte[] getPeerId() {
-		return this.peerId;
-	}
+    @Override
+    public String getHexInfoHash() {
+        return TorrentUtils.toHex(this.infoHash);
+    }
 
-	@Override
-	public String getHexPeerId() {
-		return Torrent.byteArrayToHexString(this.peerId);
-	}
+    @Override
+    public byte[] getPeerId() {
+        return peerId;
+    }
 
-	@Override
-	public int getPort() {
-		return this.port;
-	}
+    // @Override
+    public InetSocketAddress getPeerAddress() {
+        return peerAddress;
+    }
 
-	@Override
-	public long getUploaded() {
-		return this.uploaded;
-	}
+    @Override
+    public long getUploaded() {
+        return this.uploaded;
+    }
 
-	@Override
-	public long getDownloaded() {
-		return this.downloaded;
-	}
+    @Override
+    public long getDownloaded() {
+        return this.downloaded;
+    }
 
-	@Override
-	public long getLeft() {
-		return this.left;
-	}
+    @Override
+    public long getLeft() {
+        return this.left;
+    }
 
-	@Override
-	public boolean getCompact() {
-		return true;
-	}
+    @Override
+    public AnnounceEvent getEvent() {
+        return this.event;
+    }
 
-	@Override
-	public boolean getNoPeerIds() {
-		return true;
-	}
+    @Override
+    public int getNumWant() {
+        return this.numWant;
+    }
 
-	@Override
-	public RequestEvent getEvent() {
-		return this.event;
-	}
+    public int getKey() {
+        return this.key;
+    }
 
-	@Override
-	public String getIp() {
-		return this.ip.toString();
-	}
+    @Override
+    public void fromWire(ByteBuf in) throws MessageValidationException {
+        _fromWire(in, UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE);
 
-	@Override
-	public int getNumWant() {
-		return this.numWant;
-	}
+        infoHash = new byte[20];
+        in.readBytes(infoHash);
+        peerId = new byte[20];
+        in.readBytes(peerId);
 
-	public int getKey() {
-		return this.key;
-	}
+        downloaded = in.readLong();
+        uploaded = in.readLong();
+        left = in.readLong();
 
-	public static UDPAnnounceRequestMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() != UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE) {
-			throw new MessageValidationException(
-				"Invalid announce request message size!");
-		}
+        event = AnnounceEvent.getById(in.readInt());
+        if (event == null)
+            throw new MessageValidationException("Invalid event type in announce request!");
 
-		long connectionId = data.getLong();
+        InetAddress address;
+        try {
+            byte[] ipBytes = new byte[4];
+            in.readBytes(ipBytes);
+            address = InetAddress.getByAddress(ipBytes);
+        } catch (UnknownHostException e) {
+            throw new MessageValidationException("Invalid IP address in announce request!", e);
+        }
 
-		if (data.getInt() != Type.ANNOUNCE_REQUEST.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for announce request!");
-		}
+        key = in.readInt();
+        numWant = in.readInt();
+        int port = in.readShort() & 0xFFFF;
 
-		int transactionId = data.getInt();
-		byte[] infoHash = new byte[20];
-		data.get(infoHash);
-		byte[] peerId = new byte[20];
-		data.get(peerId);
-		long downloaded = data.getLong();
-		long uploaded = data.getLong();
-		long left = data.getLong();
+        peerAddress = new InetSocketAddress(address, port);
+    }
 
-		RequestEvent event = RequestEvent.getById(data.getInt());
-		if (event == null) {
-			throw new MessageValidationException(
-				"Invalid event type in announce request!");
-		}
-
-		InetAddress ip = null;
-		try {
-			byte[] ipBytes = new byte[4];
-			data.get(ipBytes);
-			ip = InetAddress.getByAddress(ipBytes);
-		} catch (UnknownHostException uhe) {
-			throw new MessageValidationException(
-				"Invalid IP address in announce request!");
-		}
-
-		int key = data.getInt();
-		int numWant = data.getInt();
-		short port = data.getShort();
-
-		return new UDPAnnounceRequestMessage(data,
-			connectionId,
-			transactionId,
-			infoHash,
-			peerId,
-			downloaded,
-			uploaded,
-			left,
-			event,
-			ip,
-			key,
-			numWant,
-			port);
-	}
-
-	public static UDPAnnounceRequestMessage craft(long connectionId,
-		int transactionId, byte[] infoHash, byte[] peerId, long downloaded,
-		long uploaded, long left, RequestEvent event, InetAddress ip,
-		int key, int numWant, int port) {
-		if (infoHash.length != 20 || peerId.length != 20) {
-			throw new IllegalArgumentException();
-		}
-
-		if (! (ip instanceof Inet4Address)) {
-			throw new IllegalArgumentException("Only IPv4 addresses are " +
-				"supported by the UDP tracer protocol!");
-		}
-
-		ByteBuffer data = ByteBuffer.allocate(UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE);
-		data.putLong(connectionId);
-		data.putInt(Type.ANNOUNCE_REQUEST.getId());
-		data.putInt(transactionId);
-		data.put(infoHash);
-		data.put(peerId);
-		data.putLong(downloaded);
-		data.putLong(uploaded);
-		data.putLong(left);
-		data.putInt(event.getId());
-		data.put(ip.getAddress());
-		data.putInt(key);
-		data.putInt(numWant);
-		data.putShort((short)port);
-		return new UDPAnnounceRequestMessage(data,
-			connectionId,
-			transactionId,
-			infoHash,
-			peerId,
-			downloaded,
-			uploaded,
-			left,
-			event,
-			ip,
-			key,
-			numWant,
-			(short)port);
-	}
+    @Override
+    public void toWire(ByteBuf out) {
+        _toWire(out);
+        out.writeBytes(infoHash);
+        out.writeBytes(getPeerId());
+        out.writeLong(downloaded);
+        out.writeLong(uploaded);
+        out.writeLong(left);
+        out.writeInt(event.getId());
+        out.writeBytes(getIp4Address(peerAddress));
+        out.writeInt(key);
+        out.writeInt(numWant);
+        out.writeShort(peerAddress.getPort());
+    }
 }

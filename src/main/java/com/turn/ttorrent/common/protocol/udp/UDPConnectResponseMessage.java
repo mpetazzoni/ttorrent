@@ -15,10 +15,8 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.protocol.TrackerMessage;
 
-import java.nio.ByteBuffer;
-
+import io.netty.buffer.ByteBuf;
 
 /**
  * The connection response message for the UDP tracker protocol.
@@ -26,63 +24,32 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class UDPConnectResponseMessage
-	extends UDPTrackerMessage.UDPTrackerResponseMessage
-	implements TrackerMessage.ConnectionResponseMessage {
+        extends UDPTrackerMessage.UDPTrackerResponseMessage {
 
-	private static final int UDP_CONNECT_RESPONSE_MESSAGE_SIZE = 16;
+    private static final int UDP_CONNECT_RESPONSE_MESSAGE_SIZE = 16;
+    private long connectionId;
 
-	private final int actionId = Type.CONNECT_RESPONSE.getId();
-	private final int transactionId;
-	private final long connectionId;
+    public UDPConnectResponseMessage() {
+        super(Type.CONNECT_RESPONSE);
+    }
 
-	private UDPConnectResponseMessage(ByteBuffer data, int transactionId,
-		long connectionId) {
-		super(Type.CONNECT_RESPONSE, data);
-		this.transactionId = transactionId;
-		this.connectionId = connectionId;
-	}
+    public long getConnectionId() {
+        return this.connectionId;
+    }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
+    public void setConnectionId(long connectionId) {
+        this.connectionId = connectionId;
+    }
 
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
+    @Override
+    public void fromWire(ByteBuf in) throws MessageValidationException {
+        _fromWire(in, UDP_CONNECT_RESPONSE_MESSAGE_SIZE);
+        setConnectionId(in.readLong());
+    }
 
-	public long getConnectionId() {
-		return this.connectionId;
-	}
-
-	public static UDPConnectResponseMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() != UDP_CONNECT_RESPONSE_MESSAGE_SIZE) {
-			throw new MessageValidationException(
-				"Invalid connect response message size!");
-		}
-
-		if (data.getInt() != Type.CONNECT_RESPONSE.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for connection response!");
-		}
-
-		return new UDPConnectResponseMessage(data,
-			data.getInt(), // transactionId
-			data.getLong() // connectionId
-		);
-	}
-
-	public static UDPConnectResponseMessage craft(int transactionId,
-		long connectionId) {
-		ByteBuffer data = ByteBuffer
-			.allocate(UDP_CONNECT_RESPONSE_MESSAGE_SIZE);
-		data.putInt(Type.CONNECT_RESPONSE.getId());
-		data.putInt(transactionId);
-		data.putLong(connectionId);
-		return new UDPConnectResponseMessage(data,
-			transactionId,
-			connectionId);
-	}
+    @Override
+    public void toWire(ByteBuf out) {
+        _toWire(out);
+        out.writeLong(connectionId);
+    }
 }
