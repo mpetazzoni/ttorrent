@@ -378,6 +378,74 @@ public class ClientTest {
     }
   }
 
+  public void corrupted_seeder()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int piecesCount = 35;
+
+    final List<Client> clientsList;
+    clientsList = new ArrayList<Client>(piecesCount);
+
+    final MessageDigest md5 = MessageDigest.getInstance("MD5");
+
+    try {
+      final File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
+      final File badFile = tempFiles.createTempFile(piecesCount * pieceSize);
+
+      final Client client1 = createAndStartClient();
+      final Client client2 = createAndStartClient();
+      final File client2Dir = tempFiles.createTempDir();
+      final File client2File = new File(client2Dir, baseFile.getName());
+      FileUtils.copyFile(badFile, client2File);
+
+      final Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
+      client1.addTorrent(new SharedTorrent(torrent, baseFile.getParentFile(), false, true));
+      client2.addTorrent(new SharedTorrent(torrent, client2Dir, false, true));
+
+      final String baseMD5 = getFileMD5(baseFile, md5);
+
+      final Client leech = createAndStartClient();
+      final File leechDestDir = tempFiles.createTempDir();
+      final AtomicReference<Exception> thrownException = new AtomicReference<Exception>();
+      final Thread th = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            leech.downloadUninterruptibly(new SharedTorrent(torrent, leechDestDir, false), 7);
+          } catch (Exception e) {
+            thrownException.set(e);
+            throw new RuntimeException(e);
+          }
+        }
+      });
+      th.start();
+      final WaitFor waitFor = new WaitFor(30 * 1000) {
+        @Override
+        protected boolean condition() {
+          return  th.getState() == Thread.State.TERMINATED;
+        }
+      };
+
+      final Map<Thread, StackTraceElement[]> allStackTraces = Thread.getAllStackTraces();
+      for (Map.Entry<Thread, StackTraceElement[]> entry : allStackTraces.entrySet()) {
+        System.out.printf("%s:%n", entry.getKey().getName());
+        for (StackTraceElement elem : entry.getValue()) {
+          System.out.println(elem.toString());
+        }
+      }
+
+      assertTrue(waitFor.isMyResult());
+      assertNotNull(thrownException.get());
+      assertTrue(thrownException.get().getMessage().contains("Unable to download torrent completely"));
+
+    } finally {
+      for (Client client : clientsList) {
+        client.stop();
+      }
+    }
+  }
+
   public void unlock_file_when_no_leechers() throws InterruptedException, NoSuchAlgorithmException, IOException {
     Client seeder = createClient();
     tracker.setAcceptForeignTorrents(true);

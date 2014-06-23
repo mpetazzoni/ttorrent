@@ -282,15 +282,16 @@ public class Client implements Runnable,
     // we must ensure that at every moment we are downloading a piece of that torrent
     int seedersCount = torrent.getSeedersCount();
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
-    long currentDownloaded = torrent.getDownloaded();
+    long currentLeft = torrent.getLeft();
+
     while (torrent.getClientState() != ClientState.SEEDING &&
             torrent.getClientState() != ClientState.ERROR &&
         ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
             (System.currentTimeMillis() <= maxIdleTime)) {
       if (Thread.currentThread().isInterrupted() || isInterrupted.get())
         throw new InterruptedException("Download of "+torrent.getName()+" was interrupted");
-      if (currentDownloaded < torrent.getDownloaded()){
-        currentDownloaded = torrent.getDownloaded();
+      if (currentLeft > torrent.getLeft()){
+        currentLeft = torrent.getLeft();
         maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
       }
       Thread.sleep(100);
