@@ -49,13 +49,19 @@ public class ClientMain {
 	private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
 	/**
-	 * Returns a usable {@link Inet4Address} for the given interface name.
+	 * Returns a usable {@link Inet4Address} for the given interface name or
+     * interface IP address
 	 *
 	 * <p>
 	 * If an interface name is given, return the first usable IPv4 address for
 	 * that interface. If no interface name is given or if that interface
 	 * doesn't have an IPv4 address, return's localhost address (if IPv4).
 	 * </p>
+     *
+     * <p>
+     * The <code>iface</code> param can also be an IP address in which case the interface
+     * with that IP address will be selected.
+     * </p>
 	 *
 	 * <p>
 	 * It is understood this makes the client IPv4 only, but it is important to
@@ -63,7 +69,7 @@ public class ClientMain {
 	 * trackers and UDP tracker support) are IPv4-only anyway.
 	 * </p>
 	 *
-	 * @param iface The network interface name.
+	 * @param iface The network interface name or IP address
 	 * @return A usable IPv4 address as a {@link Inet4Address}.
 	 * @throws UnsupportedAddressTypeException If no IPv4 address was available
 	 * to bind on.
@@ -72,8 +78,12 @@ public class ClientMain {
 		throws SocketException, UnsupportedAddressTypeException,
 		UnknownHostException {
 		if (iface != null) {
-			Enumeration<InetAddress> addresses =
-				NetworkInterface.getByName(iface).getInetAddresses();
+            NetworkInterface networkInterface = NetworkInterface.getByName(iface);
+            if(networkInterface==null){
+                networkInterface = NetworkInterface.getByInetAddress(InetAddress.getByName(iface));
+            }
+            Enumeration<InetAddress> addresses =
+				networkInterface.getInetAddresses();
 			while (addresses.hasMoreElements()) {
 				InetAddress addr = addresses.nextElement();
 				if (addr instanceof Inet4Address) {
@@ -99,7 +109,7 @@ public class ClientMain {
 		s.println("Available options:");
 		s.println("  -h,--help                  Show this help and exit.");
 		s.println("  -o,--output DIR            Read/write data to directory DIR.");
-		s.println("  -i,--iface IFACE           Bind to interface IFACE.");
+		s.println("  -i,--iface IFACE           Bind to interface IFACE. (specify interface name or IP address)");
 		s.println("  -s,--seed SECONDS          Time to seed after downloading (default: infinitely).");
 		s.println("  -d,--max-download KB/SEC   Max download rate (default: unlimited).");
 		s.println("  -u,--max-upload KB/SEC     Max upload rate (default: unlimited).");
