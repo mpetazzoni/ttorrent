@@ -22,7 +22,10 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Vector;
 
 import jargs.gnu.CmdLineParser;
 import org.apache.commons.io.IOUtils;
@@ -76,7 +79,6 @@ public class TorrentMain {
 	 * torrent files. See usage for details.
 	 * </p>
 	 *
-	 * TODO: support multiple announce URLs.
 	 */
 	public static void main(String[] args) {
 		BasicConfigurator.configure(new ConsoleAppender(
@@ -109,17 +111,22 @@ public class TorrentMain {
 		}
 
 		Boolean createFlag = (Boolean)parser.getOptionValue(create);
-		String announceURL = (String)parser.getOptionValue(announce);
+		
+		//For repeated announce urls
+		@SuppressWarnings("unchecked")
+		Vector<String> announceURLs = (Vector<String>)parser.getOptionValues(announce);
+		
 
 		String[] otherArgs = parser.getRemainingArgs();
 
 		if (Boolean.TRUE.equals(createFlag) &&
-			(otherArgs.length != 1 || announceURL == null)) {
+			(otherArgs.length != 1 || announceURLs.isEmpty())) {
 			usage(System.err, "Announce URL and a file or directory must be " +
 				"provided to create a torrent file!");
 			System.exit(1);
 		}
-
+		
+		
 		OutputStream fos = null;
 		try {
 			if (Boolean.TRUE.equals(createFlag)) {
@@ -129,7 +136,17 @@ public class TorrentMain {
 					fos = System.out;
 				}
 
-				URI announceURI = new URI(announceURL);
+				//Process the announce URLs into URIs
+				List<URI> announceURIs = new ArrayList<URI>();		
+				for (String url : announceURLs) { 
+					announceURIs.add(new URI(url));
+				}
+				
+				//Create the announce-list as a list of lists of URIs
+				//Assume all the URI's are first tier trackers
+				List<List<URI>> announceList = new ArrayList<List<URI>>();
+				announceList.add(announceURIs);
+				
 				File source = new File(otherArgs[0]);
 				if (!source.exists() || !source.canRead()) {
 					throw new IllegalArgumentException(
@@ -145,9 +162,9 @@ public class TorrentMain {
 					File[] files = source.listFiles();
 					Arrays.sort(files);
 					torrent = Torrent.create(source, Arrays.asList(files),
-						announceURI, creator);
+							announceList, creator);
 				} else {
-					torrent = Torrent.create(source, announceURI, creator);
+					torrent = Torrent.create(source, announceList, creator);
 				}
 
 				torrent.save(fos);
