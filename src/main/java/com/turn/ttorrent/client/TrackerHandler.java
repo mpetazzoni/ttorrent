@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
+import com.turn.ttorrent.client.peer.PeerExistenceListener;
 import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
 import com.turn.ttorrent.client.tracker.TrackerClient;
 
@@ -111,6 +112,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
     private final Client client;
     private final TorrentMetadataProvider torrent;
+    private final PeerExistenceListener existenceListener;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
     private int trackerIndex;
     private TrackerMessage.AnnounceEvent event = TrackerMessage.AnnounceEvent.STARTED;
@@ -123,9 +125,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param torrent The torrent we're announcing about.
      * @param peer Our peer specification.
      */
-    public TrackerHandler(Client client, TorrentMetadataProvider torrent) {
+    public TrackerHandler(Client client, TorrentMetadataProvider torrent, PeerExistenceListener existenceListener) {
         this.client = client;
         this.torrent = torrent;
+        this.existenceListener = existenceListener;
     }
 
     @Nonnull
@@ -400,7 +403,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         // LOG.trace("Got {} peer(s) in tracker response.", peerAddresses.size());
         // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
-        torrent.addPeers(peerAddresses);
+        existenceListener.addPeers(peerAddresses);
         // torrent.getSwarmHandler().addPeers(peerAddresses);
     }
 

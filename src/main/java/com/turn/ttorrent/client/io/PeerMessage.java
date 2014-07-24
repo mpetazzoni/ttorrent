@@ -17,11 +17,13 @@ package com.turn.ttorrent.client.io;
 
 import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.PeerPieceProvider;
+import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.BitSet;
+import java.util.Map;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 
@@ -84,7 +86,7 @@ public abstract class PeerMessage {
     public abstract void fromWire(@Nonnull ByteBuf in) throws IOException;
 
     /** Writes everything except the length. */
-    public void toWire(@Nonnull ByteBuf out) throws IOException {
+    public void toWire(@Nonnull ByteBuf out, @Nonnull Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
         out.writeByte(getType().getTypeByte());
     }
 
@@ -134,7 +136,7 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) {
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) {
         }
     }
 
@@ -238,8 +240,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             out.writeInt(piece);
         }
 
@@ -301,8 +303,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             byte[] bytes = bitfield.toByteArray();
             for (int i = 0; i < bytes.length; i++)
                 bytes[i] = reverse(bytes[i]);
@@ -356,8 +358,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             out.writeInt(piece);
             out.writeInt(offset);
         }
@@ -422,8 +424,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             out.writeInt(length);
         }
     }
@@ -473,8 +475,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             out.writeBytes(block);
         }
     }
@@ -517,8 +519,8 @@ public abstract class PeerMessage {
         }
 
         @Override
-        public void toWire(ByteBuf out) throws IOException {
-            super.toWire(out);
+        public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
+            super.toWire(out, extendedTypes);
             out.writeInt(length);
         }
     }

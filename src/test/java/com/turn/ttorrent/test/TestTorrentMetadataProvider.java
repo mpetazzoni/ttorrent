@@ -51,10 +51,6 @@ public class TestTorrentMetadataProvider implements TorrentMetadataProvider {
     }
 
     @Override
-    public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
-    }
-
-    @Override
     public String toString() {
         return "TestTorrentMetadataProvider(" + TorrentUtils.toHex(getInfoHash()) + ")";
     }

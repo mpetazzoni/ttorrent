@@ -15,11 +15,13 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
+import java.util.Map;
 import javax.annotation.Nonnull;
 import org.apache.commons.io.Charsets;
 
@@ -86,13 +88,17 @@ public class PeerHandshakeMessage extends PeerMessage {
         in.readBytes(peerId);
     }
 
-    @Override
-    public void toWire(ByteBuf out) {
+    public void toWire(@Nonnull ByteBuf out) {
         out.writeByte(protocolName.length);
         out.writeBytes(protocolName);
         out.writeBytes(reserved);
         out.writeBytes(infoHash);
         out.writeBytes(peerId);
+    }
+
+    @Override
+    public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) {
+        throw new UnsupportedOperationException("Message should not appear in normal protocol.");
     }
 
     @Override

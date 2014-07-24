@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -171,7 +170,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
         this.client = client;
         this.torrent = torrent;
         this.bucket = bucket;
-        this.trackerHandler = new TrackerHandler(client, this);
+        this.trackerHandler = new TrackerHandler(client, this, getSwarmHandler());
         this.swarmHandler = new SwarmHandler(this);
     }
 
@@ -255,11 +254,6 @@ public class TorrentHandler implements TorrentMetadataProvider {
     @Nonnull
     public SwarmHandler getSwarmHandler() {
         return swarmHandler;
-    }
-
-    @Override
-    public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
-        getSwarmHandler().addPeers(peerAddresses);
     }
 
     @Nonnull

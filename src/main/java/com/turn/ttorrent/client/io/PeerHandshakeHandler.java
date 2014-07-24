@@ -48,7 +48,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     protected void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
         pipeline.addLast(new CombinedChannelDuplexHandler(new PeerFrameDecoder(), frameEncoder));
         // pipeline.addLast(getFrameLogger());
-        pipeline.addLast(new PeerMessageCodec());
+        pipeline.addLast(new PeerMessageCodec(listener));
         // pipeline.addLast(getMessageLogger());
         pipeline.addLast(new PeerMessageHandler(listener));
     }

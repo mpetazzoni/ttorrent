@@ -30,7 +30,4 @@ public interface TorrentMetadataProvider {
 
     @Nonnegative
     public long getLeft();
-
-    // This sucks in a 'provider'.
-    public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses);
 }

@@ -15,15 +15,15 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.io.PeerMessage;
-
-import com.turn.ttorrent.client.peer.PieceHandler;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.client.peer.RateComparator;
-import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.Instrumentation;
+import com.turn.ttorrent.client.peer.PeerActivityListener;
+import com.turn.ttorrent.client.peer.PeerConnectionListener;
+import com.turn.ttorrent.client.peer.PeerExistenceListener;
+import com.turn.ttorrent.client.peer.PeerHandler;
+import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.Rate;
+import com.turn.ttorrent.client.peer.RateComparator;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
-public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
+public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(SwarmHandler.class);
 
@@ -194,6 +194,12 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
         return knownPeers.size();
     }
 
+    @Override
+    public Set<? extends SocketAddress> getPeers() {
+        return knownPeers.keySet();
+    }
+
+    @Override
     public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peerAddresses);
@@ -745,7 +751,7 @@ public class SwarmHandler implements Runnable, PeerConnectionListener, PeerPiece
             return null;
         }
 
-        peerHandler = new PeerHandler(remotePeerId, channel, this, this, this);
+        peerHandler = new PeerHandler(remotePeerId, channel, this, this, this, this);
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Created new peer: {}.", getLocalPeerName(), peerHandler);
 

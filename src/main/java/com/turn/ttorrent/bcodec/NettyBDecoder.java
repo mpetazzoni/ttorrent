@@ -16,7 +16,7 @@
 package com.turn.ttorrent.bcodec;
 
 import io.netty.buffer.ByteBuf;
-import java.io.IOException;
+import javax.annotation.Nonnull;
 
 /**
  *
@@ -26,7 +26,7 @@ public class NettyBDecoder extends AbstractBDecoder {
 
     private final ByteBuf in;
 
-    public NettyBDecoder(ByteBuf in) {
+    public NettyBDecoder(@Nonnull ByteBuf in) {
         this.in = in;
     }
 

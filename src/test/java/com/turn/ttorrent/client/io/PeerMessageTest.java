@@ -35,7 +35,7 @@ public class PeerMessageTest {
 
         ByteBuf buf = Unpooled.buffer(1234);
 
-        in.toWire(buf);
+        in.toWire(buf, null);
         LOG.info(in + " -> " + formatter.format(in.getClass().getSimpleName(), buf));
 
         T out = (T) in.getClass().newInstance();

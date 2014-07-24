@@ -15,11 +15,13 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.turn.ttorrent.client.peer.PeerMessageListener;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;
 import java.io.IOException;
 import java.util.List;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,12 @@ import org.slf4j.LoggerFactory;
 public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerMessageCodec.class);
+
+    private final PeerMessageListener listener;
+
+    public PeerMessageCodec(@Nonnull PeerMessageListener listener) {
+        this.listener = listener;
+    }
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf buf, List<Object> out) throws Exception {
@@ -76,6 +84,9 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
                     case 0:
                         message = new PeerExtendedMessage.HandshakeMessage();
                         break;
+                    case 1:
+                        message = new PeerExtendedMessage.UtPexMessage();
+                        break;
                     default:
                         throw new IOException("Unknown extended message type " + extendedType);
                 }
@@ -92,6 +103,6 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
     @Override
     protected void encode(ChannelHandlerContext ctx, PeerMessage value, ByteBuf out) throws Exception {
         // LOG.info("encode: " + value);
-        value.toWire(out);
+        value.toWire(out, listener.getExtendedMessageTypes());
     }
 }

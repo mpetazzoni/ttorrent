@@ -15,9 +15,12 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.client.io.PeerExtendedMessage;
 import com.turn.ttorrent.client.io.PeerMessage;
 import java.io.IOException;
 import java.util.EventListener;
+import java.util.Map;
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 /**
@@ -27,6 +30,9 @@ import javax.annotation.Nonnull;
  * @author mpetazzoni
  */
 public interface PeerMessageListener extends EventListener {
+
+    @CheckForNull
+    public Map<? extends PeerExtendedMessage.ExtendedType, ? extends Byte> getExtendedMessageTypes();
 
     public void handleMessage(@Nonnull PeerMessage msg) throws IOException;
 

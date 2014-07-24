@@ -4,8 +4,10 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.peer.PeerExistenceListener;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.test.TestPeerExistenceListener;
 import com.turn.ttorrent.test.TestTorrentMetadataProvider;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import com.turn.ttorrent.tracker.TrackedTorrent;
@@ -54,7 +56,8 @@ public class TrackerHandlerTest {
 
             try {
                 final CountDownLatch latch = new CountDownLatch(2);
-                TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), torrent.getAnnounceList()) {
+                TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), torrent.getAnnounceList());
+                PeerExistenceListener existenceListener = new TestPeerExistenceListener() {
                     @Override
                     public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
                         super.addPeers(peerAddresses);
@@ -62,7 +65,7 @@ public class TrackerHandlerTest {
                     }
                 };
                 final AtomicInteger moveCount = new AtomicInteger(0);
-                TrackerHandler trackerHandler = new TrackerHandler(client, torrentMetadataProvider) {
+                TrackerHandler trackerHandler = new TrackerHandler(client, torrentMetadataProvider, existenceListener) {
                     @Override
                     boolean moveToNextTracker(TrackerHandler.TrackerState curr, String reason) {
                         moveCount.getAndIncrement();
@@ -96,7 +99,8 @@ public class TrackerHandlerTest {
             URI uri1 = new URI("http://localhost:101/announce");  // Deliberately invalid.
             List<URI> uris = Arrays.asList(uri0, uri1);
             TestTorrentMetadataProvider metadataProvider = new TestTorrentMetadataProvider(infoHash, Arrays.asList(uris));
-            TrackerHandler trackerHandler = new TrackerHandler(client, metadataProvider) {
+            PeerExistenceListener existenceListener = new TestPeerExistenceListener();
+            TrackerHandler trackerHandler = new TrackerHandler(client, metadataProvider, existenceListener) {
                 @Override
                 public void run() {
                     LOG.info("Running TrackerHandler.");
