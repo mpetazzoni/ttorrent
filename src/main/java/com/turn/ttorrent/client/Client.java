@@ -62,8 +62,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class Client implements Runnable,
   AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
 
-  protected static final Logger logger =
-    LoggerFactory.getLogger(Client.class);
+  protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
   /**
    * Peers unchoking frequency, in seconds. Current BitTorrent specification
@@ -129,15 +128,19 @@ public class Client implements Runnable,
     torrent.setTorrentStateListener(this);
 
     this.announce.addTorrent(torrent, this);
+    logger.info(String.format("Started seeding %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
+    logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
     this.announce.removeTorrent(torrentHash);
 
     SharedTorrent torrent = this.torrents.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
+    } else {
+      logger.warn(String.format("Torrent %s alreay removed from myTorrents", torrentHash.getHexInfoHash()));
     }
   }
   public void removeAndDeleteTorrent(TorrentHash torrentHash) {

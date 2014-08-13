@@ -53,7 +53,7 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharedTorrent extends Torrent implements PeerActivityListener, Cleanable {
+public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private static final Logger logger =
     LoggerFactory.getLogger(SharedTorrent.class);
@@ -387,7 +387,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
         this.pieces.length
       });
 
-    Client.cleanupProcessor().registerCleanable(this);
+//    Client.cleanupProcessor().registerCleanable(this);
     this.initialized = true;
   }
 
@@ -491,7 +491,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
 
   public synchronized void close() {
     logger.trace("Closing torrent", getName());
-    Client.cleanupProcessor().unregisterCleanable(this);
+//    Client.cleanupProcessor().unregisterCleanable(this);
     try {
       this.bucket.close();
     } catch (IOException ioe) {
@@ -998,12 +998,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener, Clea
           "}";
     }
 
+/*
   @Override
   public void cleanUp() {
     if ((System.currentTimeMillis() - myLastClose) > myUnloadTimeout){
       unloadPieces();
     }
+    if ()
   }
+*/
 
   public static void setUnloadTimeout(final int unloadTimeout){
     myUnloadTimeout = unloadTimeout;
