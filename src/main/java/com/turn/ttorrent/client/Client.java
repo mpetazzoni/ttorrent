@@ -237,6 +237,7 @@ public class Client implements Runnable,
    *             the <tt>DONE</tt> or <tt>ERROR</tt> states when this method returns.
    */
   public void stop(boolean wait) {
+    myCleanupProcessor.stop();
     this.stop = true;
     if (!myStarted)
       return;
@@ -977,7 +978,7 @@ public class Client implements Runnable,
 
   static {
     final Thread cleanupThread = new Thread(myCleanupProcessor);
-    cleanupThread.setName("cleanup-thread");
+    cleanupThread.setName("torrent-cleanup-thread");
     cleanupThread.start();
   }
 }

@@ -29,7 +29,7 @@ public class CleanupProcessor implements  Runnable{
   private static final int TIMEOUT = 5000;
 
   private List<Cleanable> myCleanables = new CopyOnWriteArrayList<Cleanable>();
-  private boolean stop = false;
+  private volatile boolean stop = false;
 
   @Override
   public void run() {
@@ -43,6 +43,10 @@ public class CleanupProcessor implements  Runnable{
     } catch (InterruptedException e) {
 
     }
+  }
+
+  public void stop() {
+    stop = true;
   }
 
   public void registerCleanable(final Cleanable cleanable){
