@@ -40,9 +40,7 @@ public class CleanupProcessor implements  Runnable{
           cleanable.cleanUp();
         }
       }
-    } catch (InterruptedException e) {
-
-    }
+    } catch (InterruptedException e) {}
   }
 
   public void stop() {

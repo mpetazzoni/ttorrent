@@ -96,7 +96,7 @@ public class Client implements Runnable,
   private final ConcurrentMap<String, SharedTorrent> torrents;
 
   private Random random;
-  private static CleanupProcessor myCleanupProcessor = new CleanupProcessor();
+  private CleanupProcessor myCleanupProcessor;
   private boolean myStarted = false;
 
   public Client(){
@@ -104,6 +104,7 @@ public class Client implements Runnable,
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
+    myCleanupProcessor = new CleanupProcessor();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -206,6 +207,9 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
+    final Thread cleanupThread = new Thread(myCleanupProcessor);
+    cleanupThread.setName("torrent-cleanup-thread");
+    cleanupThread.start();
     this.service = new ConnectionHandler(this.torrents, bindAddresses);
     this.service.register(this);
 
@@ -519,7 +523,7 @@ public class Client implements Runnable,
       SharedTorrent torrent = this.torrents.get(hexInfoHash);
 
       SharingPeer peer = new SharingPeer(search.getIp(), search.getPort(),
-        search.getPeerId(), torrent);
+        search.getPeerId(), torrent, myCleanupProcessor);
       logger.trace("Created new peer: {}.", peer);
 
       return peer;
@@ -971,14 +975,4 @@ public class Client implements Runnable,
 
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
-
-  public static CleanupProcessor cleanupProcessor() {
-    return myCleanupProcessor;
-  }
-
-  static {
-    final Thread cleanupThread = new Thread(myCleanupProcessor);
-    cleanupThread.setName("torrent-cleanup-thread");
-    cleanupThread.start();
-  }
 }

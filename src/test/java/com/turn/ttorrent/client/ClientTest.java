@@ -709,6 +709,7 @@ public class ClientTest {
         }
       });
     }
+    final CleanupProcessor processor = new CleanupProcessor();
     new WaitFor(30*1000){
       @Override
       protected boolean condition() {
@@ -716,7 +717,7 @@ public class ClientTest {
           put(SharingPeer.class, new AtomicInteger(0));
           put(SharedTorrent.class, new AtomicInteger(0));
         }};
-        Client.cleanupProcessor().iterateCleanables(new CleanupProcessor.CleanableAction() {
+        processor.iterateCleanables(new CleanupProcessor.CleanableAction() {
           @Override
           public void action(Cleanable cleanable) {
             cleanablesCount.get(cleanable.getClass()).incrementAndGet();
@@ -728,7 +729,7 @@ public class ClientTest {
     final Map<Class, AtomicInteger> cleanablesCount = new HashMap<Class, AtomicInteger>();
     cleanablesCount.put(SharingPeer.class, new AtomicInteger(0));
     cleanablesCount.put(SharedTorrent.class, new AtomicInteger(0));
-    Client.cleanupProcessor().iterateCleanables(new CleanupProcessor.CleanableAction() {
+    processor.iterateCleanables(new CleanupProcessor.CleanableAction() {
       @Override
       public void action(Cleanable cleanable) {
         cleanablesCount.get(cleanable.getClass()).incrementAndGet();
