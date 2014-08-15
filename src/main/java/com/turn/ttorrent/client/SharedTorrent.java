@@ -96,7 +96,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private boolean initialized;
 	private Piece[] pieces;
-	private SortedSet<Piece> rarest;
+	private SortedSet<Piece> needRequest;
 	private BitSet completedPieces;
 	private BitSet requestedPieces;
 	
@@ -220,7 +220,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		this.initialized = false;
 		this.pieces = new Piece[0];
-		this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
+		this.needRequest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
 	}
@@ -617,9 +617,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	@Override
 	public synchronized void handlePeerReady(SharingPeer peer) {
-		BitSet interesting = peer.getAvailablePieces();
-		interesting.andNot(this.completedPieces);
-		interesting.andNot(this.requestedPieces);
+		BitSet interesting = peer.getAvailablePieces(); //TUDO O QUE O CARA TEM
+		interesting.andNot(this.completedPieces); // MENOS O QUE EU JA TENHO
+		interesting.andNot(this.requestedPieces); //OU O QUE EU REQUISITEI
 
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
@@ -647,10 +647,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		// Extract the RAREST_PIECE_JITTER rarest pieces from the interesting
 		// pieces of this peer.
+		choosePiece(peer, interesting);
+	}
+
+	private void choosePiece(SharingPeer peer, BitSet interesting) {
 		ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
-		synchronized (this.rarest) {
-			for (Piece piece : this.rarest) {
-				if (interesting.get(piece.getIndex())) {
+		synchronized (this.needRequest) {
+			for (Piece piece : this.needRequest) {
+				if (interesting.get(piece.getIndex())) { // Choose from peer what we want to download
 					choice.add(piece);
 					if (choice.size() >= RAREST_PIECE_JITTER) {
 						break;
@@ -659,10 +663,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			}
 		}
 
-		Piece chosen = choice.get(
-			this.random.nextInt(
-				Math.min(choice.size(),
-				RAREST_PIECE_JITTER)));
+		Piece chosen = choice.get(0);
 		this.requestedPieces.set(chosen.getIndex());
 
 		logger.trace("Requesting {} from {}, we now have {} " +
@@ -698,9 +699,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			peer.interesting();
 		}
 
-		this.rarest.remove(piece);
+		this.needRequest.remove(piece);
 		piece.seenAt(peer);
-		this.rarest.add(piece);
+		this.needRequest.add(piece);
 
 		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
 			new Object[] {
@@ -748,9 +749,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		// Record that the peer has all the pieces it told us it had.
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.rarest.remove(this.pieces[i]);
+			this.needRequest.remove(this.pieces[i]);
 			this.pieces[i].seenAt(peer);
-			this.rarest.add(this.pieces[i]);
+			this.needRequest.add(this.pieces[i]);
 		}
 
 		logger.trace("Peer {} contributes {} piece(s) ({} interesting) " +
@@ -827,9 +828,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.rarest.remove(this.pieces[i]);
+			this.needRequest.remove(this.pieces[i]);
 			this.pieces[i].noLongerAt(peer);
-			this.rarest.add(this.pieces[i]);
+			this.needRequest.add(this.pieces[i]);
 		}
 
 		Piece requested = peer.getRequestedPiece();
