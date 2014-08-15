@@ -617,9 +617,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	@Override
 	public synchronized void handlePeerReady(SharingPeer peer) {
-		BitSet interesting = peer.getAvailablePieces(); //TUDO O QUE O CARA TEM
-		interesting.andNot(this.completedPieces); // MENOS O QUE EU JA TENHO
-		interesting.andNot(this.requestedPieces); //OU O QUE EU REQUISITEI
+		BitSet interesting = peer.getAvailablePieces(); 
+		interesting.andNot(this.completedPieces); 
+		interesting.andNot(this.requestedPieces); 
 
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
@@ -645,8 +645,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				"that was already requested from another peer.");
 		}
 
-		// Extract the RAREST_PIECE_JITTER rarest pieces from the interesting
-		// pieces of this peer.
 		choosePiece(peer, interesting);
 	}
 
