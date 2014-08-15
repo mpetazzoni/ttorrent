@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
  */
 public interface TorrentByteStorage {
 
-	public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+	public static final String PARTIAL_FILE_NAME_SUFFIX = "";
 
 	/**
 	 * Returns the total size of the torrent storage.
