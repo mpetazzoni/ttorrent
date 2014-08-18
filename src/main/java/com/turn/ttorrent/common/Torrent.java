@@ -814,4 +814,15 @@ public class Torrent {
 			throw new IOException("Error while hashing the torrent data!", ee);
 		}
 	}
+	
+	/**
+	 * Return a Magnet URI to be used in Torrent Clients
+	 */
+	public String toMagnetURI () {
+		StringBuilder uri = new StringBuilder("magnet:?xt=");
+		uri.append(this.hex_info_hash);
+		uri.append("&dn=").append(this.name);
+		uri.append("&xl=").append(this.size);
+		return uri.toString();
+	}
 }
