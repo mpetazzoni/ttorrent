@@ -16,6 +16,7 @@
 package com.turn.ttorrent.cli;
 
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.RareFirstStrategy;
 import com.turn.ttorrent.client.SharedTorrent;
 
 import java.io.File;
@@ -29,6 +30,7 @@ import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Enumeration;
 
 import jargs.gnu.CmdLineParser;
+
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
@@ -154,7 +156,7 @@ public class ClientMain {
 				getIPv4Address(ifaceValue),
 				SharedTorrent.fromFile(
 					new File(otherArgs[0]),
-					new File(outputValue)));
+					new File(outputValue)), new RareFirstStrategy());
 
 			c.setMaxDownloadRate(maxDownloadRate);
 			c.setMaxUploadRate(maxUploadRate);
