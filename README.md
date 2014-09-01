@@ -30,6 +30,12 @@ Ttorrent supports the following BEPs (BitTorrent enhancement proposals):
   Compact peer lists are supported in both the client and the tracker.
   Currently the tracker only supports sending back compact peer lists
   to an announce request.
+  
+About the Fork
+=============
+
+This fork was created to allow Java Programmers to choose their own piece selection algorithm. In my own very case, I wanted to download the first pieces first (because I was working in a streaming system like Popcorn-time), so I created the IndexFirstStrategy. The RareFirstStrategy was created by the original author, I just extrated his code from the Piece class and put in the RareFirstStrategy class.
+  
 
 History
 -------
@@ -98,7 +104,11 @@ Client client = new Client(
   // output directory. Partials downloads are automatically recovered.
   SharedTorrent.fromFile(
     new File("/path/to/your.torrent"),
-    new File("/path/to/output/directory")));
+    new File("/path/to/output/directory")),
+    
+    //An implementation of PieceSelectionStrategy
+    //The RareFirstStrategy is the most commom one
+    new RareFirstStrategy());
 
 // You can optionally set download/upload rate limits
 // in kB/second. Setting a limit to 0.0 disables rate
@@ -172,6 +182,9 @@ Authors and contributors
   Contributed the switch from Ant to Maven.
 * Alexey Ptashniy  
   Fixed an integer overflow in the calculation of a torrent's full size.
+* Elias Granja <<eliasojrs@gmail.com>>
+
+	Contributed with the Strategy Pattern.
 
 
 Caveats
