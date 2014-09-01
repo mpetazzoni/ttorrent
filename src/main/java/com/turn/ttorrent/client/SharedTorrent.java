@@ -321,7 +321,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * the pieces array.
 	 * </p>
 	 */
-	public synchronized void init() throws InterruptedException, IOException {
+	public synchronized void init(PieceSelectionStrategy selectionStrategy) throws InterruptedException, IOException {
 		if (this.isInitialized()) {
 			throw new IllegalStateException("Torrent was already initialized!");
 		}
@@ -354,7 +354,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					this.pieceLength);
 
 				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-					this.isSeeder());
+					this.isSeeder(), selectionStrategy);
 
 				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
 				results.add(executor.submit(hasher));

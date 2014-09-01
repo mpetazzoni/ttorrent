@@ -61,6 +61,7 @@ public class Piece implements Comparable<Piece> {
 	private volatile boolean valid;
 	private int seen;
 	private ByteBuffer data;
+	private final PieceSelectionStrategy selection;
 
 	/**
 	 * Initialize a new piece in the byte bucket.
@@ -74,19 +75,20 @@ public class Piece implements Comparable<Piece> {
 	 * validation).
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset,
-		long length, byte[] hash, boolean seeder) {
+		long length, byte[] hash, boolean seeder, PieceSelectionStrategy selectionStrategy) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
 		this.length = length;
 		this.hash = hash;
 		this.seeder = seeder;
+		this.selection = selectionStrategy;
 
 		// Piece is considered invalid until first check.
 		this.valid = false;
 
 		// Piece start unseen
-		this.seen = 0;
+		this.setSeen(0);
 
 		this.data = null;
 	}
@@ -120,7 +122,7 @@ public class Piece implements Comparable<Piece> {
 	 * Tells whether this piece is available in the current connected peer swarm.
 	 */
 	public boolean available() {
-		return this.seen > 0;
+		return this.getSeen() > 0;
 	}
 
 	/**
@@ -129,7 +131,7 @@ public class Piece implements Comparable<Piece> {
 	 * @param peer The sharing peer this piece has been seen available at.
 	 */
 	public void seenAt(SharingPeer peer) {
-		this.seen++;
+		this.setSeen(this.getSeen() + 1);
 	}
 
 	/**
@@ -138,7 +140,7 @@ public class Piece implements Comparable<Piece> {
 	 * @param peer The sharing peer from which the piece is no longer available.
 	 */
 	public void noLongerAt(SharingPeer peer) {
-		this.seen--;
+		this.setSeen(this.getSeen() - 1);
 	}
 
 	/**
@@ -277,8 +279,15 @@ public class Piece implements Comparable<Piece> {
 	 */
 	public int compareTo(Piece other) {
 		
-		return this.index == other.index ? 0 :
-			(this.index < other.index ? -1 : 1);
+		return this.selection.compareTo(this, other);
+	}
+
+	public int getSeen() {
+		return seen;
+	}
+
+	public void setSeen(int seen) {
+		this.seen = seen;
 	}
 
 	/**

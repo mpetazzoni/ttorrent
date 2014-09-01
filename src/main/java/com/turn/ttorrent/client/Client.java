@@ -113,14 +113,17 @@ public class Client extends Observable implements Runnable,
 
 	private Random random;
 
+	private PieceSelectionStrategy selectionStrategy;
+
 	/**
 	 * Initialize the BitTorrent client.
 	 *
 	 * @param address The address to bind to.
 	 * @param torrent The torrent to download and share.
 	 */
-	public Client(InetAddress address, SharedTorrent torrent)
+	public Client(InetAddress address, SharedTorrent torrent, PieceSelectionStrategy selectionStrategy)
 		throws UnknownHostException, IOException {
+		this.selectionStrategy = selectionStrategy;
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
@@ -321,7 +324,7 @@ public class Client extends Observable implements Runnable,
 		// First, analyze the torrent's local data.
 		try {
 			this.setState(ClientState.VALIDATING);
-			this.torrent.init();
+			this.torrent.init(this.selectionStrategy);
 		} catch (IOException ioe) {
 			logger.warn("Error while initializing torrent data: {}!",
 				ioe.getMessage(), ioe);
