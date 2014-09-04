@@ -161,7 +161,7 @@ public class TrackerService implements Container {
          */
         HTTPAnnounceRequestMessage announceRequest;
         try {
-            announceRequest = this.parseRequest(request);
+            announceRequest = parseRequest(request);
         } catch (MessageValidationException e) {
             requestParseFailed.mark();
             LOG.error("Failed to parse request", e);

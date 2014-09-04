@@ -1,4 +1,5 @@
 apply plugin: 'java' // Plugin as major conventions, overwrites status
+apply plugin: 'errorprone'
 
 sourceCompatibility = 1.6
 

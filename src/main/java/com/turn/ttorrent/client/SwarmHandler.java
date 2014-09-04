@@ -121,7 +121,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     /** End-game trigger ratio.
      *
      * <p>
-     * Eng-game behavior (requesting already requested pieces from available
+     * End-game behavior (requesting already requested pieces from available
      * and ready peers to try to speed-up the end of the transfer) will only be
      * enabled when the ratio of completed pieces over total pieces in the
      * torrent is over this value.
@@ -207,7 +207,13 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         for (SocketAddress peerAddress : peerAddresses) {
             PeerInformation peerInformation = new PeerInformation();
             peerInformation.setReconnectTime(getRandom(), now);
-            knownPeers.putIfAbsent(peerAddress, peerInformation);
+            PUT:
+            {
+                PeerInformation tmp = knownPeers.putIfAbsent(peerAddress, peerInformation);
+                if (tmp != null)
+                    peerInformation = tmp;
+            }
+            // TODO: Update stats about 'reported', 'connected', etc.
         }
         // run();
     }
