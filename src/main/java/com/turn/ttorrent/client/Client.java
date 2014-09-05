@@ -321,7 +321,8 @@ public class Client extends Observable implements Runnable,
 		// First, analyze the torrent's local data.
 		try {
 			this.setState(ClientState.VALIDATING);
-			this.torrent.init();
+			if (!this.torrent.isInitialized())
+				this.torrent.init();
 		} catch (IOException ioe) {
 			logger.warn("Error while initializing torrent data: {}!",
 				ioe.getMessage(), ioe);
