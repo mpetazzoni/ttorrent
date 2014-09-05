@@ -95,6 +95,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private final ByteBuffer piecesHashes;
 
 	private boolean initialized;
+	private boolean peerOnly;
 	private Piece[] pieces;
 	private SortedSet<Piece> rarest;
 	private BitSet completedPieces;
@@ -174,11 +175,16 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		throws FileNotFoundException, IOException {
 		super(torrent, seeder);
 
-		if (parent == null || !parent.isDirectory()) {
-			throw new IllegalArgumentException("Invalid parent directory!");
+		this.peerOnly = false;
+		String parentPath = null;
+		
+		if (parent == null) {
+			this.peerOnly = true;
+		} else if (!parent.isDirectory()) {
+ 			throw new IllegalArgumentException("Invalid parent directory!");
+		} else {
+			parentPath = parent.getCanonicalPath();
 		}
-
-		String parentPath = parent.getCanonicalPath();
 
 		try {
 			this.pieceLength = this.decoded_info.get("piece length").getInt();
@@ -195,21 +201,25 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					"Error reading torrent meta-info fields!");
 		}
 
-		List<FileStorage> files = new LinkedList<FileStorage>();
-		long offset = 0L;
-		for (Torrent.TorrentFile file : this.files) {
-			File actual = new File(parent, file.file.getPath());
+		if (this.peerOnly) {
+			this.bucket = null;
+		} else {
+			List<FileStorage> files = new LinkedList<FileStorage>();
+			long offset = 0L;
+			for (Torrent.TorrentFile file : this.files) {
+				File actual = new File(parent, file.file.getPath());
+	
+				if (!actual.getCanonicalPath().startsWith(parentPath)) {
+					throw new SecurityException("Torrent file path attempted " +
+						"to break directory jail!");
+				}
 
-			if (!actual.getCanonicalPath().startsWith(parentPath)) {
-				throw new SecurityException("Torrent file path attempted " +
-					"to break directory jail!");
+				actual.getParentFile().mkdirs();
+				files.add(new FileStorage(actual, offset, file.size));
+				offset += file.size;
 			}
-
-			actual.getParentFile().mkdirs();
-			files.add(new FileStorage(actual, offset, file.size));
-			offset += file.size;
+			this.bucket = new FileCollectionStorage(files, this.getSize());
 		}
-		this.bucket = new FileCollectionStorage(files, this.getSize());
 
 		this.random = new Random(System.currentTimeMillis());
 		this.stop = false;
@@ -218,8 +228,21 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.downloaded = 0;
 		this.left = this.getSize();
 
-		this.initialized = false;
-		this.pieces = new Piece[0];
+		if (this.peerOnly) {
+			this.initialized = true;
+			int nPieces = (int) (Math.ceil(
+					(double)this.getSize() / this.pieceLength));
+			this.pieces = new Piece[nPieces];
+
+			for (int idx=0;idx<nPieces;idx++) {
+				this.pieces[idx] = new Piece(this.bucket, idx, 0, 0, new byte[0], false);
+			}
+
+		} else {
+ 			this.initialized = false;
+	 		this.pieces = new Piece[0];
+		}
+
 		this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
@@ -474,7 +497,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		synchronized (this.pieces) {
 			for (Piece piece : this.pieces) {
-				if (piece.available()) {
+				if (piece != null && piece.available()) {
 					availablePieces.set(piece.getIndex());
 				}
 			}
@@ -748,9 +771,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		// Record that the peer has all the pieces it told us it had.
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.rarest.remove(this.pieces[i]);
-			this.pieces[i].seenAt(peer);
-			this.rarest.add(this.pieces[i]);
+			if (this.pieces[i] != null) {
+				this.rarest.remove(this.pieces[i]);
+				this.pieces[i].seenAt(peer);
+				this.rarest.add(this.pieces[i]);
+			}
 		}
 
 		logger.trace("Peer {} contributes {} piece(s) ({} interesting) " +

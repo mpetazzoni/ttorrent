@@ -182,7 +182,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		long bytes = 0;
 
 		for (FileStorage file : this.files) {
-			if (file.offset() > offset + length) {
+			if (file.offset() >= offset + length) {
 				break;
 			}
 
