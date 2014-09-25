@@ -5,14 +5,11 @@
 package com.turn.ttorrent.test;
 
 import com.google.common.io.Files;
-import com.google.common.io.InputSupplier;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import io.netty.util.ResourceLeakDetector;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.net.URISyntaxException;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
@@ -59,13 +56,7 @@ public class TorrentTestUtils {
     public static TorrentCreator newTorrentCreator(@Nonnull File dir, @Nonnegative final long size)
             throws IOException, InterruptedException {
         File file = new File(dir, FILENAME);
-        Files.copy(new InputSupplier<InputStream>() {
-            @Override
-            public InputStream getInput() throws IOException {
-                return new PatternInputStream(size);
-            }
-        }, file);
-
+        Files.asByteSink(file).writeFrom(new PatternInputStream(size));
         return new TorrentCreator(file);
     }
 

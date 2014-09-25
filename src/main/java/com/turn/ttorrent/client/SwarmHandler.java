@@ -199,21 +199,27 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         return knownPeers.keySet();
     }
 
+    @Nonnull
+    private PeerInformation addPeer(@Nonnull SocketAddress peerAddress, long now) {
+        PeerInformation peerInformation = new PeerInformation();
+        peerInformation.setReconnectTime(getRandom(), now);
+        PUT:
+        {
+            PeerInformation tmp = knownPeers.putIfAbsent(peerAddress, peerInformation);
+            if (tmp != null)
+                peerInformation = tmp;
+        }
+        // TODO: Update stats about 'reported', 'connected', etc.
+        return peerInformation;
+    }
+
     @Override
     public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peerAddresses);
         long now = System.currentTimeMillis();
         for (SocketAddress peerAddress : peerAddresses) {
-            PeerInformation peerInformation = new PeerInformation();
-            peerInformation.setReconnectTime(getRandom(), now);
-            PUT:
-            {
-                PeerInformation tmp = knownPeers.putIfAbsent(peerAddress, peerInformation);
-                if (tmp != null)
-                    peerInformation = tmp;
-            }
-            // TODO: Update stats about 'reported', 'connected', etc.
+            addPeer(peerAddress, now);
         }
         // run();
     }
@@ -744,9 +750,8 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         // Peer peer = new Peer(remoteAddress, remotePeerId);
         // LOG.trace("Searching for address {}, peerId {}...", remoteAddress, TorrentUtils.toHex(remotePeerId));
 
-        PeerInformation peerInformation = knownPeers.get(remoteAddress);
-        if (peerInformation != null)
-            peerInformation.remotePeerId = remotePeerId;
+        PeerInformation peerInformation = addPeer(remoteAddress, System.currentTimeMillis());
+        peerInformation.remotePeerId = remotePeerId;
 
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
@@ -1240,8 +1245,8 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         double dl = 0;
         double ul = 0;
         for (PeerHandler peer : getConnectedPeers()) {
-            dl += peer.getDLRate().rate(TimeUnit.SECONDS);
-            ul += peer.getULRate().rate(TimeUnit.SECONDS);
+            dl += peer.getDLRate().getRate(TimeUnit.SECONDS);
+            ul += peer.getULRate().getRate(TimeUnit.SECONDS);
         }
 
         LOG.info("{} {} {} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",

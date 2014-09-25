@@ -60,7 +60,6 @@ import org.slf4j.LoggerFactory;
 public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(TrackerHandler.class);
-
     public static final long DELAY_DEFAULT = 5000;
     public static final long DELAY_MIN = 500;
     public static final long DELAY_RESCHEDULE_DELTA = 100;
@@ -114,7 +113,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     private final TorrentMetadataProvider torrent;
     private final PeerExistenceListener existenceListener;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
-    private int trackerIndex;
+    private int trackerIndex = 0;
     private TrackerMessage.AnnounceEvent event = TrackerMessage.AnnounceEvent.STARTED;
     private ScheduledFuture<?> future;
     private final Object lock = new Object();
@@ -181,8 +180,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
     /**
      * Returns the current tracker client used for announces.
+     * 
+     * Returns null if no trackers are available for this torrent.
      */
-    @Nonnull
+    @CheckForNull
     @VisibleForTesting
     /* pp */ TrackerState getCurrentTracker() {
         synchronized (lock) {
@@ -335,6 +336,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     public void run() {
         TrackerState tracker;
         synchronized (lock) {
+            if (trackers.isEmpty())
+                return;
             tracker = getCurrentTracker();
         }
         try {

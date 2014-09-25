@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.yammer.metrics.stats.EWMA;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +29,7 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
     private static final long serialVersionUID = 1L;
 
     private static int compare(@Nonnull Rate a, @Nonnull Rate b) {
-        return Double.compare(a.rate(TimeUnit.SECONDS), b.rate(TimeUnit.SECONDS));
+        return Double.compare(a.getRate(TimeUnit.SECONDS), b.getRate(TimeUnit.SECONDS));
     }
 
     /**
@@ -44,8 +43,8 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
      */
     public static class DLRateComparator extends RateComparator {
 
-        private static double rate(PeerHandler peer) {
-            double rate = peer.getDLRate().rate(TimeUnit.SECONDS);
+        private static double getRate(PeerHandler peer) {
+            double rate = peer.getDLRate().getRate(TimeUnit.SECONDS);
             rate += peer.getRequestsSentCount();
             if (!peer.isChoked(0))
                 rate = (rate + 100) * 1.5;
@@ -54,8 +53,8 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
 
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            double ra = rate(a);
-            double rb = rate(b);
+            double ra = getRate(a);
+            double rb = getRate(b);
             return Double.compare(rb, ra);
         }
     }
@@ -71,8 +70,8 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
      */
     public static class ULRateComparator extends RateComparator {
 
-        private static double rate(PeerHandler peer) {
-            double rate = peer.getDLRate().rate(TimeUnit.SECONDS);
+        private static double getRate(PeerHandler peer) {
+            double rate = peer.getDLRate().getRate(TimeUnit.SECONDS);
             if (!peer.isChoked(0))
                 rate = (rate + 100) * 1.5;
             return rate;
@@ -80,8 +79,8 @@ public abstract class RateComparator implements Comparator<PeerHandler>, Seriali
 
         @Override
         public int compare(PeerHandler a, PeerHandler b) {
-            double ra = rate(a);
-            double rb = rate(b);
+            double ra = getRate(a);
+            double rb = getRate(b);
             return Double.compare(rb, ra);
         }
     }

@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.cli;
 
+import com.codahale.metrics.JmxReporter;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
@@ -87,12 +88,15 @@ public class TrackerMain {
 
         InetSocketAddress address = new InetSocketAddress(options.valueOf(portOption));
         Tracker t = new Tracker(address);
+        JmxReporter reporter = JmxReporter.forRegistry(t.getMetricRegistry()).build();
+
         try {
             for (File file : options.valuesOf(fileOption))
                 addAnnounce(t, file, 0);
             logger.info("Starting tracker with {} announced torrents...",
                     t.getTrackedTorrents().size());
             t.start();
+            reporter.start();
         } catch (Exception e) {
             logger.error("{}", e.getMessage(), e);
             System.exit(2);

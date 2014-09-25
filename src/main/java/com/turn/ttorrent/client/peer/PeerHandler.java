@@ -893,7 +893,7 @@ public class PeerHandler implements PeerMessageListener {
         synchronized (lock) {
             buf.append(requestsSentLimit);
         }
-        buf.append(" ul/dl=").append(getULRate().rate(TimeUnit.SECONDS)).append("/").append(getDLRate().rate(TimeUnit.SECONDS));
+        buf.append(" ul/dl=").append(getULRate().getRate(TimeUnit.SECONDS)).append("/").append(getDLRate().getRate(TimeUnit.SECONDS));
         return buf.toString();
     }
 }

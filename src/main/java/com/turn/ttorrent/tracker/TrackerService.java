@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.codahale.metrics.Meter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ArrayListMultimap;
@@ -26,7 +27,6 @@ import com.turn.ttorrent.common.protocol.http.*;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
-import com.yammer.metrics.core.Meter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;

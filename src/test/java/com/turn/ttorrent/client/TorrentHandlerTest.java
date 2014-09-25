@@ -8,7 +8,6 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
-import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
@@ -24,8 +23,7 @@ public class TorrentHandlerTest {
 
     private TorrentHandler test(Torrent torrent, File parent) throws Exception {
         Client client = new Client(getClass().getSimpleName());
-        TorrentHandler torrentHandler = new TorrentHandler(client, torrent, parent);
-        client.addTorrent(torrentHandler);
+        TorrentHandler torrentHandler = client.addTorrent(torrent, parent);
         client.getEnvironment().start();
         try {
             torrentHandler.init();

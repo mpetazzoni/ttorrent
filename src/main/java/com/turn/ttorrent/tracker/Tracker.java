@@ -15,14 +15,13 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Iterables;
 import com.google.common.net.InetAddresses;
 import com.turn.ttorrent.common.Torrent;
 
 import com.turn.ttorrent.common.TorrentUtils;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Gauge;
-import com.yammer.metrics.core.MetricsRegistry;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -84,7 +83,7 @@ public class Tracker {
         private SocketAddress connectionAddress;
     }
     private final String version;
-    private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
+    private MetricRegistry metricRegistry = new MetricRegistry();
     private final ConcurrentMap<InetSocketAddress, Listener> listeners = new ConcurrentHashMap<InetSocketAddress, Listener>();
     /** The in-memory repository of torrents tracked. */
     private final ConcurrentMap<String, TrackedTorrent> torrents = new ConcurrentHashMap<String, TrackedTorrent>();
@@ -199,12 +198,12 @@ public class Tracker {
     }
 
     @Nonnull
-    public MetricsRegistry getMetricsRegistry() {
-        return metricsRegistry;
+    public MetricRegistry getMetricRegistry() {
+        return metricRegistry;
     }
 
-    public void setMetricsRegistry(@Nonnull MetricsRegistry metricsRegistry) {
-        this.metricsRegistry = metricsRegistry;
+    public void setMetricRegistry(@Nonnull MetricRegistry metricRegistry) {
+        this.metricRegistry = metricRegistry;
     }
 
     /**
@@ -216,11 +215,11 @@ public class Tracker {
 
             if (this.metrics == null) {
                 Object trackerId = Iterables.getFirst(getListenAddresses(), System.identityHashCode(this));
-                this.metrics = new TrackerMetrics(getMetricsRegistry(), trackerId);
+                this.metrics = new TrackerMetrics(getMetricRegistry(), trackerId);
 
                 metrics.addGauge("torrentCount", new Gauge<Integer>() {
                     @Override
-                    public Integer value() {
+                    public Integer getValue() {
                         return torrents.size();
                     }
                 });

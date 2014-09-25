@@ -17,7 +17,6 @@ package com.turn.ttorrent.cli;
 
 import com.turn.ttorrent.client.Client;
 
-import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.common.Torrent;
 import java.io.File;
 import java.net.Inet4Address;
@@ -139,10 +138,9 @@ public class ClientMain {
             // a STOPPED announce request.
             // Runtime.getRuntime().addShutdownHook(new Thread(new Client.ClientShutdown(c, null)));
 
-            for (Object arg : options.nonOptionArguments()) {
-                Torrent torrent = new Torrent((File) arg);
-                TorrentHandler torrentHandler = new TorrentHandler(c, torrent, options.valueOf(outputOption));
-                c.addTorrent(torrentHandler);
+            for (File file : options.valuesOf(torrentOption)) {
+                Torrent torrent = new Torrent(file);
+                c.addTorrent(torrent, options.valueOf(outputOption));
             }
 
         } catch (Exception e) {

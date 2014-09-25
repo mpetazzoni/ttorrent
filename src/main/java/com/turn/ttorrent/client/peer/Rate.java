@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.yammer.metrics.stats.EWMA;
+import com.codahale.metrics.EWMA;
 import java.util.concurrent.TimeUnit;
 import static java.lang.Math.exp;
 
@@ -38,6 +38,6 @@ public class Rate extends EWMA {
 
     @Override
     public String toString() {
-        return rate(TimeUnit.SECONDS) + "/s";
+        return getRate(TimeUnit.SECONDS) + "/s";
     }
 }

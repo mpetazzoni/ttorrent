@@ -4,15 +4,20 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
+import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.*;
 
 /**
  *
@@ -22,12 +27,13 @@ public class PeerExchangeTest {
 
     protected Torrent torrent;
     protected Client seed;
-    protected Client peer0;
-    protected Client peer1;
-    protected CountDownLatch latch = new CountDownLatch(2);
+    protected Client[] peers;
+    protected CountDownLatch latch;
 
     @Before
     public void setUp() throws Exception {
+        int npeers = 4;
+
         SEED:
         {
             File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
@@ -36,31 +42,26 @@ public class PeerExchangeTest {
             torrent = creator.create();
 
             seed = new Client("S-");
-            seed.addTorrent(new TorrentHandler(seed, torrent, dir));
+            seed.addTorrent(torrent, dir);
         }
 
-        P0:
-        {
+        peers = new Client[4];
+        latch = new CountDownLatch(peers.length);
+
+        for (int i = 0; i < peers.length; i++) {
             File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".peer0");
-            peer0 = new Client("C0-");
-            peer0.addTorrent(new TorrentHandler(seed, torrent, dir));
-            peer0.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
-        }
-
-        P1:
-        {
-            File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".peer1");
-            peer1 = new Client("C1-");
-            peer1.addTorrent(new TorrentHandler(seed, torrent, dir));
-            peer1.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
+            Client peer = new Client("C" + i + "-");
+            TorrentHandler handler = peer.addTorrent(torrent, dir);
+            peer.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
+            peers[i] = peer;
         }
     }
 
     @After
     public void tearDown() throws Exception {
         seed.stop();
-        peer0.stop();
-        peer1.stop();
+        for (Client peer : peers)
+            peer.stop();
         Thread.sleep(1000); // Wait for socket release.
     }
 
@@ -69,16 +70,40 @@ public class PeerExchangeTest {
             if (latch.await(5, TimeUnit.SECONDS))
                 break;
             seed.info(true);
-            peer0.info(true);
-            peer1.info(true);
+            for (Client peer : peers)
+                peer.info(true);
         }
+    }
+
+    private static InetSocketAddress toLocalhostAddress(@Nonnull PeerServer server) {
+        InetSocketAddress in = server.getLocalAddress();
+        return new InetSocketAddress("localhost", in.getPort());
     }
 
     @Test
     public void testPeerExchange() throws Exception {
         seed.start();
-        peer0.start();
-        peer1.start();
+        for (Client peer : peers)
+            peer.start();
+
+        byte[] torrentId = torrent.getInfoHash();
+        for (int i = 1; i < peers.length; i++) {
+            // Tell each peer about the previous one.
+            peers[i].getTorrent(torrentId).getSwarmHandler().addPeers(Arrays.asList(toLocalhostAddress(peers[i - 1].getPeerServer())));
+        }
+
+        SwarmHandler handler = peers[0].getTorrent(torrentId).getSwarmHandler();
+        for (;;) {
+            Thread.sleep(5000);
+            if (handler.getPeerCount() == peers.length)
+                break;
+            for (Client peer : peers)
+                peer.info(true);
+        }
+
+        handler.addPeers(Arrays.asList(toLocalhostAddress(seed.getPeerServer())));
         await();
+
+        Thread.sleep(1000);
     }
 }

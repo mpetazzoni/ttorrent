@@ -15,13 +15,12 @@
  */
 package com.turn.ttorrent.client;
 
+import com.codahale.metrics.MetricRegistry;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.common.TorrentUtils;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.MetricsRegistry;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.net.SocketAddress;
 import java.util.Arrays;
@@ -46,7 +45,7 @@ public class ClientEnvironment {
     private final Random random = new Random();
     private final byte[] peerId;
     private SocketAddress peerListenAddress;
-    private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
+    private MetricRegistry metricRegistry = new MetricRegistry();
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
     private Instrumentation peerInstrumentation = new Instrumentation();
@@ -84,12 +83,12 @@ public class ClientEnvironment {
     }
 
     @Nonnull
-    public MetricsRegistry getMetricsRegistry() {
-        return metricsRegistry;
+    public MetricRegistry getMetricRegistry() {
+        return metricRegistry;
     }
 
-    public void setMetricsRegistry(@Nonnull MetricsRegistry metricsRegistry) {
-        this.metricsRegistry = metricsRegistry;
+    public void setMetricRegistry(@Nonnull MetricRegistry metricRegistry) {
+        this.metricRegistry = metricRegistry;
     }
 
     public void start() throws Exception {
