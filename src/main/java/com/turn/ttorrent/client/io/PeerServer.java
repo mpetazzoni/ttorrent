@@ -55,7 +55,7 @@ public class PeerServer {
     }
 
     public PeerServer(@Nonnull Client client) {
-        this(client, null);
+        this(client, client.getEnvironment().getLocalPeerListenAddress());
     }
 
     public void start() throws Exception {

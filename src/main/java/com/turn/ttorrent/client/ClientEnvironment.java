@@ -23,6 +23,7 @@ import com.turn.ttorrent.common.TorrentUtils;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.MetricsRegistry;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +36,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 /**
+ * The ClientEnvironment is created by the Client and may be consumed by other beans.
  *
  * @author shevek
  */
@@ -43,6 +45,7 @@ public class ClientEnvironment {
     public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
     private final Random random = new Random();
     private final byte[] peerId;
+    private SocketAddress peerListenAddress;
     private MetricsRegistry metricsRegistry = Metrics.defaultRegistry();
     private ThreadPoolExecutor executorService;
     private ScheduledExecutorService schedulerService;
@@ -69,6 +72,15 @@ public class ClientEnvironment {
     @Nonnull
     public String getLocalPeerName() {
         return TorrentUtils.toText(getLocalPeerId());
+    }
+
+    @CheckForNull
+    public SocketAddress getLocalPeerListenAddress() {
+        return peerListenAddress;
+    }
+
+    public void setLocalPeerListenAddress(@CheckForNull SocketAddress peerListenAddress) {
+        this.peerListenAddress = peerListenAddress;
     }
 
     @Nonnull
