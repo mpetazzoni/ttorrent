@@ -7,9 +7,9 @@ package com.turn.ttorrent.client.io;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -17,7 +17,7 @@ import org.junit.Test;
  */
 public class PeerFrameDecoderTest {
 
-    private static final Log LOG = LogFactory.getLog(PeerFrameDecoderTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PeerFrameDecoderTest.class);
 
     @Test
     public void testDecoder() throws Exception {

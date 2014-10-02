@@ -8,9 +8,9 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.junit.Assert.*;
 
 /**
@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
  */
 public class TorrentHandlerTest {
 
-    private static final Log LOG = LogFactory.getLog(TorrentHandlerTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TorrentHandlerTest.class);
 
     private TorrentHandler test(Torrent torrent, File parent) throws Exception {
         Client client = new Client(getClass().getSimpleName());

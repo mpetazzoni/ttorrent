@@ -19,10 +19,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterators;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerExtendedMessage;
+import com.turn.ttorrent.client.io.PeerHandshakeMessage;
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -31,6 +34,7 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -87,6 +91,21 @@ public class PeerHandler implements PeerMessageListener {
     public static final int MAX_REQUESTS_RCVD = 100;
     public static final long MAX_REQUESTS_TIME = TimeUnit.SECONDS.toMillis(32);
     public static final long MIN_PEX_DELAY = TimeUnit.SECONDS.toMillis(72); // Protocol requires minimum 60.
+    private static final Map<PeerExtendedMessage.ExtendedType, Byte> DEFAULT_EXTENDED_MESSAGE_TYPE_MAP = Collections.singletonMap(PeerExtendedMessage.ExtendedType.handshake, (byte) 0);
+    private static final ChannelFutureListener CHANNEL_FUTURE_LISTENER = new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            if (!future.channel().isOpen()) // Then everything fails.
+                return;
+            if (future.channel().closeFuture().isDone())
+                return;
+            try {
+                future.get();
+            } catch (Exception e) {
+                LOG.error("Operation failed: " + e, e);
+            }
+        }
+    };
 
     private static enum Flag {
         // We decide about them:
@@ -95,8 +114,9 @@ public class PeerHandler implements PeerMessageListener {
         // They decide about us:
         CHOKING, INTERESTED;
     }
-    private final byte[] remotePeerId;
     private final Channel channel;
+    private final byte[] remotePeerId;
+    private final byte[] remoteReserved;
     private final PeerPieceProvider provider;
     private final PeerExistenceListener existenceListener;
     private final PeerConnectionListener connectionListener;
@@ -104,7 +124,7 @@ public class PeerHandler implements PeerMessageListener {
     @GuardedBy("lock")
     private final BitSet availablePieces;
     @GuardedBy("lock")
-    private Map<PeerExtendedMessage.ExtendedType, Byte> extendedMessageTypes = Collections.emptyMap();
+    private Map<PeerExtendedMessage.ExtendedType, Byte> extendedMessageTypes = DEFAULT_EXTENDED_MESSAGE_TYPE_MAP;
     // TODO: Convert to AtomicLongArray and allow some hysteresis on flag changes.
     private final AtomicLongArray flags = new AtomicLongArray(4);
     // @GuardedBy("requestsLock")
@@ -151,15 +171,17 @@ public class PeerHandler implements PeerMessageListener {
      */
     @SuppressWarnings("EI_EXPOSE_REP2")
     public PeerHandler(
-            @Nonnull byte[] remotePeerId,
             @Nonnull Channel channel,
+            @Nonnull byte[] remotePeerId,
+            @Nonnull byte[] remoteReserved,
             // Deliberately specified in terms of interfaces, for testing.
             @Nonnull PeerPieceProvider provider,
             @Nonnull PeerExistenceListener existenceListener,
             @Nonnull PeerConnectionListener connectionListener,
             @Nonnull PeerActivityListener activityListener) {
-        this.remotePeerId = remotePeerId;
         this.channel = channel;
+        this.remotePeerId = remotePeerId;
+        this.remoteReserved = remoteReserved;
         this.provider = provider;
         this.existenceListener = existenceListener;
         this.connectionListener = connectionListener;
@@ -230,9 +252,11 @@ public class PeerHandler implements PeerMessageListener {
 
     private boolean isExtendedTypeSupported(@Nonnull PeerExtendedMessage.ExtendedType extendedType) {
         if (extendedType == PeerExtendedMessage.ExtendedType.handshake)
-            return true;
+            return PeerHandshakeMessage.Feature.BEP10_EXTENSION_PROTOCOL.get(remoteReserved);
         synchronized (lock) {
-            return extendedMessageTypes.containsKey(extendedType);
+            boolean ret = extendedMessageTypes.containsKey(extendedType);
+            // LOG.info("{}: {} supports {} = {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), extendedType, ret});
+            return ret;
         }
     }
 
@@ -365,10 +389,13 @@ public class PeerHandler implements PeerMessageListener {
                 return;
             }
         }
+        // LOG.info("{}: -> {}", new Object[]{provider.getLocalPeerName(), message});
+        ChannelFuture f;
         if (flush)
-            channel.writeAndFlush(message);
+            f = channel.writeAndFlush(message);
         else
-            channel.write(message);
+            f = channel.write(message);
+        f.addListener(CHANNEL_FUTURE_LISTENER);
     }
 
     @GuardedBy("lock")
@@ -496,11 +523,14 @@ public class PeerHandler implements PeerMessageListener {
 
                 EXTENDED_HANDSHAKE:
                 {
+                    if (!isExtendedTypeSupported(PeerExtendedMessage.ExtendedType.handshake))
+                        break EXTENDED_HANDSHAKE;
                     if (!sent.contains(SendState.EXTENDED_HANDSHAKE)) {
                         if (!isWritable(c, "extended handshake"))
                             return;
                         flush = true;
-                        send(new PeerExtendedMessage.HandshakeMessage(), false);
+                        PeerExtendedMessage.HandshakeMessage message = new PeerExtendedMessage.HandshakeMessage(MAX_REQUESTS_RCVD);
+                        send(message, false);
                         sent.add(SendState.EXTENDED_HANDSHAKE);
                     }
                 }
@@ -511,14 +541,22 @@ public class PeerHandler implements PeerMessageListener {
                 {
                     if (!isExtendedTypeSupported(PeerExtendedMessage.ExtendedType.ut_pex))
                         break PEX;
-                    if (peersExchangedAt < now - MIN_PEX_DELAY)
+                    // LOG.info("{}: {} PEX supported.", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId()});
+                    if (peersExchangedAt > now - MIN_PEX_DELAY)
                         break PEX;
                     List<SocketAddress> peers = new ArrayList<SocketAddress>(existenceListener.getPeers());
+                    // LOG.info("{}: {} PEX candidates are {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
                     peers.removeAll(peersExchanged);
+                    peers.remove(getRemoteAddress());
+                    // LOG.info("{}: {} PEX candidates are now {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
+                    if (peers.isEmpty())
+                        break PEX;
                     peers = peers.subList(0, Math.min(peers.size(), 100));
-                    new PeerExtendedMessage.UtPexMessage(peers, null);
+                    // LOG.info("{}: {} PEX {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
                     peersExchanged.addAll(peers);
                     peersExchangedAt = now;
+                    flush = true;
+                    send(new PeerExtendedMessage.UtPexMessage(peers, Collections.<SocketAddress>emptyList()), false);
                 }
 
                 BitSet interesting = getAvailablePieces();
@@ -663,6 +701,7 @@ public class PeerHandler implements PeerMessageListener {
      */
     @Override
     public void handleMessage(PeerMessage msg) throws IOException {
+        // LOG.info("{}: <- {}", new Object[]{provider.getLocalPeerName(), msg});
         switch (msg.getType()) {
             case KEEP_ALIVE:
                 // Nothing to do, we're keeping the connection open anyways.
@@ -706,7 +745,7 @@ public class PeerHandler implements PeerMessageListener {
                 }
 
                 activityListener.handlePieceAvailability(this, message.getPiece());
-                // run(); // We might now be interested.
+                // run(); // We might now be interested, but we should get it in handleReadComplete.
                 break;
             }
 
@@ -723,7 +762,7 @@ public class PeerHandler implements PeerMessageListener {
 
                 // The copy from the message is independent, and thus threadsafe.
                 activityListener.handleBitfieldAvailability(this, prevAvailablePieces, message.getBitfield());
-                // run();  // We might now be interested.
+                // run(); // We might now be interested, but we should get it in handleReadComplete.
                 break;
             }
 
@@ -832,17 +871,29 @@ public class PeerHandler implements PeerMessageListener {
                 synchronized (lock) {
                     extendedMessageTypes = message.getSenderExtendedTypeMap();
                 }
+                Map<SocketAddress, byte[]> remoteAddresses = new HashMap<SocketAddress, byte[]>();
+                SocketAddress remoteIp4Address = message.getSenderIp4Address();
+                if (remoteIp4Address != null)
+                    remoteAddresses.put(remoteIp4Address, getRemotePeerId());
+                SocketAddress remoteIp6Address = message.getSenderIp6Address();
+                if (remoteIp6Address != null)
+                    remoteAddresses.put(remoteIp6Address, getRemotePeerId());
+                existenceListener.addPeers(remoteAddresses);
                 break;
             }
             case ut_pex: {
                 PeerExtendedMessage.UtPexMessage message = (PeerExtendedMessage.UtPexMessage) msg;
                 List<? extends SocketAddress> added = message.getAdded();
-                if (added != null) {
+                if (added != null && !added.isEmpty()) {
                     synchronized (lock) {
                         // The remote peer already knows about these.
                         peersExchanged.addAll(added);
                     }
-                    existenceListener.addPeers(added);
+                    Map<SocketAddress, byte[]> peers = new HashMap<SocketAddress, byte[]>();
+                    for (SocketAddress peer : added)
+                        peers.put(peer, null);
+                    // LOG.info("PEX adding peers " + peers);
+                    existenceListener.addPeers(peers);
                 }
                 break;
             }

@@ -50,7 +50,7 @@ dependencies {
 	compile 'io.netty:netty-all:4.0.23.Final'
 	compile 'com.google.guava:guava:18.0'
 	compile 'net.sf.jopt-simple:jopt-simple:4.7'
-	compile 'com.codahale.metrics:metrics-core:3.0.2'
+	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 
 	testCompile 'junit:junit:4.11'
 	testCompile 'org.easymock:easymock:3.2'

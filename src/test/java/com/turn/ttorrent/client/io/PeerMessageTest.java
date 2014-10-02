@@ -9,9 +9,9 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.logging.LoggingHandler;
 import java.util.BitSet;
 import javax.annotation.Nonnull;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.junit.Assert.*;
 
 /**
@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
  */
 public class PeerMessageTest {
 
-    private static final Log LOG = LogFactory.getLog(PeerMessageTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PeerMessageTest.class);
 
     public static class Formatter extends LoggingHandler {
 

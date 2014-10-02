@@ -16,7 +16,6 @@
 package com.turn.ttorrent.common.protocol.http;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.Collections2;
 import com.google.common.net.InetAddresses;
 import com.turn.ttorrent.bcodec.BEUtils;
 import com.turn.ttorrent.bcodec.BEValue;
@@ -28,7 +27,6 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -95,11 +93,6 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
     @Override
     public Collection<? extends Peer> getPeers() {
         return peers;
-    }
-
-    @Override
-    public Collection<? extends SocketAddress> getPeerAddresses() {
-        return Collections2.transform(getPeers(), PEERADDRESS);
     }
 
     @Nonnull

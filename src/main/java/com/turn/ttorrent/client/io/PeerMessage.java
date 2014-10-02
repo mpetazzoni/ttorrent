@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
+import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,6 +27,8 @@ import java.util.BitSet;
 import java.util.Map;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * BitTorrent peer protocol messages representations.
@@ -42,6 +45,7 @@ import javax.annotation.Nonnull;
  */
 public abstract class PeerMessage {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PeerMessage.class);
     /** The size, in bytes, of the length field in a message (one 32-bit
      * integer). */
     public static final int MESSAGE_LENGTH_FIELD_SIZE = 4;
@@ -309,6 +313,8 @@ public abstract class PeerMessage {
             for (int i = 0; i < bytes.length; i++)
                 bytes[i] = reverse(bytes[i]);
             out.writeBytes(bytes);
+            // TODO: Extend this byte array to the required length.
+            // out.writeBytes(new byte[torrent.getPieceCount() / 8 - bytes.length]);
         }
 
         @Override
@@ -478,6 +484,11 @@ public abstract class PeerMessage {
         public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
             super.toWire(out, extendedTypes);
             out.writeBytes(block);
+        }
+
+        @Override
+        public String toString() {
+            return super.toString() + " " + TorrentUtils.toString(block, 16);
         }
     }
 

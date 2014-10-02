@@ -33,7 +33,7 @@ public interface PeerConnectionListener extends EventListener {
     public void handlePeerConnectionFailed(@Nonnull SocketAddress address, @CheckForNull Throwable cause);
 
     @CheckForNull
-    public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] peerId);
+    public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] peerId, @Nonnull byte[] remoteReserved);
 
     public void handlePeerConnectionReady(@Nonnull PeerHandler peer);
 

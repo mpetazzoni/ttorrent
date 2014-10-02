@@ -15,11 +15,8 @@
  */
 package com.turn.ttorrent.common.protocol;
 
-import com.google.common.base.Function;
 import com.turn.ttorrent.common.Peer;
 
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.Collection;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnegative;
@@ -159,13 +156,6 @@ public abstract class TrackerMessage {
      */
     public interface AnnounceResponseMessage {
 
-        public static final Function<Peer, SocketAddress> PEERADDRESS = new Function<Peer, SocketAddress>() {
-            @Override
-            public SocketAddress apply(Peer input) {
-                return input.getAddress();
-            }
-        };
-
         @Nonnegative
         public int getInterval();
 
@@ -177,9 +167,6 @@ public abstract class TrackerMessage {
 
         @Nonnull
         public Collection<? extends Peer> getPeers();
-
-        @Nonnull
-        public Collection<? extends SocketAddress> getPeerAddresses();
     };
 
     /**

@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.tracker;
 import com.google.common.collect.Iterables;
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
+import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.InetSocketAddressComparator;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -27,9 +28,10 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
@@ -143,9 +145,12 @@ public abstract class TrackerClient {
                 response.getComplete(),
                 response.getIncomplete(),
                 TimeUnit.SECONDS.toMillis(response.getInterval()));
+        Map<SocketAddress, byte[]> peers = new HashMap<SocketAddress, byte[]>();
+        for (Peer peer : response.getPeers())
+            peers.put(peer.getAddress(), peer.getPeerId());
         fireDiscoveredPeersEvent(Arrays.asList(listener),
                 tracker,
-                response.getPeerAddresses());
+                peers);
     }
 
     /**
@@ -172,9 +177,9 @@ public abstract class TrackerClient {
     protected static void fireDiscoveredPeersEvent(
             @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
             @Nonnull URI tracker,
-            @Nonnull Collection<? extends SocketAddress> peerAddresses) {
+            @Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
         for (AnnounceResponseListener listener : listeners) {
-            listener.handleDiscoveredPeers(tracker, peerAddresses);
+            listener.handleDiscoveredPeers(tracker, peers);
         }
     }
 }

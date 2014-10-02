@@ -107,7 +107,7 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
             boolean valid = provider.validateBlock(ByteBuffer.wrap(pieceData), piece);
             if (!valid) {
-                LOG.warn("Piece {} complete, but invalid. Not saving.", piece);
+                // LOG.warn("{}: Piece {} complete, but invalid. Not saving.", new Object[]{provider.getLocalPeerName(), piece});
                 this.pieceRequiredBytes.set(0, pieceData.length);
                 return Reception.INVALID;
             }
@@ -167,7 +167,7 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
             if (!getClass().equals(obj.getClass()))
                 return false;
             AnswerableRequestMessage other = (AnswerableRequestMessage) obj;
-            return getPieceHandler()== other.getPieceHandler()
+            return getPieceHandler() == other.getPieceHandler()
                     && getOffset() == other.getOffset()
                     && getLength() == other.getLength();
         }

@@ -64,7 +64,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     protected void addPeer(@Nonnull ChannelHandlerContext ctx, @Nonnull PeerHandshakeMessage message,
             @Nonnull PeerConnectionListener listener) {
         Channel channel = ctx.channel();
-        PeerHandler peer = listener.handlePeerConnectionCreated(channel, message.getPeerId());
+        PeerHandler peer = listener.handlePeerConnectionCreated(channel, message.getPeerId(), message.getReserved());
         if (peer == null) {
             ctx.close();
             return;

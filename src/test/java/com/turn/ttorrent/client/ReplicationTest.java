@@ -4,6 +4,9 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.test.TorrentTestUtils;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
@@ -26,9 +29,11 @@ public class ReplicationTest extends AbstractReplicationTest {
 
         CountDownLatch latch = new CountDownLatch(nclients);
 
+        List<Client> clients = new ArrayList<Client>();
         for (int i = 0; i < nclients; i++) {
             Client c = leech(latch, i);
             c.start();
+            clients.add(c);
         }
 
         if (seed_delay > 0) {
@@ -37,6 +42,9 @@ public class ReplicationTest extends AbstractReplicationTest {
         }
 
         await(latch);
+
+        for (Client peer : clients)
+            TorrentTestUtils.assertTorrentData(seed, peer, torrent.getInfoHash());
     }
 
     @Test

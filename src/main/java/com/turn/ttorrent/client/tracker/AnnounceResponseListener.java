@@ -15,12 +15,11 @@
  */
 package com.turn.ttorrent.client.tracker;
 
-
 import java.net.SocketAddress;
 
 import java.net.URI;
-import java.util.Collection;
 import java.util.EventListener;
+import java.util.Map;
 import javax.annotation.Nonnull;
 
 /**
@@ -47,5 +46,5 @@ public interface AnnounceResponseListener extends EventListener {
      * @param peers The list of peers discovered (from the announce response or
      * any other means like DHT/PEX, etc.).
      */
-    public void handleDiscoveredPeers(@Nonnull URI tracker, @Nonnull Collection<? extends SocketAddress> peerAddresses);
+    public void handleDiscoveredPeers(@Nonnull URI tracker, @Nonnull Map<? extends SocketAddress, ? extends byte[]> peers);
 }

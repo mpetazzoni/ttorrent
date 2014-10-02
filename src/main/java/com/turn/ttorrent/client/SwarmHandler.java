@@ -15,6 +15,8 @@
  */
 package com.turn.ttorrent.client;
 
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
@@ -32,6 +34,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -196,11 +199,17 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
 
     @Override
     public Set<? extends SocketAddress> getPeers() {
-        return knownPeers.keySet();
+        Set<SocketAddress> peers = Sets.newHashSet(knownPeers.keySet());
+        try {
+            Iterables.addAll(peers, getClient().getPeerServer().getLocalAddresses());
+        } catch (SocketException e) {
+            LOG.warn("Failed to get local addresses", e);
+        }
+        return peers;
     }
 
-    @Nonnull
-    private PeerInformation addPeer(@Nonnull SocketAddress peerAddress, long now) {
+    // @Nonnull
+    private void addPeer(@Nonnull SocketAddress peerAddress, @CheckForNull byte[] peerId, long now) {
         PeerInformation peerInformation = new PeerInformation();
         peerInformation.setReconnectTime(getRandom(), now);
         PUT:
@@ -209,17 +218,31 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             if (tmp != null)
                 peerInformation = tmp;
         }
+        if (peerId != null)
+            peerInformation.remotePeerId = peerId;
         // TODO: Update stats about 'reported', 'connected', etc.
-        return peerInformation;
+        // return peerInformation;
     }
 
     @Override
-    public void addPeers(@Nonnull Iterable<? extends SocketAddress> peerAddresses) {
+    public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
         if (LOG.isTraceEnabled())
-            LOG.trace("{}: Adding peers {}", getLocalPeerName(), peerAddresses);
+            LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
+        Set<? extends SocketAddress> localAddresses;
+        try {
+            localAddresses = Sets.newHashSet(getClient().getPeerServer().getLocalAddresses());
+        } catch (SocketException e) {
+            localAddresses = Collections.emptySet();
+        }
         long now = System.currentTimeMillis();
-        for (SocketAddress peerAddress : peerAddresses) {
-            addPeer(peerAddress, now);
+        for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : peers.entrySet()) {
+            SocketAddress remoteAddress = e.getKey();
+            if (localAddresses.contains(remoteAddress)) {
+                // TODO: Probably ignore silently as it's bound to happen and it's not actionable.
+                LOG.warn("Attempted to add local address " + remoteAddress + " to known peer set.");
+                continue;
+            }
+            addPeer(remoteAddress, e.getValue(), now);
         }
         // run();
     }
@@ -384,8 +407,8 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             //     something).
             for (Map.Entry<SocketAddress, PeerInformation> e : knownPeers.entrySet()) {
                 PeerInformation peerInformation = e.getValue();
-                if (LOG.isDebugEnabled())
-                    LOG.debug("{}: At {}, considering {} -> {}", new Object[]{
+                if (LOG.isTraceEnabled())
+                    LOG.trace("{}: At {}, considering {} -> {}", new Object[]{
                         getLocalPeerName(), now,
                         e.getKey(), peerInformation
                     });
@@ -486,6 +509,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
 
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Running unchokePeers() on {} connected peers.", getLocalPeerName(), candidates.size());
+        // Collections.shuffle(candidates);    // Make the sort unstable, so if we have no downloaders, we select at random.
         Collections.sort(candidates, getPeerRateComparator());
         // LOG.info("{}: Candidates are {}", getLocalPeerName(), candidates);
 
@@ -493,7 +517,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         // We're interested in the top downloaders first, so use a descending set.
         int i = 0;
         for (/* */; i < candidates.size(); i++) {
-            if (downloaders++ >= MAX_DOWNLOADERS_UNCHOKE)
+            if (++downloaders > MAX_DOWNLOADERS_UNCHOKE)
                 break;
             PeerHandler peer = candidates.get(i);
             peer.unchoke();
@@ -676,6 +700,9 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
 
             requestedPieces.set(rarestIndex);
 
+            // TODO: We don't keep track of these, so it is possible to have more than one
+            // PieceHandler for a given piece. We make some attempt with rejected or timed out
+            // requests, but it isn't great.
             return new PieceHandler(this, rarestIndex);
         }
     }
@@ -694,25 +721,27 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         return count;
     }
 
-    private void ioBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset) throws IOException {
+    private void ioBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset, boolean completed) throws IOException {
         int rawLength = torrent.getTorrent().getPieceLength(piece);
         if (offset + block.remaining() > rawLength)
             throw new IllegalArgumentException("Offset "
                     + offset + "+" + block.remaining()
                     + " too large for piece " + piece
                     + " of length " + rawLength);
+        if (completed && !isCompletedPiece(piece))
+            throw new IllegalArgumentException("Attempt to read piece " + piece + " which is not complete.");
     }
 
     @Override
     public void readBlock(ByteBuffer block, int piece, int offset) throws IOException {
-        ioBlock(block, piece, offset);
+        ioBlock(block, piece, offset, true);
         long rawOffset = torrent.getTorrent().getPieceOffset(piece) + offset;
         torrent.getBucket().read(block, rawOffset);
     }
 
     @Override
     public void writeBlock(ByteBuffer block, int piece, int offset) throws IOException {
-        ioBlock(block, piece, offset);
+        ioBlock(block, piece, offset, false);
         long rawOffset = torrent.getTorrent().getPieceOffset(piece) + offset;
         torrent.getBucket().write(block, rawOffset);
     }
@@ -737,7 +766,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
      * @CheckForNull on {@link Peer#getPeerId()}.
      */
     @Override
-    public PeerHandler handlePeerConnectionCreated(@Nonnull Channel channel, @Nonnull byte[] remotePeerId) {
+    public PeerHandler handlePeerConnectionCreated(Channel channel, byte[] remotePeerId, byte[] remoteReserved) {
         SocketAddress remoteAddress = channel.remoteAddress();
         String remoteHexPeerId = TorrentUtils.toHex(remotePeerId);
 
@@ -750,8 +779,13 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
         // Peer peer = new Peer(remoteAddress, remotePeerId);
         // LOG.trace("Searching for address {}, peerId {}...", remoteAddress, TorrentUtils.toHex(remotePeerId));
 
-        PeerInformation peerInformation = addPeer(remoteAddress, System.currentTimeMillis());
-        peerInformation.remotePeerId = remotePeerId;
+        // This is almost always an ephemeral outgoing port so don't add it here.
+        // If the peer supports PeerExtendedMessage.HandshakeMessage, we will get its id then.
+        // addPeer(remoteAddress, remotePeerId, System.currentTimeMillis());
+        PeerInformation peerInformation = knownPeers.get(remoteAddress);
+        if (peerInformation != null)
+            peerInformation.remotePeerId = remotePeerId;
+
 
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
@@ -762,7 +796,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             return null;
         }
 
-        peerHandler = new PeerHandler(remotePeerId, channel, this, this, this, this);
+        peerHandler = new PeerHandler(channel, remotePeerId, remoteReserved, this, this, this, this);
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Created new peer: {}.", getLocalPeerName(), peerHandler);
 
@@ -1142,8 +1176,18 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             }
         }
 
+        if (reception == PieceHandler.Reception.VALID) {
+            // Make sure the piece is marked as completed in the torrent
+            // Note: this is required because the order the
+            // PeerActivityListeners are called is not defined, and we
+            // might be called before the torrent's piece completion
+            // handler is.
+            // Do this before we print the log message, else the counts are misleading.
+            torrent.setCompletedPiece(piece);
+        }
+
         if (LOG.isTraceEnabled())
-            LOG.trace("{}: Completed download of {} from {} ({}). We now have {}/{} pieces and {} outstanding requests: {}",
+            LOG.trace("{}: Completed download of piece {} from {} ({}). We now have {}/{} pieces and {} outstanding requests: {}",
                     new Object[]{
                 getLocalPeerName(),
                 piece, peer, reception,
@@ -1154,20 +1198,15 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             });
 
         if (reception == PieceHandler.Reception.VALID) {
-            // Make sure the piece is marked as completed in the torrent
-            // Note: this is required because the order the
-            // PeerActivityListeners are called is not defined, and we
-            // might be called before the torrent's piece completion
-            // handler is.
-            torrent.setCompletedPiece(piece);
-
             // Send a HAVE message to all connected peers
             PeerMessage have = new PeerMessage.HaveMessage(piece);
             for (PeerHandler remote : getConnectedPeers())
                 remote.send(have, true);
         } else {
-            LOG.warn("Downloaded piece#{} from {} was not valid ;-(",
-                    piece, peer);
+            LOG.warn("{}, Downloaded piece#{} from {} was not valid: {} ;-(", new Object[]{
+                getLocalPeerName(),
+                piece, peer, reception
+            });
         }
 
         if (torrent.isComplete()) {

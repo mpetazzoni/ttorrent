@@ -9,9 +9,9 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 // import static org.junit.Assert.*;
 
 /**
@@ -20,7 +20,7 @@ import org.junit.Test;
  */
 public class InetAddressComparatorTest {
 
-    private static final Log LOG = LogFactory.getLog(InetAddressComparatorTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(InetAddressComparatorTest.class);
 
     @Test
     public void testComparator() {

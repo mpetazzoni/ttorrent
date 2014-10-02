@@ -17,20 +17,22 @@ package com.turn.ttorrent.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.peer.PeerExistenceListener;
 import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
 import com.turn.ttorrent.client.tracker.TrackerClient;
 
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -124,10 +126,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param torrent The torrent we're announcing about.
      * @param peer Our peer specification.
      */
-    public TrackerHandler(Client client, TorrentMetadataProvider torrent, PeerExistenceListener existenceListener) {
-        this.client = client;
-        this.torrent = torrent;
-        this.existenceListener = existenceListener;
+    public TrackerHandler(@Nonnull Client client, @Nonnull TorrentMetadataProvider torrent, @Nonnull PeerExistenceListener existenceListener) {
+        this.client = Preconditions.checkNotNull(client, "Client was null.");
+        this.torrent = Preconditions.checkNotNull(torrent, "TorrentMetadataProvider was null.");
+        this.existenceListener = Preconditions.checkNotNull(existenceListener, "PeerExistenceListener was null.");
     }
 
     @Nonnull
@@ -136,8 +138,18 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
 
     @Nonnull
+    private String getLocalPeerName() {
+        return getClient().getEnvironment().getLocalPeerName();
+    }
+
+    @Nonnull
     private ScheduledExecutorService getSchedulerService() {
         return getClient().getEnvironment().getSchedulerService();
+    }
+
+    @Nonnull
+    private String getTorrentName() {
+        return TorrentUtils.toHex(torrent.getInfoHash());
     }
 
     /**
@@ -174,7 +186,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 if (tracker.uri.equals(uri))
                     return tracker;
         }
-        LOG.warn("No tracker for {}: available are {}", uri, trackers);
+        LOG.warn("{}.{}: No tracker for {}: available are {}", new Object[]{
+            getLocalPeerName(), getTorrentName(),
+            uri, trackers
+        });
         return null;
     }
 
@@ -183,7 +198,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * 
      * Returns null if no trackers are available for this torrent.
      */
-    @CheckForNull
+    @Nonnull
     @VisibleForTesting
     /* pp */ TrackerState getCurrentTracker() {
         synchronized (lock) {
@@ -232,8 +247,9 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 trackerIndex = 0;
             next = getCurrentTracker();
         }
-        LOG.info("Moved tracker: {} -> {}: {}",
+        LOG.info("{}.{}: Moved tracker: {} -> {}: {}",
                 new Object[]{
+            getLocalPeerName(), getTorrentName(),
             prev, next, reason
         });
         if (LOG.isDebugEnabled())
@@ -244,31 +260,48 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     /********** Event drivers *****/
     public void start() {
         if (LOG.isDebugEnabled())
-            LOG.debug("Starting TrackerHandler for {}", torrent);
+            LOG.debug("{}.{}: Starting TrackerHandler for {}", new Object[]{
+                getLocalPeerName(), getTorrentName(),
+                torrent
+            });
         synchronized (lock) {
 
             int tier = 0;
             for (List<? extends URI> announceTier : torrent.getAnnounceList()) {
                 if (LOG.isTraceEnabled())
-                    LOG.trace("Loading tier {}", announceTier);
+                    LOG.trace("{}.{}: Loading tier {}", new Object[]{
+                        getLocalPeerName(), getTorrentName(),
+                        announceTier
+                    });
                 for (URI announceUri : announceTier) {
                     if (LOG.isTraceEnabled())
-                        LOG.trace("Loading client for {}", announceUri);
+                        LOG.trace("{}.{}: Loading client for {}", new Object[]{
+                            getLocalPeerName(), getTorrentName(),
+                            announceUri
+                        });
                     if (getTrackerClient(announceUri) != null) {
                         trackers.add(new TrackerState(announceUri, tier));
                     } else {
-                        LOG.warn("No tracker client available for {}.", announceUri);
+                        LOG.warn("{}.{}: No tracker client available for {}.", new Object[]{
+                            getLocalPeerName(), getTorrentName(),
+                            announceUri
+                        });
                     }
                 }
                 tier++;
             }
 
-            LOG.info("Initialized announce sub-system with {} trackers on {}.",
-                    new Object[]{trackers.size(), torrent});
+            LOG.info("{}.{}: Initialized announce sub-system with {} trackers on {}.", new Object[]{
+                getLocalPeerName(), getTorrentName(),
+                trackers.size(), torrent
+            });
 
             event = TrackerMessage.AnnounceEvent.STARTED;
             if (LOG.isDebugEnabled())
-                LOG.debug("Started TrackerHandler {}", this);
+                LOG.debug("{}.{}: Started TrackerHandler {}", new Object[]{
+                    getLocalPeerName(), getTorrentName(),
+                    this
+                });
             run();
         }
     }
@@ -281,7 +314,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
 
     public void stop() {
-        LOG.info("Stopping TrackerHandler for {}", torrent);
+        LOG.info("{}.{}: Stopping TrackerHandler for {}", new Object[]{
+            getLocalPeerName(), getTorrentName(),
+            torrent
+        });
         synchronized (lock) {
             event = TrackerMessage.AnnounceEvent.STOPPED;
             if (future != null)
@@ -302,7 +338,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 long delta = actualDelay - requestedDelay;
                 // Don't reschedule if it's "soon".
                 if (LOG.isTraceEnabled())
-                    LOG.trace("Reschedule: requested={}, actual={}, delta={}", new Object[]{
+                    LOG.trace("{}.{}: Reschedule: requested={}, actual={}, delta={}", new Object[]{
+                        getLocalPeerName(), getTorrentName(),
                         requestedDelay, actualDelay, delta
                     });
                 if (actualDelay > 0)
@@ -347,7 +384,10 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 tracker.lastSend = System.currentTimeMillis();
             }
         } catch (Exception e) {
-            LOG.error("Failed to announce to " + tracker, e);
+            LOG.error("{}.{}: Failed to announce to {}", new Object[]{
+                getLocalPeerName(), getTorrentName(),
+                tracker
+            }, e);
             moveToNextTracker(tracker, "Announce threw " + e);
         } finally {
             reschedule(tracker.getRescheduleDelay());
@@ -395,7 +435,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * any other means like DHT/PEX, etc.).
      */
     @Override
-    public void handleDiscoveredPeers(URI uri, Collection<? extends SocketAddress> peerAddresses) {
+    public void handleDiscoveredPeers(URI uri, Map<? extends SocketAddress, ? extends byte[]> peers) {
         synchronized (lock) {
             TrackerState tracker = getTracker(uri);
             if (tracker == null)
@@ -406,7 +446,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         // LOG.trace("Got {} peer(s) in tracker response.", peerAddresses.size());
         // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
 
-        existenceListener.addPeers(peerAddresses);
+        existenceListener.addPeers(peers);
         // torrent.getSwarmHandler().addPeers(peerAddresses);
     }
 

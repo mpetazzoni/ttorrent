@@ -13,6 +13,7 @@ import javax.annotation.CheckForNull;
  */
 public class BEUtils {
 
+    @CheckForNull
     public static String getString(@CheckForNull BEValue value)
             throws InvalidBEncodingException {
         if (value == null)

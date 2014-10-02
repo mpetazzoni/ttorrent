@@ -61,6 +61,7 @@ public class PeerMessageHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        // TODO: Pass this to the application: An incoming message threw an exception.
         super.exceptionCaught(ctx, cause);
     }
 }

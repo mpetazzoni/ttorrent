@@ -31,8 +31,8 @@ import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.OverridingMethodsMustInvokeSuper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -40,7 +40,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public abstract class PeerExtendedMessage extends PeerMessage {
 
-    private static final Log LOG = LogFactory.getLog(PeerExtendedMessage.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PeerExtendedMessage.class);
 
     public static enum ExtendedType {
 
@@ -62,6 +62,8 @@ public abstract class PeerExtendedMessage extends PeerMessage {
     public void toWire(ByteBuf out, Map<? extends ExtendedType, ? extends Byte> extendedTypes) throws IOException {
         super.toWire(out, extendedTypes);
         Byte remoteType = extendedTypes.get(getExtendedType());
+        if (remoteType == null)
+            throw new NullPointerException("Unsupported extension " + getExtendedType() + "; remote supports " + extendedTypes);
         out.writeByte(remoteType);
     }
 
@@ -82,13 +84,17 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         private int senderRequestQueueLength;
         private byte[] receiverIp;
 
+        /** Constructed for remote, received at local. */
+        public HandshakeMessage() {
+            senderExtendedTypeMap.put(ExtendedType.handshake, (byte) 0);
+        }
+
+        /** Constructed for local, transmitted to remote. */
         public HandshakeMessage(int senderRequestQueueLength) {
+            this();
             this.senderRequestQueueLength = senderRequestQueueLength;
             for (ExtendedType type : ExtendedType.values())
                 senderExtendedTypeMap.put(type, (byte) type.ordinal());
-        }
-
-        public HandshakeMessage() {
         }
 
         @Override
@@ -118,6 +124,7 @@ public abstract class PeerExtendedMessage extends PeerMessage {
             return toSocketAddress(senderIp6);
         }
 
+        @CheckForNull
         public String getSenderVersion() {
             return senderVersion;
         }
@@ -162,7 +169,8 @@ public abstract class PeerExtendedMessage extends PeerMessage {
                 // This is always our data set, so we could just use ordinal(), but let's not cheat; it always bites us later.
                 for (Map.Entry<ExtendedType, Byte> e : senderExtendedTypeMap.entrySet())
                     types.put(e.getKey().name(), new BEValue(e.getValue().byteValue() & 0xFF));
-                types.put(ExtendedType.handshake.name(), new BEValue(0));
+                for (ExtendedType extendedType : ExtendedType.values())
+                    types.put(extendedType.name(), new BEValue(extendedType.ordinal()));
                 payload.put(K_MESSAGE_TYPES, new BEValue(types));
             }
             if (senderIp4 != null)
@@ -179,6 +187,11 @@ public abstract class PeerExtendedMessage extends PeerMessage {
                 payload.put(K_RECEIVER_IP, new BEValue(receiverIp));
             encoder.bencode(payload);
         }
+
+        @Override
+        public String toString() {
+            return super.toString() + " " + getSenderExtendedTypeMap();
+        }
     }
 
     public static class UtPexMessage extends PeerExtendedMessage {
@@ -189,8 +202,8 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         public static final String ADDED6_F = "added6.f";
         public static final String DROPPED = "dropped";
         public static final String DROPPED6 = "dropped6";
-        private List<SocketAddress> added;
-        private List<SocketAddress> dropped;
+        private final List<SocketAddress> added;
+        private final List<SocketAddress> dropped;
 
         public UtPexMessage() {
             this.added = new ArrayList<SocketAddress>();
@@ -217,7 +230,7 @@ public abstract class PeerExtendedMessage extends PeerMessage {
                 return;
             byte[] value = new byte[size];
             int ptr = 0;
-            while (ptr < (in.length - size - 2)) {
+            while (ptr <= (in.length - size - 2)) {
                 System.arraycopy(in, ptr, value, 0, size);
                 InetAddress address = InetAddress.getByAddress(value);
                 int port = Ints.fromBytes((byte) 0, (byte) 0, in[ptr + size], in[ptr + size + 1]);
@@ -313,5 +326,15 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         public ExtendedType getExtendedType() {
             return ExtendedType.ut_pex;
         }
+
+        @Override
+        public String toString() {
+            return super.toString() + "; added=" + getAdded() + "; dropped=" + getDropped();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + "." + getExtendedType().name();
     }
 }

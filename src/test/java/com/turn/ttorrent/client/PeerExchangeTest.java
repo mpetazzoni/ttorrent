@@ -4,20 +4,25 @@
  */
 package com.turn.ttorrent.client;
 
+import com.google.common.io.Files;
 import com.turn.ttorrent.client.io.PeerServer;
+import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
+import java.net.SocketAddress;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -25,6 +30,7 @@ import static org.junit.Assert.*;
  */
 public class PeerExchangeTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PeerExchangeTest.class);
     protected Torrent torrent;
     protected Client seed;
     protected Client[] peers;
@@ -32,8 +38,6 @@ public class PeerExchangeTest {
 
     @Before
     public void setUp() throws Exception {
-        int npeers = 4;
-
         SEED:
         {
             File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
@@ -45,12 +49,15 @@ public class PeerExchangeTest {
             seed.addTorrent(torrent, dir);
         }
 
-        peers = new Client[4];
+        peers = new Client[8];
         latch = new CountDownLatch(peers.length);
 
         for (int i = 0; i < peers.length; i++) {
-            File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".peer0");
+            File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".peer" + i);
             Client peer = new Client("C" + i + "-");
+            // This lets PeerServer.getPeerAddresses() return an explicit localhost
+            // which would otherwise be ignored as "local" while walking NetworkInterfaces.
+            // peer.getEnvironment().setLocalPeerListenAddress(new InetSocketAddress("localhost", 6882 + i));
             TorrentHandler handler = peer.addTorrent(torrent, dir);
             peer.addClientListener(new ReplicationCompletionListener(latch, TorrentHandler.State.SEEDING));
             peers[i] = peer;
@@ -75,35 +82,47 @@ public class PeerExchangeTest {
         }
     }
 
+    @Nonnull
     private static InetSocketAddress toLocalhostAddress(@Nonnull PeerServer server) {
         InetSocketAddress in = server.getLocalAddress();
         return new InetSocketAddress("localhost", in.getPort());
     }
 
+    private static void tellLeftAboutRight(Client left, Client right, byte[] torrentId) {
+        SocketAddress peerAddress = toLocalhostAddress(right.getPeerServer());
+        Map<SocketAddress, byte[]> peers = Collections.singletonMap(peerAddress, null);
+        left.getTorrent(torrentId).getSwarmHandler().addPeers(Collections.singletonMap(peerAddress, (byte[]) null));
+    }
+
     @Test
     public void testPeerExchange() throws Exception {
-        seed.start();
         for (Client peer : peers)
             peer.start();
 
         byte[] torrentId = torrent.getInfoHash();
         for (int i = 1; i < peers.length; i++) {
             // Tell each peer about the previous one.
-            peers[i].getTorrent(torrentId).getSwarmHandler().addPeers(Arrays.asList(toLocalhostAddress(peers[i - 1].getPeerServer())));
+            tellLeftAboutRight(peers[i], peers[i - 1], torrentId);
         }
 
-        SwarmHandler handler = peers[0].getTorrent(torrentId).getSwarmHandler();
-        for (;;) {
-            Thread.sleep(5000);
-            if (handler.getPeerCount() == peers.length)
-                break;
-            for (Client peer : peers)
-                peer.info(true);
+        PEX:
+        {
+            SwarmHandler handler = peers[0].getTorrent(torrentId).getSwarmHandler();
+            for (;;) {
+                if (handler.getPeerCount() >= peers.length - 1) // It should know everyone but itself.
+                    break;
+                for (Client peer : peers)
+                    peer.info(true);
+                Thread.sleep(5000);
+            }
+            LOG.info("All peers exchanged!");
         }
 
-        handler.addPeers(Arrays.asList(toLocalhostAddress(seed.getPeerServer())));
+        seed.start();
+        tellLeftAboutRight(peers[0], seed, torrentId);
         await();
 
-        Thread.sleep(1000);
+        for (Client peer : peers)
+            TorrentTestUtils.assertTorrentData(seed, peer, torrentId);
     }
 }

@@ -5,18 +5,17 @@
 package com.turn.ttorrent.common;
 
 import com.google.common.base.Function;
-import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
+import java.net.SocketAddress;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Iterator;
 import java.util.List;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -83,6 +82,14 @@ public class TorrentUtils {
     }
 
     @Nonnull
+    public static String toString(@Nonnull ByteBuffer buf, int len) {
+        byte[] b = new byte[Math.min(buf.remaining(), len)];
+        for (int i = 0; i < b.length; i++)
+            b[i] = buf.get(buf.position() + i);
+        return "[" + Arrays.toString(b) + "...(" + buf.remaining() + " bytes)]";
+    }
+
+    @Nonnull
     public static Iterable<? extends InetAddress> getSpecificAddresses(@Nonnull InetAddress in) throws SocketException {
         if (!in.isAnyLocalAddress())
             return Collections.singleton(in);
@@ -101,6 +108,8 @@ public class TorrentUtils {
                 out.add(ifaddr);
             }
         }
+        if (out.isEmpty())
+            out.add(InetAddress.getLoopbackAddress());
         return out;
     }
 
@@ -112,5 +121,24 @@ public class TorrentUtils {
                 return new InetSocketAddress(input, in.getPort());
             }
         });
+    }
+
+    @Deprecated // Not happy with this yet.
+    public static boolean isLegalPeerAddress(@CheckForNull SocketAddress socketAddress) {
+        if (socketAddress == null)
+            return false;
+        if (socketAddress instanceof InetSocketAddress) {
+            InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
+            InetAddress inetAddress = inetSocketAddress.getAddress();
+            if (inetAddress == null)
+                return false;
+            if (inetAddress.isAnyLocalAddress())
+                return false;
+            if (inetAddress.isLoopbackAddress())
+                return false;
+            if (inetAddress.isMulticastAddress())
+                return false;
+        }
+        return true;
     }
 }

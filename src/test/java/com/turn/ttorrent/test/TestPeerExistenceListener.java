@@ -10,9 +10,10 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -20,7 +21,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public class TestPeerExistenceListener implements PeerExistenceListener {
 
-    private static final Log LOG = LogFactory.getLog(TestPeerExistenceListener.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TestPeerExistenceListener.class);
     private final Set<SocketAddress> addresses = new HashSet<SocketAddress>();
 
     @Override
@@ -31,10 +32,10 @@ public class TestPeerExistenceListener implements PeerExistenceListener {
     }
 
     @Override
-    public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
-        LOG.info("Added " + peerAddresses);
+    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers) {
+        LOG.info("Added " + peers);
         synchronized (addresses) {
-            Iterables.addAll(addresses, peerAddresses);
+            Iterables.addAll(addresses, peers.keySet());
         }
     }
 }

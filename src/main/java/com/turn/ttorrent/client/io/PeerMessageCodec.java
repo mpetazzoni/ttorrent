@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerMessageCodec.class);
-
     private final PeerMessageListener listener;
 
     public PeerMessageCodec(@Nonnull PeerMessageListener listener) {
@@ -79,7 +78,7 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
                 message = new PeerMessage.CancelMessage();
                 break;
             case 20:
-                byte extendedType = buf.readByte();
+                byte extendedType = buf.readByte(); // Throws on short packet. This is normal.
                 switch (extendedType) {
                     case 0:
                         message = new PeerExtendedMessage.HandshakeMessage();
@@ -90,6 +89,7 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
                     default:
                         throw new IOException("Unknown extended message type " + extendedType);
                 }
+                break;
             default:
                 throw new IOException("Unknown message type " + type);
         }

@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.codahale.metrics.MetricRegistry;
+import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.common.SuppressWarnings;
 import com.turn.ttorrent.common.Torrent;
@@ -73,6 +74,9 @@ public class ClientEnvironment {
         return TorrentUtils.toText(getLocalPeerId());
     }
 
+    /**
+     * You probably want {@link PeerServer#getLocalAddresses()}.
+     */
     @CheckForNull
     public SocketAddress getLocalPeerListenAddress() {
         return peerListenAddress;

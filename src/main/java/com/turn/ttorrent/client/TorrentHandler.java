@@ -76,8 +76,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
     private final Client client;
     private final Torrent torrent;
     private final TorrentByteStorage bucket;
-    private final TrackerHandler trackerHandler;
     private final SwarmHandler swarmHandler;
+    private final TrackerHandler trackerHandler;
     @Nonnull
     private State state = State.WAITING;
     // private SortedSet<Piece> rarest;
@@ -102,11 +102,12 @@ public class TorrentHandler implements TorrentMetadataProvider {
         this(client, new Torrent(torrent), destDir);
     }
 
-    public TorrentHandler(@Nonnull Client client, @Nonnull File torrent, @Nonnull File destDir)
-            throws IOException, URISyntaxException {
-        this(client, new Torrent(torrent), destDir);
-    }
-
+    /*
+     public TorrentHandler(@Nonnull Client client, @Nonnull File torrent, @Nonnull File destDir)
+     throws IOException, URISyntaxException {
+     this(client, new Torrent(torrent), destDir);
+     }
+     */
     /**
      * Create a new shared torrent from a base Torrent object.
      *
@@ -152,6 +153,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
             files.add(new FileStorage(actual, offset, file.size));
             offset += file.size;
         }
+        if (files.size() == 1)
+            return files.get(0);
         return new FileCollectionStorage(files, torrent.getSize());
     }
 
@@ -170,8 +173,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
         this.client = client;
         this.torrent = torrent;
         this.bucket = bucket;
-        this.trackerHandler = new TrackerHandler(client, this, getSwarmHandler());
         this.swarmHandler = new SwarmHandler(this);
+        this.trackerHandler = new TrackerHandler(client, this, this.swarmHandler);
     }
 
     @Nonnull
@@ -247,13 +250,13 @@ public class TorrentHandler implements TorrentMetadataProvider {
     }
 
     @Nonnull
-    public TrackerHandler getTrackerHandler() {
-        return trackerHandler;
+    public SwarmHandler getSwarmHandler() {
+        return swarmHandler;
     }
 
     @Nonnull
-    public SwarmHandler getSwarmHandler() {
-        return swarmHandler;
+    public TrackerHandler getTrackerHandler() {
+        return trackerHandler;
     }
 
     @Nonnull
@@ -554,8 +557,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
 
     public void start() throws InterruptedException, IOException {
         init();
-        trackerHandler.start();
         swarmHandler.start();
+        trackerHandler.start();
     }
 
     public void stop() {

@@ -31,6 +31,24 @@ import org.apache.commons.io.Charsets;
  */
 public class PeerHandshakeMessage extends PeerMessage {
 
+    public static enum Feature {
+
+        BEP10_EXTENSION_PROTOCOL {
+            @Override
+            public boolean get(byte[] reserved) {
+                return (reserved[5] & 0x10) != 0;
+            }
+
+            @Override
+            public void set(byte[] reserved) {
+                reserved[5] |= 0x10;
+            }
+        };
+
+        public abstract boolean get(@Nonnull byte[] reserved);
+
+        public abstract void set(@Nonnull byte[] reserved);
+    }
     public static final int BASE_HANDSHAKE_LENGTH = 49;
     private static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(Torrent.BYTE_ENCODING);
     private byte[] protocolName;
@@ -39,10 +57,12 @@ public class PeerHandshakeMessage extends PeerMessage {
     private byte[] peerId; // 20
 
     public PeerHandshakeMessage() {
+        Feature.BEP10_EXTENSION_PROTOCOL.set(reserved); // Overwritten by fromWire()
     }
 
     @SuppressWarnings("EI_EXPOSE_REP2")
     public PeerHandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
+        this();
         if (infoHash.length != 20)
             throw new IllegalArgumentException("InfoHash length should be 20, not " + infoHash.length);
         if (peerId.length != 20)
@@ -65,6 +85,12 @@ public class PeerHandshakeMessage extends PeerMessage {
     @SuppressWarnings("EI_EXPOSE_REP2")
     public byte[] getPeerId() {
         return peerId;
+    }
+
+    @Nonnull
+    @SuppressWarnings("EI_EXPOSE_REP2")
+    public byte[] getReserved() {
+        return reserved;
     }
 
     @Override

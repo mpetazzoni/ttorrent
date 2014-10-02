@@ -12,16 +12,16 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static org.junit.Assert.*;
 
 /**
@@ -30,7 +30,7 @@ import static org.junit.Assert.*;
  */
 public class HTTPTrackerClientTest {
 
-    private static final Log LOG = LogFactory.getLog(HTTPTrackerClientTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HTTPTrackerClientTest.class);
     private final byte[] infoHash = new byte[]{1, 2, 3, 4, 5, 6, 7, 8};
     private final List<List<URI>> uris = new ArrayList<List<URI>>();
     private final TorrentMetadataProvider metadataProvider = new TestTorrentMetadataProvider(infoHash, uris);
@@ -52,7 +52,7 @@ public class HTTPTrackerClientTest {
         private final AtomicInteger failed = new AtomicInteger(0);
 
         @Override
-        public void handleDiscoveredPeers(URI tracker, Collection<? extends SocketAddress> peerAddresses) {
+        public void handleDiscoveredPeers(URI tracker, Map<? extends SocketAddress, ? extends byte[]> peer) {
             LOG.info("Peers: " + tracker);
             latch.countDown();
         }

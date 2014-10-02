@@ -19,6 +19,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,8 +60,8 @@ public class TrackerHandlerTest {
                 TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), torrent.getAnnounceList());
                 PeerExistenceListener existenceListener = new TestPeerExistenceListener() {
                     @Override
-                    public void addPeers(Iterable<? extends SocketAddress> peerAddresses) {
-                        super.addPeers(peerAddresses);
+                    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers) {
+                        super.addPeers(peers);
                         latch.countDown();
                     }
                 };

@@ -10,9 +10,9 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -20,7 +20,7 @@ import org.junit.Test;
  */
 public class ReplicationTimeoutTest extends AbstractReplicationTest {
 
-    private static final Log LOG = LogFactory.getLog(ReplicationTimeoutTest.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ReplicationTimeoutTest.class);
 
     @Test
     public void testReplicationTimeout() throws Exception {
