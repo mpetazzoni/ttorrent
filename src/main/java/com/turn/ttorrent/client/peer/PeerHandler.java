@@ -572,7 +572,12 @@ public class PeerHandler implements PeerMessageListener {
                 // Expires dead requests, and marks live ones uninteresting.
                 EXPIRE:
                 {
-                    if (requestsExpiredAt < now - MAX_REQUESTS_TIME >> 2) {
+                    if (LOG.isTraceEnabled())
+                        LOG.trace("{}: requestsExpiredAt={}, now={}, comp={}", new Object[]{
+                            provider.getLocalPeerName(),
+                            requestsExpiredAt, now, now - (MAX_REQUESTS_TIME >> 2)
+                        });
+                    if (requestsExpiredAt < now - (MAX_REQUESTS_TIME >> 2)) {
                         long then = now - MAX_REQUESTS_TIME;
                         List<PieceHandler.AnswerableRequestMessage> requestsExpired = new ArrayList<PieceHandler.AnswerableRequestMessage>();
                         Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
