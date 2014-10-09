@@ -15,8 +15,8 @@
  */
 package com.turn.ttorrent.client.tracker;
 
-import com.google.common.collect.Iterables;
 import com.turn.ttorrent.client.ClientEnvironment;
+import com.turn.ttorrent.client.PeerAddressProvider;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.InetSocketAddressComparator;
@@ -38,11 +38,11 @@ import javax.annotation.Nonnull;
 public abstract class TrackerClient {
 
     private final ClientEnvironment environment;
-    private final Iterable<? extends InetSocketAddress> peerAddresses;
+    private final PeerAddressProvider peerAddressProvider;
 
-    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull Iterable<? extends InetSocketAddress> peerAddresses) {
+    public TrackerClient(@Nonnull ClientEnvironment environment, @Nonnull PeerAddressProvider peerAddressProvider) {
         this.environment = environment;
-        this.peerAddresses = peerAddresses;
+        this.peerAddressProvider = peerAddressProvider;
     }
 
     @Nonnull
@@ -54,7 +54,9 @@ public abstract class TrackerClient {
     @Nonnull
     protected List<InetSocketAddress> getPeerAddresses() {
         List<InetSocketAddress> out = new ArrayList<InetSocketAddress>();
-        Iterables.addAll(out, this.peerAddresses);
+        for (SocketAddress address : peerAddressProvider.getLocalAddresses())
+            if (address instanceof InetSocketAddress)
+                out.add((InetSocketAddress) address);
         Collections.sort(out, InetSocketAddressComparator.INSTANCE);
         return out;
     }

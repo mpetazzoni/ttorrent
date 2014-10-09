@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -199,12 +198,9 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
 
     @Override
     public Set<? extends SocketAddress> getPeers() {
+        // TODO: Merge our local addresses into the known-peer set permanently.
         Set<SocketAddress> peers = Sets.newHashSet(knownPeers.keySet());
-        try {
-            Iterables.addAll(peers, getClient().getPeerServer().getLocalAddresses());
-        } catch (SocketException e) {
-            LOG.warn("Failed to get local addresses", e);
-        }
+        Iterables.addAll(peers, getClient().getPeerServer().getLocalAddresses());
         return peers;
     }
 
@@ -228,12 +224,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
-        Set<? extends SocketAddress> localAddresses;
-        try {
-            localAddresses = Sets.newHashSet(getClient().getPeerServer().getLocalAddresses());
-        } catch (SocketException e) {
-            localAddresses = Collections.emptySet();
-        }
+        Set<? extends SocketAddress> localAddresses = getClient().getPeerServer().getLocalAddresses();
         long now = System.currentTimeMillis();
         for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : peers.entrySet()) {
             SocketAddress remoteAddress = e.getKey();

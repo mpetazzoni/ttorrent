@@ -188,7 +188,7 @@ public class Client {
             peerClient = new PeerClient(this);
             peerClient.start();
 
-            httpTrackerClient = new HTTPTrackerClient(environment, peerServer.getLocalAddresses());
+            httpTrackerClient = new HTTPTrackerClient(environment, peerServer);
             httpTrackerClient.start();
 
             // udpTrackerClient = new UDPTrackerClient(environment, peer);

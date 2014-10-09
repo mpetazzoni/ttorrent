@@ -15,9 +15,12 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.google.common.collect.Sets;
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.PeerAddressProvider;
 import com.turn.ttorrent.common.TorrentUtils;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
@@ -28,6 +31,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.Collections;
+import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -37,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerServer {
+public class PeerServer implements PeerAddressProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerServer.class);
     public static final int PORT_RANGE_START = 6881;
@@ -46,7 +51,6 @@ public class PeerServer {
     private final Client client;
     @CheckForNull
     private final SocketAddress address;
-    private EventLoopGroup group;
     private ChannelFuture future;
 
     public PeerServer(@Nonnull Client client, @CheckForNull SocketAddress address) {
@@ -59,7 +63,7 @@ public class PeerServer {
     }
 
     public void start() throws Exception {
-        group = new NioEventLoopGroup();
+        EventLoopGroup group = new NioEventLoopGroup();
         ServerBootstrap b = new ServerBootstrap();
         b.group(group);
         b.channel(NioServerSocketChannel.class);
@@ -92,8 +96,9 @@ public class PeerServer {
 
     public void stop() throws InterruptedException {
         try {
-            future.channel().close().sync();
-            group.shutdownGracefully();
+            Channel channel = future.channel();
+            channel.close().sync();
+            channel.eventLoop().shutdownGracefully();
         } finally {
             future = null;
         }
@@ -105,8 +110,14 @@ public class PeerServer {
         return channel.localAddress();
     }
 
-    @Nonnull
-    public Iterable<? extends InetSocketAddress> getLocalAddresses() throws SocketException {
-        return TorrentUtils.getSpecificAddresses(getLocalAddress());
+    @Override
+    public Set<? extends InetSocketAddress> getLocalAddresses() {
+        try {
+            // TODO: This call may be expensive on some operating systems. Cache it.
+            return Sets.newHashSet(TorrentUtils.getSpecificAddresses(getLocalAddress()));
+        } catch (SocketException e) {
+            LOG.error("Failed to get specific addresses", e);
+            return Collections.emptySet();
+        }
     }
 }

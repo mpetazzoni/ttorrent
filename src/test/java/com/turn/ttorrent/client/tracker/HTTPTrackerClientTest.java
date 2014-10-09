@@ -5,6 +5,7 @@
 package com.turn.ttorrent.client.tracker;
 
 import com.turn.ttorrent.client.ClientEnvironment;
+import com.turn.ttorrent.client.PeerAddressProvider;
 import com.turn.ttorrent.client.TorrentMetadataProvider;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.test.TestTorrentMetadataProvider;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
@@ -71,8 +73,13 @@ public class HTTPTrackerClientTest {
         }
     }
 
-    private Iterable<InetSocketAddress> newPeerAddresses() {
-        return Collections.singleton(new InetSocketAddress(17));
+    private PeerAddressProvider newPeerAddresses() {
+        return new PeerAddressProvider() {
+            @Override
+            public Set<? extends SocketAddress> getLocalAddresses() {
+                return Collections.singleton(new InetSocketAddress(17));
+            }
+        };
     }
 
     @Test
