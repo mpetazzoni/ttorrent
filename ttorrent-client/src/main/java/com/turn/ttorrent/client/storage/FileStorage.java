@@ -15,8 +15,10 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import com.google.common.base.Objects;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import java.io.File;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -40,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class FileStorage implements TorrentByteStorage {
+public class FileStorage implements TorrentByteStorage, Flushable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileStorage.class);
     private final File target;
@@ -151,6 +153,15 @@ public class FileStorage implements TorrentByteStorage {
     }
 
     @Override
+    public void flush() throws IOException {
+        synchronized (lock) {
+            FileChannel channel = raf.getChannel();
+            if (channel.isOpen())
+                channel.force(true);
+        }
+    }
+
+    @Override
     public void close() throws IOException {
         synchronized (lock) {
             LOG.debug("{}: Closing file channel to {}.", new Object[]{
@@ -215,5 +226,14 @@ public class FileStorage implements TorrentByteStorage {
             // writing to an existing file.
             return finished;
         }
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("file", target)
+                .add("offset", offset)
+                .add("size", size)
+                .toString();
     }
 }

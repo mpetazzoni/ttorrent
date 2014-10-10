@@ -15,6 +15,9 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import com.google.common.base.Objects;
+import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -39,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @author dgiffin
  */
-public class FileCollectionStorage implements TorrentByteStorage {
+public class FileCollectionStorage implements TorrentByteStorage, Flushable {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileCollectionStorage.class);
     private final List<? extends FileStorage> files;
@@ -82,6 +85,8 @@ public class FileCollectionStorage implements TorrentByteStorage {
     @Override
     public int write(ByteBuffer buffer, long offset) throws IOException {
         int requested = buffer.remaining();
+        if (requested <= 0)
+            throw new IllegalArgumentException("Suspicious write length " + requested);
 
         int bytes = 0;
 
@@ -97,23 +102,29 @@ public class FileCollectionStorage implements TorrentByteStorage {
         return bytes;
     }
 
+    public void flush() throws IOException {
+        for (Flushable file : files) {
+            file.flush();
+        }
+    }
+
     @Override
     public void close() throws IOException {
-        for (FileStorage file : this.files) {
+        for (Closeable file : this.files) {
             file.close();
         }
     }
 
     @Override
     public void finish() throws IOException {
-        for (FileStorage file : this.files) {
+        for (TorrentByteStorage file : this.files) {
             file.finish();
         }
     }
 
     @Override
     public boolean isFinished() {
-        for (FileStorage file : this.files)
+        for (TorrentByteStorage file : this.files)
             if (!file.isFinished())
                 return false;
         return true;
@@ -141,7 +152,16 @@ public class FileCollectionStorage implements TorrentByteStorage {
             this.offset = offset;
             this.length = length;
         }
-    };
+
+        @Override
+        public String toString() {
+            return Objects.toStringHelper(this)
+                    .add("file", file)
+                    .add("offset", offset)
+                    .add("length", length)
+                    .toString();
+        }
+    }
 
     /**
      * Select the group of files impacted by an operation.
@@ -172,11 +192,13 @@ public class FileCollectionStorage implements TorrentByteStorage {
         long bytes = 0;
 
         for (FileStorage file : this.files) {
+            // Our IO ends after this FileStorage.
             if (file.offset() >= offset + length) {
                 break;
             }
 
-            if (file.offset() + file.size() < offset) {
+            // Our IO starts before this FileOffset.
+            if (file.offset() + file.size() <= offset) {
                 continue;
             }
 

@@ -18,9 +18,9 @@ public class FileCollectionStorageTest {
 
     @Test
     public void testSelect() throws Exception {
-        final File file1 = File.createTempFile("testng", "fcst");
+        final File file1 = File.createTempFile(getClass().getSimpleName(), ".0.tmp");
         file1.deleteOnExit();
-        final File file2 = File.createTempFile("testng", "fcst");
+        final File file2 = File.createTempFile(getClass().getSimpleName(), ".1.tmp");
         file2.deleteOnExit();
 
         final List<FileStorage> files = new ArrayList<FileStorage>();
@@ -28,7 +28,7 @@ public class FileCollectionStorageTest {
         files.add(new FileStorage(file2, 2, 2));
         final FileCollectionStorage storage = new FileCollectionStorage(files, 4);
         // since all of these files already exist, we are considered finished
-        assertTrue(storage.isFinished());
+        assertFalse(storage.isFinished());
 
         // write to first file works
         write(new byte[]{1, 2}, 0, storage);
@@ -50,7 +50,7 @@ public class FileCollectionStorageTest {
 
     private void write(byte[] bytes, int offset, FileCollectionStorage storage) throws IOException {
         storage.write(ByteBuffer.wrap(bytes), offset);
-        storage.finish();
+        storage.flush();
     }
 
     private void check(byte[] bytes, File f) throws IOException {
