@@ -19,19 +19,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.peer.PeerExistenceListener;
-import com.turn.ttorrent.client.tracker.AnnounceResponseListener;
-import com.turn.ttorrent.client.tracker.TrackerClient;
-
-import com.turn.ttorrent.common.TorrentUtils;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
-
+import com.turn.ttorrent.tracker.client.AnnounceResponseListener;
+import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
+import com.turn.ttorrent.tracker.client.TrackerClient;
+import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;

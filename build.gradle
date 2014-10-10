@@ -51,31 +51,28 @@ subprojects {
 	}
 }
 
-project(':ttorrent-client') {
-	apply plugin: 'application'
-
+project(':ttorrent-protocol') {
 	dependencies {
-		project(':ttorrent-tracker-protocol')
-
-		compile 'commons-io:commons-io:2.4'
-		compile 'commons-codec:commons-codec:1.8'
-		compile 'org.apache.httpcomponents:httpasyncclient:4.0.2'
 		compile 'io.netty:netty-all:4.0.23.Final'
-		compile 'net.sf.jopt-simple:jopt-simple:4.7'
 
-		// TODO: Remove.
-		compile 'org.simpleframework:simple:5.1.6'
+		testCompile project(':ttorrent-tracker-simple')
 	}
 }
 
-project(':ttorrent-tracker-protocol') {
+project(':ttorrent-tracker-client') {
 	dependencies {
+		compile project(':ttorrent-protocol')
+		compile 'org.apache.httpcomponents:httpasyncclient:4.0.2'
+
+		testCompile project(':ttorrent-tracker-simple')
 	}
 }
 
 project(':ttorrent-tracker') {
 	dependencies {
-		project(':ttorrent-tracker-protocol')
+		compile project(':ttorrent-protocol')
+
+		testCompile project(':ttorrent-tracker-simple')
 	}
 }
 
@@ -83,18 +80,50 @@ project(':ttorrent-tracker-simple') {
 	apply plugin: 'application'
 
 	dependencies {
-		project(':ttorrent-tracker')
+		compile project(':ttorrent-tracker')
 
 		compile 'org.simpleframework:simple:5.1.6'
 		compile 'net.sf.jopt-simple:jopt-simple:4.7'
+
+		testCompile project(':ttorrent-tracker-client')
 	}
 }
 
 project(':ttorrent-tracker-spring') {
+	apply plugin: 'application'
+
 	dependencies {
-		project(':ttorrent-tracker')
+		compile project(':ttorrent-tracker')
 
 		def springVersion = "4.1.1.RELEASE"
 		compile "org.springframework:spring-webmvc:$springVersion"
+	}
+}
+
+project(':ttorrent-tracker-jetty') {
+	dependencies {
+		compile project(':ttorrent-tracker')
+
+		def jettyVersion = "9.2.3.v20140905"
+		compile "org.eclipse.jetty:jetty-server:$jettyVersion"
+
+		compile 'net.sf.jopt-simple:jopt-simple:4.7'
+	}
+}
+
+project(':ttorrent-client') {
+	apply plugin: 'application'
+
+	dependencies {
+		compile project(':ttorrent-tracker-client')
+
+		compile 'commons-io:commons-io:2.4'
+		compile 'net.sf.jopt-simple:jopt-simple:4.7'
+
+		// TODO: Remove.
+		compile 'org.simpleframework:simple:5.1.6'
+
+		testCompile project(':ttorrent-tracker-simple')
+		testCompile project(':ttorrent-tracker-client').sourceSets.test.output
 	}
 }

@@ -17,7 +17,7 @@ package com.turn.ttorrent.cli;
 
 import com.turn.ttorrent.client.Client;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.protocol.torrent.Torrent;
 import java.io.File;
 import java.net.Inet4Address;
 import java.net.InetAddress;

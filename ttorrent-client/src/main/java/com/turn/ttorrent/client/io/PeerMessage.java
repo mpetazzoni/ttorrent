@@ -18,7 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
 import java.nio.ByteBuffer;

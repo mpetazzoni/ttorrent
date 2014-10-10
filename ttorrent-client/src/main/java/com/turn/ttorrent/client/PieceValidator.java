@@ -4,7 +4,7 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.protocol.torrent.Torrent;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;

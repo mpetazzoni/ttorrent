@@ -4,8 +4,8 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import java.io.File;
 import org.junit.Test;

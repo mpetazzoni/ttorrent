@@ -1,6 +1,9 @@
 rootProject.name='ttorrent'
-include 'ttorrent-client',
-	'ttorrent-tracker-protocol',
+include \
+	'ttorrent-protocol',
 	'ttorrent-tracker',
 	'ttorrent-tracker-simple',
-	'ttorrent-tracker-spring'
+	'ttorrent-tracker-spring',
+	'ttorrent-tracker-jetty',
+	'ttorrent-tracker-client',
+	'ttorrent-client'

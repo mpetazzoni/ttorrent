@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.storage;
 
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;

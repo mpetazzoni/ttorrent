@@ -4,16 +4,15 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.torrent.tracker.simple.SimpleTracker;
+import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import com.turn.ttorrent.tracker.TrackedTorrent;
-import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class AbstractReplicationTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractReplicationTest.class);
-    protected Tracker tracker;
+    protected SimpleTracker tracker;
     protected Torrent torrent;
     protected TrackedTorrent trackedTorrent;
     protected Client seed;
@@ -38,7 +37,7 @@ public class AbstractReplicationTest {
 
     @Before
     public void setUp() throws Exception {
-        tracker = new Tracker(new InetSocketAddress("localhost", 0));
+        tracker = new SimpleTracker(new InetSocketAddress("localhost", 0));
         tracker.start();
 
         File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
@@ -48,7 +47,7 @@ public class AbstractReplicationTest {
         creator.setPieceLength(512);
         torrent = creator.create();
 
-        trackedTorrent = tracker.announce(torrent);
+        trackedTorrent = tracker.addTorrent(torrent);
         trackedTorrent.setAnnounceInterval(60, TimeUnit.SECONDS);
 
         seed = new Client("S-");

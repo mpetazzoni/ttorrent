@@ -15,11 +15,11 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.client.tracker.HTTPTrackerClient;
+import com.turn.ttorrent.tracker.client.HTTPTrackerClient;
 import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -188,7 +188,7 @@ public class Client {
             peerClient = new PeerClient(this);
             peerClient.start();
 
-            httpTrackerClient = new HTTPTrackerClient(environment, peerServer);
+            httpTrackerClient = new HTTPTrackerClient(peerServer);
             httpTrackerClient.start();
 
             // udpTrackerClient = new UDPTrackerClient(environment, peer);

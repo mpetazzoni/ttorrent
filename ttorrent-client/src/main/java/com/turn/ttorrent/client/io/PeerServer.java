@@ -17,8 +17,8 @@ package com.turn.ttorrent.client.io;
 
 import com.google.common.collect.Sets;
 import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.client.PeerAddressProvider;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.tracker.client.PeerAddressProvider;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -102,6 +102,11 @@ public class PeerServer implements PeerAddressProvider {
         } finally {
             future = null;
         }
+    }
+
+    @Override
+    public byte[] getLocalPeerId() {
+        return client.getLocalPeerId();
     }
 
     @Nonnull

@@ -8,7 +8,7 @@ import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.Instrumentation;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.protocol.torrent.Torrent;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;

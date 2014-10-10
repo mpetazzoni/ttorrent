@@ -16,9 +16,9 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.SuppressWarnings;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.SuppressWarnings;
+import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.protocol.bcodec.BEUtils;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import java.util.Map;
@@ -50,7 +50,7 @@ public class PeerHandshakeMessage extends PeerMessage {
         public abstract void set(@Nonnull byte[] reserved);
     }
     public static final int BASE_HANDSHAKE_LENGTH = 49;
-    private static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(Torrent.BYTE_ENCODING);
+    private static final byte[] BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol".getBytes(BEUtils.BYTE_ENCODING);
     private byte[] protocolName;
     private final byte[] reserved = new byte[8];
     private byte[] infoHash; // 20

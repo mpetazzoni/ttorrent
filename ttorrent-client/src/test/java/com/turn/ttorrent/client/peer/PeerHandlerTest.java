@@ -8,7 +8,7 @@ import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.io.PeerClientHandshakeHandler;
 import com.turn.ttorrent.client.io.PeerServerHandshakeHandler;
 import com.turn.ttorrent.test.TestPeerPieceProvider;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;

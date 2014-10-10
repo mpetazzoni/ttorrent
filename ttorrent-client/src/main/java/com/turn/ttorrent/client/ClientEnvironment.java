@@ -18,10 +18,10 @@ package com.turn.ttorrent.client;
 import com.codahale.metrics.MetricRegistry;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
-import com.turn.ttorrent.common.SuppressWarnings;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentCreator;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.SuppressWarnings;
+import com.turn.ttorrent.protocol.torrent.TorrentCreator;
+import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.protocol.bcodec.BEUtils;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.net.SocketAddress;
 import java.util.Arrays;
@@ -56,7 +56,7 @@ public class ClientEnvironment {
         byte[] tmp = new byte[20];  // Far too many, but who cares.
         random.nextBytes(tmp);
         String id = BITTORRENT_ID_PREFIX + (peerName != null ? peerName : "") + TorrentUtils.toHex(tmp);
-        this.peerId = Arrays.copyOf(id.getBytes(Torrent.BYTE_ENCODING), 20);
+        this.peerId = Arrays.copyOf(id.getBytes(BEUtils.BYTE_ENCODING), 20);
 
     }
 

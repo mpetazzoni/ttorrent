@@ -21,8 +21,8 @@ import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerExtendedMessage;
 import com.turn.ttorrent.client.io.PeerHandshakeMessage;
 import com.turn.ttorrent.client.io.PeerMessage;
-import com.turn.ttorrent.common.SuppressWarnings;
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.protocol.SuppressWarnings;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -163,11 +163,6 @@ public class PeerHandler implements PeerMessageListener {
      * Initially, peers are considered choked, choking, and neither interested
      * nor interesting.
      * </p>
-     *
-     * @param ip The peer's IP address.
-     * @param port The peer's port.
-     * @param peer The peer.
-     * @param torrent The torrent this peer exchanges with us on.
      */
     @SuppressWarnings("EI_EXPOSE_REP2")
     public PeerHandler(

@@ -19,13 +19,14 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
-import com.turn.ttorrent.common.TorrentUtils;
+import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
+import com.turn.ttorrent.protocol.TorrentUtils;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;

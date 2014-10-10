@@ -4,14 +4,15 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.torrent.tracker.simple.SimpleTracker;
 import com.turn.ttorrent.client.peer.PeerExistenceListener;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
+import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.test.TestPeerExistenceListener;
 import com.turn.ttorrent.test.TestTorrentMetadataProvider;
 import com.turn.ttorrent.test.TorrentTestUtils;
 import com.turn.ttorrent.tracker.TrackedTorrent;
-import com.turn.ttorrent.tracker.Tracker;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -38,7 +39,7 @@ public class TrackerHandlerTest {
 
     @Test
     public void testTracking() throws Exception {
-        Tracker tracker = new Tracker(new InetSocketAddress("localhost", 5674));
+        SimpleTracker tracker = new SimpleTracker(new InetSocketAddress("localhost", 5674));
         tracker.start();
 
         try {
@@ -49,7 +50,7 @@ public class TrackerHandlerTest {
             creator.setAnnounceTiers(Arrays.asList(tier0, tier1));
             Torrent torrent = creator.create();
 
-            TrackedTorrent trackedTorrent = tracker.announce(torrent);
+            TrackedTorrent trackedTorrent = tracker.addTorrent(torrent);
             trackedTorrent.setAnnounceInterval(1, TimeUnit.MILLISECONDS);
 
             Client client = new Client(getClass().getSimpleName());

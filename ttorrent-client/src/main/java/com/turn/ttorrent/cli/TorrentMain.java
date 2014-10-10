@@ -15,9 +15,8 @@
  */
 package com.turn.ttorrent.cli;
 
-import com.turn.ttorrent.common.Torrent;
-
-import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import java.io.File;
 import java.io.OutputStream;
 import java.net.URI;
