@@ -103,11 +103,11 @@ public abstract class TrackerMessage {
 
         static final long serialVersionUID = -1;
 
-        public MessageValidationException(String s) {
+        public MessageValidationException(@Nonnull String s) {
             super(s);
         }
 
-        public MessageValidationException(String s, Throwable cause) {
+        public MessageValidationException(@Nonnull String s, @Nonnull Throwable cause) {
             super(s, cause);
         }
     }
@@ -126,10 +126,13 @@ public abstract class TrackerMessage {
 
         public static final int DEFAULT_NUM_WANT = 50;
 
+        @Nonnull
         public byte[] getInfoHash();
 
+        @Nonnull
         public String getHexInfoHash();
 
+        @Nonnull
         public byte[] getPeerId();
 
         // public InetSocketAddress getPeerAddress();
@@ -139,6 +142,7 @@ public abstract class TrackerMessage {
 
         public long getLeft();
 
+        @Nonnull
         public AnnounceEvent getEvent();
 
         public int getNumWant();

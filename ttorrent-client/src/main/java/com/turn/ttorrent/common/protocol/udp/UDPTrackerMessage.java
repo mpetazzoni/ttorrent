@@ -97,7 +97,7 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
         private static final int UDP_MIN_REQUEST_PACKET_SIZE = 16;
         private long connectionId;
 
-        protected UDPTrackerRequestMessage(Type type) {
+        protected UDPTrackerRequestMessage(@Nonnull Type type) {
             super(type);
         }
 

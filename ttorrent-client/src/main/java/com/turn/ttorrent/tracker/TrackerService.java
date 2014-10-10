@@ -107,12 +107,14 @@ public class TrackerService implements Container {
      */
     @Override
     public void handle(Request request, Response response) {
+        // LOG.info("Request: " + request);
         this.requestReceived.mark();
 
         try {
             // Reject non-announce requests
             if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
                 response.setStatus(Status.NOT_FOUND);
+                response.close();
                 return;
             }
         } catch (Exception e) {
@@ -126,7 +128,7 @@ public class TrackerService implements Container {
             this.process(request, response, body);
             body.flush();
         } catch (Exception e) {
-            LOG.warn("Error while writing response!", e);
+            LOG.warn("Error while processing response!", e);
         } finally {
             IOUtils.closeQuietly(body);
         }
@@ -145,8 +147,8 @@ public class TrackerService implements Container {
      * @param response The response object.
      * @param body The validated response body output stream.
      */
-    private void process(Request request, Response response,
-            OutputStream body) throws IOException {
+    private void process(Request request, Response response, OutputStream body)
+            throws IOException {
         // Prepare the response headers.
         response.setContentType("text/plain");
         response.setValue("Server", this.version);
@@ -170,7 +172,8 @@ public class TrackerService implements Container {
             return;
         }
 
-        LOG.trace("Announce request is {}", announceRequest);
+        if (LOG.isTraceEnabled())
+            LOG.trace("Announce request is {}", announceRequest);
 
         // The requested torrent must be announced by the tracker.
         TrackedTorrent torrent = this.torrents.get(announceRequest.getHexInfoHash());
@@ -294,6 +297,7 @@ public class TrackerService implements Container {
     /* pp */ static HTTPAnnounceRequestMessage parseRequest(Request request)
             throws MessageValidationException {
         String uri = request.getAddress().toString();
+        request.getAddress().getQuery();
         String query = uri.split("[?]")[1];
         Multimap<String, String> params = parseQuery(query);
         return HTTPAnnounceRequestMessage.fromParams(params);

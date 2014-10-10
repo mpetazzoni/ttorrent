@@ -1,9 +1,7 @@
 Code required:
 
-1) Integrate more with Yammer Metrics.
-2) Protocol extension to specify maximum block size - we want 1Mb.
-3) Keepalives.
-4) PEX
+1) Protocol extension to specify maximum block size - we want 1Mb.
+2) Keepalives.
 
 Tests required:
 

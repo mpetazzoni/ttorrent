@@ -493,7 +493,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     /**
-     * Run one step of the SharingPeer finite state machine.
+     * Run one step of the PeerHandler finite state machine.
      *
      * <p>
      * Re-fill the pipeline to get download the next blocks from the peer.

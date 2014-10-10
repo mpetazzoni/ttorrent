@@ -25,34 +25,76 @@ apply from: file('gradle/check.gradle')
 apply from: file('gradle/license.gradle')
 // apply from: file('gradle/release.gradle')
 
-apply plugin: 'java'
-apply plugin: 'application'
+subprojects {
+	group = "org.anarres.ttorrent"
 
-apply plugin: 'eclipse'
-eclipse {
-	classpath {
-		downloadSources = true
+	apply plugin: 'eclipse'
+	eclipse {
+		classpath {
+			downloadSources = true
+		}
+		jdt {
+			sourceCompatibility = 1.6
+			targetCompatibility = 1.6
+		}
 	}
-	jdt {
-		sourceCompatibility = 1.6
-		targetCompatibility = 1.6
+
+	dependencies {
+		compile 'com.google.code.findbugs:jsr305:2.0.3'
+		compile 'org.slf4j:slf4j-api:1.7.7'
+		compile 'com.google.guava:guava:18.0'
+		compile 'io.dropwizard.metrics:metrics-core:3.1.0'
+
+		testCompile 'junit:junit:4.11'
+		testCompile 'org.easymock:easymock:3.2'
+		testRuntime 'org.slf4j:slf4j-jcl:1.7.7'
 	}
 }
 
-dependencies {
-	compile 'com.google.code.findbugs:jsr305:2.0.3'
-	compile 'org.slf4j:slf4j-api:1.7.7'
-	compile 'commons-io:commons-io:2.4'
-	// compile 'net.sf:jargs:1.0'
-	compile 'org.simpleframework:simple:5.1.6'
-	compile 'commons-codec:commons-codec:1.8'
-	compile 'org.apache.httpcomponents:httpasyncclient:4.0.2'
-	compile 'io.netty:netty-all:4.0.23.Final'
-	compile 'com.google.guava:guava:18.0'
-	compile 'net.sf.jopt-simple:jopt-simple:4.7'
-	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
+project(':ttorrent-client') {
+	apply plugin: 'application'
 
-	testCompile 'junit:junit:4.11'
-	testCompile 'org.easymock:easymock:3.2'
-	testRuntime 'org.slf4j:slf4j-jcl:1.7.7'
+	dependencies {
+		project(':ttorrent-tracker-protocol')
+
+		compile 'commons-io:commons-io:2.4'
+		compile 'commons-codec:commons-codec:1.8'
+		compile 'org.apache.httpcomponents:httpasyncclient:4.0.2'
+		compile 'io.netty:netty-all:4.0.23.Final'
+		compile 'net.sf.jopt-simple:jopt-simple:4.7'
+
+		// TODO: Remove.
+		compile 'org.simpleframework:simple:5.1.6'
+	}
+}
+
+project(':ttorrent-tracker-protocol') {
+	dependencies {
+	}
+}
+
+project(':ttorrent-tracker') {
+	dependencies {
+		project(':ttorrent-tracker-protocol')
+	}
+}
+
+project(':ttorrent-tracker-simple') {
+	apply plugin: 'application'
+
+	dependencies {
+		project(':ttorrent-tracker')
+
+		compile 'org.simpleframework:simple:5.1.6'
+		compile 'net.sf.jopt-simple:jopt-simple:4.7'
+	}
+}
+
+project(':ttorrent-tracker-spring') {
+	dependencies {
+		project(':ttorrent-tracker')
+
+		def springVersion = "4.1.1.RELEASE"
+		compile "org.springframework:spring-webmvc:$springVersion"
+	}
 }

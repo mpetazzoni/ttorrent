@@ -1,11 +1,12 @@
 // Maven side of things
-apply plugin: 'maven' // Java plugin has to have been already applied for the conf2scope mappings to work
-apply plugin: 'signing'
+subprojects {
+	apply plugin: 'maven' // Java plugin has to have been already applied for the conf2scope mappings to work
+	apply plugin: 'signing'
 
-signing {
-    required { gradle.taskGraph.hasTask(uploadMavenCentral) }
-    sign configurations.archives
-}
+	signing {
+		required { gradle.taskGraph.hasTask(uploadMavenCentral) }
+		sign configurations.archives
+	}
 
 /**
  * Publishing to Maven Central example provided from http://jedicoder.blogspot.com/2011/11/automated-gradle-project-deployment-to.html
@@ -38,7 +39,7 @@ task uploadMavenCentral(type:Upload, dependsOn: signArchives) {
 		// Closure to configure all the POM with extra info, common to all projects
 		pom.project {
 			name "${project.name}"
-			// description "${project.name}"
+			description "An embeddable high performance bittorrent library, client and tracker."
 			developers {
 				developer {
 					id 'shevek'
@@ -66,4 +67,4 @@ task uploadMavenCentral(type:Upload, dependsOn: signArchives) {
 		}
 	}
 }
-
+}

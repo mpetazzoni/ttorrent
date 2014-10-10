@@ -101,7 +101,7 @@ public class Tracker {
      * You will want to call {@link #addAddress(InetSocketAddress)}
      * to add listen addresses.
      */
-    public Tracker(String version) {
+    public Tracker(@Nonnull String version) {
         this.version = version;
     }
 
@@ -289,8 +289,14 @@ public class Tracker {
     /**
      * Returns the list of tracker's torrents
      */
+    @Nonnull
     public Collection<? extends TrackedTorrent> getTrackedTorrents() {
         return torrents.values();
+    }
+
+    @CheckForSigned
+    public TrackedTorrent getTorrent(String infoHash) {
+        return torrents.get(infoHash);
     }
 
     /**
