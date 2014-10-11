@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.ttorrent.cli;
+package com.turn.ttorrent.client.main;
 
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.protocol.torrent.TorrentCreator;

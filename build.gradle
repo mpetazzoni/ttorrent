@@ -45,9 +45,10 @@ subprojects {
 		compile 'com.google.guava:guava:18.0'
 		compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 
+		runtime 'org.slf4j:slf4j-jcl:1.7.7'
+
 		testCompile 'junit:junit:4.11'
 		testCompile 'org.easymock:easymock:3.2'
-		testRuntime 'org.slf4j:slf4j-jcl:1.7.7'
 	}
 }
 
@@ -79,6 +80,8 @@ project(':ttorrent-tracker') {
 project(':ttorrent-tracker-simple') {
 	apply plugin: 'application'
 
+	mainClassName = 'com.turn.ttorrent.tracker.simple.SimpleTrackerMain'
+
 	dependencies {
 		compile project(':ttorrent-tracker')
 
@@ -90,8 +93,6 @@ project(':ttorrent-tracker-simple') {
 }
 
 project(':ttorrent-tracker-spring') {
-	apply plugin: 'application'
-
 	dependencies {
 		compile project(':ttorrent-tracker')
 
@@ -114,14 +115,13 @@ project(':ttorrent-tracker-jetty') {
 project(':ttorrent-client') {
 	apply plugin: 'application'
 
+	mainClassName = 'com.turn.ttorrent.client.main.ClientMain'
+
 	dependencies {
 		compile project(':ttorrent-tracker-client')
 
 		compile 'commons-io:commons-io:2.4'
 		compile 'net.sf.jopt-simple:jopt-simple:4.7'
-
-		// TODO: Remove.
-		compile 'org.simpleframework:simple:5.1.6'
 
 		testCompile project(':ttorrent-tracker-simple')
 		testCompile project(':ttorrent-tracker-client').sourceSets.test.output
