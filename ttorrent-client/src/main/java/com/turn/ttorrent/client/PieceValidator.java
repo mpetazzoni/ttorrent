@@ -15,16 +15,14 @@ import org.slf4j.LoggerFactory;
  * A {@link Runnable} to call the piece validation function.
  *
  * <p>
- * This {@link Callable} implementation allows for the calling of the piece
+ * This {@link Runnable} implementation allows for the calling of the piece
  * validation function in a controlled context like a thread or an
- * executor. It returns the piece it was created for. Results of the
- * validation can easily be extracted from the {@link Piece} object after
- * it is returned.
+ * executor.
  * </p>
  *
  * @author mpetazzoni
  */
-public class PieceValidator implements Runnable {
+/* pp */ class PieceValidator implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(PieceValidator.class);
     private final Torrent torrent;

@@ -92,6 +92,14 @@ project(':ttorrent-tracker-simple') {
 	}
 }
 
+project(':ttorrent-tracker-servlet') {
+	dependencies {
+		compile project(':ttorrent-tracker')
+
+		compile 'javax.servlet:javax.servlet-api:3.1.0'
+	}
+}
+
 project(':ttorrent-tracker-spring') {
 	dependencies {
 		compile project(':ttorrent-tracker')
@@ -101,17 +109,6 @@ project(':ttorrent-tracker-spring') {
 
 		// compile 'javax.servlet:servlet-api:2.5'
 		compile 'javax.servlet:javax.servlet-api:3.1.0'
-	}
-}
-
-project(':ttorrent-tracker-jetty') {
-	dependencies {
-		compile project(':ttorrent-tracker')
-
-		def jettyVersion = "9.2.3.v20140905"
-		compile "org.eclipse.jetty:jetty-server:$jettyVersion"
-
-		compile 'net.sf.jopt-simple:jopt-simple:4.7'
 	}
 }
 

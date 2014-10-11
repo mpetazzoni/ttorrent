@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * @author mpetazzoni
- * @see com.turn.ttorrent.common.protocol.TrackerMessage
+ * @see TrackerMessage
  */
 public class TrackerHandler implements Runnable, AnnounceResponseListener {
 

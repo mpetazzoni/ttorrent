@@ -3,7 +3,7 @@ include \
 	'ttorrent-protocol',
 	'ttorrent-tracker',
 	'ttorrent-tracker-simple',
+	'ttorrent-tracker-servlet',
 	'ttorrent-tracker-spring',
-	'ttorrent-tracker-jetty',
 	'ttorrent-tracker-client',
 	'ttorrent-client'

@@ -59,8 +59,6 @@ public interface PeerPieceProvider {
      * </p>
      *
      * @param offset Offset inside this piece where to start reading.
-     * @param length Number of bytes to read from the piece.
-     * @return A byte buffer containing the piece data.
      * @throws IllegalArgumentException If <em>offset + length</em> goes over
      * the piece boundary.
      * @throws IllegalStateException If the piece is not valid when attempting

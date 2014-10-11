@@ -77,15 +77,14 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Outgoing connections to other peers are also made through this service,
  * which handles the handshake procedure with the remote peer. Regardless of
- * the direction of the connection, once this handshake is successful, all
- * {@link IncomingConnectionListener}s are notified and passed the connected
+ * the direction of the connection, once this handshake is successful, this
+ * {@link PeerConnectionListener} is notified and passed the connected
  * socket and the remote peer ID.
  * </p>
  *
  * <p>
  * This class does nothing more. All further peer-to-peer communication happens
- * in the {@link com.turn.ttorrent.client.peer.PeerExchange PeerExchange}
- * class.
+ * in the {@link PeerHandler} class.
  * </p>
  *
  * @author mpetazzoni
@@ -745,7 +744,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
 
     /** PeerConnectionListener handler(s). ********************************/
     /**
-     * Retrieve a SharingPeer object from the given peer specification.
+     * Retrieves a {@link PeerHandler} object from the given peer specification.
      *
      * <p>
      * This function tries to retrieve an existing peer object based on the
@@ -753,8 +752,8 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
      * it to our peer repository.
      * </p>
      *
-     * This method takes two @Nonnull arguments, because Peer has a
-     * @CheckForNull on {@link Peer#getPeerId()}.
+     * This method takes two {@link Nonnull} arguments instead of a {@link Peer},
+     * because Peer has a {@link CheckForNull} on {@link Peer#getPeerId()}.
      */
     @Override
     public PeerHandler handlePeerConnectionCreated(Channel channel, byte[] remotePeerId, byte[] remoteReserved) {

@@ -4,13 +4,14 @@
  */
 package com.turn.ttorrent.tracker;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.turn.ttorrent.protocol.bcodec.BEUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.Map;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -31,7 +32,6 @@ public class TrackerUtils {
     public static final int DEFAULT_TRACKER_PORT = 6969;
 
     @Nonnull
-    @VisibleForTesting
     public static Multimap<String, String> parseQuery(String query) {
         Multimap<String, String> params = ArrayListMultimap.create();
         Splitter ampersand = Splitter.on('&').omitEmptyStrings();
@@ -64,5 +64,15 @@ public class TrackerUtils {
             if (LOG.isDebugEnabled())
                 LOG.debug("Could not decode {}", value);
         }
+    }
+
+    @Nonnull
+    public static Multimap<String, String> parseQuery(Map<String, String[]> in) {
+        Multimap<String, String> out = HashMultimap.create();
+        for (Map.Entry<String, String[]> e : in.entrySet()) {
+            for (String value : e.getValue())
+                out.put(e.getKey(), value);
+        }
+        return out;
     }
 }

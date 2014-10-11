@@ -160,15 +160,10 @@ public class TorrentHandler implements TorrentMetadataProvider {
     }
 
     /**
-     * Create a new shared torrent from meta-info binary data.
+     * Constructs a new TorrentHandler.
      *
      * @param torrent The meta-info byte data.
-     * @param parent The parent directory or location the torrent files.
-     * @param seeder Whether we're a seeder for this torrent or not (disables
-     * validation).
-     * @throws FileNotFoundException If the torrent file location or
-     * destination directory does not exist and can't be created.
-     * @throws IOException If the torrent file cannot be read or decoded.
+     * @param bucket The storage bucket for the torrent data.
      */
     public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket) {
         this.client = client;
