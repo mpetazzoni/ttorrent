@@ -86,4 +86,30 @@ public class AbstractReplicationTest {
                 c.info(true);
         }
     }
+
+    protected void testReplication(int seed_delay, int nclients) throws Exception {
+        if (seed_delay <= 0) {
+            seed.start();
+            Thread.sleep(-seed_delay);
+        }
+
+        CountDownLatch latch = new CountDownLatch(nclients);
+
+        List<Client> clients = new ArrayList<Client>();
+        for (int i = 0; i < nclients; i++) {
+            Client c = leech(latch, i);
+            c.start();
+            clients.add(c);
+        }
+
+        if (seed_delay > 0) {
+            Thread.sleep(seed_delay);
+            seed.start();
+        }
+
+        await(latch);
+
+        for (Client peer : clients)
+            TorrentTestUtils.assertTorrentData(seed, peer, torrent.getInfoHash());
+    }
 }

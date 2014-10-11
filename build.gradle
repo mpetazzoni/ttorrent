@@ -98,6 +98,9 @@ project(':ttorrent-tracker-spring') {
 
 		def springVersion = "4.1.1.RELEASE"
 		compile "org.springframework:spring-webmvc:$springVersion"
+
+		// compile 'javax.servlet:servlet-api:2.5'
+		compile 'javax.servlet:javax.servlet-api:3.1.0'
 	}
 }
 
