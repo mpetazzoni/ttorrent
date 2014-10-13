@@ -4,12 +4,11 @@
  */
 package com.turn.ttorrent.client;
 
-import com.google.common.io.Files;
 import com.turn.ttorrent.client.io.PeerServer;
-import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.protocol.torrent.TorrentCreator;
-import com.turn.ttorrent.test.TorrentTestUtils;
+import com.turn.ttorrent.protocol.test.TorrentTestUtils;
+import com.turn.ttorrent.test.TorrentClientTestUtils;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -123,6 +122,6 @@ public class PeerExchangeTest {
         await();
 
         for (Client peer : peers)
-            TorrentTestUtils.assertTorrentData(seed, peer, torrentId);
+            TorrentClientTestUtils.assertTorrentData(seed, peer, torrentId);
     }
 }

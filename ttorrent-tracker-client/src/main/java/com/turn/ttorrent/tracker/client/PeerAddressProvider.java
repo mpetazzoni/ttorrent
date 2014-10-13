@@ -4,6 +4,7 @@
  */
 package com.turn.ttorrent.tracker.client;
 
+import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import java.net.SocketAddress;
 import java.util.Set;
 import javax.annotation.Nonnull;
@@ -12,10 +13,7 @@ import javax.annotation.Nonnull;
  *
  * @author shevek
  */
-public interface PeerAddressProvider {
-
-    @Nonnull
-    public byte[] getLocalPeerId();
+public interface PeerAddressProvider extends PeerIdentityProvider {
 
     @Nonnull
     public Set<? extends SocketAddress> getLocalAddresses();

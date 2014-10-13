@@ -8,7 +8,7 @@ import com.turn.ttorrent.test.TestPeerPieceProvider;
 import com.google.common.math.IntMath;
 import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.protocol.torrent.Torrent;
-import com.turn.ttorrent.test.TorrentTestUtils;
+import com.turn.ttorrent.protocol.test.TorrentTestUtils;
 import java.io.File;
 import java.math.RoundingMode;
 import java.util.Iterator;

@@ -176,6 +176,11 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     }
 
     @Override
+    public byte[] getLocalPeerId() {
+        return getClient().getEnvironment().getLocalPeerId();
+    }
+
+    @Override
     public String getLocalPeerName() {
         return getClient().getEnvironment().getLocalPeerName();
     }
@@ -405,9 +410,12 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
                 if (peerInformation.reconnectTime > now)
                     continue;
                 byte[] remotePeerId = peerInformation.remotePeerId;
-                if (remotePeerId != null)
+                if (remotePeerId != null) {
                     if (connectedPeers.containsKey(TorrentUtils.toHex(remotePeerId)))
                         continue;
+                    if (Arrays.equals(remotePeerId, getLocalPeerId()))
+                        continue;
+                }
                 peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
                 connect(e.getKey());
             }

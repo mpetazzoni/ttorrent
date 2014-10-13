@@ -8,6 +8,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
 import com.google.common.io.BaseEncoding;
+import com.google.common.primitives.UnsignedBytes;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -99,7 +100,7 @@ public class TorrentUtils {
             if (Character.isValidCodePoint(b))
                 buf.append((char) b);
             else
-                buf.append("\\x").append((int) b);
+                buf.append("\\x").append(UnsignedBytes.toString(b, 16));
         }
         return buf.toString();
     }

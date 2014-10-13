@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.turn.ttorrent.test;
+package com.turn.ttorrent.tracker.client.test;
 
 import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;

@@ -49,8 +49,9 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * <p>
- * This Announce class implements a periodic announce request thread that will
- * notify announce request event listeners for each tracker response.
+ * This TrackerHandler class maintains the state of each tracker known to the
+ * torrent, and manages a periodic announce event using the {@link Client Client's}
+ * {@link ScheduledExecutorService}.
  * </p>
  *
  * @author mpetazzoni

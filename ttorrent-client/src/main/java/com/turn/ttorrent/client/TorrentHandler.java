@@ -50,7 +50,8 @@ import org.slf4j.LoggerFactory;
  * A torrent shared by the BitTorrent client.
  *
  * <p>
- * The {@link SharedTorrent} class embeds the Torrent class with all the data
+ * The {@link TorrentHandler} class associates a
+ * {@link SwarmHandler} and a {@link  TrackerHandler} with all the data
  * and logic required by the BitTorrent client implementation.
  * </p>
  *

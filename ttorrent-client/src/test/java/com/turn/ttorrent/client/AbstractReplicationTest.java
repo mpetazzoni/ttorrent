@@ -7,7 +7,8 @@ package com.turn.ttorrent.client;
 import com.turn.torrent.tracker.simple.SimpleTracker;
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.protocol.torrent.TorrentCreator;
-import com.turn.ttorrent.test.TorrentTestUtils;
+import com.turn.ttorrent.protocol.test.TorrentTestUtils;
+import com.turn.ttorrent.test.TorrentClientTestUtils;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import java.io.File;
 import java.io.IOException;
@@ -110,6 +111,6 @@ public class AbstractReplicationTest {
         await(latch);
 
         for (Client peer : clients)
-            TorrentTestUtils.assertTorrentData(seed, peer, torrent.getInfoHash());
+            TorrentClientTestUtils.assertTorrentData(seed, peer, torrent.getInfoHash());
     }
 }

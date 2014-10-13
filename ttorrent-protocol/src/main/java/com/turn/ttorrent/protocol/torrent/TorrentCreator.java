@@ -15,18 +15,25 @@
  */
 package com.turn.ttorrent.protocol.torrent;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
+import com.google.common.io.Files;
+import com.google.common.math.LongMath;
+import com.google.common.primitives.Ints;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.bcodec.BEValue;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -139,6 +146,14 @@ public class TorrentCreator {
      */
     public TorrentCreator(@Nonnull File parent) {
         this.parent = parent;
+        if (parent.isDirectory()) {
+            List<File> tmp = new ArrayList<File>();
+            for (File file : parent.listFiles())
+                if (file.isFile())
+                    tmp.add(file);
+            Collections.sort(tmp);
+            files = tmp;
+        }
     }
 
     public void setExecutor(@Nonnull Executor executor) {
@@ -150,6 +165,11 @@ public class TorrentCreator {
      */
     public void setFiles(@Nonnull List<File> files) {
         this.files = files;
+    }
+
+    @Nonnegative
+    public int getPieceLength() {
+        return pieceLength;
     }
 
     public void setPieceLength(@Nonnegative int pieceLength) {
@@ -318,65 +338,78 @@ public class TorrentCreator {
      *
      * @param files The file to hash.
      */
-    public /* for testing */ static byte[] hashFiles(Executor executor, List<File> files, long nbytes, int pieceLength)
+    @Nonnull
+    @VisibleForTesting
+    public static byte[] hashFiles(Executor executor, List<File> files, long nbytes, int pieceLength)
             throws InterruptedException, IOException {
-        int npieces = (int) Math.ceil((double) nbytes / pieceLength);
+        int npieces = Ints.checkedCast(LongMath.divide(nbytes, pieceLength, RoundingMode.CEILING));
+        // (int) Math.ceil((double) nbytes / pieceLength);
         byte[] out = new byte[Torrent.PIECE_HASH_SIZE * npieces];
         CountDownLatch latch = new CountDownLatch(npieces);
 
-        ByteBuffer buffer = ByteBuffer.allocate(pieceLength);
+        ByteBuffer overflow = ByteBuffer.allocate(pieceLength);
 
-        long start = System.nanoTime();
+        Stopwatch stopwatch = Stopwatch.createStarted();
         int piece = 0;
         for (File file : files) {
             logger.info("Hashing data from {} ({} pieces)...", new Object[]{
                 file.getName(),
-                (int) Math.ceil((double) file.length() / pieceLength)
+                LongMath.divide(file.length(), pieceLength, RoundingMode.CEILING)
             });
 
-            FileInputStream fis = new FileInputStream(file);
-            FileChannel channel = fis.getChannel();
+            MappedByteBuffer map = Files.map(file, FileChannel.MapMode.READ_ONLY);
             int step = 10;
 
-            try {
-                while (channel.read(buffer) > 0) {
-                    if (buffer.remaining() == 0) {
-                        buffer.flip();
-                        executor.execute(new ChunkHasher(out, piece, latch, buffer));
-                        buffer = ByteBuffer.allocate(pieceLength);
-                        piece++;
-                    }
+            while (map.remaining() > pieceLength) {
+                map.limit(map.position() + pieceLength);
+                ByteBuffer buffer = map.slice();
+                map.position(map.limit());
+                map.limit(map.capacity());
+                executor.execute(new ChunkHasher(out, piece, latch, buffer));
+                piece++;
 
-                    if (channel.position() / (double) channel.size() * 100f > step) {
-                        logger.info("  ... {}% complete", step);
-                        step += 10;
-                    }
+                if (map.position() / (double) map.capacity() * 100f > step) {
+                    logger.info("  ... {}% complete", step);
+                    step += 10;
                 }
-            } finally {
-                channel.close();
-                fis.close();
+            }
+
+            while (map.hasRemaining()) {
+                int length = Math.min(map.remaining(), overflow.remaining());
+                map.limit(map.position() + length);
+                overflow.put(map);
+                map.position(map.limit());
+                map.limit(map.capacity());
+                if (!overflow.hasRemaining()) {
+                    overflow.flip();
+                    executor.execute(new ChunkHasher(out, piece, latch, overflow));
+                    overflow = ByteBuffer.allocate(pieceLength);
+                    piece++;
+                }
             }
         }
 
         // Hash the last bit, if any
-        if (buffer.position() > 0) {
-            buffer.flip();
-            executor.execute(new ChunkHasher(out, piece, latch, buffer));
+        if (overflow.position() > 0) {
+            overflow.flip();
+            executor.execute(new ChunkHasher(out, piece, latch, overflow));
             piece++;
         }
 
         // Wait for hashing tasks to complete.
         latch.await();
-        long elapsed = System.nanoTime() - start;
 
-        logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
+        logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}.",
                 new Object[]{
             files.size(),
             nbytes,
             piece,
             npieces,
-            String.format("%.1f", elapsed / 1e6)
+            stopwatch
         });
+
+        if (npieces != piece)
+            throw new IllegalStateException("Unexpected piece count " + piece + "; expected " + npieces);
 
         return out;
     }

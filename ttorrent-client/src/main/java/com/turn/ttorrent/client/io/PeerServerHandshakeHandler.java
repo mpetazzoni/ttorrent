@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.io;
 
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.TorrentRegistry;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.TorrentHandler;
 import io.netty.channel.ChannelHandler;
@@ -37,10 +37,10 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     private static final LoggingHandler wireLogger = new LoggingHandler("server-wire");
     private static final LoggingHandler frameLogger = new LoggingHandler("server-frame");
     private static final LoggingHandler messageLogger = new LoggingHandler("server-message");
-    private final Client client;
+    private final TorrentRegistry torrentProvider;
 
-    public PeerServerHandshakeHandler(@Nonnull Client client) {
-        this.client = client;
+    public PeerServerHandshakeHandler(@Nonnull TorrentRegistry torrentProvider) {
+        this.torrentProvider = torrentProvider;
     }
 
     @Override
@@ -62,13 +62,14 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
     protected void process(ChannelHandlerContext ctx, PeerHandshakeMessage message) {
         if (LOG.isTraceEnabled())
             LOG.trace("Processing {}", message);
-        if (Arrays.equals(message.getPeerId(), client.getLocalPeerId())) {
+        if (Arrays.equals(message.getPeerId(), torrentProvider.getLocalPeerId())) {
+            LOG.warn("Connected to self. Closing.");
             ctx.close();
-            throw new IllegalArgumentException("Connected to self?");
+            return;
         }
 
         // We are a server.
-        TorrentHandler torrent = client.getTorrent(message.getInfoHash());
+        TorrentHandler torrent = torrentProvider.getTorrent(message.getInfoHash());
         if (torrent == null) {
             LOG.warn("Unknown torrent {}", message);
             ctx.close();
@@ -78,7 +79,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         if (LOG.isTraceEnabled())
             LOG.trace("Found torrent {}", torrent);
 
-        PeerHandshakeMessage response = new PeerHandshakeMessage(torrent.getInfoHash(), client.getLocalPeerId());
+        PeerHandshakeMessage response = new PeerHandshakeMessage(torrent.getInfoHash(), torrentProvider.getLocalPeerId());
         ctx.writeAndFlush(toByteBuf(response));
 
         addPeer(ctx, message, listener);

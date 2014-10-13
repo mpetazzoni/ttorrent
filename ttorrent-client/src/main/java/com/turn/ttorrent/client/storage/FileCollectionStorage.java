@@ -102,6 +102,7 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
         return bytes;
     }
 
+    @Override
     public void flush() throws IOException {
         for (Flushable file : files) {
             file.flush();
@@ -143,11 +144,11 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
      */
     private static class FileOffset {
 
-        public final FileStorage file;
+        public final TorrentByteStorage file;
         public final long offset;
         public final long length;
 
-        FileOffset(FileStorage file, long offset, long length) {
+        FileOffset(TorrentByteStorage file, long offset, long length) {
             this.file = file;
             this.offset = offset;
             this.length = length;

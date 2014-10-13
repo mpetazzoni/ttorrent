@@ -24,6 +24,9 @@ public interface PeerPieceProvider {
     public Instrumentation getInstrumentation();
 
     @Nonnull
+    public byte[] getLocalPeerId();
+
+    @Nonnull
     public String getLocalPeerName();
 
     @Nonnegative

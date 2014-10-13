@@ -6,7 +6,7 @@ package com.turn.ttorrent.client.storage;
 
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
-import com.turn.ttorrent.test.TorrentTestUtils;
+import com.turn.ttorrent.protocol.test.TorrentTestUtils;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;

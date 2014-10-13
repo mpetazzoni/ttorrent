@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class Client {
+public class Client implements TorrentRegistry {
 
     private static final Logger LOG = LoggerFactory.getLogger(Client.class);
 
@@ -106,9 +106,14 @@ public class Client {
         return environment;
     }
 
-    @Nonnull
+    @Override
     public byte[] getLocalPeerId() {
         return getEnvironment().getLocalPeerId();
+    }
+
+    @Override
+    public String getLocalPeerName() {
+        return getEnvironment().getLocalPeerName();
     }
 
     @Nonnull
@@ -232,6 +237,7 @@ public class Client {
         LOG.info("BitTorrent client [{}] stopped.", this);
     }
 
+    @Override
     @CheckForNull
     public TorrentHandler getTorrent(@Nonnull byte[] infoHash) {
         String hexInfoHash = TorrentUtils.toHex(infoHash);

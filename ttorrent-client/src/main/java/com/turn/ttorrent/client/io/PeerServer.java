@@ -106,7 +106,12 @@ public class PeerServer implements PeerAddressProvider {
 
     @Override
     public byte[] getLocalPeerId() {
-        return client.getLocalPeerId();
+        return client.getEnvironment().getLocalPeerId();
+    }
+
+    @Override
+    public String getLocalPeerName() {
+        return client.getEnvironment().getLocalPeerName();
     }
 
     @Nonnull

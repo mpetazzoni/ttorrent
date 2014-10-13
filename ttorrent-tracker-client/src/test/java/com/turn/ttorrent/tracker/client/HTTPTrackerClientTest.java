@@ -5,18 +5,15 @@
 package com.turn.ttorrent.tracker.client;
 
 import com.turn.ttorrent.protocol.tracker.TrackerMessage;
-import com.turn.ttorrent.test.TestTorrentMetadataProvider;
-import java.net.InetSocketAddress;
+import com.turn.ttorrent.tracker.client.test.TestPeerAddressProvider;
+import com.turn.ttorrent.tracker.client.test.TestTorrentMetadataProvider;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.annotation.Nonnull;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,24 +55,9 @@ public class HTTPTrackerClientTest {
         }
     }
 
-    @Nonnull
-    private PeerAddressProvider newPeerAddresses() {
-        return new PeerAddressProvider() {
-            @Override
-            public byte[] getLocalPeerId() {
-                return new byte[]{4, 6, 8, 18};
-            }
-
-            @Override
-            public Set<? extends SocketAddress> getLocalAddresses() {
-                return Collections.singleton(new InetSocketAddress(17));
-            }
-        };
-    }
-
     @Test
     public void testConnectionRefused() throws Exception {
-        HTTPTrackerClient client = new HTTPTrackerClient(newPeerAddresses());
+        HTTPTrackerClient client = new HTTPTrackerClient(new TestPeerAddressProvider());
         client.start();
         try {
             ResponseListener listener = new ResponseListener();
@@ -90,7 +72,7 @@ public class HTTPTrackerClientTest {
 
     @Test
     public void testConnectionTimeout() throws Exception {
-        HTTPTrackerClient client = new HTTPTrackerClient(newPeerAddresses());
+        HTTPTrackerClient client = new HTTPTrackerClient(new TestPeerAddressProvider());
         client.start();
         try {
             ResponseListener listener = new ResponseListener();

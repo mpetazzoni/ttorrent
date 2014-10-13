@@ -57,6 +57,7 @@ project(':ttorrent-protocol') {
 		compile 'io.netty:netty-all:4.0.23.Final'
 
 		testCompile project(':ttorrent-tracker-simple')
+		testCompile 'commons-io:commons-io:2.4'
 	}
 }
 
@@ -102,7 +103,7 @@ project(':ttorrent-tracker-servlet') {
 
 project(':ttorrent-tracker-spring') {
 	dependencies {
-		compile project(':ttorrent-tracker')
+		compile project(':ttorrent-tracker-servlet')
 
 		def springVersion = "4.1.1.RELEASE"
 		compile "org.springframework:spring-webmvc:$springVersion"
@@ -124,6 +125,7 @@ project(':ttorrent-client') {
 		compile 'net.sf.jopt-simple:jopt-simple:4.7'
 
 		testCompile project(':ttorrent-tracker-simple')
+		testCompile project(':ttorrent-protocol').sourceSets.test.output
 		testCompile project(':ttorrent-tracker-client').sourceSets.test.output
 	}
 }
