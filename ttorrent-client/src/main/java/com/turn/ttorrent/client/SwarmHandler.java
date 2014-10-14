@@ -18,6 +18,7 @@ package com.turn.ttorrent.client;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.turn.ttorrent.client.io.PeerMessage;
+import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
@@ -26,7 +27,6 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.client.peer.RateComparator;
-import com.turn.ttorrent.protocol.tracker.Peer;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.channel.Channel;
 import io.netty.util.internal.PlatformDependent;
@@ -228,7 +228,12 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
-        Set<? extends SocketAddress> localAddresses = getClient().getPeerServer().getLocalAddresses();
+        PeerServer server = getClient().getPeerServer();
+        Set<? extends SocketAddress> localAddresses;
+        if (server != null)
+            localAddresses = server.getLocalAddresses();
+        else
+            localAddresses = Collections.emptySet();
         long now = System.currentTimeMillis();
         for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : peers.entrySet()) {
             SocketAddress remoteAddress = e.getKey();
