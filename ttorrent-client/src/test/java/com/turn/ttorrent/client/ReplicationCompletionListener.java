@@ -4,6 +4,8 @@
  */
 package com.turn.ttorrent.client;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
@@ -18,6 +20,8 @@ public class ReplicationCompletionListener extends ClientListenerAdapter {
     private final Logger LOG = LoggerFactory.getLogger(ReplicationCompletionListener.class);
     private final CountDownLatch latch;
     private final TorrentHandler.State state;
+    private final Set<TorrentHandler> torrents = new HashSet<TorrentHandler>();
+    private final Object lock = new Object();
 
     public ReplicationCompletionListener(@Nonnull CountDownLatch latch, @Nonnull TorrentHandler.State state) {
         this.latch = latch;
@@ -26,14 +30,20 @@ public class ReplicationCompletionListener extends ClientListenerAdapter {
 
     @Override
     public void clientStateChanged(Client client, Client.State state) {
-        LOG.info("client=" + client + ", state=" + state);
+        LOG.info("ClientState: client=" + client + ", state=" + state);
     }
 
     @Override
     public void torrentStateChanged(Client client, TorrentHandler torrent, TorrentHandler.State state) {
-        LOG.info("client=" + client + ", torrent=" + torrent + ", state=" + state);
-        if (state == this.state)
+        LOG.info("TorrentState: client=" + client + ", torrent=" + torrent + ", state=" + state + ", latch=" + latch.toString());
+        if (this.state.equals(state)) {
+            LOG.info("Counting down for " + client.getLocalPeerName());
+            synchronized (lock) {
+                if (!torrents.add(torrent))
+                    throw new IllegalArgumentException("Duplicate count for " + client.getLocalPeerName() + " / " + torrent);
+            }
             latch.countDown();
+        }
         /*
          switch (state) {
          case DONE:

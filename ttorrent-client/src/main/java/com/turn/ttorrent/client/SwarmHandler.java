@@ -15,8 +15,9 @@
  */
 package com.turn.ttorrent.client;
 
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
+import com.google.common.base.Function;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Maps;
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
@@ -27,7 +28,9 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.client.peer.RateComparator;
+import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.protocol.tracker.Peer;
 import io.netty.channel.Channel;
 import io.netty.util.internal.PlatformDependent;
 import java.io.IOException;
@@ -90,7 +93,9 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
-public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnectionListener, PeerPieceProvider, PeerActivityListener {
+public class SwarmHandler implements Runnable,
+        PeerIdentityProvider, PeerPieceProvider,
+        PeerExistenceListener, PeerConnectionListener, PeerActivityListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(SwarmHandler.class);
 
@@ -201,11 +206,13 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     }
 
     @Override
-    public Set<? extends SocketAddress> getPeers() {
-        // TODO: Merge our local addresses into the known-peer set permanently.
-        Set<SocketAddress> peers = Sets.newHashSet(knownPeers.keySet());
-        Iterables.addAll(peers, getClient().getPeerServer().getLocalAddresses());
-        return peers;
+    public Map<? extends SocketAddress, ? extends byte[]> getPeers() {
+        return Maps.transformValues(knownPeers, new Function<PeerInformation, byte[]>() {
+            @Override
+            public byte[] apply(PeerInformation input) {
+                return input.remotePeerId;
+            }
+        });
     }
 
     // @Nonnull
@@ -230,7 +237,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
         PeerServer server = getClient().getPeerServer();
         Set<? extends SocketAddress> localAddresses;
-        if (server != null)
+        if (server != null) // Thi can happen if we try to seed PEX before calling Client.start().
             localAddresses = server.getLocalAddresses();
         else
             localAddresses = Collections.emptySet();
@@ -244,7 +251,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             }
             addPeer(remoteAddress, e.getValue(), now);
         }
-        // run();
+        // run();   // If you want very low latency, call run() manually after calling this.
     }
 
     @Nonnull
@@ -373,6 +380,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
     // TODO: Periodic / step function.
     @Override
     public void run() {
+        Stopwatch stopwatch = Stopwatch.createStarted();
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Run: peers={}, connected={}, completed={}/{}",
                     new Object[]{
@@ -439,6 +447,7 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             if (tick)
                 peer.tick();
         }
+        LOG.debug("{}: Swarm tick took {}", getLocalPeerName(), stopwatch);
     }
 
     /**
@@ -1212,15 +1221,16 @@ public class SwarmHandler implements Runnable, PeerExistenceListener, PeerConnec
             });
         }
 
+        // It's possible for more than one thread to get here simultaneously.
         if (torrent.isComplete()) {
-            LOG.info("{}: {}: Last piece validated and completed, finishing download.",
-                    getLocalPeerName(), torrent);
+            LOG.info("{}: {}: Last piece ({}) validated and completed, finishing download.", new Object[]{
+                getLocalPeerName(), torrent, piece
+            });
 
             // Cancel all remaining outstanding requests
             for (PeerHandler remote : getConnectedPeers())
                 remote.cancelRequestsSent("torrent completed");
 
-            // TODO: This need locking.
             torrent.finish();
         }
     }

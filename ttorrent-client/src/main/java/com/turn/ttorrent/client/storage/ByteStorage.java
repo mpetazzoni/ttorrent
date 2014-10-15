@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.storage;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -34,7 +35,7 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  * @author dgiffin
  */
-public interface TorrentByteStorage extends Closeable {
+public interface ByteStorage extends Flushable, Closeable {
 
     public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 

@@ -21,12 +21,13 @@ import com.google.common.base.Throwables;
 import com.google.common.io.Files;
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.client.peer.PieceHandler;
-import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.client.storage.ByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 
 import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -42,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.GuardedBy;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,27 +64,20 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class TorrentHandler implements TorrentMetadataProvider {
+public class TorrentHandler implements TorrentMetadataProvider, Closeable {
 
     private static final Logger LOG = LoggerFactory.getLogger(TorrentHandler.class);
-
-    public enum State {
-
-        WAITING,
-        VALIDATING,
-        SHARING,
-        SEEDING,
-        ERROR,
-        DONE;
-    };
     private final Client client;
     private final Torrent torrent;
-    private final TorrentByteStorage bucket;
+    private final ByteStorage bucket;
     private final SwarmHandler swarmHandler;
     private final TrackerHandler trackerHandler;
     @Nonnull
+    @GuardedBy("lock")
     private State state = State.WAITING;
     // private SortedSet<Piece> rarest;
+    @Nonnull
+    @GuardedBy("lock")
     private BitSet completedPieces = new BitSet();
     private int blockLength = PieceHandler.DEFAULT_BLOCK_SIZE;
     private double maxUploadRate = 0.0;
@@ -131,7 +126,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
     }
 
     @Nonnull
-    private static TorrentByteStorage toStorage(@Nonnull Torrent torrent, @Nonnull File parent)
+    private static ByteStorage toStorage(@Nonnull Torrent torrent, @Nonnull File parent)
             throws IOException {
         Preconditions.checkNotNull(parent, "Parent directory was null.");
 
@@ -157,7 +152,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
         }
         if (files.size() == 1)
             return files.get(0);
-        return new FileCollectionStorage(files, torrent.getSize());
+        return new FileCollectionStorage(files);
     }
 
     /**
@@ -166,12 +161,15 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * @param torrent The meta-info byte data.
      * @param bucket The storage bucket for the torrent data.
      */
-    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull TorrentByteStorage bucket) {
+    public TorrentHandler(@Nonnull Client client, @Nonnull Torrent torrent, @Nonnull ByteStorage bucket) {
         this.client = client;
         this.torrent = torrent;
         this.bucket = bucket;
         this.swarmHandler = new SwarmHandler(this);
         this.trackerHandler = new TrackerHandler(client, this, this.swarmHandler);
+
+        if (bucket.isFinished())
+            throw new IllegalStateException("ByteStorage is already finished.");
     }
 
     @Nonnull
@@ -190,7 +188,7 @@ public class TorrentHandler implements TorrentMetadataProvider {
     }
 
     @Nonnull
-    public TorrentByteStorage getBucket() {
+    public ByteStorage getBucket() {
         return bucket;
     }
 
@@ -263,8 +261,11 @@ public class TorrentHandler implements TorrentMetadataProvider {
         }
     }
 
+    /** Idempotent. */
     public void setState(@Nonnull State state) {
         synchronized (lock) {
+            if (this.state.equals(state))
+                return;
             this.state = state;
         }
         getClient().fireTorrentState(this, state);
@@ -427,6 +428,8 @@ public class TorrentHandler implements TorrentMetadataProvider {
         }
         setState(State.VALIDATING);
 
+        // byte[] zeroHash = TorrentUtils.hash(new byte[torrent.getPieceLength()]);
+
         try {
             int npieces = torrent.getPieceCount();
 
@@ -483,10 +486,12 @@ public class TorrentHandler implements TorrentMetadataProvider {
                 this.completedPieces = completedPieces;
             }
 
-            if (isComplete())
+            if (isComplete()) {
                 setState(State.SEEDING);
-            else
+                finish();
+            } else {
                 setState(State.SHARING);
+            }
         } catch (Exception e) {
             setState(State.ERROR);
             Throwables.propagateIfPossible(e, InterruptedException.class, IOException.class);
@@ -516,17 +521,18 @@ public class TorrentHandler implements TorrentMetadataProvider {
      * which usually consists in putting the torrent data in their final form
      * and at their target location.
      * </p>
+     * 
+     * This call is idempotent.
      *
-     * @see TorrentByteStorage#finish
+     * @see ByteStorage#finish()
      */
-    public synchronized void finish() throws IOException {
+    public void finish() throws IOException {
         if (!isInitialized())
             throw new IllegalStateException("Torrent not yet initialized!");
         if (!isComplete())
             throw new IllegalStateException("Torrent download is not complete!");
 
         bucket.finish();
-        trackerHandler.complete();
         setState(State.SEEDING);
     }
 
@@ -542,14 +548,15 @@ public class TorrentHandler implements TorrentMetadataProvider {
         return getCompletedPieceCount() == getPieceCount();
     }
 
+    @Override
     public void close() throws IOException {
+        bucket.close();
+
         // Determine final state
         if (isFinished())
             setState(State.DONE);
         else
             setState(State.ERROR);
-
-        this.bucket.close();
     }
 
     public void start() throws InterruptedException, IOException {
@@ -558,9 +565,10 @@ public class TorrentHandler implements TorrentMetadataProvider {
         trackerHandler.start();
     }
 
-    public void stop() {
+    public void stop() throws IOException {
         trackerHandler.stop();
         swarmHandler.stop();
+        close();
     }
 
     @Override

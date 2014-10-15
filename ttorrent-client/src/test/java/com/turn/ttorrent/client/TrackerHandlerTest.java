@@ -12,6 +12,7 @@ import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.test.TestPeerExistenceListener;
 import com.turn.ttorrent.tracker.client.test.TestTorrentMetadataProvider;
 import com.turn.ttorrent.protocol.test.TorrentTestUtils;
+import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import java.io.File;
 import java.net.InetSocketAddress;
@@ -114,17 +115,17 @@ public class TrackerHandlerTest {
             try {
 
                 assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
-                trackerHandler.handleAnnounceFailed(uri1, "no-change fail");
+                trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
                 assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
 
-                trackerHandler.handleAnnounceFailed(uri0, "change fail");
+                trackerHandler.handleAnnounceFailed(uri0, TrackerMessage.AnnounceEvent.NONE, "change fail");
                 assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
-                trackerHandler.handleAnnounceFailed(uri0, "no-change fail");
+                trackerHandler.handleAnnounceFailed(uri0, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
                 assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
 
-                trackerHandler.handleAnnounceFailed(uri1, "change fail");
+                trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "change fail");
                 assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
-                trackerHandler.handleAnnounceFailed(uri1, "no-change fail");
+                trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
                 assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
 
             } finally {

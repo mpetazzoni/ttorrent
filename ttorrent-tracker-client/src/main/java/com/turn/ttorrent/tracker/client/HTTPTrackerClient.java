@@ -84,11 +84,13 @@ public class HTTPTrackerClient extends TrackerClient {
         private final AnnounceResponseListener listener;
         private final HttpUriRequest request;
         private final URI tracker;
+        private final TrackerMessage.AnnounceEvent event;
 
-        public HttpResponseCallback(AnnounceResponseListener listener, HttpUriRequest request, URI tracker) {
+        public HttpResponseCallback(AnnounceResponseListener listener, HttpUriRequest request, URI tracker, TrackerMessage.AnnounceEvent event) {
             this.listener = listener;
             this.request = request;
             this.tracker = tracker;
+            this.event = event;
         }
 
         @Override
@@ -98,7 +100,7 @@ public class HTTPTrackerClient extends TrackerClient {
             try {
                 HTTPTrackerMessage message = toMessage(response, -1);
                 if (message != null)
-                    handleTrackerAnnounceResponse(listener, tracker, message, false);
+                    handleTrackerAnnounceResponse(listener, tracker, event, message, false);
             } catch (Exception e) {
                 if (LOG.isDebugEnabled())
                     LOG.debug("Failed to handle announce response", e);
@@ -113,7 +115,7 @@ public class HTTPTrackerClient extends TrackerClient {
                 LOG.debug("Failed: {} -> {}", request.getRequestLine(), e);
             // TODO: Pass failure back to TrackerHandler.
             // LOG.trace("Failed: " + request.getRequestLine(), e);
-            listener.handleAnnounceFailed(tracker, "HTTP failed: " + e);
+            listener.handleAnnounceFailed(tracker, event, "HTTP failed: " + e);
         }
 
         @Override
@@ -165,7 +167,7 @@ public class HTTPTrackerClient extends TrackerClient {
                     true, false, event, AnnounceRequestMessage.DEFAULT_NUM_WANT);
             URI target = message.toURI(tracker);
             HttpGet request = new HttpGet(target);
-            HttpResponseCallback callback = new HttpResponseCallback(listener, request, tracker);
+            HttpResponseCallback callback = new HttpResponseCallback(listener, request, tracker, event);
             httpclient.execute(request, callback);
         } catch (URISyntaxException mue) {
             throw new AnnounceException("Invalid announce URI ("

@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.io.PeerClient;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -188,9 +189,9 @@ public class Client implements TorrentRegistry {
 
             environment.start();
 
-            peerServer = new PeerServer(this);
+            peerServer = new PeerServer(this, getEnvironment().getLocalPeerListenAddress());
             peerServer.start();
-            peerClient = new PeerClient(this);
+            peerClient = new PeerClient();
             peerClient.start();
 
             httpTrackerClient = new HTTPTrackerClient(peerServer);
@@ -263,7 +264,7 @@ public class Client implements TorrentRegistry {
         return torrentHandler;
     }
 
-    public void removeTorrent(@Nonnull TorrentHandler torrent) {
+    public void removeTorrent(@Nonnull TorrentHandler torrent) throws IOException {
         synchronized (lock) {
             torrents.remove(TorrentUtils.toHex(torrent.getInfoHash()), torrent);
             if (getState() == State.STARTED)
@@ -272,12 +273,12 @@ public class Client implements TorrentRegistry {
     }
 
     @CheckForNull
-    public TorrentHandler removeTorrent(@Nonnull Torrent torrent) {
+    public TorrentHandler removeTorrent(@Nonnull Torrent torrent) throws IOException {
         return removeTorrent(torrent.getInfoHash());
     }
 
     @CheckForNull
-    public TorrentHandler removeTorrent(@Nonnull byte[] infoHash) {
+    public TorrentHandler removeTorrent(@Nonnull byte[] infoHash) throws IOException {
         TorrentHandler torrent = torrents.get(TorrentUtils.toHex(infoHash));
         if (torrent != null)
             removeTorrent(torrent);
@@ -293,7 +294,7 @@ public class Client implements TorrentRegistry {
             listener.clientStateChanged(this, state);
     }
 
-    public void fireTorrentState(@Nonnull TorrentHandler torrent, @Nonnull TorrentHandler.State state) {
+    public void fireTorrentState(@Nonnull TorrentHandler torrent, @Nonnull TorrentMetadataProvider.State state) {
         for (ClientListener listener : listeners)
             listener.torrentStateChanged(this, torrent, state);
     }
@@ -302,5 +303,10 @@ public class Client implements TorrentRegistry {
         for (Map.Entry<String, TorrentHandler> e : torrents.entrySet()) {
             e.getValue().info(verbose);
         }
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "(" + getLocalPeerName() + ")";
     }
 }

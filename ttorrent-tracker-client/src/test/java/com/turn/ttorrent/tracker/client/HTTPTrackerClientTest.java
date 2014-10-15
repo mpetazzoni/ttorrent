@@ -7,11 +7,9 @@ package com.turn.ttorrent.tracker.client;
 import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 import com.turn.ttorrent.tracker.client.test.TestPeerAddressProvider;
 import com.turn.ttorrent.tracker.client.test.TestTorrentMetadataProvider;
-import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
@@ -36,20 +34,14 @@ public class HTTPTrackerClientTest {
         private final AtomicInteger failed = new AtomicInteger(0);
 
         @Override
-        public void handleDiscoveredPeers(URI tracker, Map<? extends SocketAddress, ? extends byte[]> peer) {
-            LOG.info("Peers: " + tracker);
+        public void handleAnnounceResponse(URI tracker, TrackerMessage.AnnounceEvent event, TrackerMessage.AnnounceResponseMessage response) {
+            LOG.info("Response: " + tracker + ": " + event + " -> " + response);
             latch.countDown();
         }
 
         @Override
-        public void handleAnnounceResponse(URI tracker, long interval, int complete, int incomplete) {
-            LOG.info("Response: " + tracker);
-            latch.countDown();
-        }
-
-        @Override
-        public void handleAnnounceFailed(URI tracker, String reason) {
-            LOG.info("Failed: " + tracker + ": " + reason);
+        public void handleAnnounceFailed(URI tracker, TrackerMessage.AnnounceEvent event, String reason) {
+            LOG.info("Failed: " + tracker + ": " + event + " -> " + reason);
             failed.getAndIncrement();
             latch.countDown();
         }

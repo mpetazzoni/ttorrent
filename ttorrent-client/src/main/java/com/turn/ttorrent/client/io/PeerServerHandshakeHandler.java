@@ -80,7 +80,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
             LOG.trace("Found torrent {}", torrent);
 
         PeerHandshakeMessage response = new PeerHandshakeMessage(torrent.getInfoHash(), torrentProvider.getLocalPeerId());
-        ctx.writeAndFlush(toByteBuf(response));
+        ctx.writeAndFlush(toByteBuf(ctx, response));
 
         addPeer(ctx, message, listener);
     }

@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.tracker.client.PeerAddressProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
@@ -53,35 +54,36 @@ public class PeerServer implements PeerAddressProvider {
     private final SocketAddress address;
     private ChannelFuture future;
 
+    // This can stop taking Client if we sort out where the peerId will come from.
+    // One option is to make PeerAddressProvider NOT extend PeerIdentityProvider.
     public PeerServer(@Nonnull Client client, @CheckForNull SocketAddress address) {
         this.client = client;
         this.address = address;
     }
 
-    public PeerServer(@Nonnull Client client) {
-        this(client, client.getEnvironment().getLocalPeerListenAddress());
-    }
-
     public void start() throws Exception {
         EventLoopGroup group = new NioEventLoopGroup();
-        ServerBootstrap b = new ServerBootstrap();
-        b.group(group);
-        b.channel(NioServerSocketChannel.class);
-        b.option(ChannelOption.SO_BACKLOG, 128);
-        b.option(ChannelOption.SO_REUSEADDR, true);
-        b.option(ChannelOption.TCP_NODELAY, true);
-        b.childHandler(new PeerServerHandshakeHandler(client));
-        b.childOption(ChannelOption.SO_KEEPALIVE, true);
-        // b.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
+        ServerBootstrap bootstrap = new ServerBootstrap();
+        bootstrap.group(group);
+        bootstrap.channel(NioServerSocketChannel.class);
+        bootstrap.option(ChannelOption.SO_BACKLOG, 128);
+        bootstrap.option(ChannelOption.SO_REUSEADDR, true);
+        bootstrap.option(ChannelOption.TCP_NODELAY, true);
+        bootstrap.childHandler(new PeerServerHandshakeHandler(client));
+        bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+        bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
+        // bootstrap.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
+        // bootstrap.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 1024 * 1024);
+        // bootstrap.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
         if (address != null) {
-            future = b.bind(address).sync();
+            future = bootstrap.bind(address).sync();
         } else {
             BIND:
             {
                 Exception x = new IOException("No available port for the BitTorrent client!");
                 for (int i = PORT_RANGE_START; i <= PORT_RANGE_END; i++) {
                     try {
-                        future = b.bind(i).sync();
+                        future = bootstrap.bind(i).sync();
                         break BIND;
                     } catch (InterruptedException e) {
                         throw e;

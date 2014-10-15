@@ -18,12 +18,13 @@ package com.turn.ttorrent.client.storage;
 import com.google.common.base.Objects;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import java.io.File;
-import java.io.Flushable;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
+import java.nio.file.StandardOpenOption;
+import java.util.EnumSet;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -42,14 +43,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  */
-public class FileStorage implements TorrentByteStorage, Flushable {
+public class FileStorage implements ByteRangeStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileStorage.class);
     private final File target;
     private final long offset;
     private final long size;
     @GuardedBy("lock")
-    private RandomAccessFile raf;
+    private FileChannel channel;
     @GuardedBy("lock")
     private File current;
     @GuardedBy("lock")
@@ -67,7 +68,7 @@ public class FileStorage implements TorrentByteStorage, Flushable {
         this.size = size;
 
         File partial = new File(file.getAbsolutePath()
-                + TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+                + ByteStorage.PARTIAL_FILE_NAME_SUFFIX);
 
         if (partial.exists()) {
             LOG.debug("{}: Partial download found at {}. Continuing...",
@@ -85,13 +86,16 @@ public class FileStorage implements TorrentByteStorage, Flushable {
 
         // Non-final variables are not guaranteed written before the end of a constructor.
         synchronized (lock) {
-            this.raf = new RandomAccessFile(current, "rw");
-            LOG.info("Opened RandomAccessFile and length is " + raf.length() + "; size=" + size);
-
             // Set the file length to the appropriate size, eventually truncating
             // or extending the file if it already exists with a different size.
-            this.raf.setLength(size);
+            RandomAccessFile raf = new RandomAccessFile(current, "rw");
+            try {
+                raf.setLength(size);
+            } finally {
+                raf.close();
+            }
 
+            this.channel = FileChannel.open(current.toPath(), EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.READ, StandardOpenOption.WRITE));
             this.finished = false;
         }
         LOG.info("{}: Initialized byte storage file at {} ({}+{} byte(s)).",
@@ -107,12 +111,12 @@ public class FileStorage implements TorrentByteStorage, Flushable {
         return target;
     }
 
-    @Nonnegative
-    protected long offset() {
+    @Override
+    public long offset() {
         return this.offset;
     }
 
-    @Nonnegative
+    @Override
     public long size() {
         return this.size;
     }
@@ -120,11 +124,13 @@ public class FileStorage implements TorrentByteStorage, Flushable {
     @Override
     public int read(ByteBuffer buffer, long offset) throws IOException {
         synchronized (lock) {
+            if (channel == null)
+                throw new NullPointerException("Channel is null.");
+
             int length = buffer.remaining();
             if (offset + length > this.size)
                 throw new IllegalArgumentException(target.getAbsolutePath() + ": Invalid storage read request: offset=" + offset + ", length=" + length + " when size=" + this.size);
 
-            FileChannel channel = raf.getChannel();
             int read = channel.read(buffer, offset);
             if (read < length)
                 throw new IOException(target.getAbsolutePath() + ": Storage underrun: offset=" + offset + ", length=" + length + ", size=" + size + ", read=" + read);
@@ -139,15 +145,18 @@ public class FileStorage implements TorrentByteStorage, Flushable {
             if (LOG.isTraceEnabled())
                 LOG.trace("{}: Write @{}: {} {}", new Object[]{
                     target.getAbsolutePath(),
-                    offset, raf, TorrentUtils.toString(buffer, 16)
+                    offset, current, TorrentUtils.toString(buffer, 16)
                 });
+            if (isFinished())
+                throw new IllegalStateException("Already finished.");
+            if (channel == null)
+                throw new NullPointerException("Channel is null.");
             int length = buffer.remaining();
             if (length <= 0)
                 throw new IllegalArgumentException(target.getAbsolutePath() + ": Suspicious write length " + length);
             if (offset + length > this.size)
                 throw new IllegalArgumentException(target.getAbsolutePath() + ": Invalid storage write request: offset=" + offset + ", length=" + length + " when size=" + this.size);
 
-            FileChannel channel = raf.getChannel();
             return channel.write(buffer, offset);
         }
     }
@@ -155,25 +164,26 @@ public class FileStorage implements TorrentByteStorage, Flushable {
     @Override
     public void flush() throws IOException {
         synchronized (lock) {
-            FileChannel channel = raf.getChannel();
-            if (channel.isOpen())
+            if (channel != null)
                 channel.force(true);
+            else
+                LOG.warn("{}: Not flushing {}: Not open.", target.getAbsolutePath(), current);
         }
     }
 
     @Override
     public void close() throws IOException {
         synchronized (lock) {
-            LOG.debug("{}: Closing file channel to {}.", new Object[]{
-                target.getAbsolutePath(), current.getName()
-            });
-            FileChannel channel = raf.getChannel();
-            if (channel.isOpen())
-                channel.force(true);
-            else
-                LOG.warn("{}: Not forcing channel: Not open.", target.getAbsolutePath());
-            channel.close();
-            raf.close();
+            if (channel != null) {
+                LOG.debug("{}: Closing file channel to {}.", new Object[]{
+                    target.getAbsolutePath(), current.getName()
+                });
+                flush();    // FileChannel does NOT flush on close.
+                channel.close();
+                channel = null;
+            } else {
+                LOG.warn("{}: Not closing {}: Not open.", target.getAbsolutePath(), current);
+            }
         }
     }
 
@@ -184,20 +194,10 @@ public class FileStorage implements TorrentByteStorage, Flushable {
     public void finish() throws IOException {
         synchronized (lock) {
             // Nothing more to do if we're already on the target file.
-            if (this.isFinished())
+            if (isFinished())
                 return;
 
-            LOG.debug("{}: Closing file channel to {} (download complete).", new Object[]{
-                target.getAbsolutePath(),
-                current.getName()
-            });
-            FileChannel channel = raf.getChannel();
-            if (channel.isOpen())
-                channel.force(true);
-            else
-                LOG.warn("{}: Not forcing channel: Not open.", target.getAbsolutePath());
-            channel.close();
-            raf.close();
+            close();
 
             if (!current.equals(target)) {
                 FileUtils.deleteQuietly(this.target);
@@ -207,14 +207,14 @@ public class FileStorage implements TorrentByteStorage, Flushable {
                     current.getName(),
                     target.getName()
                 });
-                this.current = this.target;
+                current = target;
             }
 
             if (LOG.isDebugEnabled())
                 LOG.debug("{}: Re-opening torrent byte storage.",
                         this.target.getAbsolutePath());
 
-            this.raf = new RandomAccessFile(target, "r");
+            this.channel = FileChannel.open(target.toPath(), EnumSet.of(StandardOpenOption.READ));
             this.finished = true;
         }
     }

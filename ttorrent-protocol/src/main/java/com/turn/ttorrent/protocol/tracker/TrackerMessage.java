@@ -158,6 +158,7 @@ public abstract class TrackerMessage {
      */
     public interface AnnounceResponseMessage {
 
+        /** In seconds. */
         @Nonnegative
         public int getInterval();
 

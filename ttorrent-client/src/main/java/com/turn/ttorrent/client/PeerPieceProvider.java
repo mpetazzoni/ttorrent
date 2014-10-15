@@ -7,6 +7,7 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.Instrumentation;
+import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -18,16 +19,10 @@ import javax.annotation.Nonnull;
  *
  * @author shevek
  */
-public interface PeerPieceProvider {
+public interface PeerPieceProvider extends PeerIdentityProvider {
 
     @Nonnull
     public Instrumentation getInstrumentation();
-
-    @Nonnull
-    public byte[] getLocalPeerId();
-
-    @Nonnull
-    public String getLocalPeerName();
 
     @Nonnegative
     public int getPieceCount();

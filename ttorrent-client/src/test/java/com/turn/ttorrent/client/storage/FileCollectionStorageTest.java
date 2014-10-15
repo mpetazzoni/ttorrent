@@ -26,7 +26,7 @@ public class FileCollectionStorageTest {
         final List<FileStorage> files = new ArrayList<FileStorage>();
         files.add(new FileStorage(file1, 0, 2));
         files.add(new FileStorage(file2, 2, 2));
-        final FileCollectionStorage storage = new FileCollectionStorage(files, 4);
+        final FileCollectionStorage storage = new FileCollectionStorage(files);
         // since all of these files already exist, we are considered finished
         assertFalse(storage.isFinished());
 

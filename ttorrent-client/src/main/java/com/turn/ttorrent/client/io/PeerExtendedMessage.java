@@ -4,6 +4,7 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Shorts;
 import com.google.common.primitives.UnsignedBytes;
@@ -19,7 +20,6 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -108,19 +108,19 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         }
 
         @CheckForNull
-        private SocketAddress toSocketAddress(@CheckForNull byte[] address) throws UnknownHostException {
+        private InetSocketAddress toSocketAddress(@CheckForNull byte[] address) throws UnknownHostException {
             if (address == null)
                 return null;
             return new InetSocketAddress(InetAddress.getByAddress(address), senderPort);
         }
 
         @CheckForNull
-        public SocketAddress getSenderIp4Address() throws UnknownHostException {
+        public InetSocketAddress getSenderIp4Address() throws UnknownHostException {
             return toSocketAddress(senderIp4);
         }
 
         @CheckForNull
-        public SocketAddress getSenderIp6Address() throws UnknownHostException {
+        public InetSocketAddress getSenderIp6Address() throws UnknownHostException {
             return toSocketAddress(senderIp6);
         }
 
@@ -202,30 +202,30 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         public static final String ADDED6_F = "added6.f";
         public static final String DROPPED = "dropped";
         public static final String DROPPED6 = "dropped6";
-        private final List<SocketAddress> added;
-        private final List<SocketAddress> dropped;
+        private final List<InetSocketAddress> added;
+        private final List<InetSocketAddress> dropped;
 
         public UtPexMessage() {
-            this.added = new ArrayList<SocketAddress>();
-            this.dropped = new ArrayList<SocketAddress>();
+            this.added = new ArrayList<InetSocketAddress>();
+            this.dropped = new ArrayList<InetSocketAddress>();
         }
 
-        public UtPexMessage(@Nonnull List<SocketAddress> added, @Nonnull List<SocketAddress> dropped) {
-            this.added = added;
-            this.dropped = dropped;
+        public UtPexMessage(@Nonnull List<InetSocketAddress> added, @Nonnull List<InetSocketAddress> dropped) {
+            this.added = Preconditions.checkNotNull(added, "Added was null.");
+            this.dropped = Preconditions.checkNotNull(dropped, "Dropped was null.");
         }
 
         @Nonnull
-        public List<? extends SocketAddress> getAdded() {
+        public List<? extends InetSocketAddress> getAdded() {
             return added;
         }
 
         @Nonnull
-        public List<? extends SocketAddress> getDropped() {
+        public List<? extends InetSocketAddress> getDropped() {
             return dropped;
         }
 
-        private static void getAddresses(@Nonnull List<SocketAddress> out, @CheckForNull byte[] in, @Nonnegative int size) throws UnknownHostException {
+        private static void getAddresses(@Nonnull List<InetSocketAddress> out, @CheckForNull byte[] in, @Nonnegative int size) throws UnknownHostException {
             if (in == null)
                 return;
             byte[] value = new byte[size];
@@ -271,18 +271,15 @@ public abstract class PeerExtendedMessage extends PeerMessage {
                 ByteArrayOutputStream out_added6 = new ByteArrayOutputStream();
                 ByteArrayOutputStream out_added6_f = new ByteArrayOutputStream();
 
-                for (SocketAddress socketAddress : added) {
-                    if (!(socketAddress instanceof InetSocketAddress))
-                        continue;
-                    InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
-                    InetAddress address = inetSocketAddress.getAddress();
+                for (InetSocketAddress socketAddress : added) {
+                    InetAddress address = socketAddress.getAddress();
                     if (address instanceof Inet4Address) {
                         out_added.write(address.getAddress());
-                        out_added.write(Shorts.toByteArray((short) inetSocketAddress.getPort()));
+                        out_added.write(Shorts.toByteArray((short) socketAddress.getPort()));
                         out_added_f.write(0);
                     } else if (address instanceof Inet6Address) {
                         out_added6.write(address.getAddress());
-                        out_added6.write(Shorts.toByteArray((short) inetSocketAddress.getPort()));
+                        out_added6.write(Shorts.toByteArray((short) socketAddress.getPort()));
                         out_added6_f.write(0);
                     } else {
                     }
@@ -299,17 +296,14 @@ public abstract class PeerExtendedMessage extends PeerMessage {
                 ByteArrayOutputStream out_dropped = new ByteArrayOutputStream();
                 ByteArrayOutputStream out_dropped6 = new ByteArrayOutputStream();
 
-                for (SocketAddress socketAddress : dropped) {
-                    if (!(socketAddress instanceof InetSocketAddress))
-                        continue;
-                    InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
-                    InetAddress address = inetSocketAddress.getAddress();
+                for (InetSocketAddress socketAddress : dropped) {
+                    InetAddress address = socketAddress.getAddress();
                     if (address instanceof Inet4Address) {
                         out_dropped.write(address.getAddress());
-                        out_dropped.write(Shorts.toByteArray((short) inetSocketAddress.getPort()));
+                        out_dropped.write(Shorts.toByteArray((short) socketAddress.getPort()));
                     } else if (address instanceof Inet6Address) {
                         out_dropped6.write(address.getAddress());
-                        out_dropped6.write(Shorts.toByteArray((short) inetSocketAddress.getPort()));
+                        out_dropped6.write(Shorts.toByteArray((short) socketAddress.getPort()));
                     } else {
                     }
                 }

@@ -15,8 +15,10 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.Iterables;
 
+import com.turn.ttorrent.protocol.TorrentUtils;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
@@ -67,6 +69,11 @@ public class TrackedPeer {
     @Nonnull
     public byte[] getPeerId() {
         return peerId;
+    }
+
+    @Nonnull
+    public String getPeerName() {
+        return TorrentUtils.toText(getPeerId());
     }
 
     @Nonnull
@@ -157,5 +164,13 @@ public class TrackedPeer {
             return (this.lastAnnounce > 0
                     && (this.lastAnnounce + refresh > now));
         }
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+                .add("name", getPeerName())
+                .add("addresses", getPeerAddresses())
+                .toString();
     }
 }

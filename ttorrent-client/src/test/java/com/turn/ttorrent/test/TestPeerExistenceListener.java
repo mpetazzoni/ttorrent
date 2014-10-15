@@ -4,11 +4,11 @@
  */
 package com.turn.ttorrent.test;
 
+import com.google.common.base.Functions;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Maps;
 import com.turn.ttorrent.client.peer.PeerExistenceListener;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -25,9 +25,9 @@ public class TestPeerExistenceListener implements PeerExistenceListener {
     private final Set<SocketAddress> addresses = new HashSet<SocketAddress>();
 
     @Override
-    public Collection<? extends SocketAddress> getPeers() {
+    public Map<? extends SocketAddress, ? extends byte[]> getPeers() {
         synchronized (addresses) {
-            return new ArrayList<SocketAddress>(addresses);
+            return Maps.asMap(addresses, Functions.<byte[]>constant(null));
         }
     }
 

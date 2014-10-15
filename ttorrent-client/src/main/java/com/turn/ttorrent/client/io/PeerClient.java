@@ -15,9 +15,9 @@
  */
 package com.turn.ttorrent.client.io;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelOption;
@@ -38,26 +38,23 @@ public class PeerClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerClient.class);
     public static final int CLIENT_KEEP_ALIVE_MINUTES = PeerServer.CLIENT_KEEP_ALIVE_MINUTES;
-    private final Client client;
     private EventLoopGroup group;
     private Bootstrap bootstrap;
     private final Object lock = new Object();
-
-    public PeerClient(@Nonnull Client client) {
-        this.client = client;
-    }
 
     public void start() throws Exception {
         group = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
         bootstrap.group(group);
         bootstrap.channel(NioSocketChannel.class);
+        bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
         // bootstrap.option(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TimeUnit.SECONDS.toMillis(10));
-        // bootstrap.option(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, (int) TimeUnit.SECONDS.toMillis(10));
+        // bootstrap.option(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 1024 * 1024);
+        // bootstrap.option(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
     }
 
     public void stop() throws InterruptedException {
@@ -74,7 +71,7 @@ public class PeerClient {
         final ChannelFuture future;
         synchronized (lock) {
             // connect -> initAndRegister grabs this, so we can safely synchronize here.
-            bootstrap.handler(new PeerClientHandshakeHandler(listener, infoHash, client.getLocalPeerId()));
+            bootstrap.handler(new PeerClientHandshakeHandler(listener, infoHash, listener.getLocalPeerId()));
             future = bootstrap.connect(remoteAddress);
         }
         future.addListener(new ChannelFutureListener() {

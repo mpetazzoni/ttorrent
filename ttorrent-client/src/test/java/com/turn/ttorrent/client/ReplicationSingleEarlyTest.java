@@ -11,11 +11,11 @@ import org.junit.Test;
  *
  * @author shevek
  */
-public class ReplicationTestMultipleEarly extends AbstractReplicationTest {
+public class ReplicationSingleEarlyTest extends AbstractReplicationTest {
 
     @Test
-    public void testReplicationMultipleEarly() throws Exception {
+    public void testReplicationSingleEarly() throws Exception {
         trackedTorrent.setAnnounceInterval(1, TimeUnit.MINUTES);
-        testReplication(-500, 3);
+        testReplication(-500, 1);
     }
 }

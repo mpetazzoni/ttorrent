@@ -10,10 +10,10 @@ import org.junit.Test;
  *
  * @author shevek
  */
-public class ReplicationTestSingleLate extends AbstractReplicationTest {
+public class ReplicationHugeSwarmTest extends AbstractReplicationTest {
 
     @Test
-    public void testReplicationSingleLate() throws Exception {
-        testReplication(500, 1);
+    public void testHugeSwarm() throws Exception {
+        testReplication(-500, 16);
     }
 }

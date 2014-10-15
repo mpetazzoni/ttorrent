@@ -70,7 +70,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         PeerHandshakeMessage response = new PeerHandshakeMessage(infoHash, peerId);
-        ctx.writeAndFlush(toByteBuf(response));
+        ctx.writeAndFlush(toByteBuf(ctx, response));
         super.channelActive(ctx);
     }
 

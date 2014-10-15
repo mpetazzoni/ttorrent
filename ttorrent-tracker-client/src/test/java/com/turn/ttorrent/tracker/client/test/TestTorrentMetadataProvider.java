@@ -30,6 +30,11 @@ public class TestTorrentMetadataProvider implements TorrentMetadataProvider {
     }
 
     @Override
+    public State getState() {
+        return State.SHARING;
+    }
+
+    @Override
     public List<? extends List<? extends URI>> getAnnounceList() {
         return uris;
     }

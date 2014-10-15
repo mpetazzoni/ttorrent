@@ -18,10 +18,12 @@ package com.turn.ttorrent.client;
 import com.codahale.metrics.MetricRegistry;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
+import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.bcodec.BEUtils;
+import com.turn.ttorrent.tracker.client.PeerAddressProvider;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.net.SocketAddress;
 import java.util.Arrays;
@@ -40,7 +42,7 @@ import javax.annotation.Nonnull;
  *
  * @author shevek
  */
-public class ClientEnvironment {
+public class ClientEnvironment implements PeerIdentityProvider {
 
     public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
     private final Random random = new Random();
@@ -63,19 +65,21 @@ public class ClientEnvironment {
     /**
      * Get this client's peer specification.
      */
-    @Nonnull
+    @Override
     @SuppressWarnings("EI_EXPOSE_REP")
     public byte[] getLocalPeerId() {
         return peerId;
     }
 
-    @Nonnull
+    @Override
     public String getLocalPeerName() {
         return TorrentUtils.toText(getLocalPeerId());
     }
 
     /**
      * You probably want {@link PeerServer#getLocalAddresses()}.
+     *
+     * @see PeerAddressProvider
      */
     @CheckForNull
     public SocketAddress getLocalPeerListenAddress() {

@@ -218,6 +218,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
         params.put(INCOMPLETE, new BEValue(incomplete));
 
         if (compact) {
+            // This is a conservative overallocation.
             ByteBuffer peer4Data = ByteBuffer.allocate(peers.size() * 6);
             ByteBuffer peer6Data = ByteBuffer.allocate(peers.size() * 18);
 

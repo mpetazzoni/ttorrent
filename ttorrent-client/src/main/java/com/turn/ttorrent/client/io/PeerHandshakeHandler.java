@@ -8,7 +8,6 @@ import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PeerMessageListener;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -39,8 +38,8 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     protected abstract LoggingHandler getMessageLogger();
 
     @Nonnull
-    protected ByteBuf toByteBuf(@Nonnull PeerHandshakeMessage message) {
-        ByteBuf buf = Unpooled.buffer(PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH + 64);
+    protected ByteBuf toByteBuf(@Nonnull ChannelHandlerContext ctx, @Nonnull PeerHandshakeMessage message) {
+        ByteBuf buf = ctx.alloc().buffer(PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH + 64);
         message.toWire(buf);
         return buf;
     }

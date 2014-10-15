@@ -10,7 +10,7 @@ import org.junit.Test;
  *
  * @author shevek
  */
-public class ReplicationTestMultipleLate extends AbstractReplicationTest {
+public class ReplicationMultipleLateTest extends AbstractReplicationTest {
 
     @Test
     public void testReplicationMultipleLate() throws Exception {

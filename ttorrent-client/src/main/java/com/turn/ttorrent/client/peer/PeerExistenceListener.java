@@ -5,7 +5,6 @@
 package com.turn.ttorrent.client.peer;
 
 import java.net.SocketAddress;
-import java.util.Collection;
 import java.util.Map;
 import javax.annotation.Nonnull;
 
@@ -17,7 +16,7 @@ public interface PeerExistenceListener {
 
     /** Returns all known peers, possibly including this peer's known addresses. */
     @Nonnull
-    public Collection<? extends SocketAddress> getPeers();
+    public Map<? extends SocketAddress, ? extends byte[]> getPeers();
 
     /** Adds SocketAddress -> PeerIds. The PeerId may be null if not known. */
     public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers);

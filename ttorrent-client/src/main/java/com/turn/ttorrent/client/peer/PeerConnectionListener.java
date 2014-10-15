@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import io.netty.channel.Channel;
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -28,7 +29,7 @@ import javax.annotation.Nonnull;
  *
  * @author mpetazzoni
  */
-public interface PeerConnectionListener extends EventListener {
+public interface PeerConnectionListener extends PeerIdentityProvider, EventListener {
 
     public void handlePeerConnectionFailed(@Nonnull SocketAddress address, @CheckForNull Throwable cause);
 

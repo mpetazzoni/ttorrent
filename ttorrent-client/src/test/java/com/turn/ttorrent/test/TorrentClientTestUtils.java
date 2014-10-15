@@ -6,7 +6,7 @@ package com.turn.ttorrent.test;
 
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.TorrentHandler;
-import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.client.storage.ByteStorage;
 import io.netty.util.ResourceLeakDetector;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,11 +29,11 @@ public class TorrentClientTestUtils {
 
     public static void assertTorrentData(@Nonnull Client c0, @Nonnull Client c1, @Nonnull byte[] torrentId) throws IOException {
         TorrentHandler h0 = c0.getTorrent(torrentId);
-        TorrentByteStorage s0 = h0.getBucket();
+        ByteStorage s0 = h0.getBucket();
         ByteBuffer b0 = ByteBuffer.allocate(64 * 1024);
 
         TorrentHandler h1 = c1.getTorrent(torrentId);
-        TorrentByteStorage s1 = h1.getBucket();
+        ByteStorage s1 = h1.getBucket();
         ByteBuffer b1 = ByteBuffer.allocate(b0.capacity());
 
         for (long i = 0; i < h0.getSize(); i += b0.capacity()) {

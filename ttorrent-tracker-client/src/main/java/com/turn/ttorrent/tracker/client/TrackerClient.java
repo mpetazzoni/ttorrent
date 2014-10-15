@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.tracker.client;
 
-import com.turn.ttorrent.protocol.tracker.Peer;
 import com.turn.ttorrent.protocol.tracker.InetSocketAddressComparator;
 import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 import com.turn.ttorrent.protocol.tracker.TrackerMessage.*;
@@ -24,12 +23,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
 public abstract class TrackerClient {
@@ -121,11 +116,12 @@ public abstract class TrackerClient {
     protected void handleTrackerAnnounceResponse(
             @Nonnull AnnounceResponseListener listener,
             @Nonnull URI tracker,
+            @Nonnull TrackerMessage.AnnounceEvent event,
             @Nonnull TrackerMessage message, // AnnounceResponse or Error
             boolean inhibitEvents) throws AnnounceException {
         if (message instanceof ErrorMessage) {
             ErrorMessage error = (ErrorMessage) message;
-            throw new AnnounceException(error.getReason());
+            throw new AnnounceException(tracker + "(" + event + "): " + error.getReason());
         }
 
         if (!(message instanceof AnnounceResponseMessage)) {
@@ -137,46 +133,6 @@ public abstract class TrackerClient {
         }
 
         AnnounceResponseMessage response = (AnnounceResponseMessage) message;
-        fireAnnounceResponseEvent(Arrays.asList(listener),
-                tracker,
-                response.getComplete(),
-                response.getIncomplete(),
-                TimeUnit.SECONDS.toMillis(response.getInterval()));
-        Map<SocketAddress, byte[]> peers = new HashMap<SocketAddress, byte[]>();
-        for (Peer peer : response.getPeers())
-            peers.put(peer.getAddress(), peer.getPeerId());
-        fireDiscoveredPeersEvent(Arrays.asList(listener),
-                tracker,
-                peers);
-    }
-
-    /**
-     * Fire the announce response event to all listeners.
-     *
-     * @param complete The number of seeders on this torrent.
-     * @param incomplete The number of leechers on this torrent.
-     * @param interval The announce interval requested by the tracker.
-     */
-    protected static void fireAnnounceResponseEvent(
-            @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
-            @Nonnull URI tracker,
-            int complete, int incomplete, long interval) {
-        for (AnnounceResponseListener listener : listeners) {
-            listener.handleAnnounceResponse(tracker, interval, complete, incomplete);
-        }
-    }
-
-    /**
-     * Fire the new peer discovery event to all listeners.
-     *
-     * @param peers The list of peers discovered.
-     */
-    protected static void fireDiscoveredPeersEvent(
-            @Nonnull Iterable<? extends AnnounceResponseListener> listeners,
-            @Nonnull URI tracker,
-            @Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
-        for (AnnounceResponseListener listener : listeners) {
-            listener.handleDiscoveredPeers(tracker, peers);
-        }
+        listener.handleAnnounceResponse(tracker, event, response);
     }
 }

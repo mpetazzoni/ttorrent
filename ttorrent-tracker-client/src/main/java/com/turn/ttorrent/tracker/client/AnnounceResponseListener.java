@@ -15,11 +15,10 @@
  */
 package com.turn.ttorrent.tracker.client;
 
-import java.net.SocketAddress;
+import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 
 import java.net.URI;
 import java.util.EventListener;
-import java.util.Map;
 import javax.annotation.Nonnull;
 
 /**
@@ -29,22 +28,10 @@ import javax.annotation.Nonnull;
  */
 public interface AnnounceResponseListener extends EventListener {
 
-    public void handleAnnounceFailed(@Nonnull URI tracker, @Nonnull String reason);
-
     /**
      * Handle an announce response event.
-     *
-     * @param interval The announce interval requested by the tracker.
-     * @param complete The number of seeders on this torrent.
-     * @param incomplete The number of leechers on this torrent.
      */
-    public void handleAnnounceResponse(@Nonnull URI tracker, long interval, int complete, int incomplete);
+    public void handleAnnounceResponse(@Nonnull URI tracker, @Nonnull TrackerMessage.AnnounceEvent event, @Nonnull TrackerMessage.AnnounceResponseMessage response);
 
-    /**
-     * Handle the discovery of new peers.
-     *
-     * @param peers The list of peers discovered (from the announce response or
-     * any other means like DHT/PEX, etc.).
-     */
-    public void handleDiscoveredPeers(@Nonnull URI tracker, @Nonnull Map<? extends SocketAddress, ? extends byte[]> peers);
+    public void handleAnnounceFailed(@Nonnull URI tracker, @Nonnull TrackerMessage.AnnounceEvent event, @Nonnull String reason);
 }

@@ -23,11 +23,13 @@ import com.turn.ttorrent.tracker.client.AnnounceResponseListener;
 import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import com.turn.ttorrent.tracker.client.TrackerClient;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.protocol.tracker.Peer;
 import com.turn.ttorrent.protocol.tracker.TrackerMessage;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,6 +54,13 @@ import org.slf4j.LoggerFactory;
  * This TrackerHandler class maintains the state of each tracker known to the
  * torrent, and manages a periodic announce event using the {@link Client Client's}
  * {@link ScheduledExecutorService}.
+ * </p>
+ * 
+ * <p>
+ * The announce state machine starts by making the initial 'started' announce
+ * request to register on the tracker and get the announce interval value.
+ * Subsequent announce requests are ordinary, event-less, periodic requests
+ * for peers.
  * </p>
  *
  * @author mpetazzoni
@@ -87,11 +96,12 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return uri;
         }
 
-        /** In seconds. */
+        /** In milliseconds. */
         public void setInterval(long interval) {
             this.interval = interval;
         }
 
+        /** In milliseconds. */
         @CheckForSigned
         public long getDelay() {
             long last = Math.max(lastSend, lastRecv);
@@ -99,6 +109,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             return then - System.currentTimeMillis();
         }
 
+        /** In milliseconds. */
         @Nonnegative
         public long getRescheduleDelay() {
             return Math.max(getDelay(), DELAY_MIN); // Could use 0 here.
@@ -114,7 +125,6 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     private final PeerExistenceListener existenceListener;
     private final List<TrackerState> trackers = new ArrayList<TrackerState>();
     private int trackerIndex = 0;
-    private TrackerMessage.AnnounceEvent event = TrackerMessage.AnnounceEvent.STARTED;
     private ScheduledFuture<?> future;
     private final Object lock = new Object();
 
@@ -150,6 +160,24 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         return TorrentUtils.toHex(torrent.getInfoHash());
     }
 
+    @Nonnull
+    private TrackerMessage.AnnounceEvent getAnnounceEvent() {
+        TorrentMetadataProvider.State state = torrent.getState();
+        switch (state) {
+            case WAITING:
+            case VALIDATING:
+            case ERROR:
+                return TrackerMessage.AnnounceEvent.STOPPED;
+            case SHARING:
+                return TrackerMessage.AnnounceEvent.STARTED;
+            case SEEDING:
+            case DONE:
+                return TrackerMessage.AnnounceEvent.COMPLETED;
+            default:
+                throw new IllegalStateException("Unknown state " + state);
+        }
+    }
+
     /**
      * Locate a {@link TrackerClient} announcing to the given tracker address.
      *
@@ -175,11 +203,12 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     /* pp */ TrackerState getTracker(@Nonnull URI uri) {
         // Needs synchronization against the swap() in promoteCurrentTracker()
         synchronized (lock) {
-            {
-                TrackerState tracker = getCurrentTracker();
-                if (tracker.uri.equals(uri))
-                    return tracker;
-            }
+            // If we have no trackers, getCurrentTracker() throws OOBE.
+            /*{
+             TrackerState tracker = getCurrentTracker();
+             if (tracker.uri.equals(uri))
+             return tracker;
+             }*/
             for (TrackerState tracker : trackers)
                 if (tracker.uri.equals(uri))
                     return tracker;
@@ -294,20 +323,12 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 trackers.size(), torrent
             });
 
-            event = TrackerMessage.AnnounceEvent.STARTED;
             if (LOG.isDebugEnabled())
                 LOG.debug("{}.{}: Started TrackerHandler {}", new Object[]{
                     getLocalPeerName(), getTorrentName(),
                     this
                 });
-            run();
-        }
-    }
-
-    public void complete() {
-        synchronized (lock) {
-            event = TrackerMessage.AnnounceEvent.COMPLETED;
-            // run();
+            run(TrackerMessage.AnnounceEvent.STARTED);
         }
     }
 
@@ -317,20 +338,16 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
             torrent
         });
         synchronized (lock) {
-            event = TrackerMessage.AnnounceEvent.STOPPED;
             if (future != null)
                 future.cancel(false);
-            run();
-            trackers.clear();
+            run_once(TrackerMessage.AnnounceEvent.STOPPED);
+            trackers.clear();   // Causes OOBE on future calls to getCurrentTracker().
         }
     }
 
     private void reschedule(@Nonnegative long requestedDelay) {
         // LOG.trace("Rescheduling tracker for {}", delay);
         synchronized (lock) {
-            if (event == TrackerMessage.AnnounceEvent.STOPPED)
-                return;
-
             if (future != null) {
                 long actualDelay = future.getDelay(TimeUnit.MILLISECONDS);
                 long delta = actualDelay - requestedDelay;
@@ -352,27 +369,12 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         }
     }
 
-    /**
-     * Main announce loop.
-     *
-     * <p>
-     * The announce thread starts by making the initial 'started' announce
-     * request to register on the tracker and get the announce interval value.
-     * Subsequent announce requests are ordinary, event-less, periodic requests
-     * for peers.
-     * </p>
-     *
-     * <p>
-     * Unless forcefully stopped, the announce thread will terminate by sending
-     * a 'stopped' announce request before stopping.
-     * </p>
-     */
-    @Override
-    public void run() {
+    @CheckForNull
+    private TrackerState run_once(TrackerMessage.AnnounceEvent event) {
         TrackerState tracker;
         synchronized (lock) {
             if (trackers.isEmpty())
-                return;
+                return null;
             tracker = getCurrentTracker();
         }
         try {
@@ -387,9 +389,30 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 tracker
             }, e);
             moveToNextTracker(tracker, "Announce threw " + e);
-        } finally {
-            reschedule(tracker.getRescheduleDelay());
         }
+        return tracker;
+    }
+
+    /**
+     * Performs a single step of the tracker state machine, then reschedules it.
+     * 
+     * Broken out so that we can send an explicit STARTED on the first call.
+     */
+    private void run(@CheckForNull TrackerMessage.AnnounceEvent event) {
+        if (event == null)
+            event = getAnnounceEvent();
+        TrackerState tracker = run_once(event);
+        if (event != TrackerMessage.AnnounceEvent.STOPPED)
+            if (tracker != null)
+                reschedule(tracker.getRescheduleDelay());
+    }
+
+    /**
+     * Main scheduler callback.
+     */
+    @Override
+    public void run() {
+        run(null);
     }
 
     /** AnnounceResponseListener handler(s). **********************************/
@@ -401,19 +424,26 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
      * @param incomplete The number of leechers on this torrent.
      */
     @Override
-    public void handleAnnounceResponse(URI uri, long interval, int complete, int incomplete) {
+    public void handleAnnounceResponse(URI uri, TrackerMessage.AnnounceEvent event, TrackerMessage.AnnounceResponseMessage message) {
+        Map<SocketAddress, byte[]> peers = new HashMap<SocketAddress, byte[]>();
+        for (Peer peer : message.getPeers())
+            peers.put(peer.getAddress(), peer.getPeerId());
+        existenceListener.addPeers(peers);
+
         synchronized (lock) {
+            if (event == TrackerMessage.AnnounceEvent.STOPPED)
+                return;
             TrackerState tracker = getTracker(uri);
             if (tracker == null)
                 return;
             tracker.lastRecv = System.currentTimeMillis();
-            tracker.setInterval(interval);
+            tracker.setInterval(TimeUnit.SECONDS.toMillis(message.getInterval()));
             reschedule(tracker.getRescheduleDelay());
         }
     }
 
     @Override
-    public void handleAnnounceFailed(URI uri, String reason) {
+    public void handleAnnounceFailed(URI uri, TrackerMessage.AnnounceEvent event, String reason) {
         synchronized (lock) {
             if (event == TrackerMessage.AnnounceEvent.STOPPED)
                 return;
@@ -426,35 +456,13 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         }
     }
 
-    /**
-     * Handle the discovery of new peers.
-     *
-     * @param peers The list of peers discovered (from the announce response or
-     * any other means like DHT/PEX, etc.).
-     */
-    @Override
-    public void handleDiscoveredPeers(URI uri, Map<? extends SocketAddress, ? extends byte[]> peers) {
-        synchronized (lock) {
-            TrackerState tracker = getTracker(uri);
-            if (tracker == null)
-                return;
-            tracker.lastRecv = System.currentTimeMillis();
-        }
-
-        // LOG.trace("Got {} peer(s) in tracker response.", peerAddresses.size());
-        // torrent.getSwarmHandler().getOrCreatePeer(null, remotePeerId);
-
-        existenceListener.addPeers(peers);
-        // torrent.getSwarmHandler().addPeers(peerAddresses);
-    }
-
     @Override
     public String toString() {
         synchronized (lock) {
             return Objects.toStringHelper(this)
                     .add("trackers", trackers)
                     .add("trackerIndex", trackerIndex)
-                    .add("event", event)
+                    .add("event", getAnnounceEvent())
                     .toString();
         }
     }

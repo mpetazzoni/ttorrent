@@ -8,6 +8,8 @@ import com.turn.ttorrent.protocol.torrent.Torrent;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +33,7 @@ import org.slf4j.LoggerFactory;
     private final BitSet valid;
     private final CountDownLatch latch;
 
-    public PieceValidator(Torrent torrent, int piece, ByteBuffer data, BitSet valid, CountDownLatch latch) {
+    public PieceValidator(@Nonnull Torrent torrent, @Nonnegative int piece, @Nonnull ByteBuffer data, @Nonnull BitSet valid, @Nonnull CountDownLatch latch) {
         this.torrent = torrent;
         this.piece = piece;
         this.data = data;

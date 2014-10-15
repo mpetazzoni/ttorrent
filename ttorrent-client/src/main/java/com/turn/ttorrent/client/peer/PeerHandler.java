@@ -24,12 +24,12 @@ import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
@@ -92,20 +92,6 @@ public class PeerHandler implements PeerMessageListener {
     public static final long MAX_REQUESTS_TIME = TimeUnit.SECONDS.toMillis(32);
     public static final long MIN_PEX_DELAY = TimeUnit.SECONDS.toMillis(72); // Protocol requires minimum 60.
     private static final Map<PeerExtendedMessage.ExtendedType, Byte> DEFAULT_EXTENDED_MESSAGE_TYPE_MAP = Collections.singletonMap(PeerExtendedMessage.ExtendedType.handshake, (byte) 0);
-    private static final ChannelFutureListener CHANNEL_FUTURE_LISTENER = new ChannelFutureListener() {
-        @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            if (!future.channel().isOpen()) // Then everything fails.
-                return;
-            if (future.channel().closeFuture().isDone())
-                return;
-            try {
-                future.get();
-            } catch (Exception e) {
-                LOG.error("Operation failed: " + e, e);
-            }
-        }
-    };
 
     private static enum Flag {
         // We decide about them:
@@ -363,7 +349,7 @@ public class PeerHandler implements PeerMessageListener {
             provider.getLocalPeerName(),
             this, reason
         });
-        channel.close();
+        channel.close(channel.voidPromise());
     }
 
     /**
@@ -385,12 +371,10 @@ public class PeerHandler implements PeerMessageListener {
             }
         }
         // LOG.info("{}: -> {}", new Object[]{provider.getLocalPeerName(), message});
-        ChannelFuture f;
         if (flush)
-            f = channel.writeAndFlush(message);
+            channel.writeAndFlush(message, channel.voidPromise());
         else
-            f = channel.write(message);
-        f.addListener(CHANNEL_FUTURE_LISTENER);
+            channel.write(message, channel.voidPromise());
     }
 
     @GuardedBy("lock")
@@ -437,7 +421,7 @@ public class PeerHandler implements PeerMessageListener {
             int count = provider.addRequestTimeout(requests);
             if (count > 0)
                 if (LOG.isInfoEnabled())
-                    LOG.info("{}: Rejecting {} requests; {} accepted: {}", provider.getLocalPeerName(), requests.size(), count, reason);
+                    LOG.info("{}: Rejecting {} requests; {} re-enqueued: {}", provider.getLocalPeerName(), requests.size(), count, reason);
         }
     }
 
@@ -494,7 +478,7 @@ public class PeerHandler implements PeerMessageListener {
      * Re-fill the pipeline to get download the next blocks from the peer.
      * </p>
      */
-    public void run(String reason) throws IOException {
+    public void run(@Nonnull String reason) throws IOException {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Step function in {}: {}", new Object[]{
                 provider.getLocalPeerName(), this, reason
@@ -539,19 +523,25 @@ public class PeerHandler implements PeerMessageListener {
                     // LOG.info("{}: {} PEX supported.", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId()});
                     if (peersExchangedAt > now - MIN_PEX_DELAY)
                         break PEX;
-                    List<SocketAddress> peers = new ArrayList<SocketAddress>(existenceListener.getPeers());
+                    List<InetSocketAddress> peers = new ArrayList<InetSocketAddress>();
+                    for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : existenceListener.getPeers().entrySet()) {
+                        if (!(e.getKey() instanceof InetSocketAddress))
+                            continue;
+                        if (peersExchanged.contains(e.getKey()))
+                            continue;
+                        if (Arrays.equals(e.getValue(), getRemotePeerId()))
+                            continue;
+                        peers.add((InetSocketAddress) e.getKey());
+                        if (peers.size() >= 100)
+                            break;
+                    }
                     // LOG.info("{}: {} PEX candidates are {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
-                    peers.removeAll(peersExchanged);
-                    peers.remove(getRemoteAddress());
-                    // LOG.info("{}: {} PEX candidates are now {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
                     if (peers.isEmpty())
                         break PEX;
-                    peers = peers.subList(0, Math.min(peers.size(), 100));
-                    // LOG.info("{}: {} PEX {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
                     peersExchanged.addAll(peers);
                     peersExchangedAt = now;
                     flush = true;
-                    send(new PeerExtendedMessage.UtPexMessage(peers, Collections.<SocketAddress>emptyList()), false);
+                    send(new PeerExtendedMessage.UtPexMessage(peers, Collections.<InetSocketAddress>emptyList()), false);
                 }
 
                 BitSet interesting = getAvailablePieces();
@@ -917,6 +907,32 @@ public class PeerHandler implements PeerMessageListener {
     @Override
     public void handleDisconnect() throws IOException {
         connectionListener.handlePeerDisconnected(this);
+    }
+
+    @Override
+    public void handleException(Throwable exception) {
+        LOG.error("{}: {}: Operation failed: {}", new Object[]{
+            provider.getLocalPeerName(),
+            getRemoteAddress(),
+            exception
+        });
+
+        if (!channel.isOpen()) // Then everything fails.
+            return;
+        if (channel.closeFuture().isDone())
+            return;
+
+        Throwable t = exception;
+        while (t != null) {
+            if (t instanceof IOException) {
+                if (t.getMessage().contains("Broken pipe"))
+                    return;
+                if (t.getMessage().contains("Connection reset by peer"))
+                    return;
+            }
+            t = t.getCause();
+        }
+        LOG.error(provider.getLocalPeerName() + ": Operation diagnostics", exception);
     }
 
     public void tick() {

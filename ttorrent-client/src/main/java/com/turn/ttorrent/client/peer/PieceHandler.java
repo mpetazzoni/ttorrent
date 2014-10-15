@@ -93,9 +93,14 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
         synchronized (lock) {
             // Make sure we actually needed any of these bytes.
+            if (provider.isCompletedPiece(piece)) {
+                if (LOG.isDebugEnabled())
+                    LOG.debug("{}: Discarding block of non-required piece {}", provider.getLocalPeerName(), piece);
+                return Reception.IGNORED;
+            }
             if (pieceRequiredBytes.nextSetBit(offset) >= offset + length) {
                 if (LOG.isDebugEnabled())
-                    LOG.debug("Discarding non-required block for " + piece);
+                    LOG.debug("{}: Discarding non-required block for {}", provider.getLocalPeerName(), piece);
                 return Reception.IGNORED;
             }
 

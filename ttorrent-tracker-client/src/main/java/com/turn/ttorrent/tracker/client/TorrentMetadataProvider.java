@@ -15,8 +15,21 @@ import javax.annotation.Nonnull;
  */
 public interface TorrentMetadataProvider {
 
+    public enum State {
+
+        WAITING,
+        VALIDATING,
+        SHARING,
+        SEEDING,
+        ERROR,
+        DONE;
+    };
+
     @Nonnull
     public byte[] getInfoHash();
+
+    @Nonnull
+    public State getState();
 
     @Nonnull
     public List<? extends List<? extends URI>> getAnnounceList();

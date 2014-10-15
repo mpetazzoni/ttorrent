@@ -20,7 +20,7 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.Nonnegative;
@@ -42,25 +42,30 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @author dgiffin
  */
-public class FileCollectionStorage implements TorrentByteStorage, Flushable {
+public class FileCollectionStorage implements ByteStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileCollectionStorage.class);
-    private final List<? extends FileStorage> files;
-    private final long size;
+    private final List<? extends ByteRangeStorage> files;
 
     /**
      * Initialize a new multi-file torrent byte storage.
      *
-     * @param files The list of individual {@link FileStorage}
+     * @param files The list of individual {@link ByteRangeStorage}
      * objects making up the torrent.
      * @param size The total size of the torrent data, in bytes.
      */
-    public FileCollectionStorage(@Nonnull List<? extends FileStorage> files, @Nonnegative long size) {
+    public FileCollectionStorage(@Nonnull List<? extends ByteRangeStorage> files) {
         this.files = files;
-        this.size = size;
 
         LOG.info("Initialized torrent byte storage on {} file(s) "
-                + "({} total byte(s)).", files.size(), size);
+                + "({} total byte(s)).", files.size(), size());
+    }
+
+    public long size() {
+        long size = 0;
+        for (ByteRangeStorage part : files)
+            size += part.size();
+        return size;
     }
 
     @Override
@@ -68,11 +73,11 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
         int requested = buffer.remaining();
         int bytes = 0;
 
-        for (FileOffset fo : this.select(offset, requested)) {
+        for (Fragment fo : this.select(offset, requested)) {
             // TODO: remove cast to int when large ByteBuffer support is
             // implemented in Java.
             buffer.limit((int) (bytes + fo.length));
-            bytes += fo.file.read(buffer, fo.offset);
+            bytes += fo.part.read(buffer, fo.offset);
         }
 
         if (bytes < requested) {
@@ -90,9 +95,9 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
 
         int bytes = 0;
 
-        for (FileOffset fo : this.select(offset, requested)) {
+        for (Fragment fo : this.select(offset, requested)) {
             buffer.limit(bytes + (int) fo.length);
-            bytes += fo.file.write(buffer, fo.offset);
+            bytes += fo.part.write(buffer, fo.offset);
         }
 
         if (bytes < requested) {
@@ -104,29 +109,26 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
 
     @Override
     public void flush() throws IOException {
-        for (Flushable file : files) {
-            file.flush();
-        }
+        for (ByteRangeStorage part : files)
+            part.flush();
     }
 
     @Override
     public void close() throws IOException {
-        for (Closeable file : this.files) {
-            file.close();
-        }
+        for (Closeable part : this.files)
+            part.close();
     }
 
     @Override
     public void finish() throws IOException {
-        for (TorrentByteStorage file : this.files) {
-            file.finish();
-        }
+        for (ByteStorage part : this.files)
+            part.finish();
     }
 
     @Override
     public boolean isFinished() {
-        for (TorrentByteStorage file : this.files)
-            if (!file.isFinished())
+        for (ByteStorage part : this.files)
+            if (!part.isFinished())
                 return false;
         return true;
     }
@@ -142,14 +144,14 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
      * @author dgiffin
      * @author mpetazzoni
      */
-    private static class FileOffset {
+    private static class Fragment {
 
-        public final TorrentByteStorage file;
+        public final ByteStorage part;
         public final long offset;
         public final long length;
 
-        FileOffset(TorrentByteStorage file, long offset, long length) {
-            this.file = file;
+        Fragment(ByteStorage part, long offset, long length) {
+            this.part = part;
             this.offset = offset;
             this.length = length;
         }
@@ -157,7 +159,7 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
         @Override
         public String toString() {
             return Objects.toStringHelper(this)
-                    .add("file", file)
+                    .add("part", part)
                     .add("offset", offset)
                     .add("length", length)
                     .toString();
@@ -183,36 +185,37 @@ public class FileCollectionStorage implements TorrentByteStorage, Flushable {
      * @throws IllegalStateException If the files registered with this byte
      * storage can't accommodate the request (should not happen, really).
      */
-    private List<FileOffset> select(long offset, long length) {
-        if (offset + length > this.size) {
+    @Nonnull
+    private List<Fragment> select(@Nonnegative long offset, @Nonnegative long length) {
+        if (offset + length > size()) {
             throw new IllegalArgumentException("Buffer overrun ("
-                    + offset + " + " + length + " > " + this.size + ") !");
+                    + offset + " + " + length + " > " + size() + ") !");
         }
 
-        List<FileOffset> selected = new LinkedList<FileOffset>();
+        List<Fragment> selected = new ArrayList<Fragment>();
         long bytes = 0;
 
-        for (FileStorage file : this.files) {
-            // Our IO ends after this FileStorage.
-            if (file.offset() >= offset + length) {
+        for (ByteRangeStorage part : this.files) {
+            // Our IO ends after this ByteRangeStorage.
+            if (part.offset() >= offset + length) {
                 break;
             }
 
-            // Our IO starts before this FileOffset.
-            if (file.offset() + file.size() <= offset) {
+            // Our IO starts before this ByteRangeStorage.
+            if (part.offset() + part.size() <= offset) {
                 continue;
             }
 
-            long position = offset - file.offset();
+            long position = offset - part.offset();
             position = position > 0 ? position : 0;
             long size = Math.min(
-                    file.size() - position,
+                    part.size() - position,
                     length - bytes);
-            selected.add(new FileOffset(file, position, size));
+            selected.add(new Fragment(part, position, size));
             bytes += size;
         }
 
-        if (selected.size() == 0 || bytes < length) {
+        if (selected.isEmpty() || bytes < length) {
             throw new IllegalStateException("Buffer underrun (only got "
                     + bytes + " out of " + length + " byte(s) requested)!");
         }
