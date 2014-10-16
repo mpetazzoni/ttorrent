@@ -16,7 +16,8 @@
 package com.turn.ttorrent.client.io;
 
 import com.google.common.collect.Sets;
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.ClientEnvironment;
+import com.turn.ttorrent.client.TorrentRegistry;
 import com.turn.ttorrent.tracker.client.PeerAddressProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.bootstrap.ServerBootstrap;
@@ -24,8 +25,6 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
@@ -49,32 +48,32 @@ public class PeerServer implements PeerAddressProvider {
     public static final int PORT_RANGE_START = 6881;
     public static final int PORT_RANGE_END = 6999;
     public static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
-    private final Client client;
+    private final ClientEnvironment environment;
     @CheckForNull
-    private final SocketAddress address;
+    private final TorrentRegistry torrents;
     private ChannelFuture future;
 
     // This can stop taking Client if we sort out where the peerId will come from.
     // One option is to make PeerAddressProvider NOT extend PeerIdentityProvider.
-    public PeerServer(@Nonnull Client client, @CheckForNull SocketAddress address) {
-        this.client = client;
-        this.address = address;
+    public PeerServer(@Nonnull ClientEnvironment environment, @Nonnull TorrentRegistry torrents) {
+        this.environment = environment;
+        this.torrents = torrents;
     }
 
     public void start() throws Exception {
-        EventLoopGroup group = new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap();
-        bootstrap.group(group);
+        bootstrap.group(environment.getEventService());
         bootstrap.channel(NioServerSocketChannel.class);
         bootstrap.option(ChannelOption.SO_BACKLOG, 128);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
-        bootstrap.childHandler(new PeerServerHandshakeHandler(client));
+        bootstrap.childHandler(new PeerServerHandshakeHandler(torrents));
         bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         // bootstrap.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         // bootstrap.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 1024 * 1024);
         // bootstrap.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
+        SocketAddress address = environment.getLocalPeerListenAddress();
         if (address != null) {
             future = bootstrap.bind(address).sync();
         } else {
@@ -100,7 +99,6 @@ public class PeerServer implements PeerAddressProvider {
         try {
             Channel channel = future.channel();
             channel.close().sync();
-            channel.eventLoop().shutdownGracefully();
         } finally {
             future = null;
         }
@@ -108,12 +106,12 @@ public class PeerServer implements PeerAddressProvider {
 
     @Override
     public byte[] getLocalPeerId() {
-        return client.getEnvironment().getLocalPeerId();
+        return environment.getLocalPeerId();
     }
 
     @Override
     public String getLocalPeerName() {
-        return client.getEnvironment().getLocalPeerName();
+        return environment.getLocalPeerName();
     }
 
     @Nonnull

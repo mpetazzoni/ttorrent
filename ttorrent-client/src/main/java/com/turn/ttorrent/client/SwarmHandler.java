@@ -16,7 +16,6 @@
 package com.turn.ttorrent.client;
 
 import com.google.common.base.Function;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.client.io.PeerServer;
@@ -364,7 +363,7 @@ public class SwarmHandler implements Runnable,
             ms = Math.min(ms, UNCHOKE_DELAY);
             ms = Math.min(ms, OPTIMISTIC_UNCHOKE_DELAY);
             ms = Math.min(ms, RECONNECT_DELAY);
-            future = getClient().getEnvironment().getSchedulerService().scheduleWithFixedDelay(this, 0, ms, TimeUnit.MILLISECONDS);
+            future = getClient().getEnvironment().getEventService().scheduleWithFixedDelay(this, 0, ms, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -380,7 +379,7 @@ public class SwarmHandler implements Runnable,
     // TODO: Periodic / step function.
     @Override
     public void run() {
-        Stopwatch stopwatch = Stopwatch.createStarted();
+        // Stopwatch stopwatch = Stopwatch.createStarted();
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Run: peers={}, connected={}, completed={}/{}",
                     new Object[]{
@@ -447,7 +446,7 @@ public class SwarmHandler implements Runnable,
             if (tick)
                 peer.tick();
         }
-        LOG.debug("{}: Swarm tick took {}", getLocalPeerName(), stopwatch);
+        // LOG.debug("{}: Swarm tick took {}", getLocalPeerName(), stopwatch);
     }
 
     /**
@@ -636,8 +635,8 @@ public class SwarmHandler implements Runnable,
                     if (peerInteresting.get(request.getPiece())) {
                         // An endgame might have requested it elsewhere.
                         if (!isCompletedPiece(request.getPiece())) {
-                            if (LOG.isTraceEnabled())
-                                LOG.trace("{}: Peer {} retrying request {}", new Object[]{
+                            if (LOG.isDebugEnabled())
+                                LOG.debug("{}: Peer {} retrying request {}", new Object[]{
                                     getLocalPeerName(),
                                     peer, request
                                 });
@@ -731,6 +730,13 @@ public class SwarmHandler implements Runnable,
             }
         }
         return count;
+    }
+
+    @Nonnegative
+    private int getPartialPieceCount() {
+        synchronized (lock) {
+            return partialPieces.size();
+        }
     }
 
     private void ioBlock(@Nonnull ByteBuffer block, @Nonnegative int piece, @Nonnegative int offset, boolean completed) throws IOException {
@@ -1198,8 +1204,8 @@ public class SwarmHandler implements Runnable,
             torrent.setCompletedPiece(piece);
         }
 
-        if (LOG.isTraceEnabled())
-            LOG.trace("{}: Completed download of piece {} from {} ({}). We now have {}/{} pieces and {} outstanding requests: {}",
+        if (LOG.isDebugEnabled())
+            LOG.debug("{}: Completed download of piece {} from {} ({}). We now have {}/{} pieces and {} outstanding requests: {}",
                     new Object[]{
                 getLocalPeerName(),
                 piece, peer, reception,
@@ -1301,7 +1307,7 @@ public class SwarmHandler implements Runnable,
             ul += peer.getULRate().getRate(TimeUnit.SECONDS);
         }
 
-        LOG.info("{} {} {} {}/{} pieces ({}%) [req {}/{}] with {}/{} peers at {}/{} kB/s.",
+        LOG.info("{} {} {} {}/{} pieces ({}%) [req {}/{} partial {}] with {}/{} peers at {}/{} kB/s.",
                 new Object[]{
             getLocalPeerName(),
             torrent.getState().name(),
@@ -1311,13 +1317,15 @@ public class SwarmHandler implements Runnable,
             String.format("%.2f", torrent.getCompletion()),
             getRequestedPieceCount(),
             getAvailablePieceCount(),
+            getPartialPieceCount(),
             getConnectedPeerCount(),
             getPeerCount(),
             String.format("%.2f", dl / 1024.0),
             String.format("%.2f", ul / 1024.0)
         });
 
-        for (PeerHandler peer : getConnectedPeers())
-            LOG.debug("  | {}", peer);
+        if (verbose)
+            for (PeerHandler peer : getConnectedPeers())
+                LOG.debug("  | {}", peer);
     }
 }

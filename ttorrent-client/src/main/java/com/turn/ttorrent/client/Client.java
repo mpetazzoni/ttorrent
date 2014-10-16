@@ -165,7 +165,7 @@ public class Client implements TorrentRegistry {
             if (reportFuture != null)
                 reportFuture.cancel(false);
             if (getState() == State.STARTED && reportInterval > 0)
-                reportFuture = getEnvironment().getSchedulerService().scheduleWithFixedDelay(new Runnable() {
+                reportFuture = getEnvironment().getEventService().scheduleWithFixedDelay(new Runnable() {
                     @Override
                     public void run() {
                         info(true);
@@ -189,9 +189,9 @@ public class Client implements TorrentRegistry {
 
             environment.start();
 
-            peerServer = new PeerServer(this, getEnvironment().getLocalPeerListenAddress());
+            peerServer = new PeerServer(getEnvironment(), this);
             peerServer.start();
-            peerClient = new PeerClient();
+            peerClient = new PeerClient(getEnvironment());
             peerClient.start();
 
             httpTrackerClient = new HTTPTrackerClient(peerServer);

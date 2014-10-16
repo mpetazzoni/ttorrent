@@ -417,6 +417,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     private void rejectRequests(@Nonnull Collection<? extends PieceHandler.AnswerableRequestMessage> requests, @Nonnull String reason) {
+        // LOG.debug("{}: Rejecting {} requests.", provider.getLocalPeerName(), requests.size());
         if (!requests.isEmpty()) {
             int count = provider.addRequestTimeout(requests);
             if (count > 0)
@@ -558,21 +559,24 @@ public class PeerHandler implements PeerMessageListener {
                 EXPIRE:
                 {
                     if (LOG.isTraceEnabled())
-                        LOG.trace("{}: requestsExpiredAt={}, now={}, comp={}", new Object[]{
+                        LOG.trace("{}: requestsExpiredAt={}, now={}, comp={}, diff={}", new Object[]{
                             provider.getLocalPeerName(),
-                            requestsExpiredAt, now, now - (MAX_REQUESTS_TIME >> 2)
+                            requestsExpiredAt, now, now - (MAX_REQUESTS_TIME >> 2),
+                            (now - (MAX_REQUESTS_TIME >> 2)) - requestsExpiredAt
                         });
                     if (requestsExpiredAt < now - (MAX_REQUESTS_TIME >> 2)) {
+                        // LOG.debug("{}: Running request expiry.", provider.getLocalPeerName());
                         long then = now - MAX_REQUESTS_TIME;
                         List<PieceHandler.AnswerableRequestMessage> requestsExpired = new ArrayList<PieceHandler.AnswerableRequestMessage>();
                         Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
                         while (it.hasNext()) {
                             PieceHandler.AnswerableRequestMessage requestSent = it.next();
+                            LOG.info("{}: Awaiting sent message {}", provider.getLocalPeerName(), requestSent);
                             if (requestSent.getRequestTime() < then) {
-                                if (LOG.isTraceEnabled())
-                                    LOG.trace("{}: Peer {} request {} timed out.", new Object[]{
+                                if (LOG.isDebugEnabled())
+                                    LOG.debug("{}: Peer {} request {} timed out.", new Object[]{
                                         provider.getLocalPeerName(),
-                                        this, requestSent
+                                        getRemoteAddress(), requestSent
                                     });
                                 requestsExpired.add(requestSent);
                                 requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);

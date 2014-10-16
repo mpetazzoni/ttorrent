@@ -15,14 +15,13 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
@@ -38,14 +37,17 @@ public class PeerClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerClient.class);
     public static final int CLIENT_KEEP_ALIVE_MINUTES = PeerServer.CLIENT_KEEP_ALIVE_MINUTES;
-    private EventLoopGroup group;
+    private final ClientEnvironment environment;
     private Bootstrap bootstrap;
     private final Object lock = new Object();
 
+    public PeerClient(ClientEnvironment environment) {
+        this.environment = environment;
+    }
+
     public void start() throws Exception {
-        group = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
-        bootstrap.group(group);
+        bootstrap.group(environment.getEventService());
         bootstrap.channel(NioSocketChannel.class);
         bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
@@ -59,8 +61,6 @@ public class PeerClient {
 
     public void stop() throws InterruptedException {
         bootstrap = null;
-        group.shutdownGracefully();
-        group = null;
     }
 
     @Nonnull

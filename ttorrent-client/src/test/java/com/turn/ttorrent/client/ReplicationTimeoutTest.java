@@ -40,7 +40,7 @@ public class ReplicationTimeoutTest extends AbstractReplicationTest {
                     dropped = true;
                     return null;
                 }
-                if (r.nextFloat() < 0.02) {
+                if (r.nextFloat() < 0.2) {
                     // And bin 1% of remaining block requests
                     LOG.info("Drop " + request);
                     return null;

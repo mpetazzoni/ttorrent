@@ -24,13 +24,13 @@ import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.bcodec.BEUtils;
 import com.turn.ttorrent.tracker.client.PeerAddressProvider;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +50,7 @@ public class ClientEnvironment implements PeerIdentityProvider {
     private SocketAddress peerListenAddress;
     private MetricRegistry metricRegistry = new MetricRegistry();
     private ThreadPoolExecutor executorService;
-    private ScheduledExecutorService schedulerService;
+    private EventLoopGroup eventService;
     private Instrumentation peerInstrumentation = new Instrumentation();
 
     public ClientEnvironment(@CheckForNull String peerName) {
@@ -104,8 +104,8 @@ public class ClientEnvironment implements PeerIdentityProvider {
             executorService = TorrentCreator.newExecutor(getLocalPeerName());
         }
         {
-            ThreadFactory factory = new DefaultThreadFactory("bittorrent-scheduler-" + getLocalPeerName(), true);
-            schedulerService = new ScheduledThreadPoolExecutor(1, factory);
+            ThreadFactory factory = new DefaultThreadFactory("bittorrent-event-" + getLocalPeerName(), true);
+            eventService = new NioEventLoopGroup(0, factory);
         }
     }
 
@@ -120,8 +120,8 @@ public class ClientEnvironment implements PeerIdentityProvider {
      * Closes this context.
      */
     public void stop() throws Exception {
-        shutdown(schedulerService);
-        schedulerService = null;
+        shutdown(eventService);
+        eventService = null;
         shutdown(executorService);
         executorService = null;
     }
@@ -137,8 +137,8 @@ public class ClientEnvironment implements PeerIdentityProvider {
     }
 
     @Nonnull
-    public ScheduledExecutorService getSchedulerService() {
-        return schedulerService;
+    public EventLoopGroup getEventService() {
+        return eventService;
     }
 
     @Nonnull

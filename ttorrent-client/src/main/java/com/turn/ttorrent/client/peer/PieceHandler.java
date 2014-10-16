@@ -176,6 +176,12 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
                     && getOffset() == other.getOffset()
                     && getLength() == other.getLength();
         }
+
+        @Override
+        public String toString() {
+            long offset = System.currentTimeMillis() - getRequestTime();
+            return super.toString() + " (" + offset + " ms ago)";
+        }
     }
     private static final int REQUEST_OFFSET_INIT = -1;
     private static final int REQUEST_OFFSET_FINI = -2;

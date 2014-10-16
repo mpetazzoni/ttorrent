@@ -152,7 +152,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
 
     @Nonnull
     private ScheduledExecutorService getSchedulerService() {
-        return getClient().getEnvironment().getSchedulerService();
+        return getClient().getEnvironment().getEventService();
     }
 
     @Nonnull

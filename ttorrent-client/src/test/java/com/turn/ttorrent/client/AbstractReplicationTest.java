@@ -43,7 +43,8 @@ public class AbstractReplicationTest {
 
         File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
 
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126071);
+        // TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126071);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 1260);
         creator.setAnnounceList(tracker.getAnnounceUris());
         creator.setPieceLength(512);
         torrent = creator.create();
@@ -80,9 +81,9 @@ public class AbstractReplicationTest {
 
     protected void await(@Nonnull CountDownLatch latch) throws InterruptedException {
         for (;;) {
-            if (latch.await(5, TimeUnit.SECONDS))
+            if (latch.await(30, TimeUnit.SECONDS))
                 break;
-            seed.info(true);
+            // seed.info(true);
             for (Client c : leechers)
                 c.info(true);
         }
