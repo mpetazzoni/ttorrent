@@ -3,20 +3,20 @@ ext.githubProjectName = rootProject.name // Change if github project name is not
 group = "org.anarres.${githubProjectName}"
 
 buildscript {
-    repositories {
-        // mavenLocal()
-        mavenCentral()
+	repositories {
+		// mavenLocal()
+		mavenCentral()
 		// maven { url 'http://jcenter.bintray.com' }
-    }
-    apply from: file('gradle/buildscript.gradle'), to: buildscript 
+	}
+	apply from: file('gradle/buildscript.gradle'), to: buildscript 
 }
 
 allprojects {
-    repositories { 
-        // mavenLocal()
-        mavenCentral()
+	repositories { 
+		// mavenLocal()
+		mavenCentral()
 		// maven { url: 'http://jcenter.bintray.com' }
-    }
+	}
 }
 
 apply from: file('gradle/convention.gradle')
@@ -27,6 +27,8 @@ apply from: file('gradle/license.gradle')
 
 subprojects {
 	group = "org.anarres.ttorrent"
+
+	apply plugin: 'info'
 
 	apply plugin: 'eclipse'
 	eclipse {
