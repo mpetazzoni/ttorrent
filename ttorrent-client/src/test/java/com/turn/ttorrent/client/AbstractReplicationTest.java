@@ -43,8 +43,8 @@ public class AbstractReplicationTest {
 
         File dir = TorrentTestUtils.newTorrentDir(getClass().getSimpleName() + ".seed");
 
-        // TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126071);
-        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 1260);
+        TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126071);
+        // TorrentCreator creator = TorrentTestUtils.newTorrentCreator(dir, 126);
         creator.setAnnounceList(tracker.getAnnounceUris());
         creator.setPieceLength(512);
         torrent = creator.create();

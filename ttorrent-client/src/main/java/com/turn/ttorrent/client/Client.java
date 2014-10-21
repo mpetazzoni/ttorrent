@@ -91,17 +91,6 @@ public class Client implements TorrentRegistry {
         this.environment = new ClientEnvironment(peerName);
     }
 
-    /**
-     * A convenience constructor to start with a single torrent.
-     * 
-     * @param torrent The torrent to download and share.
-     */
-    @Deprecated // I never much liked this constructor.
-    public Client(@Nonnull Torrent torrent, @Nonnull File outputDir) throws IOException, InterruptedException {
-        this(torrent.getName());
-        addTorrent(torrent, outputDir);
-    }
-
     @Nonnull
     public ClientEnvironment getEnvironment() {
         return environment;

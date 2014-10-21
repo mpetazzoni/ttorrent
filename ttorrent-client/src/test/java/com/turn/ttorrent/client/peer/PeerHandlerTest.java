@@ -42,7 +42,8 @@ public class PeerHandlerTest {
         LocalEventLoopGroup group = new LocalEventLoopGroup(1);
         SERVER:
         {
-            Client client = new Client(torrent, dir);
+            Client client = new Client();
+            client.addTorrent(torrent, dir);
             ServerBootstrap b = new ServerBootstrap()
                     .group(group)
                     .channel(LocalServerChannel.class)

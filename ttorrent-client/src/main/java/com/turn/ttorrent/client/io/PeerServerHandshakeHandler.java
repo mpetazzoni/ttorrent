@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.turn.ttorrent.client.TorrentRegistry;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.TorrentHandler;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;
@@ -64,7 +65,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
             LOG.trace("Processing {}", message);
         if (Arrays.equals(message.getPeerId(), torrentProvider.getLocalPeerId())) {
             LOG.warn("Connected to self. Closing.");
-            ctx.close();
+            ctx.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
             return;
         }
 
@@ -72,7 +73,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
         TorrentHandler torrent = torrentProvider.getTorrent(message.getInfoHash());
         if (torrent == null) {
             LOG.warn("Unknown torrent {}", message);
-            ctx.close();
+            ctx.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
             return;
         }
         PeerConnectionListener listener = torrent.getSwarmHandler();
@@ -80,7 +81,7 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
             LOG.trace("Found torrent {}", torrent);
 
         PeerHandshakeMessage response = new PeerHandshakeMessage(torrent.getInfoHash(), torrentProvider.getLocalPeerId());
-        ctx.writeAndFlush(toByteBuf(ctx, response));
+        ctx.writeAndFlush(toByteBuf(ctx, response), ctx.voidPromise());
 
         addPeer(ctx, message, listener);
     }

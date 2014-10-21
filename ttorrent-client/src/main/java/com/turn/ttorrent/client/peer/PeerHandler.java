@@ -24,6 +24,7 @@ import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -349,7 +350,7 @@ public class PeerHandler implements PeerMessageListener {
             provider.getLocalPeerName(),
             this, reason
         });
-        channel.close(channel.voidPromise());
+        channel.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
     }
 
     /**
@@ -420,9 +421,8 @@ public class PeerHandler implements PeerMessageListener {
         // LOG.debug("{}: Rejecting {} requests.", provider.getLocalPeerName(), requests.size());
         if (!requests.isEmpty()) {
             int count = provider.addRequestTimeout(requests);
-            if (count > 0)
-                if (LOG.isInfoEnabled())
-                    LOG.info("{}: Rejecting {} requests; {} re-enqueued: {}", provider.getLocalPeerName(), requests.size(), count, reason);
+            if (LOG.isDebugEnabled())
+                LOG.debug("{}: Rejecting {} requests; {} re-enqueued: {}", provider.getLocalPeerName(), requests.size(), count, reason);
         }
     }
 
@@ -572,7 +572,10 @@ public class PeerHandler implements PeerMessageListener {
                         Iterator<PieceHandler.AnswerableRequestMessage> it = requestsSent.iterator();
                         while (it.hasNext()) {
                             PieceHandler.AnswerableRequestMessage requestSent = it.next();
-                            LOG.info("{}: Awaiting sent message {}", provider.getLocalPeerName(), requestSent);
+                            if (LOG.isTraceEnabled())
+                                LOG.trace("{}: Awaiting sent message {} until {}", new Object[]{
+                                    provider.getLocalPeerName(), requestSent, MAX_REQUESTS_TIME
+                                });
                             if (requestSent.getRequestTime() < then) {
                                 if (LOG.isDebugEnabled())
                                     LOG.debug("{}: Peer {} request {} timed out.", new Object[]{
@@ -580,13 +583,16 @@ public class PeerHandler implements PeerMessageListener {
                                         getRemoteAddress(), requestSent
                                     });
                                 requestsExpired.add(requestSent);
-                                requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
                                 it.remove();
                             } else {
                                 interesting.clear(requestSent.getPiece());
                             }
                         }
-                        rejectRequests(requestsExpired, "requests expired");
+                        if (!requestsExpired.isEmpty()) {
+                            rejectRequests(requestsExpired, "requests expired");
+                            requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
+                            LOG.debug("{}: Lowered requestsSentLimit to {}", provider.getLocalPeerName(), requestsSentLimit);
+                        }
                         requestsExpiredAt = now;
                     }
                 }

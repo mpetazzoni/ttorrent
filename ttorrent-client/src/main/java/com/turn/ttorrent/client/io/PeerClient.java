@@ -19,6 +19,7 @@ import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelOption;
@@ -54,6 +55,7 @@ public class PeerClient {
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
         // bootstrap.option(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) TimeUnit.SECONDS.toMillis(10));
+        // TODO: Derive from PieceHandler.DEFAULT_BLOCK_SIZE
         // bootstrap.option(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 1024 * 1024);
         // bootstrap.option(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
     }
@@ -81,6 +83,9 @@ public class PeerClient {
                 } catch (Exception e) {
                     LOG.error("Connection to " + remoteAddress + " failed.", e);
                     listener.handlePeerConnectionFailed(remoteAddress, e);
+                    Channel channel = future.channel();
+                    if (channel.isOpen())
+                        channel.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
                 }
             }
         });

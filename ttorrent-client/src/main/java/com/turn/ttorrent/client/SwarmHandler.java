@@ -214,8 +214,17 @@ public class SwarmHandler implements Runnable,
         });
     }
 
+    private static boolean isInetAddress(@Nonnull SocketAddress socketAddress, @Nonnull Class<? extends InetAddress> type) {
+        if (!(socketAddress instanceof InetSocketAddress))
+            return false;
+        InetSocketAddress inetSocketAddress = (InetSocketAddress)socketAddress;
+        return type.isInstance(inetSocketAddress.getAddress());
+    }
+
     // @Nonnull
     private void addPeer(@Nonnull SocketAddress peerAddress, @CheckForNull byte[] peerId, long now) {
+        // if (!isInetAddress(peerAddress, Inet4Address.class)) return;
+
         PeerInformation peerInformation = new PeerInformation();
         peerInformation.setReconnectTime(getRandom(), now);
         PUT:

@@ -131,7 +131,6 @@ public class ClientEnvironment implements PeerIdentityProvider {
         random.nextBytes(tmp);
         String id = BITTORRENT_ID_PREFIX + (peerName != null ? peerName : "") + TorrentUtils.toHex(tmp);
         this.peerId = Arrays.copyOf(id.getBytes(BEUtils.BYTE_ENCODING), 20);
-
     }
 
     /**

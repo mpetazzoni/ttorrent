@@ -9,6 +9,7 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PeerMessageListener;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
@@ -45,6 +46,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     }
 
     protected void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
+        // TODO: Merge LengthFieldPrepender into PeerMessageCodec and use only a PeerFrameDecoder here.
         pipeline.addLast(new CombinedChannelDuplexHandler(new PeerFrameDecoder(), frameEncoder));
         // pipeline.addLast(getFrameLogger());
         pipeline.addLast(new PeerMessageCodec(listener));
@@ -65,7 +67,7 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
         Channel channel = ctx.channel();
         PeerHandler peer = listener.handlePeerConnectionCreated(channel, message.getPeerId(), message.getReserved());
         if (peer == null) {
-            ctx.close();
+            ctx.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
             return;
         }
 

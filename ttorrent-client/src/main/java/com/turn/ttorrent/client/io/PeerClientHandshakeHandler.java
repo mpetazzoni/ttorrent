@@ -18,6 +18,7 @@ package com.turn.ttorrent.client.io;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;
 import java.util.Arrays;
@@ -70,7 +71,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         PeerHandshakeMessage response = new PeerHandshakeMessage(infoHash, peerId);
-        ctx.writeAndFlush(toByteBuf(ctx, response));
+        ctx.writeAndFlush(toByteBuf(ctx, response), ctx.voidPromise());
         super.channelActive(ctx);
     }
 
@@ -79,7 +80,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
         // We were the connecting client.
         if (!Arrays.equals(infoHash, message.getInfoHash())) {
             logger.warn("InfoHash mismatch: requested " + TorrentUtils.toHex(infoHash) + " but received " + message);
-            ctx.close();
+            ctx.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
             return;
         }
 
