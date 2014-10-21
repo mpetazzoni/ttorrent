@@ -553,6 +553,7 @@ public class PeerHandler implements PeerMessageListener {
                         notInteresting();
                     else
                         interesting();
+                    // This might have flushed.
                 }
 
                 // Expires dead requests, and marks live ones uninteresting.

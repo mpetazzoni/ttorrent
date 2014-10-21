@@ -236,7 +236,7 @@ public class SwarmHandler implements Runnable,
             LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
         PeerServer server = getClient().getPeerServer();
         Set<? extends SocketAddress> localAddresses;
-        if (server != null) // Thi can happen if we try to seed PEX before calling Client.start().
+        if (server != null) // This can happen if we try to seed PEX before calling Client.start().
             localAddresses = server.getLocalAddresses();
         else
             localAddresses = Collections.emptySet();
@@ -298,6 +298,7 @@ public class SwarmHandler implements Runnable,
         if (available) {
             return availablePieces.incrementAndGet(piece);
         } else {
+            // Implement an unsigned CAS.
             for (;;) {
                 int current = availablePieces.get(piece);
                 if (current <= 0)
@@ -943,6 +944,7 @@ public class SwarmHandler implements Runnable,
                     return;
                 }
                 // Try to use the new connection.
+                // TODO: Do we just keep the old (active) one?
                 if (connectedPeers.replace(peer.getHexRemotePeerId(), prev, peer)) {
                     if (LOG.isDebugEnabled())
                         LOG.debug("{}: Closing superceded peer connection {} : {} [{}/{}]", new Object[]{

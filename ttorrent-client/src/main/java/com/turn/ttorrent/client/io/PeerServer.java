@@ -26,7 +26,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.ServerSocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -63,7 +62,7 @@ public class PeerServer implements PeerAddressProvider {
     public void start() throws Exception {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(environment.getEventService());
-        bootstrap.channel(NioServerSocketChannel.class);
+        bootstrap.channel(environment.getEventLoopType().getServerChannelType());
         bootstrap.option(ChannelOption.SO_BACKLOG, 128);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.option(ChannelOption.TCP_NODELAY, true);

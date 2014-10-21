@@ -22,7 +22,6 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
@@ -48,7 +47,7 @@ public class PeerClient {
     public void start() throws Exception {
         bootstrap = new Bootstrap();
         bootstrap.group(environment.getEventService());
-        bootstrap.channel(NioSocketChannel.class);
+        bootstrap.channel(environment.getEventLoopType().getClientChannelType());
         bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
