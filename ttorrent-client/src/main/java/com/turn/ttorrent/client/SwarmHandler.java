@@ -27,9 +27,9 @@ import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.client.peer.RateComparator;
-import com.turn.ttorrent.protocol.PeerIdentityProvider;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.tracker.Peer;
+import com.turn.ttorrent.tracker.client.PeerAddressProvider;
 import io.netty.channel.Channel;
 import io.netty.util.internal.PlatformDependent;
 import java.io.IOException;
@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
 public class SwarmHandler implements Runnable,
-        PeerIdentityProvider, PeerPieceProvider,
+        PeerAddressProvider, PeerPieceProvider,
         PeerExistenceListener, PeerConnectionListener, PeerActivityListener {
 
     private static final Logger LOG = LoggerFactory.getLogger(SwarmHandler.class);
@@ -190,6 +190,15 @@ public class SwarmHandler implements Runnable,
     }
 
     @Override
+    public Set<? extends SocketAddress> getLocalAddresses() {
+        PeerServer server = getClient().getPeerServer();
+        // This can happen if we try to seed PEX before calling Client.start().
+        if (server == null)
+            return Collections.emptySet();
+        return server.getLocalAddresses();
+    }
+
+    @Override
     public Instrumentation getInstrumentation() {
         return getClient().getEnvironment().getInstrumentation();
     }
@@ -217,7 +226,7 @@ public class SwarmHandler implements Runnable,
     private static boolean isInetAddress(@Nonnull SocketAddress socketAddress, @Nonnull Class<? extends InetAddress> type) {
         if (!(socketAddress instanceof InetSocketAddress))
             return false;
-        InetSocketAddress inetSocketAddress = (InetSocketAddress)socketAddress;
+        InetSocketAddress inetSocketAddress = (InetSocketAddress) socketAddress;
         return type.isInstance(inetSocketAddress.getAddress());
     }
 
@@ -240,19 +249,17 @@ public class SwarmHandler implements Runnable,
     }
 
     @Override
-    public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers) {
-        if (LOG.isTraceEnabled())
-            LOG.trace("{}: Adding peers {}", getLocalPeerName(), peers);
+    public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers, @Nonnull String source) {
+        if (LOG.isDebugEnabled())
+            LOG.debug("{}: Adding peers from {}: {}", new Object[]{
+                getLocalPeerName(), source, peers
+            });
         PeerServer server = getClient().getPeerServer();
-        Set<? extends SocketAddress> localAddresses;
-        if (server != null) // This can happen if we try to seed PEX before calling Client.start().
-            localAddresses = server.getLocalAddresses();
-        else
-            localAddresses = Collections.emptySet();
+        Set<? extends SocketAddress> localAddresses = getLocalAddresses();
         long now = System.currentTimeMillis();
         for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : peers.entrySet()) {
             SocketAddress remoteAddress = e.getKey();
-            if (localAddresses.contains(remoteAddress)) {
+            if (false && localAddresses.contains(remoteAddress)) {
                 // TODO: Probably ignore silently as it's bound to happen and it's not actionable.
                 LOG.warn("Attempted to add local address " + remoteAddress + " to known peer set.");
                 continue;
@@ -724,7 +731,7 @@ public class SwarmHandler implements Runnable,
             // TODO: We don't keep track of these, so it is possible to have more than one
             // PieceHandler for a given piece. We make some attempt with rejected or timed out
             // requests, but it isn't great.
-            return new PieceHandler(this, rarestIndex);
+            return new PieceHandler(/* this, */this, rarestIndex);
         }
     }
 
@@ -796,16 +803,6 @@ public class SwarmHandler implements Runnable,
     @Override
     public PeerHandler handlePeerConnectionCreated(Channel channel, byte[] remotePeerId, byte[] remoteReserved) {
         SocketAddress remoteAddress = channel.remoteAddress();
-        String remoteHexPeerId = TorrentUtils.toHex(remotePeerId);
-
-        if (Arrays.equals(remotePeerId, getClient().getLocalPeerId()))
-            throw new IllegalArgumentException("Cannot connect to self.");
-
-        // This is a valid InetAddress, but a random highport.
-        // peers.add(remoteAddress);
-
-        // Peer peer = new Peer(remoteAddress, remotePeerId);
-        // LOG.trace("Searching for address {}, peerId {}...", remoteAddress, TorrentUtils.toHex(remotePeerId));
 
         // This is almost always an ephemeral outgoing port so don't add it here.
         // If the peer supports PeerExtendedMessage.HandshakeMessage, we will get its id then.
@@ -814,7 +811,10 @@ public class SwarmHandler implements Runnable,
         if (peerInformation != null)
             peerInformation.remotePeerId = remotePeerId;
 
+        if (Arrays.equals(remotePeerId, getClient().getLocalPeerId()))
+            throw new IllegalArgumentException("Cannot connect to self.");
 
+        String remoteHexPeerId = TorrentUtils.toHex(remotePeerId);
         PeerHandler peerHandler = connectedPeers.get(remoteHexPeerId);
         if (peerHandler != null) {
             if (LOG.isTraceEnabled())
@@ -824,7 +824,7 @@ public class SwarmHandler implements Runnable,
             return null;
         }
 
-        peerHandler = new PeerHandler(channel, remotePeerId, remoteReserved, this, this, this, this);
+        peerHandler = new PeerHandler(channel, remotePeerId, remoteReserved, this, this, this, this, this);
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Created new peer: {}.", getLocalPeerName(), peerHandler);
 

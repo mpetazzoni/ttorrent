@@ -8,8 +8,8 @@ import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.peer.PieceHandler;
 import com.turn.ttorrent.client.peer.PeerHandler;
 import com.turn.ttorrent.client.peer.Instrumentation;
-import com.turn.ttorrent.protocol.test.TestPeerIdentityProvider;
 import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.tracker.client.test.TestPeerAddressProvider;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -18,7 +18,7 @@ import java.util.BitSet;
  *
  * @author shevek
  */
-public class TestPeerPieceProvider extends TestPeerIdentityProvider implements PeerPieceProvider {
+public class TestPeerPieceProvider extends TestPeerAddressProvider implements PeerPieceProvider {
 
     private final Instrumentation instrumentation = new Instrumentation();
     private final Torrent torrent;

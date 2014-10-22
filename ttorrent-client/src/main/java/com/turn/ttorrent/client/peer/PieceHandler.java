@@ -42,7 +42,8 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
     /** Max block request size is 2^17 bytes, or 131kB. */
     public static final int MAX_BLOCK_SIZE = 128 * 1024;   // This is 131072 in most implementations.
     private final int piece;
-    private final PeerPieceProvider provider;
+    // private final PeerIdentityProvider identityProvider;
+    private final PeerPieceProvider pieceProvider;
     // TODO: Maintain the set of peers which sent us data, so we can bin bad peers.
     @GuardedBy("lock")
     private final byte[] pieceData;
@@ -50,10 +51,11 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
     private final BitSet pieceRequiredBytes;    // We should do this with blocks.
     private final Object lock = new Object();
 
-    public PieceHandler(@Nonnull PeerPieceProvider provider, @Nonnegative int piece) {
-        this.provider = provider;
+    public PieceHandler(/*@Nonnull PeerIdentityProvider identityProvider,*/ @Nonnull PeerPieceProvider pieceProvider, @Nonnegative int piece) {
+        // this.identityProvider = identityProvider;
+        this.pieceProvider = pieceProvider;
         this.piece = piece;
-        this.pieceData = new byte[provider.getPieceLength(piece)];
+        this.pieceData = new byte[pieceProvider.getPieceLength(piece)];
         this.pieceRequiredBytes = new BitSet(pieceData.length);
         this.pieceRequiredBytes.set(0, pieceData.length);  // It's easier to find 1s than 0s.
     }
@@ -93,14 +95,14 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
         synchronized (lock) {
             // Make sure we actually needed any of these bytes.
-            if (provider.isCompletedPiece(piece)) {
+            if (pieceProvider.isCompletedPiece(piece)) {
                 if (LOG.isDebugEnabled())
-                    LOG.debug("{}: Discarding block of non-required piece {}", provider.getLocalPeerName(), piece);
+                    LOG.debug("{}: Discarding block of non-required piece {}", pieceProvider.getLocalPeerName(), piece);
                 return Reception.IGNORED;
             }
             if (pieceRequiredBytes.nextSetBit(offset) >= offset + length) {
                 if (LOG.isDebugEnabled())
-                    LOG.debug("{}: Discarding non-required block for {}", provider.getLocalPeerName(), piece);
+                    LOG.debug("{}: Discarding non-required block for {}", pieceProvider.getLocalPeerName(), piece);
                 return Reception.IGNORED;
             }
 
@@ -110,9 +112,9 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
             if (!pieceRequiredBytes.isEmpty())
                 return Reception.INCOMPLETE;
 
-            boolean valid = provider.validateBlock(ByteBuffer.wrap(pieceData), piece);
+            boolean valid = pieceProvider.validateBlock(ByteBuffer.wrap(pieceData), piece);
             if (!valid) {
-                // LOG.warn("{}: Piece {} complete, but invalid. Not saving.", new Object[]{provider.getLocalPeerName(), piece});
+                // LOG.warn("{}: Piece {} complete, but invalid. Not saving.", new Object[]{identityProvider.getLocalPeerName(), piece});
                 this.pieceRequiredBytes.set(0, pieceData.length);
                 return Reception.INVALID;
             }
@@ -120,7 +122,7 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
         // if (LOG.isDebugEnabled())
         // LOG.debug("Piece {} complete, and valid.", piece);
-        provider.writeBlock(ByteBuffer.wrap(pieceData), piece, 0);
+        pieceProvider.writeBlock(ByteBuffer.wrap(pieceData), piece, 0);
         return Reception.VALID;
     }
 
@@ -192,7 +194,7 @@ public class PieceHandler implements Iterable<AnswerableRequestMessage> {
 
         @Override
         protected AnswerableRequestMessage computeNext() {
-            int blockLength = provider.getBlockLength();
+            int blockLength = pieceProvider.getBlockLength();
             synchronized (lock) {
                 if (requestOffset == REQUEST_OFFSET_FINI)
                     return endOfData();

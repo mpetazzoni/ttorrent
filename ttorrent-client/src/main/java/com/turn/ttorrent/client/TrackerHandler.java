@@ -428,7 +428,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         Map<SocketAddress, byte[]> peers = new HashMap<SocketAddress, byte[]>();
         for (Peer peer : message.getPeers())
             peers.put(peer.getAddress(), peer.getPeerId());
-        existenceListener.addPeers(peers);
+        existenceListener.addPeers(peers, "tracker");
 
         synchronized (lock) {
             if (event == TrackerMessage.AnnounceEvent.STOPPED)

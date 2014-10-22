@@ -32,8 +32,8 @@ public class TestPeerExistenceListener implements PeerExistenceListener {
     }
 
     @Override
-    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers) {
-        LOG.info("Added " + peers);
+    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers, String reason) {
+        LOG.info("Added " + reason + ": " + peers);
         synchronized (addresses) {
             Iterables.addAll(addresses, peers.keySet());
         }

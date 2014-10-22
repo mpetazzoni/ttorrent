@@ -23,6 +23,7 @@ import com.turn.ttorrent.client.io.PeerHandshakeMessage;
 import com.turn.ttorrent.client.io.PeerMessage;
 import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import com.turn.ttorrent.tracker.client.PeerAddressProvider;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import java.io.IOException;
@@ -104,7 +105,8 @@ public class PeerHandler implements PeerMessageListener {
     private final Channel channel;
     private final byte[] remotePeerId;
     private final byte[] remoteReserved;
-    private final PeerPieceProvider provider;
+    private final PeerAddressProvider addressProvider;
+    private final PeerPieceProvider pieceProvider;
     private final PeerExistenceListener existenceListener;
     private final PeerConnectionListener connectionListener;
     private final PeerActivityListener activityListener;
@@ -157,24 +159,31 @@ public class PeerHandler implements PeerMessageListener {
             @Nonnull byte[] remotePeerId,
             @Nonnull byte[] remoteReserved,
             // Deliberately specified in terms of interfaces, for testing.
-            @Nonnull PeerPieceProvider provider,
+            @Nonnull PeerAddressProvider addressProvider,
+            @Nonnull PeerPieceProvider pieceProvider,
             @Nonnull PeerExistenceListener existenceListener,
             @Nonnull PeerConnectionListener connectionListener,
             @Nonnull PeerActivityListener activityListener) {
         this.channel = channel;
         this.remotePeerId = remotePeerId;
         this.remoteReserved = remoteReserved;
-        this.provider = provider;
+        this.addressProvider = addressProvider;
+        this.pieceProvider = pieceProvider;
         this.existenceListener = existenceListener;
         this.connectionListener = connectionListener;
         this.activityListener = activityListener;
 
-        this.availablePieces = new BitSet(provider.getPieceCount());
+        this.availablePieces = new BitSet(pieceProvider.getPieceCount());
 
         setFlag(Flag.CHOKING, true);
         setFlag(Flag.INTERESTING, false);
         setFlag(Flag.CHOKED, true);
         setFlag(Flag.INTERESTED, false);
+    }
+
+    @Nonnull
+    private String getLocalPeerName() {
+        return addressProvider.getLocalPeerName();
     }
 
     @Nonnull
@@ -237,7 +246,7 @@ public class PeerHandler implements PeerMessageListener {
             return PeerHandshakeMessage.Feature.BEP10_EXTENSION_PROTOCOL.get(remoteReserved);
         synchronized (lock) {
             boolean ret = extendedMessageTypes.containsKey(extendedType);
-            // LOG.info("{}: {} supports {} = {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), extendedType, ret});
+            // LOG.info("{}: {} supports {} = {}", new Object[]{getLocalPeerName(), getTextRemotePeerId(), extendedType, ret});
             return ret;
         }
     }
@@ -255,7 +264,7 @@ public class PeerHandler implements PeerMessageListener {
         long curr = flags.get(flag.ordinal());
         long now = System.currentTimeMillis();
         boolean ret = curr != 0 && curr + delta <= now;
-        // LOG.debug("{}: flag={}, curr={}, delta={}, now={}, ret={}", new Object[]{ provider.getLocalPeerName(), flag, curr, delta, now, ret });
+        // LOG.debug("{}: flag={}, curr={}, delta={}, now={}, ret={}", new Object[]{ getLocalPeerName(), flag, curr, delta, now, ret });
         return ret;
     }
 
@@ -290,7 +299,7 @@ public class PeerHandler implements PeerMessageListener {
     public void choke() {
         if (setFlag(Flag.CHOKED, true)) {
             if (LOG.isTraceEnabled())
-                LOG.trace("{}: Choking {}", provider.getLocalPeerName(), this);
+                LOG.trace("{}: Choking {}", getLocalPeerName(), this);
             send(new PeerMessage.ChokeMessage(), true);
         }
     }
@@ -306,9 +315,9 @@ public class PeerHandler implements PeerMessageListener {
     public void unchoke() {
         if (setFlag(Flag.CHOKED, false)) {
             if (LOG.isTraceEnabled())
-                LOG.trace("{}: Unchoking {}", provider.getLocalPeerName(), this);
+                LOG.trace("{}: Unchoking {}", getLocalPeerName(), this);
             send(new PeerMessage.UnchokeMessage(), true);
-            // LOG.info("{}: Unchoking {}", provider.getLocalPeerName(), this);
+            // LOG.info("{}: Unchoking {}", getLocalPeerName(), this);
         }
     }
 
@@ -319,7 +328,7 @@ public class PeerHandler implements PeerMessageListener {
     public void interesting() {
         if (setFlag(Flag.INTERESTING, true)) {
             if (LOG.isTraceEnabled())
-                LOG.trace("{}: Telling {} we're interested.", provider.getLocalPeerName(), this);
+                LOG.trace("{}: Telling {} we're interested.", getLocalPeerName(), this);
             send(new PeerMessage.InterestedMessage(), true);
         }
     }
@@ -327,7 +336,7 @@ public class PeerHandler implements PeerMessageListener {
     public void notInteresting() {
         if (setFlag(Flag.INTERESTING, false)) {
             if (LOG.isTraceEnabled())
-                LOG.trace("{}: Telling {} we're no longer interested.", provider.getLocalPeerName(), this);
+                LOG.trace("{}: Telling {} we're no longer interested.", getLocalPeerName(), this);
             send(new PeerMessage.NotInterestedMessage(), true);
         }
     }
@@ -347,7 +356,7 @@ public class PeerHandler implements PeerMessageListener {
     public void close(@Nonnull String reason) {
         rejectRequestsSent("connection closed: " + reason);
         LOG.debug("{}: Closing {}: {}", new Object[]{
-            provider.getLocalPeerName(),
+            getLocalPeerName(),
             this, reason
         });
         channel.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
@@ -420,9 +429,9 @@ public class PeerHandler implements PeerMessageListener {
     private void rejectRequests(@Nonnull Collection<? extends PieceHandler.AnswerableRequestMessage> requests, @Nonnull String reason) {
         // LOG.debug("{}: Rejecting {} requests.", provider.getLocalPeerName(), requests.size());
         if (!requests.isEmpty()) {
-            int count = provider.addRequestTimeout(requests);
+            int count = pieceProvider.addRequestTimeout(requests);
             if (LOG.isDebugEnabled())
-                LOG.debug("{}: Rejecting {} requests; {} re-enqueued: {}", provider.getLocalPeerName(), requests.size(), count, reason);
+                LOG.debug("{}: Rejecting {} requests; {} re-enqueued: {}", getLocalPeerName(), requests.size(), count, reason);
         }
     }
 
@@ -456,7 +465,7 @@ public class PeerHandler implements PeerMessageListener {
             channel.flush();
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Cancelled {} remaining pending requests on {}.", new Object[]{
-                provider.getLocalPeerName(),
+                getLocalPeerName(),
                 requestsRejected.size(), this
             });
         return requestsRejected.size();
@@ -466,7 +475,7 @@ public class PeerHandler implements PeerMessageListener {
         if (c.isWritable())
             return true;
         LOG.debug("{}: Peer {} channel {} not writable for {}.", new Object[]{
-            provider.getLocalPeerName(),
+            getLocalPeerName(),
             this, c, message
         });
         return false;
@@ -482,7 +491,7 @@ public class PeerHandler implements PeerMessageListener {
     public void run(@Nonnull String reason) throws IOException {
         if (LOG.isTraceEnabled())
             LOG.trace("{}: Step function in {}: {}", new Object[]{
-                provider.getLocalPeerName(), this, reason
+                getLocalPeerName(), this, reason
             });
         Channel c = channel;
         boolean flush = false;
@@ -496,7 +505,7 @@ public class PeerHandler implements PeerMessageListener {
                         if (!isWritable(c, "bitfield"))
                             return;
                         flush = true;
-                        send(new PeerMessage.BitfieldMessage(provider.getCompletedPieces()), false);
+                        send(new PeerMessage.BitfieldMessage(pieceProvider.getCompletedPieces()), false);
                         sent.add(SendState.BITFIELD);
                     }
                 }
@@ -509,7 +518,10 @@ public class PeerHandler implements PeerMessageListener {
                         if (!isWritable(c, "extended handshake"))
                             return;
                         flush = true;
-                        PeerExtendedMessage.HandshakeMessage message = new PeerExtendedMessage.HandshakeMessage(MAX_REQUESTS_RCVD);
+                        PeerExtendedMessage.HandshakeMessage message = new PeerExtendedMessage.HandshakeMessage(
+                                MAX_REQUESTS_RCVD,
+                                addressProvider.getLocalAddresses());
+                        // We could add the InetSocketAddresses chosen by the HandshakeMessage to peersExchanged.
                         send(message, false);
                         sent.add(SendState.EXTENDED_HANDSHAKE);
                     }
@@ -536,6 +548,17 @@ public class PeerHandler implements PeerMessageListener {
                         if (peers.size() >= 100)
                             break;
                     }
+                    if (peers.size() < 100) {
+                        for (SocketAddress address : addressProvider.getLocalAddresses()) {
+                            if (!(address instanceof InetSocketAddress))
+                                continue;
+                            if (peersExchanged.contains(address))
+                                continue;
+                            peers.add((InetSocketAddress) address);
+                            if (peers.size() >= 100)
+                                break;
+                        }
+                    }
                     // LOG.info("{}: {} PEX candidates are {}", new Object[]{provider.getLocalPeerName(), getTextRemotePeerId(), peers});
                     if (peers.isEmpty())
                         break PEX;
@@ -546,7 +569,7 @@ public class PeerHandler implements PeerMessageListener {
                 }
 
                 BitSet interesting = getAvailablePieces();
-                provider.andNotCompletedPieces(interesting);
+                pieceProvider.andNotCompletedPieces(interesting);
                 INTERESTING:
                 {
                     if (interesting.isEmpty())
@@ -561,7 +584,7 @@ public class PeerHandler implements PeerMessageListener {
                 {
                     if (LOG.isTraceEnabled())
                         LOG.trace("{}: requestsExpiredAt={}, now={}, comp={}, diff={}", new Object[]{
-                            provider.getLocalPeerName(),
+                            getLocalPeerName(),
                             requestsExpiredAt, now, now - (MAX_REQUESTS_TIME >> 2),
                             (now - (MAX_REQUESTS_TIME >> 2)) - requestsExpiredAt
                         });
@@ -574,12 +597,12 @@ public class PeerHandler implements PeerMessageListener {
                             PieceHandler.AnswerableRequestMessage requestSent = it.next();
                             if (LOG.isTraceEnabled())
                                 LOG.trace("{}: Awaiting sent message {} until {}", new Object[]{
-                                    provider.getLocalPeerName(), requestSent, MAX_REQUESTS_TIME
+                                    getLocalPeerName(), requestSent, MAX_REQUESTS_TIME
                                 });
                             if (requestSent.getRequestTime() < then) {
                                 if (LOG.isDebugEnabled())
                                     LOG.debug("{}: Peer {} request {} timed out.", new Object[]{
-                                        provider.getLocalPeerName(),
+                                        getLocalPeerName(),
                                         getRemoteAddress(), requestSent
                                     });
                                 requestsExpired.add(requestSent);
@@ -591,7 +614,7 @@ public class PeerHandler implements PeerMessageListener {
                         if (!requestsExpired.isEmpty()) {
                             rejectRequests(requestsExpired, "requests expired");
                             requestsSentLimit = Math.max((int) (requestsSentLimit * 0.8), MIN_REQUESTS_SENT);
-                            LOG.debug("{}: Lowered requestsSentLimit to {}", provider.getLocalPeerName(), requestsSentLimit);
+                            LOG.debug("{}: Lowered requestsSentLimit to {}", getLocalPeerName(), requestsSentLimit);
                         }
                         requestsExpiredAt = now;
                     }
@@ -605,7 +628,7 @@ public class PeerHandler implements PeerMessageListener {
                         if (isChoking()) {
                             if (LOG.isTraceEnabled())
                                 LOG.trace("{}: {}: Not sending requests because they are choking us.", new Object[]{
-                                    provider.getLocalPeerName(), this
+                                    getLocalPeerName(), this
                                 });
                             break REQUEST;
                         }
@@ -613,7 +636,7 @@ public class PeerHandler implements PeerMessageListener {
                         if (!c.isWritable()) {
                             if (LOG.isDebugEnabled())
                                 LOG.debug("{}: Peer {} channel {} not writable for request; sent {}.", new Object[]{
-                                    provider.getLocalPeerName(),
+                                    getLocalPeerName(),
                                     this, c,
                                     requestsSent.size()
                                 });
@@ -624,11 +647,11 @@ public class PeerHandler implements PeerMessageListener {
                         while (!requestsSource.hasNext()) {
                             // This calls a significant piece of infrastructure elsewhere,
                             // and needs a proof against deadlock.
-                            Iterable<PieceHandler.AnswerableRequestMessage> piece = provider.getNextPieceHandler(this, interesting);
+                            Iterable<PieceHandler.AnswerableRequestMessage> piece = pieceProvider.getNextPieceHandler(this, interesting);
                             if (piece == null) {
                                 if (LOG.isTraceEnabled())
                                     LOG.trace("{}: Peer {} has no request source; breaking request loop.", new Object[]{
-                                        provider.getLocalPeerName(),
+                                        getLocalPeerName(),
                                         this
                                     });
                                 requestsSource = Iterators.emptyIterator(); // Allow GC.
@@ -640,7 +663,7 @@ public class PeerHandler implements PeerMessageListener {
                         PieceHandler.AnswerableRequestMessage request = requestsSource.next();
                         if (LOG.isTraceEnabled())
                             LOG.trace("{}: Adding {} from {}, queue={}/{}", new Object[]{
-                                provider.getLocalPeerName(),
+                                getLocalPeerName(),
                                 request, requestsSource,
                                 requestsSent.size(), requestsSentLimit
                             });
@@ -657,13 +680,13 @@ public class PeerHandler implements PeerMessageListener {
             RESPONSE:
             while (c.isWritable()) {
                 PeerMessage.RequestMessage request = requestsReceived.poll();
-                request = provider.getInstrumentation().instrumentBlockRequest(this, provider, request);
+                request = pieceProvider.getInstrumentation().instrumentBlockRequest(this, pieceProvider, request);
                 if (request == null)
                     break;
 
-                if (!provider.isCompletedPiece(request.getPiece())) {
+                if (!pieceProvider.isCompletedPiece(request.getPiece())) {
                     LOG.warn("{}: Peer {} requested invalid piece {}, terminating exchange.", new Object[]{
-                        provider.getLocalPeerName(),
+                        getLocalPeerName(),
                         this, request.getPiece()
                     });
                     close("requested piece we don't have");
@@ -673,7 +696,7 @@ public class PeerHandler implements PeerMessageListener {
                 // At this point we agree to send the requested piece block to
                 // the remote peer, so let's queue a message with that block
                 ByteBuffer block = ByteBuffer.allocate(request.getLength());
-                provider.readBlock(block, request.getPiece(), request.getOffset());
+                pieceProvider.readBlock(block, request.getPiece(), request.getOffset());
                 block.flip();
                 // ByteBuffer block = piece.read(request.getOffset(), request.getLength());
                 PeerMessage.PieceMessage response = new PeerMessage.PieceMessage(
@@ -711,7 +734,7 @@ public class PeerHandler implements PeerMessageListener {
             case CHOKE:
                 setFlag(Flag.CHOKING, true);
                 if (LOG.isTraceEnabled())
-                    LOG.trace("{}: Peer {} is no longer accepting requests.", provider.getLocalPeerName(), this);
+                    LOG.trace("{}: Peer {} is no longer accepting requests.", getLocalPeerName(), this);
                 cancelRequestsSent("remote peer choked us");
                 activityListener.handlePeerChoking(this);
                 break;
@@ -719,7 +742,7 @@ public class PeerHandler implements PeerMessageListener {
             case UNCHOKE:
                 setFlag(Flag.CHOKING, false);
                 if (LOG.isTraceEnabled())
-                    LOG.trace("{}: Peer {} is now accepting requests.", provider.getLocalPeerName(), this);
+                    LOG.trace("{}: Peer {} is now accepting requests.", getLocalPeerName(), this);
                 activityListener.handlePeerUnchoking(this);
                 // run();  // We might want something.
                 break;
@@ -727,13 +750,13 @@ public class PeerHandler implements PeerMessageListener {
             case INTERESTED:
                 setFlag(Flag.INTERESTED, true);
                 if (LOG.isTraceEnabled())
-                    LOG.trace("{}: Peer {} is now interested.", provider.getLocalPeerName(), this);
+                    LOG.trace("{}: Peer {} is now interested.", getLocalPeerName(), this);
                 break;
 
             case NOT_INTERESTED:
                 setFlag(Flag.INTERESTED, false);
                 if (LOG.isTraceEnabled())
-                    LOG.trace("{}: Peer {} is no longer interested.", provider.getLocalPeerName(), this);
+                    LOG.trace("{}: Peer {} is no longer interested.", getLocalPeerName(), this);
                 // TODO: Close if we are a seed?
                 break;
 
@@ -780,7 +803,7 @@ public class PeerHandler implements PeerMessageListener {
                     long choked = flags.get(Flag.CHOKED.ordinal());
                     long now = System.currentTimeMillis();
                     LOG.warn("{}: Peer {} ignored choking, terminating exchange; choked at {} ({} ago), now {}", new Object[]{
-                        provider.getLocalPeerName(), this,
+                        getLocalPeerName(), this,
                         choked, (now - choked), now
                     });
                     close("ignored choking");
@@ -790,7 +813,7 @@ public class PeerHandler implements PeerMessageListener {
                 // TODO: Ignore this condition for fast links.
                 if (message.getLength() > PieceHandler.MAX_BLOCK_SIZE) {
                     LOG.warn("{}: Peer {} requested a block too big ({}), terminating exchange.", new Object[]{
-                        provider.getLocalPeerName(), this,
+                        getLocalPeerName(), this,
                         message.getLength()
                     });
                     close("requested hueg block");
@@ -799,7 +822,7 @@ public class PeerHandler implements PeerMessageListener {
 
                 if (!requestsReceived.offer(message)) {
                     LOG.warn("{}: Peer {} requested too many blocks; dropping {}", new Object[]{
-                        provider.getLocalPeerName(),
+                        getLocalPeerName(),
                         this, message
                     });
                     break;
@@ -826,7 +849,7 @@ public class PeerHandler implements PeerMessageListener {
                     reception = request.answer(message);
                 else if (LOG.isTraceEnabled())
                     LOG.trace("{}: {}: Response received to unsent request: {}", new Object[]{
-                        provider.getLocalPeerName(),
+                        getLocalPeerName(),
                         this,
                         message
                     });
@@ -879,7 +902,7 @@ public class PeerHandler implements PeerMessageListener {
                 SocketAddress remoteIp6Address = message.getSenderIp6Address();
                 if (remoteIp6Address != null)
                     remoteAddresses.put(remoteIp6Address, getRemotePeerId());
-                existenceListener.addPeers(remoteAddresses);
+                existenceListener.addPeers(remoteAddresses, "extended-handshake");
                 break;
             }
             case ut_pex: {
@@ -894,7 +917,7 @@ public class PeerHandler implements PeerMessageListener {
                     for (SocketAddress peer : added)
                         peers.put(peer, null);
                     // LOG.info("PEX adding peers " + peers);
-                    existenceListener.addPeers(peers);
+                    existenceListener.addPeers(peers, "peer-exchange");
                 }
                 break;
             }
@@ -923,7 +946,7 @@ public class PeerHandler implements PeerMessageListener {
     @Override
     public void handleException(Throwable exception) {
         LOG.error("{}: {}: Operation failed: {}", new Object[]{
-            provider.getLocalPeerName(),
+            getLocalPeerName(),
             getRemoteAddress(),
             exception
         });
@@ -943,7 +966,7 @@ public class PeerHandler implements PeerMessageListener {
             }
             t = t.getCause();
         }
-        LOG.error(provider.getLocalPeerName() + ": Operation diagnostics", exception);
+        LOG.error(getLocalPeerName() + ": Operation diagnostics", exception);
     }
 
     public void tick() {

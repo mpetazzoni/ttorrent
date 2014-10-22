@@ -20,12 +20,14 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnegative;
@@ -90,11 +92,26 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         }
 
         /** Constructed for local, transmitted to remote. */
-        public HandshakeMessage(int senderRequestQueueLength) {
+        public HandshakeMessage(int senderRequestQueueLength, Set<? extends SocketAddress> senderAddresses) {
             this();
             this.senderRequestQueueLength = senderRequestQueueLength;
             for (ExtendedType type : ExtendedType.values())
                 senderExtendedTypeMap.put(type, (byte) type.ordinal());
+            for (SocketAddress senderAddress : senderAddresses) {
+                if (!(senderAddress instanceof InetSocketAddress))
+                    continue;
+                InetSocketAddress socketAddress = (InetSocketAddress) senderAddress;
+                InetAddress inetAddress = socketAddress.getAddress();
+                if (inetAddress == null)
+                    continue;
+                if (inetAddress instanceof Inet4Address) {
+                    senderIp4 = inetAddress.getAddress();
+                    senderPort = socketAddress.getPort();
+                } else if (inetAddress instanceof Inet6Address) {
+                    senderIp6 = inetAddress.getAddress();
+                    senderPort = socketAddress.getPort();
+                }
+            }
         }
 
         @Override
@@ -190,7 +207,13 @@ public abstract class PeerExtendedMessage extends PeerMessage {
 
         @Override
         public String toString() {
-            return super.toString() + " " + getSenderExtendedTypeMap();
+            String ret = super.toString() + " " + getSenderExtendedTypeMap();
+            try {
+                ret = ret + " ip4=" + getSenderIp4Address() + ", ip6=" + getSenderIp6Address();
+            } catch (UnknownHostException e) {
+                ret = ret + " ip-error=" + e;
+            }
+            return ret;
         }
     }
 

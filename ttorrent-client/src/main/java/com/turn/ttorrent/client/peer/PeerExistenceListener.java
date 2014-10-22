@@ -19,5 +19,5 @@ public interface PeerExistenceListener {
     public Map<? extends SocketAddress, ? extends byte[]> getPeers();
 
     /** Adds SocketAddress -> PeerIds. The PeerId may be null if not known. */
-    public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers);
+    public void addPeers(@Nonnull Map<? extends SocketAddress, ? extends byte[]> peers, @Nonnull String source);
 }

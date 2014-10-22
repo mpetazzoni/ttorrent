@@ -48,7 +48,7 @@ public class PeerExchangeTest {
             seed.addTorrent(torrent, dir);
         }
 
-        peers = new Client[8];
+        peers = new Client[2];
         latch = new CountDownLatch(peers.length);
 
         for (int i = 0; i < peers.length; i++) {
@@ -90,7 +90,7 @@ public class PeerExchangeTest {
     private static void tellLeftAboutRight(Client left, Client right, byte[] torrentId) {
         SocketAddress peerAddress = toLocalhostAddress(right.getPeerServer());
         Map<SocketAddress, byte[]> peers = Collections.singletonMap(peerAddress, null);
-        left.getTorrent(torrentId).getSwarmHandler().addPeers(Collections.singletonMap(peerAddress, (byte[]) null));
+        left.getTorrent(torrentId).getSwarmHandler().addPeers(Collections.singletonMap(peerAddress, (byte[]) null), "test");
     }
 
     @Test
@@ -108,10 +108,13 @@ public class PeerExchangeTest {
         {
             SwarmHandler handler = peers[0].getTorrent(torrentId).getSwarmHandler();
             for (;;) {
+                LOG.info("Handler {} has {} peers, waiting for {}", handler, handler.getPeerCount(), peers.length - 1);
                 if (handler.getPeerCount() >= peers.length - 1) // It should know everyone but itself.
                     break;
-                for (Client peer : peers)
+                for (Client peer : peers) {
                     peer.info(true);
+                    LOG.info("Known: " + peer.getTorrent(torrentId).getSwarmHandler().getPeers().keySet());
+                }
                 Thread.sleep(5000);
             }
             LOG.info("All peers exchanged!");

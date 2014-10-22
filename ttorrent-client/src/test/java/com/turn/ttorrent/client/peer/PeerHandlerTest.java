@@ -7,9 +7,11 @@ package com.turn.ttorrent.client.peer;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.io.PeerClientHandshakeHandler;
 import com.turn.ttorrent.client.io.PeerServerHandshakeHandler;
+import com.turn.ttorrent.protocol.test.TestPeerIdentityProvider;
 import com.turn.ttorrent.test.TestPeerPieceProvider;
 import com.turn.ttorrent.protocol.torrent.Torrent;
 import com.turn.ttorrent.protocol.test.TorrentTestUtils;
+import com.turn.ttorrent.tracker.client.test.TestPeerAddressProvider;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -63,10 +65,11 @@ public class PeerHandlerTest {
             channel = b.connect(address).sync().channel();
         }
 
-        TestPeerPieceProvider provider = new TestPeerPieceProvider(torrent);
+        TestPeerAddressProvider addressProvider = new TestPeerAddressProvider();
+        TestPeerPieceProvider pieceProvider = new TestPeerPieceProvider(torrent);
         PeerExistenceListener existenceListener = EasyMock.createMock(PeerExistenceListener.class);
         PeerActivityListener activityListener = EasyMock.createMock(PeerActivityListener.class);
-        PeerHandler peerHandler = new PeerHandler(channel, peerId, new byte[8], provider, existenceListener, connectionListener, activityListener);
+        PeerHandler peerHandler = new PeerHandler(channel, peerId, new byte[8], addressProvider, pieceProvider, existenceListener, connectionListener, activityListener);
 
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
@@ -78,7 +81,7 @@ public class PeerHandlerTest {
 
         EasyMock.reset(activityListener, connectionListener);
         EasyMock.replay(activityListener, connectionListener);
-        provider.setPieceHandler(0);
+        pieceProvider.setPieceHandler(0);
         peerHandler.run("test 1");
         EasyMock.verify(activityListener, connectionListener);
 

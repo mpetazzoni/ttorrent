@@ -62,8 +62,8 @@ public class TrackerHandlerTest {
                 TorrentMetadataProvider torrentMetadataProvider = new TestTorrentMetadataProvider(torrent.getInfoHash(), torrent.getAnnounceList());
                 PeerExistenceListener existenceListener = new TestPeerExistenceListener() {
                     @Override
-                    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers) {
-                        super.addPeers(peers);
+                    public void addPeers(Map<? extends SocketAddress, ? extends byte[]> peers, String reason) {
+                        super.addPeers(peers, reason);
                         latch.countDown();
                     }
                 };
