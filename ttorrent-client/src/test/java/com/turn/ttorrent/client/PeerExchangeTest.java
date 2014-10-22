@@ -48,7 +48,7 @@ public class PeerExchangeTest {
             seed.addTorrent(torrent, dir);
         }
 
-        peers = new Client[2];
+        peers = new Client[8];
         latch = new CountDownLatch(peers.length);
 
         for (int i = 0; i < peers.length; i++) {
