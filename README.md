@@ -125,9 +125,9 @@ tracker.start();
 tracker.stop();
 ```
 
-Servlets/Jetty: See [TrackerServlet](ttorrent-tracker-spring/src/main/java/com/turn/ttorrent/tracker/servlet/TrackerServlet.java).
+Servlets/Jetty: See [TrackerServlet](ttorrent-tracker-servlet/src/main/java/com/turn/ttorrent/tracker/servlet/TrackerServlet.java).
 
-Spring Framework: See [TrackerServlet](ttorrent-tracker-spring/src/main/java/com/turn/ttorrent/tracker/spring/TrackerController.java).
+Spring Framework: See [TrackerController](ttorrent-tracker-spring/src/main/java/com/turn/ttorrent/tracker/spring/TrackerController.java).
 
 #### JavaDoc API
 
