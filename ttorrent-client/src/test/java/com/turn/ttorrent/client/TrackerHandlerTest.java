@@ -4,7 +4,7 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.torrent.tracker.simple.SimpleTracker;
+import com.turn.ttorrent.tracker.simple.SimpleTracker;
 import com.turn.ttorrent.client.peer.PeerExistenceListener;
 import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import com.turn.ttorrent.protocol.torrent.Torrent;

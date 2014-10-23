@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.torrent.tracker.simple;
+package com.turn.ttorrent.tracker.simple;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.net.InetAddresses;

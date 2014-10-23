@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.turn.torrent.tracker.simple;
+package com.turn.ttorrent.tracker.simple;
 
 import com.turn.ttorrent.protocol.tracker.http.HTTPTrackerErrorMessage;
 import com.turn.ttorrent.protocol.tracker.http.HTTPAnnounceRequestMessage;

@@ -4,7 +4,6 @@
  */
 package com.turn.ttorrent.tracker.simple;
 
-import com.turn.torrent.tracker.simple.SimpleTracker;
 import com.turn.ttorrent.tracker.TrackerUtils;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
