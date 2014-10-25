@@ -54,8 +54,7 @@ public class RawFileStorage implements ByteStorage {
 
     @Override
     public void finish() throws IOException {
-        if (channel.isOpen())
-            channel.force(true);
+        flush();
         finished = true;
     }
 
