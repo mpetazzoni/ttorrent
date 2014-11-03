@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,12 @@ public class TrackerHandlerTest {
             PeerExistenceListener existenceListener = new TestPeerExistenceListener();
             TrackerHandler trackerHandler = new TrackerHandler(client, metadataProvider, existenceListener) {
                 @Override
+                /* pp */ TrackerHandler.TrackerState run_once(TrackerMessage.AnnounceEvent event) {
+                    LOG.info("Running TrackerHandler: " + event);
+                    return null;
+                }
+
+                @Override
                 public void run() {
                     LOG.info("Running TrackerHandler.");
                 }
@@ -112,22 +119,25 @@ public class TrackerHandlerTest {
             LOG.info("TrackerHandler is " + trackerHandler);
             trackerHandler.start();
 
+            Thread.sleep(1000);
+
             try {
 
-                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri0: Initial", uri0, trackerHandler.getCurrentTracker().getUri());
                 trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
-                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri0: Announce-fail on not-used uri1", uri0, trackerHandler.getCurrentTracker().getUri());
 
                 trackerHandler.handleAnnounceFailed(uri0, TrackerMessage.AnnounceEvent.NONE, "change fail");
-                assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri1: Announced fail on current uri0", uri1, trackerHandler.getCurrentTracker().getUri());
                 trackerHandler.handleAnnounceFailed(uri0, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
-                assertEquals(uri1, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri1: Announced second fail on non-current uri0", uri1, trackerHandler.getCurrentTracker().getUri());
 
                 trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "change fail");
-                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri0: Now we fail uri1", uri0, trackerHandler.getCurrentTracker().getUri());
                 trackerHandler.handleAnnounceFailed(uri1, TrackerMessage.AnnounceEvent.NONE, "no-change fail");
-                assertEquals(uri0, trackerHandler.getCurrentTracker().getUri());
+                assertEquals("uri0: Now we fail uri1 again, but we aren't using it.", uri0, trackerHandler.getCurrentTracker().getUri());
 
+                LOG.info("Done.");
             } finally {
                 trackerHandler.stop();
             }
@@ -138,6 +148,7 @@ public class TrackerHandlerTest {
 
     }
 
+    @Ignore("Not yet implemented.")
     @Test
     public void testMultipleTrackers() {
     }

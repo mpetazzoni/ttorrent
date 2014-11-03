@@ -268,6 +268,7 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
         TrackerState prev, next;
         synchronized (lock) {
             prev = getCurrentTracker();
+            LOG.info("Moving from " + curr + " (currently " + prev);
             if (curr != prev)
                 return false;
             if (++trackerIndex >= trackers.size())
@@ -370,7 +371,8 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
     }
 
     @CheckForNull
-    private TrackerState run_once(TrackerMessage.AnnounceEvent event) {
+    @VisibleForTesting
+    /* pp */ TrackerState run_once(TrackerMessage.AnnounceEvent event) {
         TrackerState tracker;
         synchronized (lock) {
             if (trackers.isEmpty())

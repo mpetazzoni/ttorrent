@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 public class FileStorage implements ByteRangeStorage {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileStorage.class);
+    public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
     private final File target;
     private final long offset;
     private final long size;
@@ -67,8 +68,7 @@ public class FileStorage implements ByteRangeStorage {
         this.offset = offset;
         this.size = size;
 
-        File partial = new File(file.getAbsolutePath()
-                + ByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+        File partial = new File(file.getAbsolutePath() + PARTIAL_FILE_NAME_SUFFIX);
 
         if (partial.exists()) {
             LOG.debug("{}: Partial download found at {}. Continuing...",

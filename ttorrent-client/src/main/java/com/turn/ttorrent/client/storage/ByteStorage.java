@@ -19,6 +19,8 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 
 /**
  * Abstract torrent byte storage.
@@ -37,8 +39,6 @@ import java.nio.ByteBuffer;
  */
 public interface ByteStorage extends Flushable, Closeable {
 
-    public static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
-
     /**
      * Read from the byte storage.
      *
@@ -56,7 +56,7 @@ public interface ByteStorage extends Flushable, Closeable {
      * @throws IOException If an I/O error occurs while reading from the
      * byte storage.
      */
-    public int read(ByteBuffer buffer, long offset) throws IOException;
+    public int read(@Nonnull ByteBuffer buffer, @Nonnegative long offset) throws IOException;
 
     /**
      * Write bytes to the byte storage.
@@ -73,7 +73,7 @@ public interface ByteStorage extends Flushable, Closeable {
      * @throws IOException If an I/O error occurs while writing to the byte
      * storage.
      */
-    public int write(ByteBuffer block, long offset) throws IOException;
+    public int write(@Nonnull ByteBuffer block, @Nonnegative long offset) throws IOException;
 
     /**
      * Close this byte storage.
