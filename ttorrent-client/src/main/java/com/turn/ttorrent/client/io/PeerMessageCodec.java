@@ -96,13 +96,16 @@ public class PeerMessageCodec extends ByteToMessageCodec<PeerMessage> {
         message.fromWire(buf);
         out.add(message);
 
-        if (buf.readableBytes() > 0)
-            throw new IOException("Badly framed message " + message + "; remaining=" + buf.readableBytes());
+        // if (buf.readableBytes() > 0) throw new IOException("Badly framed message " + message + "; remaining=" + buf.readableBytes());
     }
 
     @Override
     protected void encode(ChannelHandlerContext ctx, PeerMessage value, ByteBuf out) throws Exception {
         // LOG.info("encode: " + value);
+        int lengthIndex = out.writerIndex();
+        out.writeInt(0);
+        int startIndex = out.writerIndex();
         value.toWire(out, listener.getExtendedMessageTypes());
+        out.setInt(lengthIndex, out.writerIndex() - startIndex);
     }
 }

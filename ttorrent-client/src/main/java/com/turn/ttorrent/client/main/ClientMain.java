@@ -17,17 +17,23 @@ package com.turn.ttorrent.client.main;
 
 import com.turn.ttorrent.client.Client;
 
+import com.turn.ttorrent.client.ClientListenerAdapter;
+import com.turn.ttorrent.client.TorrentHandler;
 import com.turn.ttorrent.protocol.torrent.Torrent;
+import com.turn.ttorrent.tracker.client.TorrentMetadataProvider;
 import java.io.File;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.channels.UnsupportedAddressTypeException;
-import java.util.Enumeration;
+import java.util.Collections;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import javax.annotation.CheckForNull;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -65,26 +71,23 @@ public class ClientMain {
      * @throws UnsupportedAddressTypeException If no IPv4 address was available
      * to bind on.
      */
-    private static Inet4Address getIPv4Address(String iface)
-            throws SocketException, UnsupportedAddressTypeException,
-            UnknownHostException {
-        if (iface != null) {
-            Enumeration<InetAddress> addresses =
-                    NetworkInterface.getByName(iface).getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress addr = addresses.nextElement();
-                if (addr instanceof Inet4Address) {
-                    return (Inet4Address) addr;
-                }
-            }
+    @CheckForNull
+    private static InetAddress getInterfaceAddress(@CheckForNull String ifaceName)
+            throws SocketException, UnsupportedAddressTypeException, UnknownHostException {
+        if (ifaceName != null) {
+            NetworkInterface iface = NetworkInterface.getByName(ifaceName);
+            if (iface == null)
+                throw new IllegalArgumentException("No such network interface '" + ifaceName + "'."
+                        + " Available are " + Collections.list(NetworkInterface.getNetworkInterfaces()));
+            // Prefer Inet4Address if possible.
+            for (InetAddress address : Collections.list(iface.getInetAddresses()))
+                if (address instanceof Inet4Address)
+                    return address;
+            for (InetAddress address : Collections.list(iface.getInetAddresses()))
+                return address;
         }
 
-        InetAddress localhost = InetAddress.getLocalHost();
-        if (localhost instanceof Inet4Address) {
-            return (Inet4Address) localhost;
-        }
-
-        throw new UnsupportedAddressTypeException();
+        return null;
     }
 
     /**
@@ -101,17 +104,18 @@ public class ClientMain {
                 .defaultsTo(new File(DEFAULT_OUTPUT_DIRECTORY));
         OptionSpec<String> ifaceOption = parser.accepts("iface")
                 .withRequiredArg();
-        OptionSpec<Integer> seedOption = parser.accepts("seed")
-                .withRequiredArg().ofType(Integer.class)
-                .defaultsTo(-1);
-        OptionSpec<Double> uploadOption = parser.accepts("max-upload")
-                .withRequiredArg().ofType(Double.class)
-                .defaultsTo(0d);
-        OptionSpec<Double> downloadOption = parser.accepts("max-download")
-                .withRequiredArg().ofType(Double.class)
-                .defaultsTo(0d);
+        // OptionSpec<Integer> seedOption = parser.accepts("seed")
+        // .withRequiredArg().ofType(Integer.class)
+        // .defaultsTo(-1);
+        // OptionSpec<Double> uploadOption = parser.accepts("max-upload")
+        // .withRequiredArg().ofType(Double.class)
+        // .defaultsTo(0d);
+        // OptionSpec<Double> downloadOption = parser.accepts("max-download")
+        // .withRequiredArg().ofType(Double.class)
+        // .defaultsTo(0d);
         OptionSpec<File> torrentOption = parser.nonOptions()
-                .ofType(File.class);
+                .ofType(File.class)
+                .describedAs("file0.torrent file1.torrent ...");
 
         OptionSet options = parser.parse(args);
         List<?> otherArgs = options.nonOptionArguments();
@@ -125,9 +129,30 @@ public class ClientMain {
 
         File outputValue = options.valueOf(outputOption);
 
-        InetAddress address = getIPv4Address(options.valueOf(ifaceOption));
-        // TODO: Pass this through to PeerServer and PeerClient.
         Client c = new Client(null);
+
+        InetAddress address = getInterfaceAddress(options.valueOf(ifaceOption));
+        if (address != null)
+            c.getEnvironment().setLocalPeerListenAddress(new InetSocketAddress(address, 0));
+
+        int count = 0;
+        for (File file : options.valuesOf(torrentOption)) {
+            Torrent torrent = new Torrent(file);
+            c.addTorrent(torrent, options.valueOf(outputOption));
+            count++;
+        }
+        if (count == 0)
+            throw new IllegalArgumentException("No torrents given.");
+
+        final CountDownLatch latch = new CountDownLatch(count);
+        c.addClientListener(new ClientListenerAdapter() {
+            @Override
+            public void torrentStateChanged(Client client, TorrentHandler torrent, TorrentMetadataProvider.State state) {
+                if (TorrentMetadataProvider.State.SEEDING.equals(state))
+                    latch.countDown();
+            }
+        });
+
         try {
             c.start();
 
@@ -138,10 +163,7 @@ public class ClientMain {
             // a STOPPED announce request.
             // Runtime.getRuntime().addShutdownHook(new Thread(new Client.ClientShutdown(c, null)));
 
-            for (File file : options.valuesOf(torrentOption)) {
-                Torrent torrent = new Torrent(file);
-                c.addTorrent(torrent, options.valueOf(outputOption));
-            }
+            latch.await();
 
         } catch (Exception e) {
             logger.error("Fatal error: {}", e.getMessage(), e);

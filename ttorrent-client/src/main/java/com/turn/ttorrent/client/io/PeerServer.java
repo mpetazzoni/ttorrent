@@ -24,6 +24,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.ServerSocketChannel;
 import java.io.IOException;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerServer implements PeerAddressProvider {
+public class PeerServer extends PeerEndpoint implements PeerAddressProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerServer.class);
     public static final int PORT_RANGE_START = 6881;
@@ -66,7 +67,12 @@ public class PeerServer implements PeerAddressProvider {
         bootstrap.option(ChannelOption.SO_BACKLOG, 128);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
         bootstrap.option(ChannelOption.TCP_NODELAY, true);
-        bootstrap.childHandler(new PeerServerHandshakeHandler(torrents));
+        bootstrap.childHandler(new ChannelInitializer() {
+            @Override
+            protected void initChannel(Channel ch) throws Exception {
+                ch.pipeline().addLast(new PeerServerHandshakeHandler(torrents));
+            }
+        });
         bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.childOption(ChannelOption.SO_KEEPALIVE, true);
         // bootstrap.childOption(ChannelOption.SO_TIMEOUT, (int) TimeUnit.MINUTES.toMillis(CLIENT_KEEP_ALIVE_MINUTES));

@@ -27,7 +27,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 public class PeerFrameDecoder extends LengthFieldBasedFrameDecoder {
 
     public PeerFrameDecoder() {
-        super(Integer.MAX_VALUE, 0, PeerMessage.MESSAGE_LENGTH_FIELD_SIZE, 0, 4);
+        super(1048576, 0, PeerMessage.MESSAGE_LENGTH_FIELD_SIZE, 0, 4);
     }
 
     @VisibleForTesting

@@ -11,9 +11,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.CombinedChannelDuplexHandler;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.ReferenceCountUtil;
 import javax.annotation.Nonnull;
@@ -24,10 +23,14 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter {
+public abstract class PeerHandshakeHandler extends LengthFieldBasedFrameDecoder {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerHandshakeHandler.class);
-    protected static final PeerFrameEncoder frameEncoder = new PeerFrameEncoder();
+
+    // protected static final PeerFrameEncoder frameEncoder = new PeerFrameEncoder();
+    public PeerHandshakeHandler() {
+        super(1024, 0, 1, PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH, 0);
+    }
 
     @Nonnull
     protected abstract LoggingHandler getWireLogger();
@@ -47,16 +50,17 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
 
     protected void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
         // TODO: Merge LengthFieldPrepender into PeerMessageCodec and use only a PeerFrameDecoder here.
-        pipeline.addLast(new CombinedChannelDuplexHandler(new PeerFrameDecoder(), frameEncoder));
-        // pipeline.addLast(getFrameLogger());
+        pipeline.addLast(new PeerFrameDecoder());
+        // pipeline.addLast(frameEncoder);
+        pipeline.addLast(getFrameLogger());
         pipeline.addLast(new PeerMessageCodec(listener));
-        // pipeline.addLast(getMessageLogger());
+        pipeline.addLast(getMessageLogger());
         pipeline.addLast(new PeerMessageHandler(listener));
     }
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        // ctx.pipeline().addFirst(getWireLogger());
+        ctx.pipeline().addFirst(getWireLogger());
         super.channelRegistered(ctx);
     }
 
@@ -78,22 +82,17 @@ public abstract class PeerHandshakeHandler extends ChannelInboundHandlerAdapter 
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        try {
-            ByteBuf in = (ByteBuf) msg;
-            if (in.readableBytes() < PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH)
-                return;
-
-            int length = in.getUnsignedByte(0);
-            if (in.readableBytes() < PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH + length)
-                return;
-
+    protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+        Object message = super.decode(ctx, in);
+        if (message instanceof ByteBuf) {
             PeerHandshakeMessage request = new PeerHandshakeMessage();
-            request.fromWire(in);
-
+            request.fromWire((ByteBuf) message);
             process(ctx, request);
-        } finally {
-            ReferenceCountUtil.release(msg);
+            ReferenceCountUtil.release(message);
+            return null;
+        } else {
+            // Including null.
+            return message;
         }
     }
 }

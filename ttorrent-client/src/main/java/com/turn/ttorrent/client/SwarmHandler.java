@@ -103,6 +103,7 @@ public class SwarmHandler implements Runnable,
         // Yes, the reference is volatile, not the data.
         @CheckForNull
         private volatile byte[] remotePeerId;
+        private volatile long keepAliveTime;
         private volatile long reconnectTime;
 
         public void setReconnectTime(@Nonnull Random r, long reconnectTime) {
@@ -122,7 +123,8 @@ public class SwarmHandler implements Runnable,
      * 2*UNCHOKING_FREQUENCY seconds. */
     private static final long OPTIMISTIC_UNCHOKE_DELAY = TimeUnit.SECONDS.toMillis(32);
     private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
-    private static final long RECONNECT_DELAY = TimeUnit.SECONDS.toMillis(30);
+    private static final long RECONNECT_DELAY_TEMPORARY = TimeUnit.MINUTES.toMillis(1);
+    private static final long RECONNECT_DELAY_PERMANENT = TimeUnit.MINUTES.toMillis(10);
     /** End-game trigger ratio.
      *
      * <p>
@@ -379,7 +381,7 @@ public class SwarmHandler implements Runnable,
             long ms = Rate.INTERVAL_MS;
             ms = Math.min(ms, UNCHOKE_DELAY);
             ms = Math.min(ms, OPTIMISTIC_UNCHOKE_DELAY);
-            ms = Math.min(ms, RECONNECT_DELAY);
+            ms = Math.min(ms, RECONNECT_DELAY_TEMPORARY);
             future = getClient().getEnvironment().getEventService().scheduleWithFixedDelay(this, 0, ms, TimeUnit.MILLISECONDS);
         }
     }
@@ -445,7 +447,7 @@ public class SwarmHandler implements Runnable,
                     if (Arrays.equals(remotePeerId, getLocalPeerId()))
                         continue;
                 }
-                peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
+                peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY_TEMPORARY);
                 connect(e.getKey());
             }
         }
@@ -987,16 +989,23 @@ public class SwarmHandler implements Runnable,
      */
     @Override
     public void handlePeerConnectionFailed(SocketAddress remoteAddress, Throwable cause) {
+        String reason = (cause == null) ? "(cause not specified)" : cause.getMessage();
         LOG.warn("{}: Could not connect to {}: {}.", new Object[]{
             getLocalPeerName(),
-            remoteAddress, (cause == null) ? "(cause not specified)" : cause.getMessage()
+            remoteAddress, reason
         });
         // No need to clean up the connectedPeers map here -
         // PeerHandler is only created in PeerHandshakeHandler.
 
         PeerInformation peerInformation = knownPeers.get(remoteAddress);
-        if (peerInformation != null)
-            peerInformation.setReconnectTime(getRandom(), System.currentTimeMillis() + RECONNECT_DELAY);
+        if (peerInformation != null) {
+            long reconnectDelay;
+            if (cause != null)
+                reconnectDelay = RECONNECT_DELAY_PERMANENT;
+            else
+                reconnectDelay = RECONNECT_DELAY_TEMPORARY;
+            peerInformation.setReconnectTime(getRandom(), System.currentTimeMillis() + reconnectDelay);
+        }
         LOG.debug("{}: PeerInformation {} -> {}", new Object[]{
             getLocalPeerName(),
             remoteAddress, peerInformation
@@ -1292,12 +1301,12 @@ public class SwarmHandler implements Runnable,
         long now = System.currentTimeMillis();
         PeerInformation peerInformation = knownPeers.get(peer.getRemoteAddress());
         if (peerInformation != null)
-            peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
+            peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY_TEMPORARY);
         else
             for (Map.Entry<SocketAddress, PeerInformation> e : knownPeers.entrySet()) {
                 peerInformation = e.getValue();
                 if (Arrays.equals(peerInformation.remotePeerId, peer.getRemotePeerId()))
-                    peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY);
+                    peerInformation.setReconnectTime(getRandom(), now + RECONNECT_DELAY_TEMPORARY);
             }
     }
 

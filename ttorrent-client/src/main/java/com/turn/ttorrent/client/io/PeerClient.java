@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-public class PeerClient {
+public class PeerClient extends PeerEndpoint {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerClient.class);
     public static final int CLIENT_KEEP_ALIVE_MINUTES = PeerServer.CLIENT_KEEP_ALIVE_MINUTES;
@@ -49,6 +49,8 @@ public class PeerClient {
         bootstrap = new Bootstrap();
         bootstrap.group(environment.getEventService());
         bootstrap.channel(environment.getEventLoopType().getClientChannelType());
+        // SocketAddress address = environment.getLocalPeerListenAddress();
+        // if (address != null) bootstrap.localAddress(address);
         bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
         bootstrap.option(ChannelOption.SO_REUSEADDR, true);
@@ -81,11 +83,11 @@ public class PeerClient {
                 try {
                     LOG.trace("Succeeded: {}", future.get());
                 } catch (Exception e) {
-                    LOG.error("Connection to " + remoteAddress + " failed.", e);
+                    // LOG.error("Connection to " + remoteAddress + " failed.", e);
                     listener.handlePeerConnectionFailed(remoteAddress, e);
                     Channel channel = future.channel();
                     if (channel.isOpen())
-                        channel.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
+                        channel.close(); // .addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);
                 }
             }
         });

@@ -19,7 +19,6 @@ import com.turn.ttorrent.client.TorrentRegistry;
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
 import com.turn.ttorrent.client.TorrentHandler;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;
 import java.util.Arrays;
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
  *
  * @author shevek
  */
-@ChannelHandler.Sharable
 public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerServerHandshakeHandler.class);
