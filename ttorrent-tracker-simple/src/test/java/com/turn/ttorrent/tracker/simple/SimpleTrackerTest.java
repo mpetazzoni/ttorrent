@@ -26,6 +26,7 @@ public class SimpleTrackerTest {
     private static final Logger LOG = LoggerFactory.getLogger(SimpleTrackerTest.class);
     private static final String[] PATHS = {
         "/",
+        "/foo",
         "/announce",
         "/announce?foo"
     };

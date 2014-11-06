@@ -19,6 +19,8 @@ import com.turn.ttorrent.protocol.tracker.http.HTTPTrackerErrorMessage;
 import com.turn.ttorrent.protocol.tracker.http.HTTPAnnounceRequestMessage;
 import com.turn.ttorrent.protocol.tracker.http.HTTPAnnounceResponseMessage;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.io.Closeables;
 import com.turn.ttorrent.protocol.bcodec.BytesBEncoder;
@@ -199,7 +201,10 @@ public class SimpleTrackerService extends TrackerService implements Container {
     /* pp */ static HTTPAnnounceRequestMessage parseRequest(Request request)
             throws MessageValidationException {
         String uri = request.getAddress().toString();
-        String query = uri.split("[?]")[1];
+        Iterable<String> it = Splitter.on('?').limit(2).split(uri);
+        String query = Iterables.get(it, 1, null);
+        if (query == null)
+            throw new MessageValidationException("No query string.");
         Multimap<String, String> params = TrackerUtils.parseQuery(query);
         return HTTPAnnounceRequestMessage.fromParams(params);
     }
