@@ -29,7 +29,7 @@ public abstract class PeerHandshakeHandler extends LengthFieldBasedFrameDecoder 
 
     // protected static final PeerFrameEncoder frameEncoder = new PeerFrameEncoder();
     public PeerHandshakeHandler() {
-        super(1024, 0, 1, PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH, 0);
+        super(1024, 0, 1, PeerHandshakeMessage.BASE_HANDSHAKE_LENGTH - 1, 0);
     }
 
     @Nonnull
