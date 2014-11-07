@@ -369,10 +369,11 @@ public class SwarmHandler implements Runnable,
      * @param peer The peer to connect to.
      */
     public void connect(SocketAddress address) {
-        LOG.info("{}: Attempting to connect to {} for {}", new Object[]{
-            getLocalPeerName(),
-            address, torrent
-        });
+        if (LOG.isDebugEnabled())
+            LOG.debug("{}: Attempting to connect to {} for {}", new Object[]{
+                getLocalPeerName(),
+                address, torrent
+            });
         getClient().getPeerClient().connect(this, torrent.getInfoHash(), address);
     }
 
@@ -1249,9 +1250,10 @@ public class SwarmHandler implements Runnable,
 
         // It's possible for more than one thread to get here simultaneously.
         if (torrent.isComplete()) {
-            LOG.info("{}: {}: Last piece ({}) validated and completed, finishing download.", new Object[]{
-                getLocalPeerName(), torrent, piece
-            });
+            if (LOG.isDebugEnabled())
+                LOG.debug("{}: {}: Last piece ({}) validated and completed, finishing download.", new Object[]{
+                    getLocalPeerName(), torrent, piece
+                });
 
             // Cancel all remaining outstanding requests
             for (PeerHandler remote : getConnectedPeers())

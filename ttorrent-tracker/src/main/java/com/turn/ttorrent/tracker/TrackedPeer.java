@@ -100,12 +100,13 @@ public class TrackedPeer {
             state = TrackedPeerState.COMPLETED;
 
         if (!state.equals(this.state)) {
-            LOG.info("Peer {} {} download of {}.",
-                    new Object[]{
-                this,
-                state.name().toLowerCase(),
-                torrent
-            });
+            if (LOG.isDebugEnabled())
+                LOG.debug("Peer {} {} download of {}.",
+                        new Object[]{
+                    this,
+                    state.name().toLowerCase(),
+                    torrent
+                });
         }
 
         synchronized (lock) {

@@ -275,13 +275,14 @@ public class TrackerHandler implements Runnable, AnnounceResponseListener {
                 trackerIndex = 0;
             next = getCurrentTracker();
         }
-        LOG.info("{}.{}: Moved tracker: {} -> {}: {}",
-                new Object[]{
-            getLocalPeerName(), getTorrentName(),
-            prev, next, reason
-        });
         if (LOG.isDebugEnabled())
-            LOG.debug("{}", this);
+            LOG.debug("{}.{}: Moved tracker: {} -> {}: {}",
+                    new Object[]{
+                getLocalPeerName(), getTorrentName(),
+                prev, next, reason
+            });
+        if (LOG.isTraceEnabled())
+            LOG.trace("{}", this);
         return true;
     }
 

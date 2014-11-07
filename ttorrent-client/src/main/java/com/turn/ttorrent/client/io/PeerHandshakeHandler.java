@@ -48,19 +48,20 @@ public abstract class PeerHandshakeHandler extends LengthFieldBasedFrameDecoder 
         return buf;
     }
 
-    protected void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
+    private void addMessageHandlers(@Nonnull ChannelPipeline pipeline, @Nonnull PeerMessageListener listener) {
         // TODO: Merge LengthFieldPrepender into PeerMessageCodec and use only a PeerFrameDecoder here.
         pipeline.addLast(new PeerFrameDecoder());
         // pipeline.addLast(frameEncoder);
-        pipeline.addLast(getFrameLogger());
+        // pipeline.addLast(getFrameLogger());
         pipeline.addLast(new PeerMessageCodec(listener));
-        pipeline.addLast(getMessageLogger());
+        // pipeline.addLast(getMessageLogger());
+        // pipeline.addLast(new PeerMessageTrafficShapingHandler());
         pipeline.addLast(new PeerMessageHandler(listener));
     }
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        ctx.pipeline().addFirst(getWireLogger());
+        // ctx.pipeline().addFirst(getWireLogger());
         super.channelRegistered(ctx);
     }
 

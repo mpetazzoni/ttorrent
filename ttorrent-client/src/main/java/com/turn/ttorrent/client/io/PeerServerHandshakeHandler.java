@@ -59,8 +59,8 @@ public class PeerServerHandshakeHandler extends PeerHandshakeHandler {
 
     @Override
     protected void process(ChannelHandlerContext ctx, PeerHandshakeMessage message) {
-        if (LOG.isTraceEnabled())
-            LOG.trace("Processing {}", message);
+        if (LOG.isDebugEnabled())
+            LOG.debug("Processing {}", message);
         if (Arrays.equals(message.getPeerId(), torrentProvider.getLocalPeerId())) {
             LOG.warn("Connected to self. Closing.");
             ctx.close().addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE);

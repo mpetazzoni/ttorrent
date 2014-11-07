@@ -5,6 +5,7 @@
 package com.turn.ttorrent.client.io;
 
 import io.netty.handler.traffic.ChannelTrafficShapingHandler;
+import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -12,8 +13,8 @@ import io.netty.handler.traffic.ChannelTrafficShapingHandler;
  */
 public class PeerMessageTrafficShapingHandler extends ChannelTrafficShapingHandler {
 
-    public PeerMessageTrafficShapingHandler(long checkInterval) {
-        super(checkInterval);
+    public PeerMessageTrafficShapingHandler() {
+        super(TimeUnit.MINUTES.toMillis(1));
     }
 
     @Override

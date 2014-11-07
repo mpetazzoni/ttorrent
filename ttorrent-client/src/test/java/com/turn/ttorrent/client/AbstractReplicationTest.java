@@ -83,7 +83,7 @@ public class AbstractReplicationTest {
         for (;;) {
             if (latch.await(30, TimeUnit.SECONDS))
                 break;
-            // seed.info(true);
+            seed.info(true);
             for (Client c : leechers)
                 c.info(true);
         }
