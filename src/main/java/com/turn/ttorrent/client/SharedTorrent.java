@@ -76,6 +76,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
+	/** Default Request Strategy.
+	 *
+	 * Use the rarest-first strategy by default.
+	 */
+	private static final RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplRarest();
+
 	private boolean stop;
 
 	private long uploaded;
@@ -135,7 +141,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
 		throws FileNotFoundException, IOException {
-		this(torrent.getEncoded(), destDir, seeder, null);
+		this(torrent.getEncoded(), destDir, seeder, DEFAULT_REQUEST_STRATEGY);
 	}
 
 	/**
@@ -190,7 +196,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException {
-		this(torrent, parent, seeder, null);
+		this(torrent, parent, seeder, DEFAULT_REQUEST_STRATEGY);
 	}
 
 	/**
@@ -260,7 +266,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.requestedPieces = new BitSet();
 
 		//TODO: should switch to guice
-		if (requestStrategy == null) requestStrategy = new RequestStrategyImplRarest();
 		this.requestStrategy = requestStrategy;
 	}
 
