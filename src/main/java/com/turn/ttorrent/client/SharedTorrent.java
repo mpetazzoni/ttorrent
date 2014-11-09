@@ -18,23 +18,21 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.client.peer.Rate;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
+import com.turn.ttorrent.client.strategy.RequestStrategy;
+import com.turn.ttorrent.client.strategy.RequestStrategyImplRarest;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
-import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
@@ -67,10 +65,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private static final Logger logger =
 		LoggerFactory.getLogger(SharedTorrent.class);
 
-	/** Randomly select the next piece to download from a peer from the
-	 * RAREST_PIECE_JITTER available from it. */
-	private static final int RAREST_PIECE_JITTER = 42;
-
 	/** End-game trigger ratio.
 	 *
 	 * <p>
@@ -82,7 +76,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
-	private Random random;
+	/** Default Request Strategy.
+	 *
+	 * Use the rarest-first strategy by default.
+	 */
+	private static final RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplRarest();
+
 	private boolean stop;
 
 	private long uploaded;
@@ -99,6 +98,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private SortedSet<Piece> rarest;
 	private BitSet completedPieces;
 	private BitSet requestedPieces;
+	private RequestStrategy requestStrategy;
 	
 	private double maxUploadRate = 0.0;
 	private double maxDownloadRate = 0.0;
@@ -141,7 +141,31 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
 		throws FileNotFoundException, IOException {
-		this(torrent.getEncoded(), destDir, seeder);
+		this(torrent.getEncoded(), destDir, seeder, DEFAULT_REQUEST_STRATEGY);
+	}
+
+	/**
+	 * Create a new shared torrent from a base Torrent object.
+	 *
+	 * <p>
+	 * This will recreate a SharedTorrent object from the provided Torrent
+	 * object's encoded meta-info data.
+	 * </p>
+	 *
+	 * @param torrent The Torrent object.
+	 * @param destDir The destination directory or location of the torrent
+	 * files.
+	 * @param seeder Whether we're a seeder for this torrent or not (disables
+	 * validation).
+	 * @param requestStrategy The request strategy implementation.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException If the torrent file cannot be read or decoded.
+	 */
+	public SharedTorrent(Torrent torrent, File destDir, boolean seeder,
+			RequestStrategy requestStrategy)
+		throws FileNotFoundException, IOException {
+		this(torrent.getEncoded(), destDir, seeder, requestStrategy);
 	}
 
 	/**
@@ -171,6 +195,24 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @throws IOException If the torrent file cannot be read or decoded.
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
+		throws FileNotFoundException, IOException {
+		this(torrent, parent, seeder, DEFAULT_REQUEST_STRATEGY);
+	}
+
+	/**
+	 * Create a new shared torrent from meta-info binary data.
+	 *
+	 * @param torrent The meta-info byte data.
+	 * @param parent The parent directory or location the torrent files.
+	 * @param seeder Whether we're a seeder for this torrent or not (disables
+	 * validation).
+	 * @param requestStrategy The request strategy implementation.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException If the torrent file cannot be read or decoded.
+	 */
+	public SharedTorrent(byte[] torrent, File parent, boolean seeder,
+			RequestStrategy requestStrategy)
 		throws FileNotFoundException, IOException {
 		super(torrent, seeder);
 
@@ -211,7 +253,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		}
 		this.bucket = new FileCollectionStorage(files, this.getSize());
 
-		this.random = new Random(System.currentTimeMillis());
 		this.stop = false;
 
 		this.uploaded = 0;
@@ -223,6 +264,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
+
+		//TODO: should switch to guice
+		this.requestStrategy = requestStrategy;
 	}
 
 	/**
@@ -645,24 +689,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				"that was already requested from another peer.");
 		}
 
-		// Extract the RAREST_PIECE_JITTER rarest pieces from the interesting
-		// pieces of this peer.
-		ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
-		synchronized (this.rarest) {
-			for (Piece piece : this.rarest) {
-				if (interesting.get(piece.getIndex())) {
-					choice.add(piece);
-					if (choice.size() >= RAREST_PIECE_JITTER) {
-						break;
-					}
-				}
-			}
-		}
-
-		Piece chosen = choice.get(
-			this.random.nextInt(
-				Math.min(choice.size(),
-				RAREST_PIECE_JITTER)));
+		Piece chosen = requestStrategy.choosePiece(rarest, interesting, pieces);
 		this.requestedPieces.set(chosen.getIndex());
 
 		logger.trace("Requesting {} from {}, we now have {} " +
