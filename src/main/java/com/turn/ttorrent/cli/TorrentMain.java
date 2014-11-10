@@ -24,11 +24,14 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
 import jargs.gnu.CmdLineParser;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
@@ -159,9 +162,9 @@ public class TorrentMain {
 
 				Torrent torrent = null;
 				if (source.isDirectory()) {
-					File[] files = source.listFiles();
-					Arrays.sort(files);
-					torrent = Torrent.create(source, Arrays.asList(files),
+					List<File> files = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
+					Collections.sort(files);
+					torrent = Torrent.create(source, files,
 							announceList, creator);
 				} else {
 					torrent = Torrent.create(source, announceList, creator);
