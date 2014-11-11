@@ -19,7 +19,6 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -112,18 +111,32 @@ public class ConnectionHandler implements Runnable {
 	 * @throws IOException When the service can't be started because no port in
 	 * the defined range is available or usable.
 	 */
-	ConnectionHandler(SharedTorrent torrent, String id, InetAddress address)
+	ConnectionHandler(SharedTorrent torrent, String id, InetSocketAddress address)
 		throws IOException {
 		this.torrent = torrent;
 		this.id = id;
 
+		if (address.getPort() != 0) {
+			try {
+				this.channel = ServerSocketChannel.open();
+				this.channel.socket().bind(address);
+				this.channel.configureBlocking(false);
+				this.address = address;
+			} catch (IOException ioe) {
+				// Ignore, try next port
+				logger.warn("Could not bind to {}, trying default port range...", address);
+			}
+		}
 		// Bind to the first available port in the range
 		// [PORT_RANGE_START; PORT_RANGE_END].
 		for (int port = ConnectionHandler.PORT_RANGE_START;
 				port <= ConnectionHandler.PORT_RANGE_END;
 				port++) {
+			if  (this.address != null) {
+				break;
+			}
 			InetSocketAddress tryAddress =
-				new InetSocketAddress(address, port);
+				new InetSocketAddress(address.getAddress(), port);
 
 			try {
 				this.channel = ServerSocketChannel.open();

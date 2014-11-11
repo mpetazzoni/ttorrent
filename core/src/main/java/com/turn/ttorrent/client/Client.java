@@ -27,6 +27,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -121,6 +122,20 @@ public class Client extends Observable implements Runnable,
 	 */
 	public Client(InetAddress address, SharedTorrent torrent)
 		throws UnknownHostException, IOException {
+                this(new InetSocketAddress(address, 0), new InetSocketAddress(address, 0), torrent);
+	}
+
+	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param bindAddress The address to bind to.
+	 * @param announceAddress The address to announce to the tracker.
+	 * @param torrent The torrent to download and share.
+	 */
+	public Client(InetSocketAddress bindAddress,
+		InetSocketAddress announceAddress, SharedTorrent torrent)
+		throws UnknownHostException, IOException {
+
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
@@ -129,13 +144,16 @@ public class Client extends Observable implements Runnable,
 
 		// Initialize the incoming connection handler and register ourselves to
 		// it.
-		this.service = new ConnectionHandler(this.torrent, id, address);
+		this.service = new ConnectionHandler(this.torrent, id, bindAddress);
 		this.service.register(this);
 
-		this.self = new Peer(
-			this.service.getSocketAddress()
-				.getAddress().getHostAddress(),
-			(short)this.service.getSocketAddress().getPort(),
+		// use the given port if any, else use the bind port
+		short announcePort = (short) (announceAddress.getPort() == 0 ?
+		    service.getSocketAddress().getPort()
+		    :announceAddress.getPort());
+
+		this.self = new Peer(announceAddress.getAddress().getHostAddress(),
+			announcePort,
 			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
 		// Initialize the announce request thread, and register ourselves to it
