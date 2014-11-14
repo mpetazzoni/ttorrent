@@ -857,8 +857,8 @@ public class Torrent extends Observable implements TorrentInfo {
 		// complete.
 		executor.shutdown();
 		int cnt = 0;
-		while (!executor.awaitTermination(1, TimeUnit.MINUTES)){
-			logger.warn("Took more than " + (++cnt) + " minutes to hash files");
+		while (!executor.awaitTermination(60, TimeUnit.MINUTES)){
+			throw new RuntimeException("Took more than " + (++cnt) + " minutes to hash files");
 		}
 		long elapsed = System.nanoTime() - start;
 
