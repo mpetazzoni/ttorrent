@@ -34,11 +34,7 @@ import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -860,8 +856,9 @@ public class Torrent extends Observable implements TorrentInfo {
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
 		executor.shutdown();
-		while (!executor.isTerminated()) {
-			Thread.sleep(50);
+		int cnt = 0;
+		while (!executor.awaitTermination(1, TimeUnit.MINUTES)){
+			logger.warn("Took more than " + (++cnt) + " minutes to hash files");
 		}
 		long elapsed = System.nanoTime() - start;
 
