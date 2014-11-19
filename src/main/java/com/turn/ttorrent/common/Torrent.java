@@ -69,6 +69,7 @@ public class Torrent extends Observable implements TorrentInfo {
 	public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
+	private static final int HASHING_TIMEOUT_SEC = 15;
 
 	/** The query parameters encoding when parsing byte strings. */
 	public static final String BYTE_ENCODING = "ISO-8859-1";
@@ -869,9 +870,10 @@ public class Torrent extends Observable implements TorrentInfo {
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
 		executor.shutdown();
-		if (!executor.awaitTermination(1, TimeUnit.MINUTES)){
+		if (!executor.awaitTermination(HASHING_TIMEOUT_SEC, TimeUnit.SECONDS)){
 			final List<Runnable> runnables = executor.shutdownNow();
-			final String errorMsg = String.format("Took more than a minute to finish hashing file %s. Has %d items left", firstFileName, runnables.size());
+			final String errorMsg = String.format("Took more than %d seconds to finish hashing file %s. Has %d items left",
+							HASHING_TIMEOUT_SEC, firstFileName, runnables.size());
 			logger.warn(errorMsg);
 			throw new RuntimeException(errorMsg);
 		}
@@ -894,12 +896,12 @@ public class Torrent extends Observable implements TorrentInfo {
   private static void waitForHashesToCalculate(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
 		try {
 			for (Future<String> chunk : results) {
-				hashes.append(chunk.get(5, TimeUnit.SECONDS));
+				hashes.append(chunk.get(HASHING_TIMEOUT_SEC, TimeUnit.SECONDS));
 			}
 		} catch (ExecutionException ee) {
 			throw new IOException("Error while hashing the torrent data!", ee);
 		} catch (TimeoutException e) {
-			throw new RuntimeException("very slow hashing. Cancelling");
+			throw new RuntimeException(String.format("very slow hashing: took more than %d seconds to calculate several pieces. Cancelling", HASHING_TIMEOUT_SEC));
 		}
 	}
 
