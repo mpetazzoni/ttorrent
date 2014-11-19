@@ -35,6 +35,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -804,6 +805,9 @@ public class Torrent extends Observable implements TorrentInfo {
 
 	private static String hashFiles(final List<File> files, final int pieceSize)
 		throws NoSuchAlgorithmException, InterruptedException, IOException {
+		if (files.size() == 0){
+			return "";
+		}
     List<Future<String>> results = new LinkedList<Future<String>>();
     long length = 0L;
 
@@ -811,7 +815,16 @@ public class Torrent extends Observable implements TorrentInfo {
 
     int numConcurrentThreads = getHashingThreadsCount();
 
-    ExecutorService executor = Executors.newFixedThreadPool(numConcurrentThreads);
+		final AtomicInteger threadIdx = new AtomicInteger(0);
+		final String firstFileName = files.get(0).getName();
+    final ExecutorService executor = Executors.newFixedThreadPool(numConcurrentThreads, new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable r) {
+				final Thread thread = new Thread(r);
+				thread.setName(String.format("%s hasher #%d", firstFileName, threadIdx.incrementAndGet()));
+				return thread;
+			}
+		});
 
 		StringBuilder hashes = new StringBuilder();
 
@@ -834,7 +847,7 @@ public class Torrent extends Observable implements TorrentInfo {
 
           if (results.size() >= numConcurrentThreads) {
             // process hashers, otherwise they will spend too much memory
-            calculateHashes(results, hashes);
+            waitForHashesToCalculate(results, hashes);
             results.clear();
 					}
 				}
@@ -850,15 +863,17 @@ public class Torrent extends Observable implements TorrentInfo {
 			buffer.position(0);
 			results.add(executor.submit(new CallableChunkHasher(buffer)));
 		}
-
-    calculateHashes(results, hashes);
+		// here we have only a few hashes to wait for calculation
+    waitForHashesToCalculate(results, hashes);
 
 		// Request orderly executor shutdown and wait for hashing tasks to
 		// complete.
 		executor.shutdown();
-		int cnt = 0;
-		while (!executor.awaitTermination(60, TimeUnit.MINUTES)){
-			throw new RuntimeException("Took more than " + (++cnt) + " minutes to hash files");
+		if (!executor.awaitTermination(1, TimeUnit.MINUTES)){
+			final List<Runnable> runnables = executor.shutdownNow();
+			final String errorMsg = String.format("Took more than a minute to finish hashing file %s. Has %d items left", firstFileName, runnables.size());
+			logger.warn(errorMsg);
+			throw new RuntimeException(errorMsg);
 		}
 		long elapsed = System.nanoTime() - start;
 
@@ -876,13 +891,15 @@ public class Torrent extends Observable implements TorrentInfo {
 		return hashes.toString();
 	}
 
-  private static void calculateHashes(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
+  private static void waitForHashesToCalculate(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
 		try {
 			for (Future<String> chunk : results) {
-				hashes.append(chunk.get());
+				hashes.append(chunk.get(5, TimeUnit.SECONDS));
 			}
 		} catch (ExecutionException ee) {
 			throw new IOException("Error while hashing the torrent data!", ee);
+		} catch (TimeoutException e) {
+			throw new RuntimeException("very slow hashing. Cancelling");
 		}
 	}
 
