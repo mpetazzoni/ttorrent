@@ -76,7 +76,7 @@ public class Torrent {
 		LoggerFactory.getLogger(Torrent.class);
 
 	/** Torrent file piece length (in bytes), we use 512 kB. */
-	private static final int PIECE_LENGTH = 512 * 1024;
+	public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
 	public static final int PIECE_HASH_SIZE = 20;
 
@@ -115,6 +115,8 @@ public class Torrent {
 	private final String createdBy;
 	private final String name;
 	private final long size;
+	private final int pieceLength;
+
 	protected final List<TorrentFile> files;
 
 	private final boolean seeder;
@@ -208,6 +210,7 @@ public class Torrent {
 			? this.decoded.get("created by").getString()
 			: null;
 		this.name = this.decoded_info.get("name").getString();
+		this.pieceLength = this.decoded_info.get("piece length").getInt();
 
 		this.files = new LinkedList<TorrentFile>();
 
@@ -509,7 +512,8 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException {
-		return Torrent.create(source, null, announce, null, createdBy);
+		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
+				announce, null, createdBy);
 	}
 
 	/**
@@ -531,7 +535,8 @@ public class Torrent {
 	 */
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(parent, files, announce, null, createdBy);
+		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
+				announce, null, createdBy);
 	}
 
 	/**
@@ -549,9 +554,10 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, List<List<URI>> announceList,
+	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(source, null, null, announceList, createdBy);
+		return Torrent.create(source, null, pieceLength, 
+				null, announceList, createdBy);
 	}
 	
 	/**
@@ -572,10 +578,11 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	public static Torrent create(File source, List<File> files,
+	public static Torrent create(File source, List<File> files, int pieceLength,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
-		return Torrent.create(source, files, null, announceList, createdBy);
+		return Torrent.create(source, files, pieceLength, 
+				null, announceList, createdBy);
 	}
 	
 	/**
@@ -597,8 +604,8 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	private static Torrent create(File parent, List<File> files, URI announce,
-			List<List<URI>> announceList, String createdBy)
+	private static Torrent create(File parent, List<File> files, int pieceLength,
+				URI announce, List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -630,11 +637,11 @@ public class Torrent {
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
-		info.put("piece length", new BEValue(Torrent.PIECE_LENGTH));
+		info.put("piece length", new BEValue(pieceLength));
 
 		if (files == null || files.isEmpty()) {
 			info.put("length", new BEValue(parent.length()));
-			info.put("pieces", new BEValue(Torrent.hashFile(parent),
+			info.put("pieces", new BEValue(Torrent.hashFile(parent, pieceLength),
 				Torrent.BYTE_ENCODING));
 		} else {
 			List<BEValue> fileInfo = new LinkedList<BEValue>();
@@ -656,7 +663,7 @@ public class Torrent {
 				fileInfo.add(new BEValue(fileMap));
 			}
 			info.put("files", new BEValue(fileInfo));
-			info.put("pieces", new BEValue(Torrent.hashFiles(files),
+			info.put("pieces", new BEValue(Torrent.hashFiles(files, pieceLength),
 				Torrent.BYTE_ENCODING));
 		}
 		torrent.put("info", new BEValue(info));
@@ -709,16 +716,16 @@ public class Torrent {
 	 *
 	 * @param file The file to hash.
 	 */
-	private static String hashFile(File file)
+	private static String hashFile(File file, int pieceLenght)
 		throws InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }));
+		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLenght);
 	}
 
-	private static String hashFiles(List<File> files)
+	private static String hashFiles(List<File> files, int pieceLenght)
 		throws InterruptedException, IOException {
 		int threads = getHashingThreadsCount();
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		ByteBuffer buffer = ByteBuffer.allocate(Torrent.PIECE_LENGTH);
+		ByteBuffer buffer = ByteBuffer.allocate(pieceLenght);
 		List<Future<String>> results = new LinkedList<Future<String>>();
 		StringBuilder hashes = new StringBuilder();
 
@@ -732,7 +739,7 @@ public class Torrent {
 					file.getName(),
 					threads,
 					(int) (Math.ceil(
-						(double)file.length() / Torrent.PIECE_LENGTH))
+						(double)file.length() / pieceLenght))
 				});
 
 			length += file.length();
@@ -781,7 +788,7 @@ public class Torrent {
 		long elapsed = System.nanoTime() - start;
 
 		int expectedPieces = (int) (Math.ceil(
-				(double)length / Torrent.PIECE_LENGTH));
+				(double)length / pieceLenght));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),
