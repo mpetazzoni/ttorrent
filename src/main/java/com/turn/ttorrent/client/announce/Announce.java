@@ -300,6 +300,9 @@ public class Announce implements Runnable {
   }
 
   public URI getDefaultTrackerURI(){
+    if (myDefaultTracker == null){
+      return null;
+    }
     return myDefaultTracker.getTrackerURI();
   }
 
