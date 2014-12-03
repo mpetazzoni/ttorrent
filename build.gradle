@@ -41,16 +41,25 @@ subprojects {
 		}
 	}
 
+	configurations {
+		compile {
+			exclude group: 'commons-logging', module: 'commons-logging'
+			// exclude group: 'log4j', module: 'log4j'
+			// exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+		}
+	}
+
 	dependencies {
 		compile 'com.google.code.findbugs:jsr305:2.0.3'
 		compile 'org.slf4j:slf4j-api:1.7.7'
 		compile 'com.google.guava:guava:18.0'
 		compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 
-		runtime 'org.slf4j:slf4j-jcl:1.7.7'
-
 		testCompile 'junit:junit:4.11'
 		testCompile 'org.easymock:easymock:3.2'
+
+		testRuntime 'org.slf4j:jcl-over-slf4j:1.7.7'
+		testRuntime 'org.slf4j:slf4j-simple:1.7.7'
 	}
 }
 
