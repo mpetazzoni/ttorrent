@@ -4,70 +4,39 @@ status = project.hasProperty('preferredStatus')?project.preferredStatus:(version
 subprojects { project ->
 	apply plugin: 'java' // Plugin as major conventions
 	apply plugin: 'errorprone'
+	apply plugin: 'info'
 
 	sourceCompatibility = 1.5
 
 	// Restore status after Java plugin
 	status = rootProject.status
 
-	task sourcesJar(type: Jar, dependsOn:classes) {
-		from sourceSets.main.allSource
-		classifier 'sources'
-		extension 'jar'
+	repositories {
+		// mavenLocal()
+		mavenCentral()
+		// jcenter()
 	}
 
-	task javadocJar(type: Jar, dependsOn:javadoc) {
-		from javadoc.destinationDir
-		classifier 'javadoc'
-		extension 'jar'
+	dependencies {
+		compile 'com.google.code.findbugs:jsr305:2.0.2'
+		compile 'org.slf4j:slf4j-api:1.7.7'
+
+		testCompile 'junit:junit:4.11'
+
+		testRuntime 'org.slf4j:slf4j-simple:1.7.7'
 	}
 
-	configurations.create('sources')
-	configurations.create('javadoc')
-	configurations.archives {
-		extendsFrom configurations.sources
-		extendsFrom configurations.javadoc
-	}
-
-	// When outputing to an Ivy repo, we want to use the proper type field
-	gradle.taskGraph.whenReady {
-		def isNotMaven = !it.hasTask(project.uploadMavenCentral)
-		if (isNotMaven) {
-			def artifacts = project.configurations.sources.artifacts
-			def sourceArtifact = artifacts.iterator().next()
-			sourceArtifact.type = 'sources'
-		}
-	}
-
-	artifacts {
-		sources(sourcesJar) {
-			// Weird Gradle quirk where type will be used for the extension, but only for sources
-			type 'jar'
-		}
-		javadoc(javadocJar) {
-			type 'javadoc'
-		}
-	}
-
-	configurations {
-		provided {
-			description = 'much like compile, but indicates you expect the JDK or a container to provide it. It is only available on the compilation classpath, and is not transitive.'
-			transitive = true
-			visible = true
-		}
-	}
-
-	project.sourceSets {
-		main.compileClasspath += project.configurations.provided
-		main.runtimeClasspath -= project.configurations.provided
-		test.compileClasspath += project.configurations.provided
-		test.runtimeClasspath += project.configurations.provided
+	tasks.withType(JavaCompile) {
+		options.incremental = true
 	}
 
 	test {
 		systemProperty 'org.apache.commons.logging.Log', 'org.apache.commons.logging.impl.SimpleLog'
 		systemProperty 'org.apache.commons.logging.simplelog.defaultlog', 'debug'
 		systemProperty 'org.apache.commons.logging.diagnostics.dest', 'STDERR'
+		systemProperty 'org.slf4j.simpleLogger.logFile', 'System.out'
+		systemProperty 'org.slf4j.simpleLogger.defaultLogLevel', 'debug'
+		systemProperty 'jna.nosys', 'true'
 
 		testLogging {
 			if (System.properties['test.single']) {
@@ -86,41 +55,9 @@ subprojects { project ->
 			}
 		}
 	}
-
-}
-
-apply plugin: 'github-pages' // Used to create publishGhPages task
-
-def docTasks = [:]
-[Javadoc,ScalaDoc,Groovydoc].each{ Class docClass ->
-	def allSources = allprojects.tasks*.withType(docClass).flatten()*.source
-	if (allSources) {
-		def shortName = docClass.simpleName.toLowerCase()
-		def docTask = task "aggregate${shortName.capitalize()}"(type: docClass, description: "Aggregate subproject ${shortName}s") {
-			source = allSources
-			destinationDir = file("${project.buildDir}/docs/${shortName}")
-			doFirst {
-				def classpaths = allprojects.findAll { it.plugins.hasPlugin(JavaPlugin) }.collect { it.sourceSets.main.compileClasspath }
-				classpath = files(classpaths)
-			}
-		}
-		docTasks[shortName] = docTask
-		processGhPages.dependsOn(docTask)
-	}
-}
-
-githubPages {
-	repoUri = "git@github.com:shevek/${rootProject.githubProjectName}.git"
-	pages {
-		docTasks.each { shortName, docTask ->
-			from(docTask.outputs.files) {
-				into "docs/${shortName}"
-			}
-		}
-	}
 }
 
 // Generate wrapper, which is distributed as part of source to alleviate the need of installing gradle
 wrapper {
-	gradleVersion = '1.12'
+	gradleVersion = '2.2.1'
 }

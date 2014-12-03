@@ -1,0 +1,30 @@
+apply plugin: 'org.ajoberstar.github-pages'
+
+def docTasks = [:]
+[Javadoc,ScalaDoc,Groovydoc].each{ Class docClass ->
+	def allSources = allprojects.tasks*.withType(docClass).flatten()*.source
+	if (allSources) {
+		def shortName = docClass.simpleName.toLowerCase()
+		def docTask = task "aggregate${shortName.capitalize()}"(type: docClass, description: "Aggregate subproject ${shortName}s") {
+			source = allSources
+			destinationDir = file("${project.buildDir}/docs/${shortName}")
+			doFirst {
+				def classpaths = allprojects.findAll { it.plugins.hasPlugin(JavaPlugin) }.collect { it.sourceSets.main.compileClasspath }
+				classpath = files(classpaths)
+			}
+		}
+		docTasks[shortName] = docTask
+		publishGhPages.dependsOn(docTask)
+	}
+}
+
+githubPages {
+	repoUri = "git@github.com:shevek/${rootProject.githubProjectName}.git"
+	pages {
+		docTasks.each { shortName, docTask ->
+			from(docTask.outputs.files) {
+				into "docs/${shortName}"
+			}
+		}
+	}
+}

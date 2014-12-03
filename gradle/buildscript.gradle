@@ -1,16 +1,19 @@
 // Executed in context of buildscript
 repositories {
-	// Repo in addition to maven central
-	repositories { maven { url 'http://dl.bintray.com/content/netflixoss/external-gradle-plugins/' } } // For gradle-release
+	// mavenLocal()
+	mavenCentral()
+	// jcenter()
 }
+
 dependencies {
-	classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.6.1'
+	classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
 	// classpath 'com.mapvine:gradle-cobertura-plugin:0.1'
-	classpath "net.saliman:gradle-cobertura-plugin:2.2.2"
+	classpath "net.saliman:gradle-cobertura-plugin:2.2.5"
 	// classpath 'gradle-release:gradle-release:1.1.5'
-	classpath 'org.ajoberstar:gradle-git:0.5.0'
-	classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.3'
+	classpath 'org.ajoberstar:gradle-git:0.11.2'
+	classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.5'
 	classpath('com.netflix.nebula:gradle-info-plugin:1.12.5') {
 		exclude group: 'com.perforce'
 	}
+	classpath 'com.bmuschko:gradle-nexus-plugin:2.1.1'
 }

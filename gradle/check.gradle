@@ -1,31 +1,31 @@
 subprojects {
-// Checkstyle
-// apply plugin: 'checkstyle'
-// checkstyle {
-//     ignoreFailures = true 
-//     configFile = rootProject.file('codequality/checkstyle.xml')
-// }
+	// Checkstyle
+	// apply plugin: 'checkstyle'
+	// checkstyle {
+	//     ignoreFailures = true 
+	//     configFile = rootProject.file('codequality/checkstyle.xml')
+	// }
 
-// FindBugs
-apply plugin: 'findbugs'
-findbugs {
-    ignoreFailures = true
-}
-findbugsTest.enabled = false
+	// FindBugs
+	apply plugin: 'findbugs'
+	findbugs {
+		ignoreFailures = true
+	}
+	findbugsTest.enabled = false
 
-// PMD
-// apply plugin: 'pmd'
-// tasks.withType(Pmd) { reports.html.enabled true }
+	// PMD
+	// apply plugin: 'pmd'
+	// tasks.withType(Pmd) { reports.html.enabled true }
 
-apply plugin: 'cobertura'
-cobertura {
-    coverageFormats = [ 'html', 'xml' ]
-}
-githubPages {
-	pages {
-		from(cobertura.coverageReportDir) {
-			into "docs/cobertura"
+	apply plugin: 'cobertura'
+	cobertura {
+		coverageFormats = [ 'html', 'xml' ]
+	}
+	githubPages {
+		pages {
+			from(cobertura.coverageReportDir) {
+				into "docs/cobertura"
+			}
 		}
 	}
-}
 }
