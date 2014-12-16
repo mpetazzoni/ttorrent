@@ -1,5 +1,3 @@
-// Dependency for plugin was set in buildscript.gradle
-
 allprojects {
 	apply plugin: 'license' //nl.javadude.gradle.plugins.license.LicensePlugin
 	license {
