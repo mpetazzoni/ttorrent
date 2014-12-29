@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.io;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import com.turn.ttorrent.client.ClientEnvironment;
 import com.turn.ttorrent.client.TorrentRegistry;
@@ -33,7 +34,6 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.Collections;
 import java.util.Set;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,16 +48,17 @@ public class PeerServer extends PeerEndpoint implements PeerAddressProvider {
     public static final int PORT_RANGE_START = 6881;
     public static final int PORT_RANGE_END = 6999;
     public static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
+    @Nonnull
     private final ClientEnvironment environment;
-    @CheckForNull
+    @Nonnull
     private final TorrentRegistry torrents;
     private ChannelFuture future;
 
     // This can stop taking Client if we sort out where the peerId will come from.
     // One option is to make PeerAddressProvider NOT extend PeerIdentityProvider.
     public PeerServer(@Nonnull ClientEnvironment environment, @Nonnull TorrentRegistry torrents) {
-        this.environment = environment;
-        this.torrents = torrents;
+        this.environment = Preconditions.checkNotNull(environment, "ClientEnvironment was null.");
+        this.torrents = Preconditions.checkNotNull(torrents, "TorrentRegistry was null.");
     }
 
     public void start() throws Exception {
