@@ -256,7 +256,7 @@ public class SwarmHandler implements Runnable,
             LOG.debug("{}: Adding peers from {}: {}", new Object[]{
                 getLocalPeerName(), source, peers
             });
-        PeerServer server = getClient().getPeerServer();
+        // PeerServer server = getClient().getPeerServer();
         Set<? extends SocketAddress> localAddresses = getLocalAddresses();
         long now = System.currentTimeMillis();
         for (Map.Entry<? extends SocketAddress, ? extends byte[]> e : peers.entrySet()) {
