@@ -72,9 +72,18 @@ public class HTTPTrackerClient extends TrackerClient {
         httpclient.start();
     }
 
+    /**
+     * This method is not thread safe.
+     *
+     * However, it is guarded by the lock in com.turn.ttorrent.client.Client, so
+     * it's never called in a manner which would be unsafe.
+     *
+     * @throws Exception
+     */
     @Override
     public void stop() throws Exception {
-        httpclient.close();
+        if (httpclient != null)
+            httpclient.close();
         httpclient = null;
         super.stop();
     }
