@@ -70,6 +70,7 @@ public class TorrentMain {
 		s.println();
 		s.println("  -c,--create           Create a new torrent file using " +
 			"the given announce URL and data.");
+		s.println("  -l,--length           Define the piece length for hashing data");
 		s.println("  -a,--announce         Tracker URL (can be repeated).");
 		s.println();
 	}
@@ -91,6 +92,7 @@ public class TorrentMain {
 		CmdLineParser.Option help = parser.addBooleanOption('h', "help");
 		CmdLineParser.Option filename = parser.addStringOption('t', "torrent");
 		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
+		CmdLineParser.Option pieceLength = parser.addIntegerOption('l', "length");
 		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
 
 		try {
@@ -112,6 +114,15 @@ public class TorrentMain {
 			usage(System.err, "Torrent file must be provided!");
 			System.exit(1);
 		}
+
+		Integer pieceLengthVal = (Integer) parser.getOptionValue(pieceLength);
+		if (pieceLengthVal == null) {
+			pieceLengthVal = Torrent.DEFAULT_PIECE_LENGTH;
+		}
+		else {
+			pieceLengthVal = pieceLengthVal * 1024;
+		}
+		logger.info("Using piece length of {} bytes.", pieceLengthVal);
 
 		Boolean createFlag = (Boolean)parser.getOptionValue(create);
 		
@@ -164,10 +175,10 @@ public class TorrentMain {
 				if (source.isDirectory()) {
 					List<File> files = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
 					Collections.sort(files);
-					torrent = Torrent.create(source, files,
+					torrent = Torrent.create(source, files, pieceLengthVal, 
 							announceList, creator);
 				} else {
-					torrent = Torrent.create(source, announceList, creator);
+					torrent = Torrent.create(source, pieceLengthVal, announceList, creator);
 				}
 
 				torrent.save(fos);
