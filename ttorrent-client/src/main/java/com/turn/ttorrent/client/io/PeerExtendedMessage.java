@@ -86,12 +86,16 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         private int senderRequestQueueLength;
         private byte[] receiverIp;
 
-        /** Constructed for remote, received at local. */
+        /**
+         * Constructed for remote, received at local.
+         */
         public HandshakeMessage() {
             senderExtendedTypeMap.put(ExtendedType.handshake, (byte) 0);
         }
 
-        /** Constructed for local, transmitted to remote. */
+        /**
+         * Constructed for local, transmitted to remote.
+         */
         public HandshakeMessage(int senderRequestQueueLength, Set<? extends SocketAddress> senderAddresses) {
             this();
             this.senderRequestQueueLength = senderRequestQueueLength;
@@ -125,20 +129,35 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         }
 
         @CheckForNull
-        private InetSocketAddress toSocketAddress(@CheckForNull byte[] address) throws UnknownHostException {
+        private InetAddress toAddress(@CheckForNull byte[] address) throws UnknownHostException {
             if (address == null)
                 return null;
-            return new InetSocketAddress(InetAddress.getByAddress(address), senderPort);
+            return InetAddress.getByAddress(address);
         }
 
         @CheckForNull
-        public InetSocketAddress getSenderIp4Address() throws UnknownHostException {
-            return toSocketAddress(senderIp4);
+        private InetSocketAddress toSocketAddress(@CheckForNull byte[] address, @CheckForSigned int defaultPort) throws UnknownHostException {
+            if (address == null)
+                return null;
+            int port = senderPort;
+            if (port <= 0)
+                port = defaultPort;
+            if (port <= 0)
+                return null;
+            InetAddress inetAddress = toAddress(address);
+            if (inetAddress == null)
+                return null;
+            return new InetSocketAddress(inetAddress, port);
         }
 
         @CheckForNull
-        public InetSocketAddress getSenderIp6Address() throws UnknownHostException {
-            return toSocketAddress(senderIp6);
+        public InetSocketAddress getSenderIp4Address(@CheckForSigned int defaultPort) throws UnknownHostException {
+            return toSocketAddress(senderIp4, defaultPort);
+        }
+
+        @CheckForNull
+        public InetSocketAddress getSenderIp6Address(@CheckForSigned int defaultPort) throws UnknownHostException {
+            return toSocketAddress(senderIp6, defaultPort);
         }
 
         @CheckForNull
@@ -155,9 +174,12 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         public void fromWire(ByteBuf in) throws IOException {
             NettyBDecoder decoder = new NettyBDecoder(in);
             Map<String, BEValue> payload = decoder.bdecodeMap().getMap();
-            {
+            EXTMSG: {
+                BEValue tmpValue = payload.get(K_MESSAGE_TYPES);
+                if (tmpValue == null)
+                    break EXTMSG;
+                Map<String, BEValue> tmp = tmpValue.getMap();
                 senderExtendedTypeMap.clear();
-                Map<String, BEValue> tmp = payload.get(K_MESSAGE_TYPES).getMap();
                 for (Map.Entry<String, BEValue> e : tmp.entrySet()) {
                     try {
                         ExtendedType type = ExtendedType.valueOf(e.getKey());
@@ -209,10 +231,16 @@ public abstract class PeerExtendedMessage extends PeerMessage {
         public String toString() {
             String ret = super.toString() + " " + getSenderExtendedTypeMap();
             try {
-                ret = ret + " ip4=" + getSenderIp4Address() + ", ip6=" + getSenderIp6Address();
+                ret = ret + " ip4=" + toAddress(senderIp4);
             } catch (UnknownHostException e) {
-                ret = ret + " ip-error=" + e;
+                ret = ret + " ip4-error=" + e;
             }
+            try {
+                ret = ret + " ip6=" + toAddress(senderIp6);
+            } catch (UnknownHostException e) {
+                ret = ret + " ip6-error=" + e;
+            }
+            ret = ret + " port=" + senderPort;
             return ret;
         }
     }

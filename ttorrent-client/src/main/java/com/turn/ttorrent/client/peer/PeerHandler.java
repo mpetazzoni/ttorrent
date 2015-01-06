@@ -48,6 +48,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongArray;
 import javax.annotation.CheckForNull;
+import javax.annotation.CheckForSigned;
 import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.GuardedBy;
@@ -212,6 +213,17 @@ public class PeerHandler implements PeerMessageListener {
         return channel.remoteAddress();
     }
 
+    /**
+     * We might not be an InetSocketAddress, in which case this returns -1.
+     */
+    @CheckForSigned
+    private int getRemotePort() {
+        SocketAddress remoteAddress = getRemoteAddress();
+        if (!(remoteAddress instanceof InetSocketAddress))
+            return -1;
+        return ((InetSocketAddress) remoteAddress).getPort();
+    }
+
     @Nonnull
     public Rate getDLRate() {
         return download;
@@ -258,7 +270,9 @@ public class PeerHandler implements PeerMessageListener {
         }
     }
 
-    /** @return true if this flag was set more than delta ms ago. */
+    /**
+     * @return true if this flag was set more than delta ms ago.
+     */
     private boolean getFlag(@Nonnull Flag flag, @Nonnegative int delta) {
         // <= so that a fast set; get(0) is true.
         long curr = flags.get(flag.ordinal());
@@ -272,7 +286,9 @@ public class PeerHandler implements PeerMessageListener {
         return value != 0;
     }
 
-    /** @return true if the flag was changed, in a "boolean" sense. */
+    /**
+     * @return true if the flag was changed, in a "boolean" sense.
+     */
     private boolean setFlag(@Nonnull Flag flag, boolean value) {
         // Avoid updating the timestamp if we can.
         if (value == toBoolean(flags.get(flag.ordinal())))
@@ -895,11 +911,12 @@ public class PeerHandler implements PeerMessageListener {
                 synchronized (lock) {
                     extendedMessageTypes = message.getSenderExtendedTypeMap();
                 }
+                int remotePort = getRemotePort();
                 Map<SocketAddress, byte[]> remoteAddresses = new HashMap<SocketAddress, byte[]>();
-                SocketAddress remoteIp4Address = message.getSenderIp4Address();
+                SocketAddress remoteIp4Address = message.getSenderIp4Address(remotePort);
                 if (remoteIp4Address != null)
                     remoteAddresses.put(remoteIp4Address, getRemotePeerId());
-                SocketAddress remoteIp6Address = message.getSenderIp6Address();
+                SocketAddress remoteIp6Address = message.getSenderIp6Address(remotePort);
                 if (remoteIp6Address != null)
                     remoteAddresses.put(remoteIp6Address, getRemotePeerId());
                 existenceListener.addPeers(remoteAddresses, "extended-handshake");
