@@ -74,34 +74,34 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * torrent is over this value.
 	 * </p>
 	 */
-	private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
+	protected static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
 	/** Default Request Strategy.
 	 *
 	 * Use the rarest-first strategy by default.
 	 */
-	private static final RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplRarest();
+	protected static final RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplRarest();
 
-	private boolean stop;
+	protected boolean stop;
 
-	private long uploaded;
-	private long downloaded;
-	private long left;
+	protected long uploaded;
+	protected long downloaded;
+	protected long left;
 
-	private final TorrentByteStorage bucket;
+	protected final TorrentByteStorage bucket;
 
-	private final int pieceLength;
-	private final ByteBuffer piecesHashes;
+	protected final int pieceLength;
+	protected final ByteBuffer piecesHashes;
 
-	private boolean initialized;
-	private Piece[] pieces;
-	private SortedSet<Piece> rarest;
-	private BitSet completedPieces;
-	private BitSet requestedPieces;
-	private RequestStrategy requestStrategy;
+	protected boolean initialized;
+	protected Piece[] pieces;
+	protected SortedSet<Piece> rarest;
+	protected BitSet completedPieces;
+	protected BitSet requestedPieces;
+	protected RequestStrategy requestStrategy;
 	
-	private double maxUploadRate = 0.0;
-	private double maxDownloadRate = 0.0;
+	protected double maxUploadRate = 0.0;
+	protected double maxDownloadRate = 0.0;
 	/**
 	 * Create a new shared torrent from a base Torrent object.
 	 *
@@ -445,7 +445,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 *
 	 * @param results The list of {@link Future}s of pieces to process.
 	 */
-	private void validatePieces(List<Future<Piece>> results)
+	protected void validatePieces(List<Future<Piece>> results)
 			throws IOException {
 		try {
 			for (Future<Piece> task : results) {

@@ -51,12 +51,12 @@ public class TrackedPeer extends Peer {
 	private static final Logger logger =
 		LoggerFactory.getLogger(TrackedPeer.class);
 
-	private static final int FRESH_TIME_SECONDS = 30;
+	protected static final int FRESH_TIME_SECONDS = 30;
 
-	private long uploaded;
-	private long downloaded;
-	private long left;
-	private Torrent torrent;
+	protected long uploaded;
+	protected long downloaded;
+	protected long left;
+	protected Torrent torrent;
 
 	/**
 	 * Represents the state of a peer exchanging on this torrent.
@@ -89,8 +89,8 @@ public class TrackedPeer extends Peer {
 		STOPPED;
 	};
 
-	private PeerState state;
-	private Date lastAnnounce;
+	protected PeerState state;
+	protected Date lastAnnounce;
 
 	/**
 	 * Instantiate a new tracked peer for the given torrent.

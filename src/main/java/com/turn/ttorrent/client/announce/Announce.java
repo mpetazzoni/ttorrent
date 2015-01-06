@@ -52,23 +52,23 @@ public class Announce implements Runnable {
 	protected static final Logger logger =
 		LoggerFactory.getLogger(Announce.class);
 
-	private final Peer peer;
+	protected final Peer peer;
 
 	/** The tiers of tracker clients matching the tracker URIs defined in the
 	 * torrent. */
-	private final List<List<TrackerClient>> clients;
-	private final Set<TrackerClient> allClients;
+	protected final List<List<TrackerClient>> clients;
+	protected final Set<TrackerClient> allClients;
 
 	/** Announce thread and control. */
-	private Thread thread;
-	private boolean stop;
-	private boolean forceStop;
+	protected Thread thread;
+	protected boolean stop;
+	protected boolean forceStop;
 
 	/** Announce interval. */
-	private int interval;
+	protected int interval;
 
-	private int currentTier;
-	private int currentClient;
+	protected int currentTier;
+	protected int currentClient;
 
 	/**
 	 * Initialize the base announce class members for the announcer.
@@ -268,7 +268,7 @@ public class Announce implements Runnable {
 	 * @throws UnknownHostException If the tracker address is invalid.
 	 * @throws UnknownServiceException If the tracker protocol is not supported.
 	 */
-	private TrackerClient createTrackerClient(SharedTorrent torrent, Peer peer,
+	protected TrackerClient createTrackerClient(SharedTorrent torrent, Peer peer,
 		URI tracker) throws UnknownHostException, UnknownServiceException {
 		String scheme = tracker.getScheme();
 
@@ -313,7 +313,7 @@ public class Announce implements Runnable {
 	 *
 	 * @throws AnnounceException
 	 */
-	private void promoteCurrentTrackerClient() throws AnnounceException {
+	protected void promoteCurrentTrackerClient() throws AnnounceException {
 		logger.trace("Promoting current tracker client for {} " +
 			"(tier {}, position {} -> 0).",
 			new Object[] {
@@ -342,7 +342,7 @@ public class Announce implements Runnable {
 	 *
 	 * @throws AnnounceException
 	 */
-	private void moveToNextTrackerClient() throws AnnounceException {
+	protected void moveToNextTrackerClient() throws AnnounceException {
 		int tier = this.currentTier;
 		int client = this.currentClient + 1;
 
@@ -377,7 +377,7 @@ public class Announce implements Runnable {
 	 * @param hard Whether to force stop the announce thread or not, i.e. not
 	 * send the final 'stopped' announce request or not.
 	 */
-	private void stop(boolean hard) {
+	protected void stop(boolean hard) {
 		this.forceStop = hard;
 		this.stop();
 	}

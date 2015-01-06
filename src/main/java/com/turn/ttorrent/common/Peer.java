@@ -34,11 +34,11 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
-	private final InetSocketAddress address;
-	private final String hostId;
+	protected final InetSocketAddress address;
+	protected final String hostId;
 
-	private ByteBuffer peerId;
-	private String hexPeerId;
+	protected ByteBuffer peerId;
+	protected String hexPeerId;
 
 	/**
 	 * Instantiate a new peer.

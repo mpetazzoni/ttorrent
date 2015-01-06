@@ -49,11 +49,11 @@ public class FileCollectionStorageTest {
         check(new byte[]{102,11}, file2);
     }
 
-    private void write(byte[] bytes, int offset, FileCollectionStorage storage) throws IOException {
+    protected void write(byte[] bytes, int offset, FileCollectionStorage storage) throws IOException {
         storage.write(ByteBuffer.wrap(bytes), offset);
         storage.finish();
     }
-    private void check(byte[] bytes, File f) throws IOException {
+    protected void check(byte[] bytes, File f) throws IOException {
         final byte[] temp = new byte[bytes.length];
         assertEquals(new FileInputStream(f).read(temp), temp.length);
         assertEquals(temp, bytes);

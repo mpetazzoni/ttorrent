@@ -34,16 +34,16 @@ public class UDPAnnounceResponseMessage
 	extends UDPTrackerMessage.UDPTrackerResponseMessage
 	implements TrackerMessage.AnnounceResponseMessage {
 
-	private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
+	protected static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
 
-	private final int actionId = Type.ANNOUNCE_RESPONSE.getId();
-	private final int transactionId;
-	private final int interval;
-	private final int complete;
-	private final int incomplete;
-	private final List<Peer> peers;
+	protected final int actionId = Type.ANNOUNCE_RESPONSE.getId();
+	protected final int transactionId;
+	protected final int interval;
+	protected final int complete;
+	protected final int incomplete;
+	protected final List<Peer> peers;
 
-	private UDPAnnounceResponseMessage(ByteBuffer data, int transactionId,
+	protected UDPAnnounceResponseMessage(ByteBuffer data, int transactionId,
 		int interval, int complete, int incomplete, List<Peer> peers) {
 		super(Type.ANNOUNCE_REQUEST, data);
 		this.transactionId = transactionId;

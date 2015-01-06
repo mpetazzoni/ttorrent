@@ -59,16 +59,16 @@ public class TrackedTorrent extends Torrent {
 	public static final int MIN_ANNOUNCE_INTERVAL_SECONDS = 5;
 
 	/** Default number of peers included in a tracker response. */
-	private static final int DEFAULT_ANSWER_NUM_PEERS = 30;
+	protected static final int DEFAULT_ANSWER_NUM_PEERS = 30;
 
 	/** Default announce interval requested from peers, in seconds. */
-	private static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 10;
+	protected static final int DEFAULT_ANNOUNCE_INTERVAL_SECONDS = 10;
 
-	private int answerPeers;
-	private int announceInterval;
+	protected int answerPeers;
+	protected int announceInterval;
 
 	/** Peers currently exchanging on this torrent. */
-	private ConcurrentMap<String, TrackedPeer> peers;
+	protected ConcurrentMap<String, TrackedPeer> peers;
 
 	/**
 	 * Create a new tracked torrent from meta-info binary data.

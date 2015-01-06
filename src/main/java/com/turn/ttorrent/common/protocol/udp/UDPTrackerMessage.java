@@ -26,7 +26,7 @@ import java.nio.ByteBuffer;
  */
 public abstract class UDPTrackerMessage extends TrackerMessage {
 
-	private UDPTrackerMessage(Type type, ByteBuffer data) {
+	protected UDPTrackerMessage(Type type, ByteBuffer data) {
 		super(type, data);
 	}
 

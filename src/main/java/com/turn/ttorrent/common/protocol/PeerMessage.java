@@ -83,10 +83,10 @@ public abstract class PeerMessage {
 		}
 	};
 
-	private final Type type;
-	private final ByteBuffer data;
+	protected final Type type;
+	protected final ByteBuffer data;
 
-	private PeerMessage(Type type, ByteBuffer data) {
+	protected PeerMessage(Type type, ByteBuffer data) {
 		this.type = type;
 		this.data = data;
 		this.data.rewind();

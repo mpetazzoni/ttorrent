@@ -31,13 +31,13 @@ public class UDPTrackerErrorMessage
 	extends UDPTrackerMessage.UDPTrackerResponseMessage
 	implements TrackerMessage.ErrorMessage {
 
-	private static final int UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE = 8;
+	protected static final int UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE = 8;
 
-	private final int actionId = Type.ERROR.getId();
-	private final int transactionId;
-	private final String reason;
+	protected final int actionId = Type.ERROR.getId();
+	protected final int transactionId;
+	protected final String reason;
 
-	private UDPTrackerErrorMessage(ByteBuffer data, int transactionId,
+	protected UDPTrackerErrorMessage(ByteBuffer data, int transactionId,
 		String reason) {
 		super(Type.ERROR, data);
 		this.transactionId = transactionId;

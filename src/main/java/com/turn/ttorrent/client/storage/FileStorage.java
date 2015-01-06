@@ -42,14 +42,14 @@ public class FileStorage implements TorrentByteStorage {
 	private static final Logger logger =
 		LoggerFactory.getLogger(FileStorage.class);
 
-	private final File target;
-	private final File partial;
-	private final long offset;
-	private final long size;
+	protected final File target;
+	protected final File partial;
+	protected final long offset;
+	protected final long size;
 
-	private RandomAccessFile raf;
-	private FileChannel channel;
-	private File current;
+	protected RandomAccessFile raf;
+	protected FileChannel channel;
+	protected File current;
 
 	public FileStorage(File file, long size) throws IOException {
 		this(file, 0, size);

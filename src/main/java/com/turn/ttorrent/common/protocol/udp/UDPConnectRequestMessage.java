@@ -29,14 +29,14 @@ public class UDPConnectRequestMessage
 	extends UDPTrackerMessage.UDPTrackerRequestMessage
 	implements TrackerMessage.ConnectionRequestMessage {
 
-	private static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
-	private static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;
+	protected static final int UDP_CONNECT_REQUEST_MESSAGE_SIZE = 16;
+	protected static final long UDP_CONNECT_REQUEST_MAGIC = 0x41727101980L;
 
-	private final long connectionId = UDP_CONNECT_REQUEST_MAGIC;
-	private final int actionId = Type.CONNECT_REQUEST.getId();
-	private final int transactionId;
+	protected final long connectionId = UDP_CONNECT_REQUEST_MAGIC;
+	protected final int actionId = Type.CONNECT_REQUEST.getId();
+	protected final int transactionId;
 
-	private UDPConnectRequestMessage(ByteBuffer data, int transactionId) {
+	protected UDPConnectRequestMessage(ByteBuffer data, int transactionId) {
 		super(Type.CONNECT_REQUEST, data);
 		this.transactionId = transactionId;
 	}

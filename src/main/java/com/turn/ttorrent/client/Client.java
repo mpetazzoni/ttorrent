@@ -78,14 +78,14 @@ public class Client extends Observable implements Runnable,
 
 	/** Peers unchoking frequency, in seconds. Current BitTorrent specification
 	 * recommends 10 seconds to avoid choking fibrilation. */
-	private static final int UNCHOKING_FREQUENCY = 3;
+	protected static final int UNCHOKING_FREQUENCY = 3;
 
 	/** Optimistic unchokes are done every 2 loop iterations, i.e. every
 	 * 2*UNCHOKING_FREQUENCY seconds. */
-	private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
+	protected static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
 
-	private static final int RATE_COMPUTATION_ITERATIONS = 2;
-	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
+	protected static final int RATE_COMPUTATION_ITERATIONS = 2;
+	protected static final int MAX_DOWNLOADERS_UNCHOKE = 4;
 
 	public enum ClientState {
 		WAITING,
@@ -96,22 +96,22 @@ public class Client extends Observable implements Runnable,
 		DONE;
 	};
 
-	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+	protected static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
-	private SharedTorrent torrent;
-	private ClientState state;
-	private Peer self;
+	protected SharedTorrent torrent;
+	protected ClientState state;
+	protected Peer self;
 
-	private Thread thread;
-	private boolean stop;
-	private long seed;
+	protected Thread thread;
+	protected boolean stop;
+	protected long seed;
 
-	private ConnectionHandler service;
-	private Announce announce;
-	private ConcurrentMap<String, SharingPeer> peers;
-	private ConcurrentMap<String, SharingPeer> connected;
+	protected ConnectionHandler service;
+	protected Announce announce;
+	protected ConcurrentMap<String, SharingPeer> peers = new ConcurrentHashMap<String, SharingPeer>();
+	protected ConcurrentMap<String, SharingPeer> connected = new ConcurrentHashMap<String, SharingPeer>();
 
-	private Random random;
+	protected Random random = new Random(System.currentTimeMillis());
 
 	/**
 	 * Initialize the BitTorrent client.
@@ -124,13 +124,9 @@ public class Client extends Observable implements Runnable,
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
-		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
-			.toString().split("-")[4];
+		String id = clientId();
 
-		// Initialize the incoming connection handler and register ourselves to
-		// it.
-		this.service = new ConnectionHandler(this.torrent, id, address);
-		this.service.register(this);
+		initializeConnectionHandler(address, id);
 
 		this.self = new Peer(
 			this.service.getSocketAddress()
@@ -138,10 +134,8 @@ public class Client extends Observable implements Runnable,
 			(short)this.service.getSocketAddress().getPort(),
 			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
-		// Initialize the announce request thread, and register ourselves to it
-		// as well.
-		this.announce = new Announce(this.torrent, this.self);
-		this.announce.register(this);
+		
+		initializeAnnounceRequest();
 
 		logger.info("BitTorrent client [{}] for {} started and " +
 			"listening at {}:{}...",
@@ -151,10 +145,32 @@ public class Client extends Observable implements Runnable,
 				this.self.getIp(),
 				this.self.getPort()
 			});
+	}
 
-		this.peers = new ConcurrentHashMap<String, SharingPeer>();
-		this.connected = new ConcurrentHashMap<String, SharingPeer>();
-		this.random = new Random(System.currentTimeMillis());
+	/**
+	 * @return The Id of the peer. This default implementation is _random_ and will
+	 * return a different Id on each invocation.
+	 */
+	protected String clientId() {
+		String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID()
+			.toString().split("-")[4];
+		return id;
+	}
+	
+	/** 
+	 * Initialize the incoming connection handler and register ourselves to it.
+	 */
+	protected void initializeConnectionHandler(InetAddress address, String id) throws IOException {		
+		this.service = new ConnectionHandler(this.torrent, id, address);
+		this.service.register(this);
+	}
+
+	/**
+	 * Initialize the announce request thread, and register ourselves to it as well.
+	 */
+	protected void initializeAnnounceRequest() {
+		this.announce = new Announce(this.torrent, this.self);
+		this.announce.register(this);
 	}
 
 	/**
@@ -207,7 +223,7 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @param state The new client state.
 	 */
-	private synchronized void setState(ClientState state) {
+	protected synchronized void setState(ClientState state) {
 		if (this.state != state) {
 			this.setChanged();
 		}
@@ -417,7 +433,7 @@ public class Client extends Observable implements Runnable,
 	/**
 	 * Close torrent and set final client state before signing off.
 	 */
-	private void finish() {
+	protected void finish() {
 		this.torrent.close();
 
 		// Determine final state
@@ -483,7 +499,7 @@ public class Client extends Observable implements Runnable,
 	 * seconds).
 	 * </p>
 	 */
-	private synchronized void resetPeerRates() {
+	protected synchronized void resetPeerRates() {
 		for (SharingPeer peer : this.connected.values()) {
 			peer.getDLRate().reset();
 			peer.getULRate().reset();
@@ -501,7 +517,7 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @param search The {@link Peer} specification.
 	 */
-	private SharingPeer getOrCreatePeer(Peer search) {
+	protected SharingPeer getOrCreatePeer(Peer search) {
 		SharingPeer peer;
 
 		synchronized (this.peers) {
@@ -555,7 +571,7 @@ public class Client extends Observable implements Runnable,
 	 * @return A SharingPeer comparator that can be used to sort peers based on
 	 * the download or upload rate we get from them.
 	 */
-	private Comparator<SharingPeer> getPeerRateComparator() {
+	protected Comparator<SharingPeer> getPeerRateComparator() {
 		if (ClientState.SHARING.equals(this.state)) {
 			return new SharingPeer.DLRateComparator();
 		} else if (ClientState.SEEDING.equals(this.state)) {
@@ -597,7 +613,7 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @param optimistic Whether to perform an optimistic unchoke as well.
 	 */
-	private synchronized void unchokePeers(boolean optimistic) {
+	protected synchronized void unchokePeers(boolean optimistic) {
 		// Build a set of all connected peers, we don't care about peers we're
 		// not connected to.
 		TreeSet<SharingPeer> bound = new TreeSet<SharingPeer>(
@@ -932,7 +948,7 @@ public class Client extends Observable implements Runnable,
 	 *
 	 * @see ClientShutdown
 	 */
-	private synchronized void seed() {
+	protected synchronized void seed() {
 		// Silently ignore if we're already seeding.
 		if (ClientState.SEEDING.equals(this.getState())) {
 			return;

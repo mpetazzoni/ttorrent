@@ -68,14 +68,14 @@ public class TrackerService implements Container {
 	 * The list of announce request URL fields that need to be interpreted as
 	 * numeric and thus converted as such in the request message parsing.
 	 */
-	private static final String[] NUMERIC_REQUEST_FIELDS =
+	protected static final String[] NUMERIC_REQUEST_FIELDS =
 		new String[] {
 			"port", "uploaded", "downloaded", "left",
 			"compact", "no_peer_id", "numwant"
 		};
 
-	private final String version;
-	private final ConcurrentMap<String, TrackedTorrent> torrents;
+	protected final String version;
+	protected final ConcurrentMap<String, TrackedTorrent> torrents;
 
 
 	/**
@@ -135,7 +135,7 @@ public class TrackerService implements Container {
 	 * @param response The response object.
 	 * @param body The validated response body output stream.
 	 */
-	private void process(Request request, Response response,
+	protected void process(Request request, Response response,
 			OutputStream body) throws IOException {
 		// Prepare the response headers.
 		response.set("Content-Type", "text/plain");
@@ -251,7 +251,7 @@ public class TrackerService implements Container {
 	 * @return The {@link AnnounceRequestMessage} representing the client's
 	 * announce request.
 	 */
-	private HTTPAnnounceRequestMessage parseQuery(Request request)
+	protected HTTPAnnounceRequestMessage parseQuery(Request request)
 		throws IOException, MessageValidationException {
 		Map<String, BEValue> params = new HashMap<String, BEValue>();
 
@@ -281,7 +281,7 @@ public class TrackerService implements Container {
 		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
 	}
 
-	private void recordParam(Map<String, BEValue> params, String key,
+	protected void recordParam(Map<String, BEValue> params, String key,
 		String value) {
 		try {
 			value = URLDecoder.decode(value, TrackedTorrent.BYTE_ENCODING);
@@ -309,7 +309,7 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param error The error reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
+	protected void serveError(Response response, OutputStream body,
 		Status status, HTTPTrackerErrorMessage error) throws IOException {
 		response.setCode(status.getCode());
 		response.setText(status.getDescription());
@@ -328,7 +328,7 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param error The error message reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
+	protected void serveError(Response response, OutputStream body,
 		Status status, String error) throws IOException {
 		try {
 			this.serveError(response, body, status,
@@ -347,7 +347,7 @@ public class TrackerService implements Container {
 	 * @param status The HTTP status code to return.
 	 * @param reason The failure reason reported by the tracker.
 	 */
-	private void serveError(Response response, OutputStream body,
+	protected void serveError(Response response, OutputStream body,
 		Status status, ErrorMessage.FailureReason reason) throws IOException {
 		this.serveError(response, body, status, reason.getMessage());
 	}

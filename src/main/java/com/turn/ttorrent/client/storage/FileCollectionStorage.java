@@ -43,8 +43,8 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	private static final Logger logger =
 		LoggerFactory.getLogger(FileCollectionStorage.class);
 
-	private final List<FileStorage> files;
-	private final long size;
+	protected final List<FileStorage> files;
+	protected final long size;
 
 	/**
 	 * Initialize a new multi-file torrent byte storage.
@@ -140,7 +140,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	 * @author dgiffin
 	 * @author mpetazzoni
 	 */
-	private static class FileOffset {
+	protected static class FileOffset {
 
 		public final FileStorage file;
 		public final long offset;
@@ -172,7 +172,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	 * @throws IllegalStateException If the files registered with this byte
 	 * storage can't accommodate the request (should not happen, really).
 	 */
-	private List<FileOffset> select(long offset, long length) {
+	protected List<FileOffset> select(long offset, long length) {
 		if (offset + length > this.size) {
 			throw new IllegalArgumentException("Buffer overrun (" +
 				offset + " + " + length + " > " + this.size + ") !");

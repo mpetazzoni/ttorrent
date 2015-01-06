@@ -48,17 +48,17 @@ import java.util.Map;
 public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 	implements AnnounceRequestMessage {
 
-	private final byte[] infoHash;
-	private final Peer peer;
-	private final long uploaded;
-	private final long downloaded;
-	private final long left;
-	private final boolean compact;
-	private final boolean noPeerId;
-	private final RequestEvent event;
-	private final int numWant;
+	protected final byte[] infoHash;
+	protected final Peer peer;
+	protected final long uploaded;
+	protected final long downloaded;
+	protected final long left;
+	protected final boolean compact;
+	protected final boolean noPeerId;
+	protected final RequestEvent event;
+	protected final int numWant;
 
-	private HTTPAnnounceRequestMessage(ByteBuffer data,
+	protected HTTPAnnounceRequestMessage(ByteBuffer data,
 		byte[] infoHash, Peer peer, long uploaded, long downloaded,
 		long left, boolean compact, boolean noPeerId, RequestEvent event,
 		int numWant) {

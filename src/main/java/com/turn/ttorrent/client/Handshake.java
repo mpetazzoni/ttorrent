@@ -36,7 +36,7 @@ public class Handshake {
 	ByteBuffer infoHash;
 	ByteBuffer peerId;
 
-	private Handshake(ByteBuffer data, ByteBuffer infoHash,
+	protected Handshake(ByteBuffer data, ByteBuffer infoHash,
 			ByteBuffer peerId) {
 		this.data = data;
 		this.data.rewind();
