@@ -43,12 +43,12 @@ import java.util.Map;
 public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	implements AnnounceResponseMessage {
 
-	private final int interval;
-	private final int complete;
-	private final int incomplete;
-	private final List<Peer> peers;
+	protected final int interval;
+	protected final int complete;
+	protected final int incomplete;
+	protected final List<Peer> peers;
 
-	private HTTPAnnounceResponseMessage(ByteBuffer data,
+	protected HTTPAnnounceResponseMessage(ByteBuffer data,
 		int interval, int complete, int incomplete, List<Peer> peers) {
 		super(Type.ANNOUNCE_RESPONSE, data);
 		this.interval = interval;
@@ -128,7 +128,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @return A {@link List} of {@link Peer}s representing the
 	 * peers' addresses. Peer IDs are lost, but they are not crucial.
 	 */
-	private static List<Peer> toPeerList(List<BEValue> peers)
+	protected static List<Peer> toPeerList(List<BEValue> peers)
 		throws InvalidBEncodingException {
 		List<Peer> result = new LinkedList<Peer>();
 
@@ -151,7 +151,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	 * @return A {@link List} of {@link Peer}s representing the
 	 * peers' addresses. Peer IDs are lost, but they are not crucial.
 	 */
-	private static List<Peer> toPeerList(byte[] data)
+	protected static List<Peer> toPeerList(byte[] data)
 		throws InvalidBEncodingException, UnknownHostException {
 		if (data.length % 6 != 0) {
 			throw new InvalidBEncodingException("Invalid peers " +

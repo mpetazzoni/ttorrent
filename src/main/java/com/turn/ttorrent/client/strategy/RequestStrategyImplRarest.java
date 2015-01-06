@@ -17,9 +17,9 @@ public class RequestStrategyImplRarest implements RequestStrategy {
 
 	/** Randomly select the next piece to download from a peer from the
 	 * RAREST_PIECE_JITTER available from it. */
-	private static final int RAREST_PIECE_JITTER = 42;
+	protected static final int RAREST_PIECE_JITTER = 42;
 
-	private Random random;
+	protected Random random;
 
 	public RequestStrategyImplRarest() {
 		this.random = new Random(System.currentTimeMillis());

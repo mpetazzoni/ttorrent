@@ -94,16 +94,16 @@ public class UDPTrackerClient extends TrackerClient {
 	 */
 	private static final int UDP_PACKET_LENGTH = 512;
 
-	private final InetSocketAddress address;
-	private final Random random;
+	protected final InetSocketAddress address;
+	protected final Random random;
 
-	private DatagramSocket socket;
-	private Date connectionExpiration;
-	private long connectionId;
-	private int transactionId;
-	private boolean stop;
+	protected DatagramSocket socket;
+	protected Date connectionExpiration;
+	protected long connectionId;
+	protected int transactionId;
+	protected boolean stop;
 
-	private enum State {
+	protected enum State {
 		CONNECT_REQUEST,
 		ANNOUNCE_REQUEST;
 	};
@@ -265,7 +265,7 @@ public class UDPTrackerClient extends TrackerClient {
 		}
 	}
 
-	private UDPAnnounceRequestMessage buildAnnounceRequest(
+	protected UDPAnnounceRequestMessage buildAnnounceRequest(
 		AnnounceRequestMessage.RequestEvent event) {
 		return UDPAnnounceRequestMessage.craft(
 			this.connectionId,
@@ -293,7 +293,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 *
 	 * @param message The incoming tracker message.
 	 */
-	private void validateTrackerResponse(TrackerMessage message)
+	protected void validateTrackerResponse(TrackerMessage message)
 		throws AnnounceException {
 		if (message instanceof ErrorMessage) {
 			throw new AnnounceException(((ErrorMessage)message).getReason());
@@ -311,7 +311,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 * @param message The message received from the tracker in response to the
 	 * connection request.
 	 */
-	private void handleTrackerConnectResponse(TrackerMessage message)
+	protected void handleTrackerConnectResponse(TrackerMessage message)
 		throws AnnounceException {
 		this.validateTrackerResponse(message);
 
@@ -335,7 +335,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 * @param data The {@link ByteBuffer} to send in a datagram packet to the
 	 * tracker.
 	 */
-	private void send(ByteBuffer data) {
+	protected void send(ByteBuffer data) {
 		try {
 			this.socket.send(new DatagramPacket(
 				data.array(),
@@ -354,7 +354,7 @@ public class UDPTrackerClient extends TrackerClient {
 	 * receive operation.
 	 * @return Returns a {@link ByteBuffer} containing the packet data.
 	 */
-	private ByteBuffer recv(int attempt)
+	protected ByteBuffer recv(int attempt)
 		throws IOException, SocketException, SocketTimeoutException {
 		int timeout = UDP_BASE_TIMEOUT_SECONDS * (int)Math.pow(2, attempt);
 		logger.trace("Setting receive timeout to {}s for attempt {}...",

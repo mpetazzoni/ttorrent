@@ -51,16 +51,16 @@ public class Piece implements Comparable<Piece> {
 	private static final Logger logger =
 		LoggerFactory.getLogger(Piece.class);
 
-	private final TorrentByteStorage bucket;
-	private final int index;
-	private final long offset;
-	private final long length;
-	private final byte[] hash;
-	private final boolean seeder;
+	protected final TorrentByteStorage bucket;
+	protected final int index;
+	protected final long offset;
+	protected final long length;
+	protected final byte[] hash;
+	protected final boolean seeder;
 
-	private volatile boolean valid;
-	private int seen;
-	private ByteBuffer data;
+	protected volatile boolean valid;
+	protected int seen;
+	protected ByteBuffer data;
 
 	/**
 	 * Initialize a new piece in the byte bucket.
@@ -183,7 +183,7 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	private ByteBuffer _read(long offset, long length) throws IOException {
+	protected ByteBuffer _read(long offset, long length) throws IOException {
 		if (offset + length > this.length) {
 			throw new IllegalArgumentException("Piece#" + this.index +
 				" overrun (" + offset + " + " + length + " > " +

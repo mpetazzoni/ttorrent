@@ -164,7 +164,7 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @throws IOException
 	 * @throws MessageValidationException
 	 */
-	private HTTPAnnounceRequestMessage buildAnnounceRequest(
+	protected HTTPAnnounceRequestMessage buildAnnounceRequest(
 		AnnounceRequestMessage.RequestEvent event)
 		throws UnsupportedEncodingException, IOException,
 			MessageValidationException {

@@ -82,20 +82,20 @@ public class ConnectionHandler implements Runnable {
 	public static final int PORT_RANGE_START = 6881;
 	public static final int PORT_RANGE_END = 6889;
 
-	private static final int OUTBOUND_CONNECTIONS_POOL_SIZE = 20;
-	private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 10;
+	protected static final int OUTBOUND_CONNECTIONS_POOL_SIZE = 20;
+	protected static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 10;
 
-	private static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
+	protected static final int CLIENT_KEEP_ALIVE_MINUTES = 3;
 
-	private SharedTorrent torrent;
-	private String id;
-	private ServerSocketChannel channel;
-	private InetSocketAddress address;
+	protected SharedTorrent torrent;
+	protected String id;
+	protected ServerSocketChannel channel;
+	protected InetSocketAddress address;
 
-	private Set<IncomingConnectionListener> listeners;
-	private ExecutorService executor;
-	private Thread thread;
-	private boolean stop;
+	protected Set<IncomingConnectionListener> listeners;
+	protected ExecutorService executor;
+	protected Thread thread;
+	protected boolean stop;
 
 	/**
 	 * Create and start a new listening service for out torrent, reporting
@@ -269,7 +269,7 @@ public class ConnectionHandler implements Runnable {
 	 * @return A textual representation (<em>host:port</em>) of the given
 	 * socket.
 	 */
-	private String socketRepr(SocketChannel channel) {
+	protected String socketRepr(SocketChannel channel) {
 		Socket s = channel.socket();
 		return String.format("%s:%d%s",
 			s.getInetAddress().getHostName(),
@@ -294,7 +294,7 @@ public class ConnectionHandler implements Runnable {
 	 *
 	 * @param client The accepted client's socket channel.
 	 */
-	private void accept(SocketChannel client)
+	protected void accept(SocketChannel client)
 		throws IOException, SocketTimeoutException {
 		try {
 			logger.debug("New incoming connection, waiting for handshake...");
@@ -364,7 +364,7 @@ public class ConnectionHandler implements Runnable {
 	 * any peer ID is accepted (this is the case for incoming connections).
 	 * @return The validated handshake message object.
 	 */
-	private Handshake validateHandshake(SocketChannel channel, byte[] peerId)
+	protected Handshake validateHandshake(SocketChannel channel, byte[] peerId)
 		throws IOException, ParseException {
 		ByteBuffer len = ByteBuffer.allocate(1);
 		ByteBuffer data;
@@ -411,7 +411,7 @@ public class ConnectionHandler implements Runnable {
 	 *
 	 * @param channel The socket channel to the remote peer.
 	 */
-	private int sendHandshake(SocketChannel channel) throws IOException {
+	protected int sendHandshake(SocketChannel channel) throws IOException {
 		return channel.write(
 			Handshake.craft(
 				this.torrent.getInfoHash(),
@@ -424,13 +424,13 @@ public class ConnectionHandler implements Runnable {
 	 * @param channel The socket channel to the newly connected peer.
 	 * @param peerId The peer ID of the connected peer.
 	 */
-	private void fireNewPeerConnection(SocketChannel channel, byte[] peerId) {
+	protected void fireNewPeerConnection(SocketChannel channel, byte[] peerId) {
 		for (IncomingConnectionListener listener : this.listeners) {
 			listener.handleNewPeerConnection(channel, peerId);
 		}
 	}
 
-	private void fireFailedConnection(SharingPeer peer, Throwable cause) {
+	protected void fireFailedConnection(SharingPeer peer, Throwable cause) {
 		for (IncomingConnectionListener listener : this.listeners) {
 			listener.handleFailedConnection(peer, cause);
 		}
@@ -443,9 +443,9 @@ public class ConnectionHandler implements Runnable {
 	 *
 	 * @author mpetazzoni
 	 */
-	private static class ConnectorThreadFactory implements ThreadFactory {
+	protected static class ConnectorThreadFactory implements ThreadFactory {
 
-		private int number = 0;
+		protected int number = 0;
 
 		@Override
 		public Thread newThread(Runnable r) {
@@ -469,12 +469,12 @@ public class ConnectionHandler implements Runnable {
 	 *
 	 * @author mpetazzoni
 	 */
-	private static class ConnectorTask implements Runnable {
+	protected static class ConnectorTask implements Runnable {
 
-		private final ConnectionHandler handler;
-		private final SharingPeer peer;
+		protected final ConnectionHandler handler;
+		protected final SharingPeer peer;
 
-		private ConnectorTask(ConnectionHandler handler, SharingPeer peer) {
+		protected ConnectorTask(ConnectionHandler handler, SharingPeer peer) {
 			this.handler = handler;
 			this.peer = peer;
 		}

@@ -604,7 +604,7 @@ public class Torrent {
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
-	private static Torrent create(File parent, List<File> files, int pieceLength,
+	protected static Torrent create(File parent, List<File> files, int pieceLength,
 				URI announce, List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
@@ -716,12 +716,12 @@ public class Torrent {
 	 *
 	 * @param file The file to hash.
 	 */
-	private static String hashFile(File file, int pieceLenght)
+	protected static String hashFile(File file, int pieceLenght)
 		throws InterruptedException, IOException {
 		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLenght);
 	}
 
-	private static String hashFiles(List<File> files, int pieceLenght)
+	protected static String hashFiles(List<File> files, int pieceLenght)
 		throws InterruptedException, IOException {
 		int threads = getHashingThreadsCount();
 		ExecutorService executor = Executors.newFixedThreadPool(threads);
@@ -808,7 +808,7 @@ public class Torrent {
 	 * @param results The list of {@link Future}s that will yield the piece
 	 *	hashes.
 	 */
-	private static int accumulateHashes(StringBuilder hashes,
+	protected static int accumulateHashes(StringBuilder hashes,
 			List<Future<String>> results) throws InterruptedException, IOException {
 		try {
 			int pieces = results.size();

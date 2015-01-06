@@ -59,15 +59,15 @@ public class Tracker {
 	public static final String DEFAULT_VERSION_STRING =
 		"BitTorrent Tracker (ttorrent)";
 
-	private final Connection connection;
-	private final InetSocketAddress address;
+	protected final Connection connection;
+	protected final InetSocketAddress address;
 
 	/** The in-memory repository of torrents tracked. */
-	private final ConcurrentMap<String, TrackedTorrent> torrents;
+	protected final ConcurrentMap<String, TrackedTorrent> torrents;
 
-	private Thread tracker;
-	private Thread collector;
-	private boolean stop;
+	protected Thread tracker;
+	protected Thread collector;
+	protected boolean stop;
 
 	/**
 	 * Create a new BitTorrent tracker listening at the given address on the
@@ -243,10 +243,10 @@ public class Tracker {
 	 * through a Timer.
 	 * </p>
 	 */
-	private static class TorrentRemoveTimer extends TimerTask {
+	protected static class TorrentRemoveTimer extends TimerTask {
 
-		private Tracker tracker;
-		private Torrent torrent;
+		protected Tracker tracker;
+		protected Torrent torrent;
 
 		TorrentRemoveTimer(Tracker tracker, Torrent torrent) {
 			this.tracker = tracker;
@@ -269,7 +269,7 @@ public class Tracker {
 	 * socket.
 	 * </p>
 	 */
-	private class TrackerThread extends Thread {
+	protected class TrackerThread extends Thread {
 
 		@Override
 		public void run() {
@@ -293,9 +293,9 @@ public class Tracker {
 	 * unfresh peers from all announced torrents.
 	 * </p>
 	 */
-	private class PeerCollectorThread extends Thread {
+	protected class PeerCollectorThread extends Thread {
 
-		private static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
+		protected static final int PEER_COLLECTION_FREQUENCY_SECONDS = 15;
 
 		@Override
 		public void run() {

@@ -35,21 +35,21 @@ public class UDPAnnounceRequestMessage
 
 	private static final int UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE = 98;
 
-	private final long connectionId;
-	private final int actionId = Type.ANNOUNCE_REQUEST.getId();
-	private final int transactionId;
-	private final byte[] infoHash;
-	private final byte[] peerId;
-	private final long downloaded;
-	private final long uploaded;
-	private final long left;
-	private final RequestEvent event;
-	private final InetAddress ip;
-	private final int numWant;
-	private final int key;
-	private final short port;
+	protected final long connectionId;
+	protected final int actionId = Type.ANNOUNCE_REQUEST.getId();
+	protected final int transactionId;
+	protected final byte[] infoHash;
+	protected final byte[] peerId;
+	protected final long downloaded;
+	protected final long uploaded;
+	protected final long left;
+	protected final RequestEvent event;
+	protected final InetAddress ip;
+	protected final int numWant;
+	protected final int key;
+	protected final short port;
 
-	private UDPAnnounceRequestMessage(ByteBuffer data, long connectionId,
+	protected UDPAnnounceRequestMessage(ByteBuffer data, long connectionId,
 		int transactionId, byte[] infoHash, byte[] peerId, long downloaded,
 		long uploaded, long left, RequestEvent event, InetAddress ip,
 		int key, int numWant, short port) {

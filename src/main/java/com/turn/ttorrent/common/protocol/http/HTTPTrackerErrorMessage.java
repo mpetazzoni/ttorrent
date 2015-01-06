@@ -36,9 +36,9 @@ import java.util.Map;
 public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
 	implements ErrorMessage {
 
-	private final String reason;
+	protected final String reason;
 
-	private HTTPTrackerErrorMessage(ByteBuffer data, String reason) {
+	protected HTTPTrackerErrorMessage(ByteBuffer data, String reason) {
 		super(Type.ERROR, data);
 		this.reason = reason;
 	}

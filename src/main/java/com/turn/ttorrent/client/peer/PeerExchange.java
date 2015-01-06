@@ -79,16 +79,16 @@ class PeerExchange {
 
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
 
-	private SharingPeer peer;
-	private SharedTorrent torrent;
-	private SocketChannel channel;
+	protected SharingPeer peer;
+	protected SharedTorrent torrent;
+	protected SocketChannel channel;
 
-	private Set<MessageListener> listeners;
+	protected Set<MessageListener> listeners;
 
 	private IncomingThread in;
 	private OutgoingThread out;
 	private BlockingQueue<PeerMessage> sendQueue;
-	private volatile boolean stop;
+	protected volatile boolean stop;
 
 	/**
 	 * Initialize and start a new peer exchange.
@@ -200,7 +200,7 @@ class PeerExchange {
 	 * 
 	 * @author ptgoetz
 	 */
-	private abstract class RateLimitThread extends Thread {
+	protected abstract class RateLimitThread extends Thread {
 
 		protected final Rate rate = new Rate();
 		protected long sleep = 1000;
@@ -261,7 +261,7 @@ class PeerExchange {
 	 * 
 	 * @author mpetazzoni
 	 */
-	private class IncomingThread extends RateLimitThread {
+	protected class IncomingThread extends RateLimitThread {
 
 		/**
 		 * Read data from the incoming channel of the socket using a {@link
@@ -272,7 +272,7 @@ class PeerExchange {
 		 * @param buffer A {@link ByteBuffer} to put the read data into.
 		 * @return The number of bytes read.
 		 */
-		private long read(Selector selector, ByteBuffer buffer) throws IOException {
+		protected long read(Selector selector, ByteBuffer buffer) throws IOException {
 			if (selector.select() == 0 || !buffer.hasRemaining()) {
 				return 0;
 			}
@@ -294,7 +294,7 @@ class PeerExchange {
 			return size;
 		}
 
-		private void handleIOE(IOException ioe) {
+		protected void handleIOE(IOException ioe) {
 			logger.debug("Could not read message from {}: {}",
 				peer,
 				ioe.getMessage() != null

@@ -29,13 +29,13 @@ public class UDPConnectResponseMessage
 	extends UDPTrackerMessage.UDPTrackerResponseMessage
 	implements TrackerMessage.ConnectionResponseMessage {
 
-	private static final int UDP_CONNECT_RESPONSE_MESSAGE_SIZE = 16;
+	protected static final int UDP_CONNECT_RESPONSE_MESSAGE_SIZE = 16;
 
-	private final int actionId = Type.CONNECT_RESPONSE.getId();
-	private final int transactionId;
-	private final long connectionId;
+	protected final int actionId = Type.CONNECT_RESPONSE.getId();
+	protected final int transactionId;
+	protected final long connectionId;
 
-	private UDPConnectResponseMessage(ByteBuffer data, int transactionId,
+	protected UDPConnectResponseMessage(ByteBuffer data, int transactionId,
 		long connectionId) {
 		super(Type.CONNECT_RESPONSE, data);
 		this.transactionId = transactionId;
