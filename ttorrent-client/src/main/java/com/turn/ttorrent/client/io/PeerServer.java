@@ -39,6 +39,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Incoming peer connections service.
+ *
+ * <p>
+ * Every BitTorrent client, BitTorrent being a peer-to-peer protocol, listens
+ * on a port for incoming connections from other peers sharing the same
+ * torrent.
+ * </p>
+ *
+ * <p>
+ * This ConnectionHandler implements this service and starts a listening socket
+ * in the first available port in the default BitTorrent client port range
+ * 6881-6999. When a peer connects to it, it expects the BitTorrent handshake
+ * message, parses it and replies with our own handshake.
+ * </p>
  *
  * @author shevek
  */
@@ -61,6 +75,15 @@ public class PeerServer extends PeerEndpoint implements PeerAddressProvider {
         this.torrents = Preconditions.checkNotNull(torrents, "TorrentRegistry was null.");
     }
 
+    /**
+     * Create and start a new listening service for our torrents, reporting
+     * with our peer ID on the given address.
+     *
+     * <p>
+     * This binds to the first available port in the client port range
+     * PORT_RANGE_START to PORT_RANGE_END.
+     * </p>
+     */
     public void start() throws Exception {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(environment.getEventService());

@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Client for making outgoing connections to other peers.
  *
  * @author shevek
  */

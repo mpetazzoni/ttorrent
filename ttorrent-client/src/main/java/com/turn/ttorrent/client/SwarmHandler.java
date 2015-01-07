@@ -61,36 +61,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Incoming peer connections service.
+ * Manages swarm-level coordination as a periodically-executed Runnable.
  *
  * <p>
- * Every BitTorrent client, BitTorrent being a peer-to-peer protocol, listens
- * on a port for incoming connections from other peers sharing the same
- * torrent.
+ * This class implements several interfaces that all share a 1:1 ratio for
+ * object lifetime.  Known peers in the swarm are tracked with a simple map, but
+ * connected peers have {@link PeerHandler} objects created for them, and these
+ * objects allow direct control of the wire protocol.  Most of the interfaces
+ * implemented by this class are then used by PeerHandlers to learn about the
+ * torrent status, the peer's addresses, and other peers, as well as to handle
+ * various peer and piece state changes.  Pieces of the torrent are similarly
+ * tracked in a simple array, but in progress pieces have {@link PieceHandler}
+ * objects allocated that handle reading and writing blocks on the wire.  The
+ * SwarmHandler is used by PieceHandlers to maintain piece consistency.
  * </p>
  *
  * <p>
- * This ConnectionHandler implements this service and starts a listening socket
- * in the first available port in the default BitTorrent client port range
- * 6881-6889. When a peer connects to it, it expects the BitTorrent handshake
- * message, parses it and replies with our own handshake.
- * </p>
- *
- * <p>
- * Outgoing connections to other peers are also made through this service,
- * which handles the handshake procedure with the remote peer. Regardless of
- * the direction of the connection, once this handshake is successful, this
- * {@link PeerConnectionListener} is notified and passed the connected
- * socket and the remote peer ID.
- * </p>
- *
- * <p>
- * This class does nothing more. All further peer-to-peer communication happens
- * in the {@link PeerHandler} class.
+ * The SwarmHandler for a torrent is also used by the {@link PeerClent} as a
+ * listener that handles new connections and by the {@link TrackerHandler} s a
+ * place to register peers returned by a tracker.
  * </p>
  *
  * @author mpetazzoni
- * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
 public class SwarmHandler implements Runnable,
         PeerAddressProvider, PeerPieceProvider,
@@ -156,17 +148,6 @@ public class SwarmHandler implements Runnable,
     private long tickTime = 0;
     private final Object lock = new Object();
 
-    /**
-     * Create and start a new listening service for out torrent, reporting
-     * with our peer ID on the given address.
-     *
-     * <p>
-     * This binds to the first available port in the client port range
-     * PORT_RANGE_START to PORT_RANGE_END.
-     * </p>
-     *
-     * @param torrent The torrent shared by this client.
-     */
     SwarmHandler(@Nonnull TorrentHandler torrent) {
         this.torrent = torrent;
         this.availablePieces = new AtomicIntegerArray(torrent.getPieceCount());

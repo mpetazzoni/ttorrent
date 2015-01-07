@@ -56,17 +56,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A peer exchanging on a torrent with the BitTorrent client.
+ * Manages a connected peer for a specific torrent.
  *
  * <p>
- * A SharingPeer embeds the base Peer class with all the data and logic needed
- * by the BitTorrent client to interact with a peer exchanging on the same
- * torrent.
- * </p>
- *
- * <p>
- * Peers are defined by their peer ID, IP address and port number, just like
- * base peers. Peers we exchange with also contain four crucial attributes:
+ * Peers are defined by their peer ID, which is passed in, and their IP address
+ * and port number, which are retrieved from the passed in {@link Channel}
+ * object. Peers we exchange with also contain four crucial attributes:
  * </p>
  *
  * <ul>
@@ -450,6 +445,13 @@ public class PeerHandler implements PeerMessageListener {
         removeRequestMessage(request, requestsReceived.iterator());
     }
 
+    /**
+     * Notifies the {@link PieceProvider} that requests that we sent have been
+     * rejected and will not be answered.
+     *
+     * @param requests a subset of the requests sent by this peer
+     * @param reason the reason to log that these requests are being rejected
+     */
     private void rejectRequests(@Nonnull Collection<? extends PieceHandler.AnswerableRequestMessage> requests, @Nonnull String reason) {
         // LOG.debug("{}: Rejecting {} requests.", provider.getLocalPeerName(), requests.size());
         if (!requests.isEmpty()) {
@@ -459,6 +461,11 @@ public class PeerHandler implements PeerMessageListener {
         }
     }
 
+    /**
+     * Rejects all requests that we have sent.
+     *
+     * @see #rejectRequests(java.util.Collection, java.lang.String)
+     */
     public void rejectRequestsSent(@Nonnull String reason) {
         List<PieceHandler.AnswerableRequestMessage> requestsRejected = new ArrayList<PieceHandler.AnswerableRequestMessage>();
         requestsSent.drainTo(requestsRejected);
@@ -466,16 +473,11 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     /**
-     * Cancel all pending requests.
+     * Cancel all pending requests that we have made.
      *
      * <p>
      * This queues CANCEL messages for all the requests in the queue, and
-     * returns the list of requests that were in the queue.
-     * </p>
-     *
-     * <p>
-     * If no request queue existed, or if it was empty, an empty set of request
-     * messages is returned.
+     * returns the number of requests that were canceled
      * </p>
      */
     public int cancelRequestsSent(@Nonnull String reason) {
@@ -840,7 +842,7 @@ public class PeerHandler implements PeerMessageListener {
                         getLocalPeerName(), this,
                         message.getLength()
                     });
-                    close("requested hueg block");
+                    close("requested huge block");
                     break;
                 }
 

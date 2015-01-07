@@ -22,6 +22,9 @@ import org.slf4j.LoggerFactory;
 /**
  *
  * @author shevek
+ * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
+ * @see PeerServerHandshakeHandler
+ * @see PeerClientHandshakeHandler
  */
 public abstract class PeerHandshakeHandler extends LengthFieldBasedFrameDecoder {
 
