@@ -143,8 +143,6 @@ public class SwarmHandler implements Runnable,
     private final AtomicLong downloaded = new AtomicLong(0);
     private final AtomicIntegerArray availablePieces;
     @GuardedBy("lock")
-    private final BitSet requestedPieces;
-    @GuardedBy("lock")
     private final Set<PieceHandler.AnswerableRequestMessage> partialPieces = new HashSet<PieceHandler.AnswerableRequestMessage>();
     // We only care about global rarest pieces for peer selection or opportunistic unchoking.
     // private final BitSet rarestPieces;
@@ -172,7 +170,6 @@ public class SwarmHandler implements Runnable,
     SwarmHandler(@Nonnull TorrentHandler torrent) {
         this.torrent = torrent;
         this.availablePieces = new AtomicIntegerArray(torrent.getPieceCount());
-        this.requestedPieces = new BitSet(torrent.getPieceCount());
         // this.rarestPieces = new BitSet(torrent.getPieceCount());
     }
 
@@ -329,20 +326,22 @@ public class SwarmHandler implements Runnable,
     }
 
     /**
-     * Return a copy of the requested pieces bitset.
+     * Return a BitSet describing the currently requested pieces.
      */
     @Nonnull
     public BitSet getRequestedPieces() {
-        synchronized (lock) {
-            return (BitSet) this.requestedPieces.clone();
+        BitSet requestedPieces = new BitSet(torrent.getPieceCount());
+        for (PeerHandler peerHandler : connectedPeers.values()) {
+            for (PieceHandler.AnswerableRequestMessage request : peerHandler.getRequestsSent()) {
+                requestedPieces.set(request.getPiece());
+            }
         }
+        return requestedPieces;
     }
 
     @Nonnegative
     public int getRequestedPieceCount() {
-        synchronized (lock) {
-            return requestedPieces.cardinality();
-        }
+        return getRequestedPieces().cardinality();
     }
 
     /*
@@ -353,8 +352,10 @@ public class SwarmHandler implements Runnable,
      }
      */
     private void andNotRequestedPieces(@Nonnull BitSet b) {
-        synchronized (lock) {
-            b.andNot(requestedPieces);
+        for (PeerHandler peerHandler : connectedPeers.values()) {
+            for (PieceHandler.AnswerableRequestMessage request : peerHandler.getRequestsSent()) {
+                b.clear(request.getPiece());
+            }
         }
     }
 
@@ -728,8 +729,6 @@ public class SwarmHandler implements Runnable,
                     rarestIndex,
                     getRequestedPieces()
                 });
-
-            requestedPieces.set(rarestIndex);
 
             // TODO: We don't keep track of these, so it is possible to have more than one
             // PieceHandler for a given piece. We make some attempt with rejected or timed out
@@ -1206,7 +1205,6 @@ public class SwarmHandler implements Runnable,
         // Regardless of validity, record the number of bytes downloaded and
         // mark the piece as not requested anymore
         synchronized (lock) {
-            requestedPieces.clear(piece);
             // TODO: Not sure if this is required.
             for (Iterator<PieceHandler.AnswerableRequestMessage> it = partialPieces.iterator(); it.hasNext(); /**/) {
                 PieceHandler.AnswerableRequestMessage request = it.next();

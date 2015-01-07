@@ -299,6 +299,14 @@ public class PeerHandler implements PeerMessageListener {
         // return flags.compareAndSet(flag.ordinal(), value ? 0 : 1, value ? 1 : 0);
     }
 
+    /**
+     * @return a read-only iterable of the requests sent to this peer
+     */
+    @Nonnull
+    public Iterable<? extends PieceHandler.AnswerableRequestMessage> getRequestsSent() {
+        return requestsSent;
+    }
+
     @Nonnegative
     public int getRequestsSentCount() {
         return requestsSent.size();
