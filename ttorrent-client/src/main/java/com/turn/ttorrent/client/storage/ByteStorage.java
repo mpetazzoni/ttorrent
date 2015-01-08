@@ -29,7 +29,7 @@ import javax.annotation.Nonnull;
  * This interface defines the methods for accessing an abstracted torrent byte
  * storage. A torrent, especially when it contains multiple files, needs to be
  * seen as one single continuous stream of bytes. Torrent pieces will most
- * likely span accross file boundaries. This abstracted byte storage aims at
+ * likely span across file boundaries. This abstracted byte storage aims at
  * providing a simple interface for read/write access to the torrent data,
  * regardless of how it is composed underneath the piece structure.
  * </p>

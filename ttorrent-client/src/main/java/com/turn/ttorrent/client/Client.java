@@ -40,21 +40,28 @@ import org.slf4j.LoggerFactory;
  * A pure-java BitTorrent client.
  *
  * <p>
- * A BitTorrent client in its bare essence shares torrents. If the
- * torrent is not complete locally, it will continue to download it. If or
- * after the torrent is complete, the client may eventually continue to seed it
- * for other clients.
+ * A BitTorrent client in its bare essence shares torrents.  If the torrent is
+ * not complete locally, it will download pieces until it is complete, sharing
+ * pieces that it has with other clients. Once a torrent is complete, the client
+ * will seed the torrent until explicitly told to stop.
  * </p>
  *
  * <p>
  * This BitTorrent client implementation is made to be simple to embed and
- * simple to use. First, initialize a ShareTorrent object from a torrent
- * meta-info source (either a file or a byte array, see
- * com.turn.ttorrent.SharedTorrent for how to create a SharedTorrent object).
- * Then, instantiate your Client object with this SharedTorrent and call one of
- * {@link #download} to simply download the torrent, or {@link #share} to
- * download and continue seeding for the given amount of time after the
- * download completes.
+ * simple to use. Until a Client is started (with {@link #start}), it will not
+ * send or receive any data. At any point before or after starting the client,
+ * torrents can be added to it with the
+ * <code>addTorrent</code> methods. As soon as a torrent is registered and
+ * the client is started, it will begin sharing the torrent. {@link Torrent} objects
+ * can be created from .torrent files, and {@link TorrentHandler} objects add
+ * the business logic necessary to interpret and use the metadata in a .torrent
+ * file.
+ * </p>
+ *
+ * <p>
+ * TorrentHandlers can be retrieved or removed from a Client at any time, and
+ * listeners can be registered with a Client that will inform a caller when the
+ * Client or any torrent changes state.
  * </p>
  *
  * @author mpetazzoni

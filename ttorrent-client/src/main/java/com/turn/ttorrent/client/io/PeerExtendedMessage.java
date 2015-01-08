@@ -37,6 +37,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Supports extensions to the BitTorrent protocol with extended message types.
+ *
+ * Currently supported extensions:
+ *
+ * <ul>
+ * <li>BEP 10 Extended Handshake: Allows peers to tell each other which protocol
+ * extensions they support</li>
+ * <li>UT Peer Exchange (UT_PEX): PEX allows peers to tell each other about
+ * peers that they know about, lowering load on trackers and potentially
+ * obviating them. There are two competing PEX protocols; we implement the one
+ * that works within the BEP 10 extension protocol. Couldn't find a spec for it
+ * anywhere, but a reference implementation is at
+ * https://github.com/libtorrent/libtorrent/blob/master/src/ut_pex.cpp</li>
+ * </ul>
  *
  * @author shevek
  */

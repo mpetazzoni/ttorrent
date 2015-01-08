@@ -49,17 +49,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A torrent shared by the BitTorrent client.
+ * Manages an individual torrent's state, providing an interface for reading and
+ * writing pieces.
  *
  * <p>
- * The {@link TorrentHandler} class associates a
- * {@link SwarmHandler} and a {@link  TrackerHandler} with all the data
- * and logic required by the BitTorrent client implementation.
+ * Piece completion and upload/download rates are tracked with this class.  When
+ * all pieces are complete, {@link #isComplete()} will return true.
  * </p>
  *
  * <p>
- * <em>Note:</em> this implementation currently only supports single-file
- * torrents.
+ * A TorrentHandler instantiates a {@link SwarmHandler} on construction, but
+ * then waits for a call to it's {@link #start} method before doing anything.
+ * When the TorrentHandler is started, it will checksum the pieces that it finds
+ * on disk (if any) to determine which pieces are complete and incomplete, and
+ * then it calls {@link SwarmHandler#start()} to kickoff swarm-level management
+ * of the torrent. At the same time, it also calls
+ * {@link TrackerHandler#start()} to kickoff peer acquisition.
  * </p>
  *
  * @author mpetazzoni

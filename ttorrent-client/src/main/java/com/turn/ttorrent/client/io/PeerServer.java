@@ -48,10 +48,15 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * <p>
- * This ConnectionHandler implements this service and starts a listening socket
+ * A PeerServer implements this service and starts a listening socket
  * in the first available port in the default BitTorrent client port range
  * 6881-6999. When a peer connects to it, it expects the BitTorrent handshake
  * message, parses it and replies with our own handshake.
+ * </p>
+ *
+ * <p>
+ * A PeerServer is a singleton per {@link Client}, and can be shared across
+ * torrents and swarms.
  * </p>
  *
  * @author shevek

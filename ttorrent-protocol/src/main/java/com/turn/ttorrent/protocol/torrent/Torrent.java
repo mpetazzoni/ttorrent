@@ -46,17 +46,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A torrent file tracked by the controller's BitTorrent tracker.
+ * Metadata interface for a .torrent file.
  *
  * <p>
- * This class represents an active torrent on the tracker. The torrent
- * information is kept in-memory, and is created from the byte blob one would
- * usually find in a <tt>.torrent</tt> file.
- * </p>
- *
- * <p>
- * Each torrent also keeps a repository of the peers seeding and leeching this
- * torrent from the tracker.
+ * This class is also responsible for validating a ByteBuffer as a piece by
+ * checking its hash.
  * </p>
  *
  * @author mpetazzoni

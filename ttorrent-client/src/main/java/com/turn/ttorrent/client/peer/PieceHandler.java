@@ -32,6 +32,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Enables out-of-order reception of blocks within a piece.
  *
+ * A {@link PeerHandler} sends {@link AnswerableRequestMessage}s to it's peer to
+ * request blocks within a piece.  This class implements an iterable of these
+ * messages, enabling the PeerHandler to download a piece simply by calling
+ * {@link PeerHandler#send(com.turn.ttorrent.client.io.PeerMessage, boolean)} on
+ * the messages as it iterates over them.
+ *
  * @author shevek
  */
 public class PieceHandler implements Iterable<AnswerableRequestMessage> {

@@ -32,6 +32,11 @@ import org.slf4j.LoggerFactory;
 /**
  * Client for making outgoing connections to other peers.
  *
+ * <p>
+ * A PeerClient is a singleton per {@link Client}, and can be shared across
+ * torrents and swarms.
+ * </p>
+ *
  * @author shevek
  */
 public class PeerClient extends PeerEndpoint {

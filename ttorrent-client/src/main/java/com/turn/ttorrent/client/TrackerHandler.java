@@ -52,8 +52,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * This TrackerHandler class maintains the state of each tracker known to the
- * torrent, and manages a periodic announce event using the {@link Client Client's}
- * {@link ScheduledExecutorService}.
+ * torrent, and manages a periodic announce event using the {@link Client}
+ * Client's {@link ScheduledExecutorService}.
  * </p>
  * 
  * <p>
