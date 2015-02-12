@@ -14,8 +14,11 @@
 /.project
 /.settings
 
+# Ignore any IntelliJ project files, these don't belong in the repository.
+/.idea
+*.iml
+
 # Ignore common editor swap files
 *.swp
 *.bak
-*~
 *~
