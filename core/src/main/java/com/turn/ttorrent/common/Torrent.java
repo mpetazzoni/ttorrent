@@ -114,6 +114,7 @@ public class Torrent {
 	private final String comment;
 	private final String createdBy;
 	private final String name;
+    private final boolean privateFlag;
 	private final long size;
 	private final int pieceLength;
 
@@ -210,6 +211,7 @@ public class Torrent {
 			? this.decoded.get("created by").getString()
 			: null;
 		this.name = this.decoded_info.get("name").getString();
+        this.privateFlag = this.decoded_info.containsKey("private") && this.decoded_info.get("private").getBoolean();
 		this.pieceLength = this.decoded_info.get("piece length").getInt();
 
 		this.files = new LinkedList<TorrentFile>();
@@ -245,6 +247,7 @@ public class Torrent {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
+        logger.info("  Private.....: {}", this.privateFlag);
 		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
@@ -299,7 +302,14 @@ public class Torrent {
 		return this.name;
 	}
 
-	/**
+    /**
+     * Get the torrent's private flag
+     */
+    public boolean isPrivate() {
+        return privateFlag;
+    }
+
+    /**
 	 * Get this torrent's comment string.
 	 */
 	public String getComment() {
@@ -513,7 +523,7 @@ public class Torrent {
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException {
 		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy);
+				announce, null, createdBy, false);
 	}
 
 	/**
@@ -536,7 +546,7 @@ public class Torrent {
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy);
+				announce, null, createdBy, false);
 	}
 
 	/**
@@ -557,7 +567,7 @@ public class Torrent {
 	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(source, null, pieceLength, 
-				null, announceList, createdBy);
+				null, announceList, createdBy, false);
 	}
 	
 	/**
@@ -582,7 +592,7 @@ public class Torrent {
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
 		return Torrent.create(source, files, pieceLength, 
-				null, announceList, createdBy);
+				null, announceList, createdBy, false);
 	}
 	
 	/**
@@ -603,9 +613,10 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
+     * @param privateFlag indicates if the torrent should be flagged as private
 	 */
 	private static Torrent create(File parent, List<File> files, int pieceLength,
-				URI announce, List<List<URI>> announceList, String createdBy)
+				URI announce, List<List<URI>> announceList, String createdBy, boolean privateFlag)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -637,6 +648,7 @@ public class Torrent {
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
+        info.put("private", new BEValue(privateFlag));
 		info.put("piece length", new BEValue(pieceLength));
 
 		if (files == null || files.isEmpty()) {
