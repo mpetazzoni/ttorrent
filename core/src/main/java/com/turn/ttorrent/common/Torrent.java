@@ -597,109 +597,6 @@ public class Torrent {
 		return new Torrent(data, seeder);
 	}
 
-	/** Torrent creation --------------------------------------------------- */
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-     *
-     * @deprecated use {@link Builder} instead
-     */
-    @Deprecated
-	public static Torrent create(File source, URI announce, String createdBy)
-		throws InterruptedException, IOException {
-		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy, false);
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param parent The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-     *
-     * @deprecated use {@link Builder} instead
-     */
-    @Deprecated
-	public static Torrent create(File parent, List<File> files, URI announce,
-		String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy, false);
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-     *
-     * @deprecated use {@link Builder} instead
-     */
-    @Deprecated
-	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
-			String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(source, null, pieceLength, 
-				null, announceList, createdBy, false);
-	}
-	
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param source The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-     *
-     * @deprecated use {@link Builder} instead
-     */
-    @Deprecated
-	public static Torrent create(File source, List<File> files, int pieceLength,
-			List<List<URI>> announceList, String createdBy)
-			throws InterruptedException, IOException {
-		return Torrent.create(source, files, pieceLength, 
-				null, announceList, createdBy, false);
-	}
-	
 	/**
 	 * Helper method to create a {@link Torrent} object for a set of files.
 	 *
@@ -822,9 +719,8 @@ public class Torrent {
 	 * Return the concatenation of the SHA-1 hashes of a file's pieces.
 	 *
 	 * <p>
-	 * Hashes the given file piece by piece using the default Torrent piece
-	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
-	 * these hashes, as a string.
+	 * Hashes the given file piece by piece using the given piece length and
+     * returns the concatenation of these hashes, as a string.
 	 * </p>
 	 *
 	 * <p>
@@ -835,7 +731,7 @@ public class Torrent {
 	 */
 	private static String hashFile(File file, int pieceLenght)
 		throws InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLenght);
+		return Torrent.hashFiles(Arrays.asList(file), pieceLenght);
 	}
 
 	private static String hashFiles(List<File> files, int pieceLenght)
