@@ -68,7 +68,7 @@ public class TorrentMain {
 			"the given announce URL and data.");
 		s.println("  -l,--length           Define the piece length (in kB) for hashing data");
 		s.println("  -a,--announce         Tracker URL (can be repeated).");
-        s.println("  -p,--private          If set the created torrent will be marked private");
+		s.println("  -p,--private          If set the created torrent will be marked private");
 		s.println();
 	}
 
@@ -91,7 +91,7 @@ public class TorrentMain {
 		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
 		CmdLineParser.Option pieceLength = parser.addIntegerOption('l', "length");
 		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
-        CmdLineParser.Option privateOption = parser.addBooleanOption('p', "private");
+		CmdLineParser.Option privateOption = parser.addBooleanOption('p', "private");
 
 		try {
 			parser.parse(args);
@@ -123,7 +123,7 @@ public class TorrentMain {
 		logger.info("Using piece length of {} bytes.", pieceLengthVal);
 
 		Boolean createFlag = (Boolean)parser.getOptionValue(create);
-        Boolean privateFlag = (Boolean)parser.getOptionValue(privateOption);
+		Boolean privateFlag = (Boolean)parser.getOptionValue(privateOption);
 		
 		//For repeated announce urls
 		@SuppressWarnings("unchecked")
@@ -139,35 +139,35 @@ public class TorrentMain {
 			System.exit(1);
 		}
 
-        OutputStream fos = null;
-        try {
-            if (Boolean.TRUE.equals(createFlag)) {
-                fos = new FileOutputStream(filenameValue);
+		OutputStream fos = null;
+		try {
+			if (Boolean.TRUE.equals(createFlag)) {
+				fos = new FileOutputStream(filenameValue);
 
-                //Process the announce URLs into URIs
-                //Assume all the URI's are first tier trackers
-                List<URI> announceURIs = new ArrayList<URI>();
-                for (String url : announceURLs) {
-                    announceURIs.add(new URI(url));
-                }
+				//Process the announce URLs into URIs
+				//Assume all the URI's are first tier trackers
+				List<URI> announceURIs = new ArrayList<URI>();
+				for (String url : announceURLs) {
+					announceURIs.add(new URI(url));
+				}
 
-                File source = new File(otherArgs[0]);
-                if (!source.exists() || !source.canRead()) {
-                    throw new IllegalArgumentException(
-                            "Cannot access source file or directory " +
-                                    source.getName());
-                }
+				File source = new File(otherArgs[0]);
+				if (!source.exists() || !source.canRead()) {
+					throw new IllegalArgumentException(
+							"Cannot access source file or directory " +
+									source.getName());
+				}
 
-                String creator = String.format("%s (ttorrent)",
-                        System.getProperty("user.name"));
+				String creator = String.format("%s (ttorrent)",
+						System.getProperty("user.name"));
 
-                Torrent torrent = new Torrent.Builder()
-                        .withSharedSource(source)
-                        .withAnnounceURITier(announceURIs)
-                        .withPieceLength(pieceLengthVal)
-                        .withCreator(creator)
-                        .withPrivateFlag(privateFlag)
-                        .build();
+				Torrent torrent = new Torrent.Builder()
+						.withSharedSource(source)
+						.withAnnounceURITier(announceURIs)
+						.withPieceLength(pieceLengthVal)
+						.withCreator(creator)
+						.withPrivateFlag(privateFlag)
+						.build();
 
 				torrent.save(fos);
 			} else {

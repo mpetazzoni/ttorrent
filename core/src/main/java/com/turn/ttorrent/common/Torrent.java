@@ -91,107 +91,107 @@ public class Torrent {
 		}
 	}
 
-    /**
-     * Builder for Torrent Object
-     *
-     * @author jdeketelaere
-     */
-    public static final class Builder {
+	/**
+	 * Builder for Torrent Object
+	 *
+	 * @author jdeketelaere
+	 */
+	public static final class Builder {
 
-        private File source;
-        private List<File> fileList;
+		private File source;
+		private List<File> fileList;
 
-        private URI announceURI;
-        private List<List<URI>> announceURIList;
+		private URI announceURI;
+		private List<List<URI>> announceURIList;
 
-        private String createdBy;
-        private boolean privateFlag = false;
+		private String createdBy;
+		private boolean privateFlag = false;
 
-        private int pieceLength = DEFAULT_PIECE_LENGTH;
+		private int pieceLength = DEFAULT_PIECE_LENGTH;
 
-        public Builder withSharedSource(File source) {
-            if (source != null && source.isDirectory()) {
-                return withSharedDirectory(source);
-            }
-            return withSharedFile(source);
-        }
+		public Builder withSharedSource(File source) {
+			if (source != null && source.isDirectory()) {
+				return withSharedDirectory(source);
+			}
+			return withSharedFile(source);
+		}
 
-        public Builder withSharedFile(File file) {
-            checkSource(file, true);
-            this.source = file;
-            return this;
-        }
+		public Builder withSharedFile(File file) {
+			checkSource(file, true);
+			this.source = file;
+			return this;
+		}
 
-        public Builder withSharedDirectory(File directory) {
-            return withSharedDirectory(directory, null);
-        }
+		public Builder withSharedDirectory(File directory) {
+			return withSharedDirectory(directory, null);
+		}
 
-        public Builder withSharedDirectory(File directory, List<File> files) {
-            checkSource(directory, false);
-            this.source = directory;
+		public Builder withSharedDirectory(File directory, List<File> files) {
+			checkSource(directory, false);
+			this.source = directory;
 
-            List<File> sharedFiles;
-            if (files != null) {
-                sharedFiles = new ArrayList<File>(files);
-            } else {
-                sharedFiles = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
-            }
-            Collections.sort(sharedFiles);
-            this.fileList = Collections.unmodifiableList(sharedFiles);
+			List<File> sharedFiles;
+			if (files != null) {
+				sharedFiles = new ArrayList<File>(files);
+			} else {
+				sharedFiles = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
+			}
+			Collections.sort(sharedFiles);
+			this.fileList = Collections.unmodifiableList(sharedFiles);
 
-            return this;
-        }
+			return this;
+		}
 
-        private void checkSource(File source, boolean singleFile) {
-            if (source == null) {
-                throw new IllegalArgumentException("Cannot build torrent for source <null>");
-            }
+		private void checkSource(File source, boolean singleFile) {
+			if (source == null) {
+				throw new IllegalArgumentException("Cannot build torrent for source <null>");
+			}
 
-            if (this.source != null) {
-                throw new IllegalArgumentException("Source already set");
-            }
+			if (this.source != null) {
+				throw new IllegalArgumentException("Source already set");
+			}
 
-            if (singleFile && !source.isFile()) {
-                throw new IllegalArgumentException("Source is not a file");
-            }
+			if (singleFile && !source.isFile()) {
+				throw new IllegalArgumentException("Source is not a file");
+			}
 
-            if (!singleFile && !source.isDirectory()) {
-                throw new IllegalArgumentException("Source is not a directory");
-            }
-        }
+			if (!singleFile && !source.isDirectory()) {
+				throw new IllegalArgumentException("Source is not a directory");
+			}
+		}
 
-        public Builder withPrivateFlag(boolean privateFlag) {
-            this.privateFlag = privateFlag;
-            return this;
-        }
+		public Builder withPrivateFlag(boolean privateFlag) {
+			this.privateFlag = privateFlag;
+			return this;
+		}
 
-        public Builder withAnnounceURI(URI announceURI) {
-            this.announceURI = announceURI;
-            return this;
-        }
+		public Builder withAnnounceURI(URI announceURI) {
+			this.announceURI = announceURI;
+			return this;
+		}
 
-        public Builder withAnnounceURITier(List<URI> announceURIs) {
-            if (announceURIList == null) {
-                announceURIList = new ArrayList<List<URI>>(1);
-            }
-            this.announceURIList.add(announceURIs);
-            return this;
-        }
+		public Builder withAnnounceURITier(List<URI> announceURIs) {
+			if (announceURIList == null) {
+				announceURIList = new ArrayList<List<URI>>(1);
+			}
+			this.announceURIList.add(announceURIs);
+			return this;
+		}
 
-        public Builder withPieceLength(int length) {
-            this.pieceLength = length;
-            return this;
-        }
+		public Builder withPieceLength(int length) {
+			this.pieceLength = length;
+			return this;
+		}
 
-        public Builder withCreator(String creator) {
-            this.createdBy = creator;
-            return this;
-        }
+		public Builder withCreator(String creator) {
+			this.createdBy = creator;
+			return this;
+		}
 
-        public Torrent build() throws IOException, InterruptedException {
-            return create(source, fileList, pieceLength, announceURI, announceURIList, createdBy, privateFlag);
-        }
-    }
+		public Torrent build() throws IOException, InterruptedException {
+			return create(source, fileList, pieceLength, announceURI, announceURIList, createdBy, privateFlag);
+		}
+	}
 
 	protected final byte[] encoded;
 	protected final byte[] encoded_info;
@@ -207,7 +207,7 @@ public class Torrent {
 	private final String comment;
 	private final String createdBy;
 	private final String name;
-    private final boolean privateFlag;
+	private final boolean privateFlag;
 	private final long size;
 	private final int pieceLength;
 
@@ -304,7 +304,7 @@ public class Torrent {
 			? this.decoded.get("created by").getString()
 			: null;
 		this.name = this.decoded_info.get("name").getString();
-        this.privateFlag = this.decoded_info.containsKey("private") && this.decoded_info.get("private").getBoolean();
+		this.privateFlag = this.decoded_info.containsKey("private") && this.decoded_info.get("private").getBoolean();
 		this.pieceLength = this.decoded_info.get("piece length").getInt();
 
 		this.files = new LinkedList<TorrentFile>();
@@ -340,7 +340,7 @@ public class Torrent {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
-        logger.info("  Private.....: {}", this.privateFlag);
+		logger.info("  Private.....: {}", this.privateFlag);
 		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
@@ -395,12 +395,12 @@ public class Torrent {
 		return this.name;
 	}
 
-    /**
-     * Get the torrent's private flag
-     */
-    public boolean isPrivate() {
-        return privateFlag;
-    }
+	/**
+	 * Get the torrent's private flag
+	 */
+	public boolean isPrivate() {
+		return privateFlag;
+	}
 
     /**
 	 * Get this torrent's comment string.
@@ -615,7 +615,7 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
-     * @param privateFlag indicates if the torrent should be flagged as private
+	 * @param privateFlag indicates if the torrent should be flagged as private
 	 */
 	private static Torrent create(File parent, List<File> files, int pieceLength,
 				URI announce, List<List<URI>> announceList, String createdBy, boolean privateFlag)
@@ -650,7 +650,7 @@ public class Torrent {
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
-        info.put("private", new BEValue(privateFlag));
+		info.put("private", new BEValue(privateFlag));
 		info.put("piece length", new BEValue(pieceLength));
 
 		if (files == null || files.isEmpty()) {
@@ -720,7 +720,7 @@ public class Torrent {
 	 *
 	 * <p>
 	 * Hashes the given file piece by piece using the given piece length and
-     * returns the concatenation of these hashes, as a string.
+	 * returns the concatenation of these hashes, as a string.
 	 * </p>
 	 *
 	 * <p>
