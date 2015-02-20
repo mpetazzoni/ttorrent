@@ -31,16 +31,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +41,7 @@ import java.util.concurrent.Future;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +91,107 @@ public class Torrent {
 		}
 	}
 
+    /**
+     * Builder for Torrent Object
+     *
+     * @author jdeketelaere
+     */
+    public static final class Builder {
+
+        private File source;
+        private List<File> fileList;
+
+        private URI announceURI;
+        private List<List<URI>> announceURIList;
+
+        private String createdBy;
+        private boolean privateFlag = false;
+
+        private int pieceLength = DEFAULT_PIECE_LENGTH;
+
+        public Builder withSharedSource(File source) {
+            if (source != null && source.isDirectory()) {
+                return withSharedDirectory(source);
+            }
+            return withSharedFile(source);
+        }
+
+        public Builder withSharedFile(File file) {
+            checkSource(file, true);
+            this.source = file;
+            return this;
+        }
+
+        public Builder withSharedDirectory(File directory) {
+            return withSharedDirectory(directory, null);
+        }
+
+        public Builder withSharedDirectory(File directory, List<File> files) {
+            checkSource(directory, false);
+            this.source = directory;
+
+            List<File> sharedFiles;
+            if (files != null) {
+                sharedFiles = new ArrayList<File>(files);
+            } else {
+                sharedFiles = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
+            }
+            Collections.sort(sharedFiles);
+            this.fileList = Collections.unmodifiableList(sharedFiles);
+
+            return this;
+        }
+
+        private void checkSource(File source, boolean singleFile) {
+            if (source == null) {
+                throw new IllegalArgumentException("Cannot build torrent for source <null>");
+            }
+
+            if (this.source != null) {
+                throw new IllegalArgumentException("Source already set");
+            }
+
+            if (singleFile && !source.isFile()) {
+                throw new IllegalArgumentException("Source is not a file");
+            }
+
+            if (!singleFile && !source.isDirectory()) {
+                throw new IllegalArgumentException("Source is not a directory");
+            }
+        }
+
+        public Builder withPrivateFlag(boolean privateFlag) {
+            this.privateFlag = privateFlag;
+            return this;
+        }
+
+        public Builder withAnnounceURI(URI announceURI) {
+            this.announceURI = announceURI;
+            return this;
+        }
+
+        public Builder withAnnounceURITier(List<URI> announceURIs) {
+            if (announceURIList == null) {
+                announceURIList = new ArrayList<List<URI>>(1);
+            }
+            this.announceURIList.add(announceURIs);
+            return this;
+        }
+
+        public Builder withPieceLength(int length) {
+            this.pieceLength = length;
+            return this;
+        }
+
+        public Builder withCreator(String creator) {
+            this.createdBy = creator;
+            return this;
+        }
+
+        public Torrent build() throws IOException, InterruptedException {
+            return create(source, fileList, pieceLength, announceURI, announceURIList, createdBy, privateFlag);
+        }
+    }
 
 	protected final byte[] encoded;
 	protected final byte[] encoded_info;
@@ -519,7 +612,10 @@ public class Torrent {
 	 * @param announce The announce URI that will be used for this torrent.
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
-	 */
+     *
+     * @deprecated use {@link Builder} instead
+     */
+    @Deprecated
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException {
 		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
@@ -542,7 +638,10 @@ public class Torrent {
 	 * @param announce The announce URI that will be used for this torrent.
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
-	 */
+     *
+     * @deprecated use {@link Builder} instead
+     */
+    @Deprecated
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
@@ -563,7 +662,10 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
-	 */
+     *
+     * @deprecated use {@link Builder} instead
+     */
+    @Deprecated
 	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException {
 		return Torrent.create(source, null, pieceLength, 
@@ -587,7 +689,10 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
-	 */
+     *
+     * @deprecated use {@link Builder} instead
+     */
+    @Deprecated
 	public static Torrent create(File source, List<File> files, int pieceLength,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException {
