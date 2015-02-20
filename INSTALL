@@ -1,20 +1,21 @@
-Howto build and use the BitTorrent library
+Howto build and use the ttorrent library
 ==========================================
 
 Dependencies
 ------------
 
 This Java implementation of the BitTorrent protocol implements a BitTorrent
-tracker (an HTTP service), and a BitTorrent client. The only dependencies of
-the BitTorrent library are:
+tracker (an HTTP service), and a BitTorrent client. All dependencies are managed
+by maven. The only dependencies of ttorrent-core are:
 
-* the log4j library
 * the slf4j logging library
 * the SimpleHTTPFramework
+* the Apache Commons (Codec and IO)
 
-These libraries are provided in the lib/ directory, and are automatically
-included in the JAR file created by the build process.
+The CLI module also depends on:
 
+* the log4j library
+* the jargs library
 
 Building the distribution JAR
 -----------------------------
@@ -23,6 +24,14 @@ Simply execute the following command:
 
   $ mvn package
 
-To build the library's JAR file (in the target/ directory). You can then import
+To build the library's JAR file (in the core/target/ directory). You can then import
 this JAR file into your Java project and start using the Java BitTorrent
 library.
+
+This will also create a shaded JAR (in the cli/target/ directory). You can then use
+this JAR file in conjunction with the three scripts in the bin/ folder. Each script
+allows execution of one of the following entry points:
+
+* ClientMain - for running a torrent client
+* TorrentMain - for creating .torrent files
+* TrackerMain - for running a tracking server
