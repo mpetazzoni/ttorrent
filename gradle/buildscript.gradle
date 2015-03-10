@@ -11,7 +11,7 @@ dependencies {
 	classpath "net.saliman:gradle-cobertura-plugin:2.2.5"
 	// classpath 'gradle-release:gradle-release:1.1.5'
 	classpath 'org.ajoberstar:gradle-git:0.11.2'
-	classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.5'
+	// classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.5'
 	classpath('com.netflix.nebula:gradle-info-plugin:1.12.5') {
 		exclude group: 'com.perforce'
 	}
