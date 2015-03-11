@@ -4,7 +4,6 @@
  */
 package com.turn.ttorrent.protocol.torrent;
 
-import com.google.common.io.ByteSource;
 import com.google.common.io.Files;
 import com.google.common.math.LongMath;
 import com.turn.ttorrent.protocol.test.PatternInputStream;
@@ -51,6 +50,9 @@ public class TorrentCreatorTest {
         }
         TorrentCreator creator = new TorrentCreator(dir);
         Torrent torrent = creator.create();
+
+        long pieceCount = LongMath.divide(length * 4, creator.getPieceLength(), RoundingMode.CEILING);
+        assertEquals(pieceCount, torrent.getPieceCount());
 
         // TODO: Assert that the hash came out right.
     }
