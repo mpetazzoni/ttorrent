@@ -330,7 +330,9 @@ public class TorrentCreator {
      */
     @Nonnull
     @VisibleForTesting
-    public static byte[] hashFiles(Executor executor, List<File> files, long nbytes, int pieceLength)
+    public static byte[] hashFiles(@Nonnull Executor executor,
+            @Nonnull List<File> files, @Nonnegative long nbytes,
+            @Nonnegative int pieceLength)
             throws InterruptedException, IOException {
         int npieces = Ints.checkedCast(LongMath.divide(nbytes, pieceLength, RoundingMode.CEILING));
         // (int) Math.ceil((double) nbytes / pieceLength);
