@@ -229,8 +229,8 @@ public class UDPAnnounceRequestMessage
 		data.put(infoHash);
 		data.put(peerId);
 		data.putLong(downloaded);
-		data.putLong(uploaded);
 		data.putLong(left);
+		data.putLong(uploaded);
 		data.putInt(event.getId());
 		data.put(ip.getAddress());
 		data.putInt(key);
