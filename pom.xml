@@ -15,7 +15,7 @@
 		a tracker and a torrent manipulation utility.
 	</description>
 	<url>http://mpetazzoni.github.io/ttorrent/</url>
-	<groupId>com.turn</groupId>
+	<groupId>com.github.tchoulihan</groupId>
 	<artifactId>ttorrent</artifactId>
 	<version>1.5-SNAPSHOT</version>
 	<packaging>pom</packaging>

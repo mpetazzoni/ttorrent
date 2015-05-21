@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>com.turn</groupId>
+		<groupId>com.github.tchoulihan</groupId>
 		<artifactId>ttorrent</artifactId>
 		<version>1.5-SNAPSHOT</version>
 	</parent>
@@ -13,7 +13,7 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.turn</groupId>
+			<groupId>com.github.tchoulihan</groupId>
 			<artifactId>ttorrent-core</artifactId>
 			<version>1.5-SNAPSHOT</version>
 		</dependency>
