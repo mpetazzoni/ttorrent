@@ -135,7 +135,7 @@ public class Client extends Observable implements Runnable,
 		this.self = new Peer(
 			this.service.getSocketAddress()
 				.getAddress().getHostAddress(),
-			(short)this.service.getSocketAddress().getPort(),
+			this.service.getSocketAddress().getPort(),
 			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
 
 		// Initialize the announce request thread, and register ourselves to it
