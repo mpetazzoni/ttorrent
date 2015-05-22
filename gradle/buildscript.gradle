@@ -1,19 +1,11 @@
 // Executed in context of buildscript
 repositories {
-	// mavenLocal()
+	mavenLocal()
 	mavenCentral()
-	// jcenter()
+	jcenter()
+	// maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 
 dependencies {
-	classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.10.0'
-	// classpath 'com.mapvine:gradle-cobertura-plugin:0.1'
-	classpath "net.saliman:gradle-cobertura-plugin:2.2.5"
-	// classpath 'gradle-release:gradle-release:1.1.5'
-	classpath 'org.ajoberstar:gradle-git:0.11.2'
-	// classpath 'net.ltgt.gradle:gradle-errorprone-plugin:0.0.5'
-	classpath('com.netflix.nebula:gradle-info-plugin:1.12.5') {
-		exclude group: 'com.perforce'
-	}
-	classpath 'com.bmuschko:gradle-nexus-plugin:2.1.1'
+	classpath 'org.anarres.gradle:gradle-stdproject-plugin:1.0.2'
 }

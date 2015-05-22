@@ -1,19 +1,21 @@
-// Establish version and status
-ext.githubProjectName = rootProject.name // Change if github project name is not the same as the root project's name
-
 buildscript {
 	apply from: file('gradle/buildscript.gradle'), to: buildscript 
 }
 
-apply from: file('gradle/convention.gradle')
-apply from: file('gradle/github.gradle')
-apply from: file('gradle/nexus.gradle')
-apply from: file('gradle/check.gradle')
-apply from: file('gradle/license.gradle')
-// apply from: file('gradle/release.gradle')
+apply plugin: 'org.anarres.stdproject'
+stdproject {
+	javadocLink "http://netty.io/4.0/api/"
+}
 
 subprojects {
 	group = "org.anarres.ttorrent"
+
+	apply plugin: 'org.anarres.stdmodule'
+	stdmodule {
+		description "An embeddable high performance bittorrent library, client and tracker."
+		author id: 'shevek', name: 'Shevek', email: 'github@anarres.org'
+		license 'Apache-2.0'
+	}
 
 	apply plugin: 'eclipse'
 	eclipse {
@@ -21,8 +23,8 @@ subprojects {
 			downloadSources = true
 		}
 		jdt {
-			sourceCompatibility = 1.6
-			targetCompatibility = 1.6
+			sourceCompatibility = 1.7
+			targetCompatibility = 1.7
 		}
 	}
 
@@ -35,21 +37,23 @@ subprojects {
 	}
 
 	dependencies {
-		compile 'com.google.code.findbugs:jsr305:2.0.3'
-		compile 'org.slf4j:slf4j-api:1.7.7'
-		compile 'com.google.guava:guava:18.0'
-		compile 'io.dropwizard.metrics:metrics-core:3.1.0'
-
-		testCompile 'junit:junit:4.11'
 		testCompile 'org.easymock:easymock:3.2'
 
-		testRuntime 'org.slf4j:jcl-over-slf4j:1.7.7'
-		testRuntime 'org.slf4j:slf4j-simple:1.7.7'
+		testRuntime 'org.slf4j:jcl-over-slf4j:1.7.12'
+	}
+
+	sourceCompatibility = 1.7
+	animalsniffer {
+		signature = "org.codehaus.mojo.signature:java17:+@signature"
 	}
 }
 
 project(':ttorrent-protocol') {
 	dependencies {
+		compile 'com.google.code.findbugs:annotations:2.0.3'
+		compile 'org.slf4j:slf4j-api:1.7.7'
+		compile 'com.google.guava:guava:18.0'
+		compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 		compile 'io.netty:netty-all:4.0.23.Final'
 
 		testCompile project(':ttorrent-tracker-simple')
