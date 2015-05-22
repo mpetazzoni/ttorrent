@@ -5,6 +5,10 @@ buildscript {
 apply plugin: 'org.anarres.stdproject'
 stdproject {
 	javadocLink "http://netty.io/4.0/api/"
+
+	javadocGroup "BitTorrent Protocols", "com.turn.ttorrent.protocol*"
+	javadocGroup "BitTorrent Client Implementation", "com.turn.ttorrent.client*"
+	javadocGroup "BitTorrent Tracker Implementations", "com.turn.ttorrent.tracker*"
 }
 
 subprojects {
