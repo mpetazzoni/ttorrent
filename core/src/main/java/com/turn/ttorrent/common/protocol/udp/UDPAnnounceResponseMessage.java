@@ -102,7 +102,11 @@ public class UDPAnnounceResponseMessage
 		int complete = data.getInt();
 
 		List<Peer> peers = new LinkedList<Peer>();
-		for (int i=0; i < data.remaining() / 6; i++) {
+		// the line below replaces this: for (int i=0; i < data.remaining() / 6; i++)
+		// That for loop fails when data.remaining() is 6, even if data.remaining() / 6 is
+		// placed in parentheses.  The reason why it fails is not clear.  Replacing it
+		// with while (data.remaining() > 5) works however.
+		while(data.remaining() > 5) {
 			try {
 				byte[] ipBytes = new byte[4];
 				data.get(ipBytes);
