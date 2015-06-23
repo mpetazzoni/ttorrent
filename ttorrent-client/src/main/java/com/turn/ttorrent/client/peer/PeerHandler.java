@@ -21,9 +21,9 @@ import com.turn.ttorrent.client.PeerPieceProvider;
 import com.turn.ttorrent.client.io.PeerExtendedMessage;
 import com.turn.ttorrent.client.io.PeerHandshakeMessage;
 import com.turn.ttorrent.client.io.PeerMessage;
-import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.tracker.client.PeerAddressProvider;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import java.io.IOException;
@@ -149,7 +149,7 @@ public class PeerHandler implements PeerMessageListener {
      * nor interesting.
      * </p>
      */
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public PeerHandler(
             @Nonnull Channel channel,
             @Nonnull byte[] remotePeerId,
@@ -183,7 +183,7 @@ public class PeerHandler implements PeerMessageListener {
     }
 
     @Nonnull
-    @SuppressWarnings("EI_EXPOSE_REP")
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public byte[] getRemotePeerId() {
         return remotePeerId;
     }

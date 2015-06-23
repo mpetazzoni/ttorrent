@@ -16,8 +16,8 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.peer.PeerConnectionListener;
-import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.logging.LoggingHandler;
@@ -43,7 +43,7 @@ public class PeerClientHandshakeHandler extends PeerHandshakeHandler {
     @Nonnull
     private final PeerConnectionListener listener;
 
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public PeerClientHandshakeHandler(
             @Nonnull PeerConnectionListener listener,
             @Nonnull byte[] infoHash,

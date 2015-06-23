@@ -16,9 +16,9 @@
 package com.turn.ttorrent.client.io;
 
 import com.turn.ttorrent.client.io.PeerExtendedMessage.ExtendedType;
-import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.bcodec.BEUtils;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.buffer.ByteBuf;
 import java.util.Arrays;
 import java.util.Map;
@@ -60,7 +60,7 @@ public class PeerHandshakeMessage extends PeerMessage {
         Feature.BEP10_EXTENSION_PROTOCOL.set(reserved); // Overwritten by fromWire()
     }
 
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public PeerHandshakeMessage(@Nonnull byte[] infoHash, @Nonnull byte[] peerId) {
         this();
         if (infoHash.length != 20)
@@ -77,18 +77,18 @@ public class PeerHandshakeMessage extends PeerMessage {
         return Type.HANDSHAKE;
     }
 
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public byte[] getInfoHash() {
         return infoHash;
     }
 
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public byte[] getPeerId() {
         return peerId;
     }
 
     @Nonnull
-    @SuppressWarnings("EI_EXPOSE_REP2")
+    @SuppressFBWarnings("EI_EXPOSE_REP2")
     public byte[] getReserved() {
         return reserved;
     }

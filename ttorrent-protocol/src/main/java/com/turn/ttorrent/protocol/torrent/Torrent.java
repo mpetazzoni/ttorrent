@@ -17,12 +17,12 @@ package com.turn.ttorrent.protocol.torrent;
 
 import com.google.common.io.Closeables;
 import com.turn.ttorrent.protocol.TorrentUtils;
-import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.bcodec.BEValue;
 import com.turn.ttorrent.protocol.bcodec.BytesBDecoder;
 import com.turn.ttorrent.protocol.bcodec.BytesBEncoder;
 import com.turn.ttorrent.protocol.bcodec.StreamBDecoder;
 import com.turn.ttorrent.protocol.bcodec.StreamBEncoder;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -350,7 +350,7 @@ public class Torrent {
     }
 
     @Nonnull
-    @SuppressWarnings("EI_EXPOSE_REP")
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public byte[] getPiecesHashes() {
         return piecesHashes;
     }
@@ -379,7 +379,7 @@ public class Torrent {
      * Return the hash of the B-encoded meta-info structure of this torrent.
      */
     @Nonnull
-    @SuppressWarnings("EI_EXPOSE_REP")
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public byte[] getInfoHash() {
         return this.info_hash;
     }

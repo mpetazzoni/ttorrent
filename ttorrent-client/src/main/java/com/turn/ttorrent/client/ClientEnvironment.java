@@ -20,11 +20,11 @@ import com.google.common.base.Preconditions;
 import com.turn.ttorrent.client.io.PeerServer;
 import com.turn.ttorrent.client.peer.Instrumentation;
 import com.turn.ttorrent.protocol.PeerIdentityProvider;
-import com.turn.ttorrent.protocol.SuppressWarnings;
 import com.turn.ttorrent.protocol.torrent.TorrentCreator;
 import com.turn.ttorrent.protocol.TorrentUtils;
 import com.turn.ttorrent.protocol.bcodec.BEUtils;
 import com.turn.ttorrent.tracker.client.PeerAddressProvider;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
@@ -137,7 +137,7 @@ public class ClientEnvironment implements PeerIdentityProvider {
      * Get this client's peer specification.
      */
     @Override
-    @SuppressWarnings("EI_EXPOSE_REP")
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public byte[] getLocalPeerId() {
         return peerId;
     }
