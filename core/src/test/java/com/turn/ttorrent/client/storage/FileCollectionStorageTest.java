@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -87,6 +88,6 @@ public class FileCollectionStorageTest
     {
         final byte[] temp = new byte[bytes.length];
         assertEquals(new FileInputStream(f).read(temp), temp.length);
-        assertEquals(temp, bytes);
+        Assert.assertArrayEquals(temp, bytes);
     }
 }
