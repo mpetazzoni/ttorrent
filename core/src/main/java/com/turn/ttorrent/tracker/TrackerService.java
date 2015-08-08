@@ -17,9 +17,12 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
-import com.turn.ttorrent.common.protocol.http.*;
-
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPTrackerErrorMessage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -30,15 +33,13 @@ import java.nio.channels.WritableByteChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-
 import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
 import org.simpleframework.http.Status;
 import org.simpleframework.http.core.Container;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -102,6 +103,7 @@ public class TrackerService implements Container {
 	 * @param request The incoming HTTP request.
 	 * @param response The response object.
 	 */
+    @Override
 	public void handle(Request request, Response response) {
 		// Reject non-announce requests
 		if (!Tracker.ANNOUNCE_URL.equals(request.getPath().toString())) {
