@@ -16,7 +16,6 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -27,7 +26,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 import org.slf4j.Logger;
@@ -67,7 +65,7 @@ public class Tracker {
 
 	private Thread tracker;
 	private Thread collector;
-	private boolean stop;
+	private boolean stop = true;
 
 	/**
 	 * Create a new BitTorrent tracker listening at the given address on the
@@ -130,10 +128,21 @@ public class Tracker {
 		return null;
 	}
 
+    /**
+     * See if tracker is stopped.
+     * @return true for stopped.
+     */
+    public boolean isStop()
+    {
+        return stop;
+    }
+
+
 	/**
 	 * Start the tracker thread.
 	 */
 	public void start() {
+        this.stop = false;
 		if (this.tracker == null || !this.tracker.isAlive()) {
 			this.tracker = new TrackerThread();
 			this.tracker.setName("tracker:" + this.address.getPort());
