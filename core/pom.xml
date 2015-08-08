@@ -27,12 +27,6 @@
 			<artifactId>simple</artifactId>
 			<version>4.1.21</version>
 		</dependency>
- 		<dependency>
- 			<groupId>org.testng</groupId>
- 			<artifactId>testng</artifactId>
- 			<version>6.1.1</version>
- 			<scope>test</scope>
-        </dependency>
         <!-- Logging start -->
         <dependency>
             <groupId>log4j</groupId>
