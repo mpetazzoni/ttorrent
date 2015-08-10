@@ -15,7 +15,7 @@
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.8</version>
+            <version>1.9</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
@@ -27,16 +27,38 @@
 			<artifactId>simple</artifactId>
 			<version>4.1.21</version>
 		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.6.4</version>
-		</dependency>
- 		<dependency>
- 			<groupId>org.testng</groupId>
- 			<artifactId>testng</artifactId>
- 			<version>6.1.1</version>
- 			<scope>test</scope>
- 		</dependency>
+        <!-- Logging start -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <artifactId>slf4j-api</artifactId>
+            <groupId>org.slf4j</groupId>
+            <version>1.7.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- Log4j stop -->
+        <!-- Unit Test start -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.10</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>hamcrest-core</artifactId>
+                    <groupId>org.hamcrest</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Unit Test stop -->
 	</dependencies>
 </project>

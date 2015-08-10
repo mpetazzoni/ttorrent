@@ -16,7 +16,6 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -27,7 +26,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
+import org.simpleframework.http.core.Container;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
 import org.slf4j.Logger;
@@ -59,15 +58,16 @@ public class Tracker {
 	public static final String DEFAULT_VERSION_STRING =
 		"BitTorrent Tracker (ttorrent)";
 
-	private final Connection connection;
+	private Connection connection=null;
 	private final InetSocketAddress address;
+    private final Container container;
 
 	/** The in-memory repository of torrents tracked. */
 	private final ConcurrentMap<String, TrackedTorrent> torrents;
 
 	private Thread tracker;
 	private Thread collector;
-	private boolean stop;
+	private boolean stop = true;
 
 	/**
 	 * Create a new BitTorrent tracker listening at the given address on the
@@ -105,9 +105,8 @@ public class Tracker {
 		throws IOException {
 		this.address = address;
 
-		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
-		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
+		this.torrents = new ConcurrentHashMap<>();
+        this.container = new TrackerService(version, this.torrents);
 	}
 
 	/**
@@ -116,6 +115,7 @@ public class Tracker {
 	 * <p>
 	 * This has the form http://host:port/announce.
 	 * </p>
+     * @return
 	 */
 	public URL getAnnounceUrl() {
 		try {
@@ -130,22 +130,47 @@ public class Tracker {
 		return null;
 	}
 
+    /**
+     * See if tracker is stopped.
+     * @return true for stopped.
+     */
+    public boolean isStop()
+    {
+        return stop;
+    }
+
+
 	/**
 	 * Start the tracker thread.
 	 */
-	public void start() {
-		if (this.tracker == null || !this.tracker.isAlive()) {
-			this.tracker = new TrackerThread();
-			this.tracker.setName("tracker:" + this.address.getPort());
-			this.tracker.start();
-		}
-
-		if (this.collector == null || !this.collector.isAlive()) {
-			this.collector = new PeerCollectorThread();
-			this.collector.setName("peer-collector:" + this.address.getPort());
-			this.collector.start();
-		}
-	}
+    public void start()
+    {
+        if (!isStop())
+        {
+            return;
+        }
+        try
+        {
+            this.connection = new SocketConnection(container);
+            this.stop = false;
+            if (this.tracker == null || !this.tracker.isAlive())
+            {
+                this.tracker = new TrackerThread();
+                this.tracker.setName("tracker:" + this.address.getPort());
+                this.tracker.start();
+            }
+            if (this.collector == null || !this.collector.isAlive())
+            {
+                this.collector = new PeerCollectorThread();
+                this.collector.setName("peer-collector:" + this.address.getPort());
+                this.collector.start();
+            }
+        }
+        catch (IOException ex)
+        {
+            logger.error("Unable to connect to {}", address.toString());
+        }
+    }
 
 	/**
 	 * Stop the tracker.
@@ -155,9 +180,13 @@ public class Tracker {
 	 * the service, and interrupts the peer collector thread as well.
 	 * </p>
 	 */
-	public void stop() {
+    public void stop()
+    {
+        if (isStop())
+        {
+            return;
+        }
 		this.stop = true;
-
 		try {
 			this.connection.close();
 			logger.info("BitTorrent tracker closed.");
@@ -173,6 +202,7 @@ public class Tracker {
 
 	/**
 	 * Returns the list of tracker's torrents
+     * @return
 	 */
 	public Collection<TrackedTorrent> getTrackedTorrents() {
 		return torrents.values();
@@ -275,7 +305,6 @@ public class Tracker {
 		public void run() {
 			logger.info("Starting BitTorrent tracker on {}...",
 				getAnnounceUrl());
-
 			try {
 				connection.connect(address);
 			} catch (IOException ioe) {
@@ -306,7 +335,6 @@ public class Tracker {
 				for (TrackedTorrent torrent : torrents.values()) {
 					torrent.collectUnfreshPeers();
 				}
-
 				try {
 					Thread.sleep(PeerCollectorThread
 							.PEER_COLLECTION_FREQUENCY_SECONDS * 1000);
