@@ -12,11 +12,11 @@
 	<packaging>jar</packaging>
 
 	<dependencies>
-		<dependency>
+		<!-- dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 			<version>1.8</version>
-		</dependency>
+		</dependency-->
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
