@@ -141,7 +141,7 @@ public class Client implements Runnable,
       torrent.setClientState(ClientState.DONE);
       torrent.close();
     } else {
-      logger.warn(String.format("Torrent %s alreay removed from myTorrents", torrentHash.getHexInfoHash()));
+      logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
   }
   public void removeAndDeleteTorrent(TorrentHash torrentHash) {
