@@ -333,6 +333,19 @@ public class Torrent {
 		}
 		return filenames;
 	}
+	
+	/**
+	 * Get the file from this torrent.
+	 *
+	 * @return The list all the files described in this torrent.
+	 */
+	public List<File> getFiles() {
+		List<File> list = new LinkedList<File>();
+		for (TorrentFile file : this.files) {
+			list.add(file.file);
+		}
+		return list;
+	}
 
 	/**
 	 * Tells whether this torrent is multi-file or not.
