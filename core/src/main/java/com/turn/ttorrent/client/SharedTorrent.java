@@ -182,6 +182,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		throws FileNotFoundException, IOException {
 		this(torrent, destDir, false);
 	}
+	
+	/**
+	 * Create a new shared torrent from the given torrent file.
+	 *
+	 * @param source The <code>.torrent</code> file to read the torrent
+	 * meta-info from.
+	 * @param parent The parent directory or location of the torrent files.
+	 * @throws IOException When the torrent file cannot be read or decoded.
+	 */
+	public SharedTorrent(File source, File destDir) throws FileNotFoundException, IOException {
+		this(FileUtils.readFileToByteArray(source), destDir, false);
+	}
 
 	/**
 	 * Create a new shared torrent from meta-info binary data.
@@ -276,13 +288,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * meta-info from.
 	 * @param parent The parent directory or location of the torrent files.
 	 * @throws IOException When the torrent file cannot be read or decoded.
+	 * @deprecated use similar constructor - {@code new SharedTorrent(File source, File parent)}
 	 */
+	@Deprecated
 	public static SharedTorrent fromFile(File source, File parent)
 		throws IOException {
 		byte[] data = FileUtils.readFileToByteArray(source);
 		return new SharedTorrent(data, parent);
 	}
-
+	
 	public double getMaxUploadRate() {
 		return this.maxUploadRate;
 	}
