@@ -44,6 +44,8 @@ public class HTTPTrackerClient extends TrackerClient {
 
 	protected static final Logger logger =
 		LoggerFactory.getLogger(HTTPTrackerClient.class);
+	private final static String USER_AGENT = "Mozilla/5.0";
+	private final static String USER_AGENT_HEADER = "User-Agent";
 
 	/**
 	 * Create a new HTTP announcer for the given torrent.
@@ -105,6 +107,7 @@ public class HTTPTrackerClient extends TrackerClient {
 		InputStream in = null;
 		try {
 			conn = (HttpURLConnection)target.openConnection();
+			conn.setRequestProperty(USER_AGENT_HEADER,USER_AGENT);
 			in = conn.getInputStream();
 		} catch (IOException ioe) {
 			if (conn != null) {
