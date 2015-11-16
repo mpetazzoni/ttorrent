@@ -172,7 +172,8 @@ Authors and contributors
   Contributed the switch from Ant to Maven.
 * Alexey Ptashniy  
   Fixed an integer overflow in the calculation of a torrent's full size.
-
+* André Rocha, Philipp Henkel  
+  Android
 
 Caveats
 -------
