@@ -15,17 +15,18 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEString;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 
 
 /**
@@ -56,13 +57,13 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
 				"Could not decode tracker message (not B-encoded?)!");
 		}
 
-		Map<String, BEValue> params = decoded.getMap();
+		Map<BEString, BEValue> params = decoded.getMap();
 
 		try {
 			return new HTTPTrackerErrorMessage(
 				data,
-				params.get("failure reason")
-					.getString(Torrent.BYTE_ENCODING));
+				params.get(BEString.fromString("failure reason"))
+					.getBEString(Torrent.BYTE_ENCODING).toString());
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException("Invalid tracker error " +
 				"message!", ibee);
@@ -77,8 +78,8 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
 
 	public static HTTPTrackerErrorMessage craft(String reason)
 		throws IOException, MessageValidationException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
-		params.put("failure reason",
+		Map<BEString, BEValue> params = new HashMap<BEString, BEValue>();
+		params.put(BEString.fromString("failure reason"),
 			new BEValue(reason, Torrent.BYTE_ENCODING));
 		return new HTTPTrackerErrorMessage(
 			BEncoder.bencode(params),

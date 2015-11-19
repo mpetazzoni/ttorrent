@@ -66,8 +66,8 @@ public class BEncoder {
 		}
 	}
 
-	public static void bencode(String s, OutputStream out) throws IOException {
-		byte[] bs = s.getBytes("UTF-8");
+	public static void bencode(BEString s, OutputStream out) throws IOException {
+		byte[] bs = s.getBytes();
 		bencode(bs, out);
 	}
 
@@ -94,16 +94,16 @@ public class BEncoder {
 		out.write(bs);
 	}
 
-	public static void bencode(Map<String, BEValue> m, OutputStream out)
+	public static void bencode(Map<BEString, BEValue> m, OutputStream out)
 		throws IOException {
 		out.write('d');
 
 		// Keys must be sorted.
-		Set<String> s = m.keySet();
-		List<String> l = new ArrayList<String>(s);
+		Set<BEString> s = m.keySet();
+		List<BEString> l = new ArrayList<BEString>(s);
 		Collections.sort(l);
 
-		for (String key : l) {
+		for (BEString key : l) {
 			Object value = m.get(key);
 			bencode(key, out);
 			bencode(value, out);
@@ -112,7 +112,7 @@ public class BEncoder {
 		out.write('e');
 	}
 
-	public static ByteBuffer bencode(Map<String, BEValue> m)
+	public static ByteBuffer bencode(Map<BEString, BEValue> m)
 		throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(m, baos);

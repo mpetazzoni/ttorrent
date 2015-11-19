@@ -16,14 +16,15 @@
 package com.turn.ttorrent.bcodec;
 
 import java.io.ByteArrayInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.EOFException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.input.AutoCloseInputStream;
@@ -46,9 +47,16 @@ import org.apache.commons.io.input.AutoCloseInputStream;
  * @see <a href="http://en.wikipedia.org/wiki/Bencode">B-encoding specification</a>
  */
 public class BDecoder {
+	
+	private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+	
+	static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
 	// The InputStream to BDecode.
 	private final InputStream in;
+
+	// The Charset for given inputStream
+	private Charset charset;
 
 	// The last indicator read.
 	// Zero if unknown.
@@ -69,9 +77,25 @@ public class BDecoder {
 	 * </p>
 	 *
 	 * @param in The input stream to read from.
+	 * @param charset The charset for given input
 	 */
 	public BDecoder(InputStream in) {
+		this(in, DEFAULT_CHARSET);
+	}
+
+	/**
+	 * Initializes a new BDecoder.
+	 *
+	 * <p>
+	 * Nothing is read from the given <code>InputStream</code> yet.
+	 * </p>
+	 *
+	 * @param in The input stream to read from.
+	 * @param charset The charset for given input
+	 */
+	public BDecoder(InputStream in, Charset charset) {
 		this.in = in;
+		this.charset = charset;
 	}
 
 	/**
@@ -271,11 +295,11 @@ public class BDecoder {
 		}
 		this.indicator = 0;
 
-		Map<String, BEValue> result = new HashMap<String, BEValue>();
+		Map<BEString, BEValue> result = new HashMap<BEString, BEValue>();
 		c = this.getNextIndicator();
 		while (c != 'e') {
 			// Dictionary keys are always strings.
-			String key = this.bdecode().getString();
+			BEString key = this.bdecode().getBEString(charset.name());
 
 			BEValue value = this.bdecode();
 			result.put(key, value);
@@ -320,5 +344,20 @@ public class BDecoder {
 		}
 
 		return result;
+	}
+	
+	/**
+	 * Get a string-info-hash from bytes
+	 * @param bytes
+	 * @return
+	 */
+	public static String getStringInfoHash(byte[] bytes) {
+	    char[] hexChars = new char[bytes.length * 2];
+	    for ( int j = 0; j < bytes.length; j++ ) {
+	        int v = bytes[j] & 0xFF;
+	        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+	        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+	    }
+	    return new String(hexChars);
 	}
 }

@@ -15,10 +15,6 @@
  */
 package com.turn.ttorrent.common;
 
-import com.turn.ttorrent.bcodec.BDecoder;
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -52,6 +48,11 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEString;
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.BEncoder;
 
 /**
  * A torrent file tracked by the controller's BitTorrent tracker.
@@ -102,8 +103,8 @@ public class Torrent {
 
 	protected final byte[] encoded;
 	protected final byte[] encoded_info;
-	protected final Map<String, BEValue> decoded;
-	protected final Map<String, BEValue> decoded_info;
+	protected final Map<BEString, BEValue> decoded;
+	protected final Map<BEString, BEValue> decoded_info;
 
 	private final byte[] info_hash;
 	private final String hex_info_hash;
@@ -139,7 +140,7 @@ public class Torrent {
 		this.decoded = BDecoder.bdecode(
 				new ByteArrayInputStream(this.encoded)).getMap();
 
-		this.decoded_info = this.decoded.get("info").getMap();
+		this.decoded_info = this.decoded.get(BEString.fromString("info")).getMap();
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(this.decoded_info, baos);
 		this.encoded_info = baos.toByteArray();
@@ -163,8 +164,8 @@ public class Torrent {
 			this.trackers = new ArrayList<List<URI>>();
 			this.allTrackers = new HashSet<URI>();
 
-			if (this.decoded.containsKey("announce-list")) {
-				List<BEValue> tiers = this.decoded.get("announce-list").getList();
+			if (this.decoded.containsKey(BEString.fromString("announce-list"))) {
+				List<BEValue> tiers = this.decoded.get(BEString.fromString("announce-list")).getList();
 				for (BEValue tv : tiers) {
 					List<BEValue> trackers = tv.getList();
 					if (trackers.isEmpty()) {
@@ -173,7 +174,7 @@ public class Torrent {
 
 					List<URI> tier = new ArrayList<URI>();
 					for (BEValue tracker : trackers) {
-						URI uri = new URI(tracker.getString());
+						URI uri = new URI(tracker.getBEString().toString());
 
 						// Make sure we're not adding duplicate trackers.
 						if (!this.allTrackers.contains(uri)) {
@@ -187,8 +188,8 @@ public class Torrent {
 						this.trackers.add(tier);
 					}
 				}
-			} else if (this.decoded.containsKey("announce")) {
-				URI tracker = new URI(this.decoded.get("announce").getString());
+			} else if (this.decoded.containsKey(BEString.fromString("announce"))) {
+				URI tracker = new URI(this.decoded.get(BEString.fromString("announce")).getBEString().toString());
 				this.allTrackers.add(tracker);
 
 				// Build a single-tier announce list.
@@ -200,39 +201,39 @@ public class Torrent {
 			throw new IOException(use);
 		}
 
-		this.creationDate = this.decoded.containsKey("creation date")
-			? new Date(this.decoded.get("creation date").getLong() * 1000)
+		this.creationDate = this.decoded.containsKey(BEString.fromString("creation date"))
+			? new Date(this.decoded.get(BEString.fromString("creation date")).getLong() * 1000)
 			: null;
-		this.comment = this.decoded.containsKey("comment")
-			? this.decoded.get("comment").getString()
+		this.comment = this.decoded.containsKey(BEString.fromString("comment"))
+			? this.decoded.get(BEString.fromString("comment")).getBEString().toString()
 			: null;
-		this.createdBy = this.decoded.containsKey("created by")
-			? this.decoded.get("created by").getString()
+		this.createdBy = this.decoded.containsKey(BEString.fromString("created by"))
+			? this.decoded.get(BEString.fromString("created by")).getBEString().toString()
 			: null;
-		this.name = this.decoded_info.get("name").getString();
-		this.pieceLength = this.decoded_info.get("piece length").getInt();
+		this.name = this.decoded_info.get(BEString.fromString("name")).getBEString().toString();
+		this.pieceLength = this.decoded_info.get(BEString.fromString("piece length")).getInt();
 
 		this.files = new LinkedList<TorrentFile>();
 
 		// Parse multi-file torrent file information structure.
-		if (this.decoded_info.containsKey("files")) {
-			for (BEValue file : this.decoded_info.get("files").getList()) {
-				Map<String, BEValue> fileInfo = file.getMap();
+		if (this.decoded_info.containsKey(BEString.fromString("files"))) {
+			for (BEValue file : this.decoded_info.get(BEString.fromString("files")).getList()) {
+				Map<BEString, BEValue> fileInfo = file.getMap();
 				StringBuilder path = new StringBuilder();
-				for (BEValue pathElement : fileInfo.get("path").getList()) {
+				for (BEValue pathElement : fileInfo.get(BEString.fromString("path")).getList()) {
 					path.append(File.separator)
-						.append(pathElement.getString());
+						.append(pathElement.getBEString());
 				}
 				this.files.add(new TorrentFile(
 					new File(this.name, path.toString()),
-					fileInfo.get("length").getLong()));
+					fileInfo.get(BEString.fromString("length")).getLong()));
 			}
 		} else {
 			// For single-file torrents, the name of the torrent is
 			// directly the name of the file.
 			this.files.add(new TorrentFile(
 				new File(this.name),
-				this.decoded_info.get("length").getLong()));
+				this.decoded_info.get(BEString.fromString("length")).getLong()));
 		}
 
 		// Calculate the total size of this torrent from its files' sizes.
@@ -280,8 +281,8 @@ public class Torrent {
 		}
 
 		logger.info("  Pieces......: {} piece(s) ({} byte(s)/piece)",
-			(this.size / this.decoded_info.get("piece length").getInt()) + 1,
-			this.decoded_info.get("piece length").getInt());
+			(this.size / this.decoded_info.get(BEString.fromString("piece length")).getInt()) + 1,
+			this.decoded_info.get(BEString.fromString("piece length")).getInt());
 		logger.info("  Total size..: {} byte(s)",
 			String.format("%,d", this.size));
 	}
@@ -362,6 +363,7 @@ public class Torrent {
 	 * The torrent's name is used.
 	 * </p>
 	 */
+	@Override
 	public String toString() {
 		return this.getName();
 	}
@@ -615,10 +617,10 @@ public class Torrent {
 				files.size(), parent.getName());
 		}
 
-		Map<String, BEValue> torrent = new HashMap<String, BEValue>();
+		Map<BEString, BEValue> torrent = new HashMap<BEString, BEValue>();
 
 		if (announce != null) {
-			torrent.put("announce", new BEValue(announce.toString()));
+			torrent.put(BEString.fromString("announce"), new BEValue(announce.toString()));
 		}
 		if (announceList != null) {
 			List<BEValue> tiers = new LinkedList<BEValue>();
@@ -629,25 +631,25 @@ public class Torrent {
 				}
 				tiers.add(new BEValue(tierInfo));
 			}
-			torrent.put("announce-list", new BEValue(tiers));
+			torrent.put(BEString.fromString("announce-list"), new BEValue(tiers));
 		}
 		
-		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
-		torrent.put("created by", new BEValue(createdBy));
+		torrent.put(BEString.fromString("creation date"), new BEValue(new Date().getTime() / 1000));
+		torrent.put(BEString.fromString("created by"), new BEValue(createdBy));
 
-		Map<String, BEValue> info = new TreeMap<String, BEValue>();
-		info.put("name", new BEValue(parent.getName()));
-		info.put("piece length", new BEValue(pieceLength));
+		Map<BEString, BEValue> info = new TreeMap<BEString, BEValue>();
+		info.put(BEString.fromString("name"), new BEValue(parent.getName()));
+		info.put(BEString.fromString("piece length"), new BEValue(pieceLength));
 
 		if (files == null || files.isEmpty()) {
-			info.put("length", new BEValue(parent.length()));
-			info.put("pieces", new BEValue(Torrent.hashFile(parent, pieceLength),
+			info.put(BEString.fromString("length"), new BEValue(parent.length()));
+			info.put(BEString.fromString("pieces"), new BEValue(Torrent.hashFile(parent, pieceLength),
 				Torrent.BYTE_ENCODING));
 		} else {
 			List<BEValue> fileInfo = new LinkedList<BEValue>();
 			for (File file : files) {
-				Map<String, BEValue> fileMap = new HashMap<String, BEValue>();
-				fileMap.put("length", new BEValue(file.length()));
+				Map<BEString, BEValue> fileMap = new HashMap<BEString, BEValue>();
+				fileMap.put(BEString.fromString("length"), new BEValue(file.length()));
 
 				LinkedList<BEValue> filePath = new LinkedList<BEValue>();
 				while (file != null) {
@@ -659,14 +661,14 @@ public class Torrent {
 					file = file.getParentFile();
 				}
 
-				fileMap.put("path", new BEValue(filePath));
+				fileMap.put(BEString.fromString("path"), new BEValue(filePath));
 				fileInfo.add(new BEValue(fileMap));
 			}
-			info.put("files", new BEValue(fileInfo));
-			info.put("pieces", new BEValue(Torrent.hashFiles(files, pieceLength),
+			info.put(BEString.fromString("files"), new BEValue(fileInfo));
+			info.put(BEString.fromString("pieces"), new BEValue(Torrent.hashFiles(files, pieceLength),
 				Torrent.BYTE_ENCODING));
 		}
-		torrent.put("info", new BEValue(info));
+		torrent.put(BEString.fromString("info"), new BEValue(info));
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		BEncoder.bencode(new BEValue(torrent), baos);

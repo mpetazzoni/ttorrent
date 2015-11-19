@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.bcodec.BEString;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
@@ -201,12 +202,12 @@ public class TrackedPeer extends Peer {
 	 * original byte-encoded form), the peer's IP and the peer's port.
 	 */
 	public BEValue toBEValue() throws UnsupportedEncodingException {
-		Map<String, BEValue> peer = new HashMap<String, BEValue>();
+		Map<BEString, BEValue> peer = new HashMap<BEString, BEValue>();
 		if (this.hasPeerId()) {
-			peer.put("peer id", new BEValue(this.getPeerId().array()));
+			peer.put(BEString.fromString("peer id"), new BEValue(this.getPeerId().array()));
 		}
-		peer.put("ip", new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
-		peer.put("port", new BEValue(this.getPort()));
+		peer.put(BEString.fromString("ip"), new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
+		peer.put(BEString.fromString("port"), new BEValue(this.getPort()));
 		return new BEValue(peer);
 	}
 }

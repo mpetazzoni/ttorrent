@@ -15,14 +15,6 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -33,6 +25,15 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEString;
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.BEncoder;
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
 
 
 /**
@@ -85,9 +86,9 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 				"Could not decode tracker message (not B-encoded?)!");
 		}
 
-		Map<String, BEValue> params = decoded.getMap();
+		Map<BEString, BEValue> params = decoded.getMap();
 
-		if (params.get("interval") == null) {
+		if (params.get(BEString.fromString("interval")) == null) {
 			throw new MessageValidationException(
 				"Tracker message missing mandatory field 'interval'!");
 		}
@@ -98,17 +99,17 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 			try {
 				// First attempt to decode a compact response, since we asked
 				// for it.
-				peers = toPeerList(params.get("peers").getBytes());
+				peers = toPeerList(params.get(BEString.fromString("peers")).getBytes());
 			} catch (InvalidBEncodingException ibee) {
 				// Fall back to peer list, non-compact response, in case the
 				// tracker did not support compact responses.
-				peers = toPeerList(params.get("peers").getList());
+				peers = toPeerList(params.get(BEString.fromString("peers")).getList());
 			}
 
 			return new HTTPAnnounceResponseMessage(data,
-				params.get("interval").getInt(),
-				params.get("complete") != null ? params.get("complete").getInt() : 0,
-				params.get("incomplete") != null ? params.get("incomplete").getInt() : 0,
+				params.get(BEString.fromString("interval")).getInt(),
+				params.get(BEString.fromString("complete")) != null ? params.get(BEString.fromString("complete")).getInt() : 0,
+				params.get(BEString.fromString("incomplete")) != null ? params.get(BEString.fromString("incomplete")).getInt() : 0,
 				peers);
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException("Invalid response " +
@@ -133,10 +134,10 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 		List<Peer> result = new LinkedList<Peer>();
 
 		for (BEValue peer : peers) {
-			Map<String, BEValue> peerInfo = peer.getMap();
+			Map<BEString, BEValue> peerInfo = peer.getMap();
 			result.add(new Peer(
-				peerInfo.get("ip").getString(Torrent.BYTE_ENCODING),
-				peerInfo.get("port").getInt()));
+				peerInfo.get(BEString.fromString("ip")).getBEString(Torrent.BYTE_ENCODING).toString(),
+				peerInfo.get(BEString.fromString("port")).getInt()));
 		}
 
 		return result;
@@ -187,10 +188,10 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 	public static HTTPAnnounceResponseMessage craft(int interval,
 		int minInterval, String trackerId, int complete, int incomplete,
 		List<Peer> peers) throws IOException, UnsupportedEncodingException {
-		Map<String, BEValue> response = new HashMap<String, BEValue>();
-		response.put("interval", new BEValue(interval));
-		response.put("complete", new BEValue(complete));
-		response.put("incomplete", new BEValue(incomplete));
+		Map<BEString, BEValue> response = new HashMap<BEString, BEValue>();
+		response.put(BEString.fromString("interval"), new BEValue(interval));
+		response.put(BEString.fromString("complete"), new BEValue(complete));
+		response.put(BEString.fromString("incomplete"), new BEValue(incomplete));
 
 		ByteBuffer data = ByteBuffer.allocate(peers.size() * 6);
 		for (Peer peer : peers) {
@@ -201,7 +202,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 			data.put(ip);
 			data.putShort((short)peer.getPort());
 		}
-		response.put("peers", new BEValue(data.array()));
+		response.put(BEString.fromString("peers"), new BEValue(data.array()));
 
 		return new HTTPAnnounceResponseMessage(
 			BEncoder.bencode(response),
