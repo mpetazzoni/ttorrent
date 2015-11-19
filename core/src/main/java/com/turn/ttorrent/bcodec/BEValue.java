@@ -16,6 +16,7 @@
 package com.turn.ttorrent.bcodec;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,7 +65,7 @@ public class BEValue {
 		this.value = value;
 	}
 
-	public BEValue(Map<String, BEValue> value) {
+	public BEValue(Map<BEString, BEValue> value) {
 		this.value = value;
 	}
 
@@ -76,8 +77,8 @@ public class BEValue {
 	 * Returns this BEValue as a String, interpreted as UTF-8.
 	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
-	public String getString() throws InvalidBEncodingException {
-		return this.getString("UTF-8");
+	public BEString getBEString() throws InvalidBEncodingException {
+		return this.getBEString("UTF-8");
 	}
 
 	/**
@@ -88,13 +89,11 @@ public class BEValue {
 	 * them into a {@link String}.
 	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
-	public String getString(String encoding) throws InvalidBEncodingException {
+	public BEString getBEString(String encoding) throws InvalidBEncodingException {
 		try {
-			return new String(this.getBytes(), encoding);
+			return new BEString(this.getBytes(), Charset.forName(encoding));
 		} catch (ClassCastException cce) {
 			throw new InvalidBEncodingException(cce.toString());
-		} catch (UnsupportedEncodingException uee) {
-			throw new InternalError(uee.toString());
 		}
 	}
 
@@ -172,11 +171,11 @@ public class BEValue {
 	 * @throws InvalidBEncodingException If the value is not a {@link HashMap}.
 	 */
 	@SuppressWarnings("unchecked")
-	public Map<String, BEValue> getMap() throws InvalidBEncodingException {
+	public Map<BEString, BEValue> getMap() throws InvalidBEncodingException {
 		if (this.value instanceof HashMap) {
-			return (Map<String, BEValue>)this.value;
+			return (Map<BEString, BEValue>)this.value;
 		} else {
-			throw new InvalidBEncodingException("Expected Map<String, BEValue> !");
+			throw new InvalidBEncodingException("Expected Map<BEString, BEValue> !");
 		}
 	}
 }

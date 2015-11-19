@@ -16,6 +16,7 @@
 package com.turn.ttorrent.common.protocol.http;
 
 import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEString;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
@@ -43,13 +44,13 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
 				"Could not decode tracker message (not B-encoded?)!");
 		}
 
-		Map<String, BEValue> params = decoded.getMap();
+		Map<BEString, BEValue> params = decoded.getMap();
 
-		if (params.containsKey("info_hash")) {
+		if (params.containsKey(BEString.fromString("info_hash"))) {
 			return HTTPAnnounceRequestMessage.parse(data);
-		} else if (params.containsKey("peers")) {
+		} else if (params.containsKey(BEString.fromString("peers"))) {
 			return HTTPAnnounceResponseMessage.parse(data);
-		} else if (params.containsKey("failure reason")) {
+		} else if (params.containsKey(BEString.fromString("failure reason"))) {
 			return HTTPTrackerErrorMessage.parse(data);
 		}
 

@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.bcodec.BEString;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -34,7 +35,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
 import org.simpleframework.http.Status;
@@ -253,7 +253,7 @@ public class TrackerService implements Container {
 	 */
 	private HTTPAnnounceRequestMessage parseQuery(Request request)
 		throws IOException, MessageValidationException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
+		Map<BEString, BEValue> params = new HashMap<BEString, BEValue>();
 
 		try {
 			String uri = request.getAddress().toString();
@@ -271,8 +271,8 @@ public class TrackerService implements Container {
 
 		// Make sure we have the peer IP, fallbacking on the request's source
 		// address if the peer didn't provide it.
-		if (params.get("ip") == null) {
-			params.put("ip", new BEValue(
+		if (params.get(BEString.fromString("ip")) == null) {
+			params.put(BEString.fromString("ip"), new BEValue(
 				request.getClientAddress().getAddress().getHostAddress(),
 				TrackedTorrent.BYTE_ENCODING));
 		}
@@ -281,19 +281,19 @@ public class TrackerService implements Container {
 		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
 	}
 
-	private void recordParam(Map<String, BEValue> params, String key,
+	private void recordParam(Map<BEString, BEValue> params, String key,
 		String value) {
 		try {
 			value = URLDecoder.decode(value, TrackedTorrent.BYTE_ENCODING);
 
 			for (String f : NUMERIC_REQUEST_FIELDS) {
 				if (f.equals(key)) {
-					params.put(key, new BEValue(Long.valueOf(value)));
+					params.put(BEString.fromString(key), new BEValue(Long.valueOf(value)));
 					return;
 				}
 			}
 
-			params.put(key, new BEValue(value, TrackedTorrent.BYTE_ENCODING));
+			params.put(BEString.fromString(key), new BEValue(value, TrackedTorrent.BYTE_ENCODING));
 		} catch (UnsupportedEncodingException uee) {
 			// Ignore, act like parameter was not there
 			return;

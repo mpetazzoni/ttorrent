@@ -15,14 +15,6 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -31,6 +23,15 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEString;
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.BEncoder;
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 
 
 /**
@@ -185,71 +186,71 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 				"Could not decode tracker message (not B-encoded?)!");
 		}
 
-		Map<String, BEValue> params = decoded.getMap();
+		Map<BEString, BEValue> params = decoded.getMap();
 
-		if (!params.containsKey("info_hash")) {
+		if (!params.containsKey(BEString.fromString("info_hash"))) {
 			throw new MessageValidationException(
 				ErrorMessage.FailureReason.MISSING_HASH.getMessage());
 		}
 
-		if (!params.containsKey("peer_id")) {
+		if (!params.containsKey(BEString.fromString("peer_id"))) {
 			throw new MessageValidationException(
 				ErrorMessage.FailureReason.MISSING_PEER_ID.getMessage());
 		}
 
-		if (!params.containsKey("port")) {
+		if (!params.containsKey(BEString.fromString("port"))) {
 			throw new MessageValidationException(
 				ErrorMessage.FailureReason.MISSING_PORT.getMessage());
 		}
 
 		try {
-			byte[] infoHash = params.get("info_hash").getBytes();
-			byte[] peerId = params.get("peer_id").getBytes();
-			int port = params.get("port").getInt();
+			byte[] infoHash = params.get(BEString.fromString("info_hash")).getBytes();
+			byte[] peerId = params.get(BEString.fromString("peer_id")).getBytes();
+			int port = params.get(BEString.fromString("port")).getInt();
 
 			// Default 'uploaded' and 'downloaded' to 0 if the client does
 			// not provide it (although it should, according to the spec).
 			long uploaded = 0;
-			if (params.containsKey("uploaded")) {
-				uploaded = params.get("uploaded").getLong();
+			if (params.containsKey(BEString.fromString("uploaded"))) {
+				uploaded = params.get(BEString.fromString("uploaded")).getLong();
 			}
 
 			long downloaded = 0;
-			if (params.containsKey("downloaded")) {
-				downloaded = params.get("downloaded").getLong();
+			if (params.containsKey(BEString.fromString("downloaded"))) {
+				downloaded = params.get(BEString.fromString("downloaded")).getLong();
 			}
 
 			// Default 'left' to -1 to avoid peers entering the COMPLETED
 			// state when they don't provide the 'left' parameter.
 			long left = -1;
-			if (params.containsKey("left")) {
-				left = params.get("left").getLong();
+			if (params.containsKey(BEString.fromString("left"))) {
+				left = params.get(BEString.fromString("left")).getLong();
 			}
 
 			boolean compact = false;
-			if (params.containsKey("compact")) {
-				compact = params.get("compact").getInt() == 1;
+			if (params.containsKey(BEString.fromString("compact"))) {
+				compact = params.get(BEString.fromString("compact")).getInt() == 1;
 			}
 
 			boolean noPeerId = false;
-			if (params.containsKey("no_peer_id")) {
-				noPeerId = params.get("no_peer_id").getInt() == 1;
+			if (params.containsKey(BEString.fromString("no_peer_id"))) {
+				noPeerId = params.get(BEString.fromString("no_peer_id")).getInt() == 1;
 			}
 
 			int numWant = AnnounceRequestMessage.DEFAULT_NUM_WANT;
-			if (params.containsKey("numwant")) {
-				numWant = params.get("numwant").getInt();
+			if (params.containsKey(BEString.fromString("numwant"))) {
+				numWant = params.get(BEString.fromString("numwant")).getInt();
 			}
 
 			String ip = null;
-			if (params.containsKey("ip")) {
-				ip = params.get("ip").getString(Torrent.BYTE_ENCODING);
+			if (params.containsKey(BEString.fromString("ip"))) {
+				ip = params.get(BEString.fromString("ip")).getBEString(Torrent.BYTE_ENCODING).toString();
 			}
 
 			RequestEvent event = RequestEvent.NONE;
-			if (params.containsKey("event")) {
-				event = RequestEvent.getByName(params.get("event")
-					.getString(Torrent.BYTE_ENCODING));
+			if (params.containsKey(BEString.fromString("event"))) {
+				event = RequestEvent.getByName(params.get(BEString.fromString("event"))
+					.getBEString(Torrent.BYTE_ENCODING).toString());
 			}
 
 			return new HTTPAnnounceRequestMessage(data, infoHash,
@@ -268,28 +269,28 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 		String ip, int numWant)
 		throws IOException, MessageValidationException,
 			UnsupportedEncodingException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
-		params.put("info_hash", new BEValue(infoHash));
-		params.put("peer_id", new BEValue(peerId));
-		params.put("port", new BEValue(port));
-		params.put("uploaded", new BEValue(uploaded));
-		params.put("downloaded", new BEValue(downloaded));
-		params.put("left", new BEValue(left));
-		params.put("compact", new BEValue(compact ? 1 : 0));
-		params.put("no_peer_id", new BEValue(noPeerId ? 1 : 0));
+		Map<BEString, BEValue> params = new HashMap<BEString, BEValue>();
+		params.put(BEString.fromString("info_hash"), new BEValue(infoHash));
+		params.put(BEString.fromString("peer_id"), new BEValue(peerId));
+		params.put(BEString.fromString("port"), new BEValue(port));
+		params.put(BEString.fromString("uploaded"), new BEValue(uploaded));
+		params.put(BEString.fromString("downloaded"), new BEValue(downloaded));
+		params.put(BEString.fromString("left"), new BEValue(left));
+		params.put(BEString.fromString("compact"), new BEValue(compact ? 1 : 0));
+		params.put(BEString.fromString("no_peer_id"), new BEValue(noPeerId ? 1 : 0));
 
 		if (event != null) {
-			params.put("event",
+			params.put(BEString.fromString("event"),
 				new BEValue(event.getEventName(), Torrent.BYTE_ENCODING));
 		}
 
 		if (ip != null) {
-			params.put("ip",
+			params.put(BEString.fromString("ip"),
 				new BEValue(ip, Torrent.BYTE_ENCODING));
 		}
 
 		if (numWant != AnnounceRequestMessage.DEFAULT_NUM_WANT) {
-			params.put("numwant", new BEValue(numWant));
+			params.put(BEString.fromString("numwant"), new BEValue(numWant));
 		}
 
 		return new HTTPAnnounceRequestMessage(
