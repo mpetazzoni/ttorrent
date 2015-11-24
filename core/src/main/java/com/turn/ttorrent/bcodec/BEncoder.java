@@ -67,14 +67,14 @@ public class BEncoder {
 	}
 
 	public static void bencode(String s, OutputStream out) throws IOException {
-		byte[] bs = s.getBytes("UTF-8");
+		byte[] bs = s.getBytes("ISO-8859-1");
 		bencode(bs, out);
 	}
 
 	public static void bencode(Number n, OutputStream out) throws IOException {
 		out.write('i');
 		String s = n.toString();
-		out.write(s.getBytes("UTF-8"));
+		out.write(s.getBytes("ISO-8859-1"));
 		out.write('e');
 	}
 
@@ -89,7 +89,7 @@ public class BEncoder {
 
 	public static void bencode(byte[] bs, OutputStream out) throws IOException {
 		String l = Integer.toString(bs.length);
-		out.write(l.getBytes("UTF-8"));
+		out.write(l.getBytes("ISO-8859-1"));
 		out.write(':');
 		out.write(bs);
 	}
