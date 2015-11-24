@@ -1,6 +1,8 @@
 package com.turn.ttorrent.client.storage;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,10 +14,11 @@ import java.util.List;
 import org.junit.Test;
 
 /**
- * User: loyd
- * Date: 11/24/13
+ * @author loyd, pisek
+ * @since 11/24/13
  */
 public class FileCollectionStorageTest {
+	
     @Test
     public void testSelect() throws Exception {
         final File file1 = File.createTempFile("testng", "fcst");
@@ -52,9 +55,11 @@ public class FileCollectionStorageTest {
         storage.write(ByteBuffer.wrap(bytes), offset);
         storage.finish();
     }
-    private void check(byte[] bytes, File f) throws IOException {
+    
+    @SuppressWarnings("resource")
+	private void check(byte[] bytes, File f) throws IOException {
         final byte[] temp = new byte[bytes.length];
         assertEquals(new FileInputStream(f).read(temp), temp.length);
-        assertEquals(temp, bytes);
+        assertArrayEquals(bytes, temp);
     }
 }
