@@ -40,7 +40,7 @@ public class BEValue {
 	}
 
 	public BEValue(String value) throws UnsupportedEncodingException {
-		this.value = value.getBytes("UTF-8");
+		this.value = value.getBytes("ISO-8859-1");
 	}
 
 	public BEValue(String value, String enc)
@@ -73,11 +73,11 @@ public class BEValue {
 	}
 
 	/**
-	 * Returns this BEValue as a String, interpreted as UTF-8.
+	 * Returns this BEValue as a String, interpreted as ISO-8859-1.
 	 * @throws InvalidBEncodingException If the value is not a byte[].
 	 */
 	public String getString() throws InvalidBEncodingException {
-		return this.getString("UTF-8");
+		return this.getString("ISO-8859-1");
 	}
 
 	/**

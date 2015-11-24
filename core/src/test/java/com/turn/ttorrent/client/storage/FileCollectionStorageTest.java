@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client.storage;
 
-import org.testng.annotations.Test;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,8 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import org.junit.Test;
 
 /**
  * User: loyd
