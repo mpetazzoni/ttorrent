@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.Utils;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
@@ -28,6 +29,7 @@ import com.turn.ttorrent.client.strategy.RequestStrategyImplRarest;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Collections;
@@ -184,18 +186,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	}
 	
 	/**
-	 * Create a new shared torrent from the given torrent file.
-	 *
-	 * @param source The <code>.torrent</code> file to read the torrent
-	 * meta-info from.
-	 * @param parent The parent directory or location of the torrent files.
-	 * @throws IOException When the torrent file cannot be read or decoded.
-	 */
-	public SharedTorrent(File source, File destDir) throws FileNotFoundException, IOException {
-		this(FileUtils.readFileToByteArray(source), destDir, false);
-	}
-
-	/**
 	 * Create a new shared torrent from meta-info binary data.
 	 *
 	 * @param torrent The meta-info byte data.
@@ -280,21 +270,48 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		//TODO: should switch to guice
 		this.requestStrategy = requestStrategy;
 	}
+	
+	/**
+	 * Creates a {@link SharedTorrent} from given URI
+	 * 
+	 * @param uri Url to the <code>.torrent</code> file
+	 * @param destDir The parent directory or location of the torrent files.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException When the torrent file cannot be read or decoded.
+	 */
+	public SharedTorrent(URI uri, File destDir) throws FileNotFoundException, IOException {
+		this(Utils.resolveUrlFileToByteArray(uri), destDir);
+	}
+	
+	/**
+	 * Create a new {@link SharedTorrent} from the given torrent file.
+	 *
+	 * @param source The <code>.torrent</code> file to read the torrent
+	 * meta-info from.
+	 * @param destDir The parent directory or location of the torrent files.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
+	 * @throws IOException When the torrent file cannot be read or decoded.
+	 */
+	public SharedTorrent(File source, File destDir) throws FileNotFoundException, IOException {
+		this(FileUtils.readFileToByteArray(source), destDir);
+	}
 
 	/**
 	 * Create a new shared torrent from the given torrent file.
 	 *
 	 * @param source The <code>.torrent</code> file to read the torrent
 	 * meta-info from.
-	 * @param parent The parent directory or location of the torrent files.
+	 * @param destDir The parent directory or location of the torrent files.
+	 * @throws FileNotFoundException If the torrent file location or
+	 * destination directory does not exist and can't be created.
 	 * @throws IOException When the torrent file cannot be read or decoded.
-	 * @deprecated use similar constructor - {@code new SharedTorrent(File source, File parent)}
+	 * @see #SharedTorrent(File, File)
 	 */
-	@Deprecated
-	public static SharedTorrent fromFile(File source, File parent)
-		throws IOException {
-		byte[] data = FileUtils.readFileToByteArray(source);
-		return new SharedTorrent(data, parent);
+	public static SharedTorrent fromFile(File source, File destDir)
+		throws FileNotFoundException, IOException {
+		return new SharedTorrent(FileUtils.readFileToByteArray(source), destDir);
 	}
 	
 	public double getMaxUploadRate() {

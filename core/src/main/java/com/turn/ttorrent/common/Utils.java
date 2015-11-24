@@ -1,8 +1,6 @@
-package com.turn.ttorrent.client;
+package com.turn.ttorrent.common;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -14,34 +12,32 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * A shared torrent downloaded from given URI
- *
- * @author pisek
+ * Utility class for keeping common static methods
  */
-public class UrlSharedTorrent extends SharedTorrent {
+public final class Utils {
 	
-	private static final Logger logger =
-			LoggerFactory.getLogger(UrlSharedTorrent.class);
+	/**
+	 * Static class
+	 */
+	private Utils() {}
 	
-	public UrlSharedTorrent(URI uri, File destDir) throws FileNotFoundException, IOException {
-		super(resolveTorrentUrl(uri), destDir);
-	}
-	
-	public static byte[] resolveTorrentUrl(URI uri) throws ClientProtocolException, IOException {
+	/**
+	 * Resolves a file from URI and returns its byte array.
+	 * 
+	 * @param uri
+	 * @return
+	 * @throws ClientProtocolException
+	 * @throws IOException
+	 */
+	public static byte[] resolveUrlFileToByteArray(URI uri) throws ClientProtocolException, IOException {
 		CloseableHttpClient httpclient = HttpClients.createDefault();
 		
 		try {
 			
 			HttpGet get = new HttpGet(uri);
-			
-			logger.debug("Executing request " + get.getRequestLine());
 			HttpResponse response = httpclient.execute(get);
-			
-			logger.debug("Getting torrent file...");
 			HttpEntity entity = response.getEntity();
 			
 			if (entity != null) {
@@ -51,7 +47,7 @@ public class UrlSharedTorrent extends SharedTorrent {
 				return outputStream.toByteArray();
 			}
 			
-			throw new IOException("Could not resolve torrent file... ["+uri+"]");
+			throw new IOException("Could not resolve file... ["+uri+"]");
 			
 		} finally {
 			httpclient.close();
