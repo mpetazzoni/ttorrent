@@ -15,6 +15,9 @@ import org.apache.http.impl.client.HttpClients;
 
 /**
  * Utility class for keeping common static methods
+ * 
+ * @author pisek
+ * @since 24.11.2015
  */
 public final class Utils {
 	
