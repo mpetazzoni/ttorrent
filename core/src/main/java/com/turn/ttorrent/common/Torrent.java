@@ -31,6 +31,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -47,8 +48,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -405,8 +404,16 @@ public class Torrent {
 	}
 
 	public static byte[] hash(byte[] data) {
-		return DigestUtils.sha1(data);
+		return getSha1Digest().digest(data);
 	}
+	
+	private static MessageDigest getSha1Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-1");
+        } catch (final NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
 	/**
 	 * Convert a byte string to a string containing an hexadecimal
@@ -415,7 +422,34 @@ public class Torrent {
 	 * @param bytes The byte array to convert.
 	 */
 	public static String byteArrayToHexString(byte[] bytes) {
-		return new String(Hex.encodeHex(bytes, false));
+		return new String(encodeHex(bytes));
+	}
+	
+	/**
+	 * Copied from org.apache.commons.codec.binary.Hex!!
+	 * Because Android works only with version 1.3 of this library.
+	 * Converts an array of bytes into an array of characters representing the hexadecimal values of each byte in order.
+	 * The returned array will be double the length of the passed array, as it takes two characters to represent any
+	 * given byte.
+	 *
+	 * @param data
+	 *            a byte[] to convert to Hex characters
+	 * @param toDigits
+	 *            the output alphabet
+	 * @return A char[] containing hexadecimal characters
+	 * @since 1.4
+	 */
+	private static char[] encodeHex(final byte[] data) {
+		final char[] toDigits =
+		{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+		final int l = data.length;
+		final char[] out = new char[l << 1];
+		// two characters form the hex value.
+		for (int i = 0, j = 0; i < l; i++) {
+			out[j++] = toDigits[(0xF0 & data[i]) >>> 4];
+			out[j++] = toDigits[0x0F & data[i]];
+		}
+		return out;
 	}
 
 	/**
@@ -684,7 +718,7 @@ public class Torrent {
 		private final ByteBuffer data;
 
 		CallableChunkHasher(ByteBuffer buffer) {
-			this.md = DigestUtils.getSha1Digest();
+			this.md = getSha1Digest();
 
 			this.data = ByteBuffer.allocate(buffer.remaining());
 			buffer.mark();
