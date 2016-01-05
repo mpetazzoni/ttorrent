@@ -53,11 +53,6 @@ import org.slf4j.LoggerFactory;
  * and logic required by the BitTorrent client implementation.
  * </p>
  *
- * <p>
- * <em>Note:</em> this implementation currently only supports single-file
- * torrents.
- * </p>
- *
  * @author mpetazzoni
  */
 public class SharedTorrent extends Torrent implements PeerActivityListener {
