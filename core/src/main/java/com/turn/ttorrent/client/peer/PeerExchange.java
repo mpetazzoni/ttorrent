@@ -120,10 +120,7 @@ class PeerExchange {
 			this.peer.getShortHexPeerId() + ")-send");
 		this.out.setDaemon(true);
 
-		// Automatically start the exchange activity loops
 		this.stop = false;
-		this.in.start();
-		this.out.start();
 
 		logger.debug("Started peer exchange with {} for {}.",
 			this.peer, this.torrent);
@@ -135,6 +132,7 @@ class PeerExchange {
 		}
 	}
 
+	
 	/**
 	 * Register a new message listener to receive messages.
 	 *
@@ -172,13 +170,25 @@ class PeerExchange {
 	}
 
 	/**
-	 * Close and stop the peer exchange.
+	 * Start the peer exchange.
+	 *
+	 * <p>
+	 * Starts both incoming and outgoing thread.
+	 * </p>
+	 */
+	public void start() {
+		this.in.start();
+		this.out.start();
+	}
+	
+	/**
+	 * Stop the peer exchange.
 	 *
 	 * <p>
 	 * Closes the socket channel and stops both incoming and outgoing threads.
 	 * </p>
 	 */
-	public void close() {
+	public void stop() {
 		this.stop = true;
 
 		if (this.channel.isConnected()) {
