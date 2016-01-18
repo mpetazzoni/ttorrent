@@ -26,11 +26,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -47,8 +49,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -333,6 +333,19 @@ public class Torrent {
 		}
 		return filenames;
 	}
+	
+	/**
+	 * Get the file from this torrent.
+	 *
+	 * @return The list all the files described in this torrent.
+	 */
+	public List<File> getFiles() {
+		List<File> list = new LinkedList<File>();
+		for (TorrentFile file : this.files) {
+			list.add(file.file);
+		}
+		return list;
+	}
 
 	/**
 	 * Tells whether this torrent is multi-file or not.
@@ -405,7 +418,15 @@ public class Torrent {
 	}
 
 	public static byte[] hash(byte[] data) {
-		return DigestUtils.sha1(data);
+		MessageDigest crypt;
+		try {
+			crypt = MessageDigest.getInstance("SHA-1");
+			crypt.reset();
+			crypt.update(data);
+			return crypt.digest();
+		} catch (NoSuchAlgorithmException e) {
+			return null;
+		}
 	}
 
 	/**
@@ -415,7 +436,8 @@ public class Torrent {
 	 * @param bytes The byte array to convert.
 	 */
 	public static String byteArrayToHexString(byte[] bytes) {
-		return new String(Hex.encodeHex(bytes, false));
+		String digestStr = new BigInteger(1, bytes).toString(16); 
+		return digestStr;
 	}
 
 	/**
@@ -683,8 +705,8 @@ public class Torrent {
 		private final MessageDigest md;
 		private final ByteBuffer data;
 
-		CallableChunkHasher(ByteBuffer buffer) {
-			this.md = DigestUtils.getSha1Digest();
+		CallableChunkHasher(ByteBuffer buffer) throws NoSuchAlgorithmException {
+			this.md = MessageDigest.getInstance("SHA-1");
 
 			this.data = ByteBuffer.allocate(buffer.remaining());
 			buffer.mark();
@@ -752,7 +774,11 @@ public class Torrent {
 				while (channel.read(buffer) > 0) {
 					if (buffer.remaining() == 0) {
 						buffer.clear();
-						results.add(executor.submit(new CallableChunkHasher(buffer)));
+						try {
+							results.add(executor.submit(new CallableChunkHasher(buffer)));
+						} catch (NoSuchAlgorithmException e) {
+							e.printStackTrace();
+						}
 					}
 
 					if (results.size() >= threads) {
@@ -774,7 +800,11 @@ public class Torrent {
 		if (buffer.position() > 0) {
 			buffer.limit(buffer.position());
 			buffer.position(0);
-			results.add(executor.submit(new CallableChunkHasher(buffer)));
+			try {
+				results.add(executor.submit(new CallableChunkHasher(buffer)));
+			} catch (NoSuchAlgorithmException e) {
+				e.printStackTrace();
+			}
 		}
 
 		pieces += accumulateHashes(hashes, results);
