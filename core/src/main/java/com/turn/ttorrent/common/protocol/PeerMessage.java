@@ -427,20 +427,25 @@ public abstract class PeerMessage {
 				.validate(torrent);
 		}
 
-		public static BitfieldMessage craft(BitSet availablePieces) {
-			byte[] bitfield = new byte[
-				(int) Math.ceil((double)availablePieces.length()/8)];
-			for (int i=availablePieces.nextSetBit(0); i >= 0;
-					i=availablePieces.nextSetBit(i+1)) {
-				bitfield[i/8] |= 1 << (7 -(i % 8));
+		public static BitfieldMessage craft(BitSet availablePieces, int pieceCount) {
+			BitSet bitfield = new BitSet();
+			int bitfieldBufferSize= (pieceCount + 8 - 1) / 8;
+			byte[] bitfieldBuffer = new byte[bitfieldBufferSize];
+
+			for (int i=availablePieces.nextSetBit(0);
+				 0 <= i && i < pieceCount;
+				 i=availablePieces.nextSetBit(i+1)) {
+				bitfieldBuffer[i/8] |= 1 << (7 -(i % 8));
+				bitfield.set(i);
 			}
 
 			ByteBuffer buffer = ByteBuffer.allocateDirect(
-				MESSAGE_LENGTH_FIELD_SIZE + BitfieldMessage.BASE_SIZE + bitfield.length);
-			buffer.putInt(BitfieldMessage.BASE_SIZE + bitfield.length);
+				MESSAGE_LENGTH_FIELD_SIZE + BitfieldMessage.BASE_SIZE + bitfieldBufferSize);
+			buffer.putInt(BitfieldMessage.BASE_SIZE + bitfieldBufferSize);
 			buffer.put(PeerMessage.Type.BITFIELD.getTypeByte());
-			buffer.put(ByteBuffer.wrap(bitfield));
-			return new BitfieldMessage(buffer, availablePieces);
+			buffer.put(ByteBuffer.wrap(bitfieldBuffer));
+
+			return new BitfieldMessage(buffer, bitfield);
 		}
 
 		public String toString() {
