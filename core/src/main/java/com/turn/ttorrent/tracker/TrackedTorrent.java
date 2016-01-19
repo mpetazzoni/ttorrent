@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -77,7 +78,7 @@ public class TrackedTorrent extends Torrent {
 	 * @throws IOException When the info dictionary can't be
 	 * encoded and hashed back to create the torrent's SHA-1 hash.
 	 */
-	public TrackedTorrent(byte[] torrent) throws IOException {
+	public TrackedTorrent(byte[] torrent) throws IOException, NoSuchAlgorithmException {
 		super(torrent, false);
 
 		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
@@ -85,7 +86,7 @@ public class TrackedTorrent extends Torrent {
 		this.announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
 	}
 
-	public TrackedTorrent(Torrent torrent) throws IOException {
+	public TrackedTorrent(Torrent torrent) throws IOException, NoSuchAlgorithmException {
 		this(torrent.getEncoded());
 	}
 
@@ -289,7 +290,7 @@ public class TrackedTorrent extends Torrent {
 	 * <tt>.torrent</tt> file to load.
 	 * @throws IOException When the torrent file cannot be read.
 	 */
-	public static TrackedTorrent load(File torrent) throws IOException {
+	public static TrackedTorrent load(File torrent) throws IOException, NoSuchAlgorithmException {
 		byte[] data = FileUtils.readFileToByteArray(torrent);
 		return new TrackedTorrent(data);
 	}
