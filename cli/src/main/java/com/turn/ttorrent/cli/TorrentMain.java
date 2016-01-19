@@ -23,15 +23,11 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
 import jargs.gnu.CmdLineParser;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
@@ -70,8 +66,9 @@ public class TorrentMain {
 		s.println();
 		s.println("  -c,--create           Create a new torrent file using " +
 			"the given announce URL and data.");
-		s.println("  -l,--length           Define the piece length for hashing data");
+		s.println("  -l,--length           Define the piece length (in kB) for hashing data");
 		s.println("  -a,--announce         Tracker URL (can be repeated).");
+		s.println("  -p,--private          If set the created torrent will be marked private");
 		s.println();
 	}
 
@@ -94,6 +91,7 @@ public class TorrentMain {
 		CmdLineParser.Option create = parser.addBooleanOption('c', "create");
 		CmdLineParser.Option pieceLength = parser.addIntegerOption('l', "length");
 		CmdLineParser.Option announce = parser.addStringOption('a', "announce");
+		CmdLineParser.Option privateOption = parser.addBooleanOption('p', "private");
 
 		try {
 			parser.parse(args);
@@ -104,7 +102,7 @@ public class TorrentMain {
 		}
 
 		// Display help and exit if requested
-		if (Boolean.TRUE.equals((Boolean)parser.getOptionValue(help))) {
+		if (Boolean.TRUE.equals(parser.getOptionValue(help))) {
 			usage(System.out);
 			System.exit(0);
 		}
@@ -125,6 +123,7 @@ public class TorrentMain {
 		logger.info("Using piece length of {} bytes.", pieceLengthVal);
 
 		Boolean createFlag = (Boolean)parser.getOptionValue(create);
+		Boolean privateFlag = (Boolean)parser.getOptionValue(privateOption);
 		
 		//For repeated announce urls
 		@SuppressWarnings("unchecked")
@@ -139,47 +138,36 @@ public class TorrentMain {
 				"provided to create a torrent file!");
 			System.exit(1);
 		}
-		
-		
+
 		OutputStream fos = null;
 		try {
 			if (Boolean.TRUE.equals(createFlag)) {
-				if (filenameValue != null) {
-					fos = new FileOutputStream(filenameValue);
-				} else {
-					fos = System.out;
-				}
+				fos = new FileOutputStream(filenameValue);
 
 				//Process the announce URLs into URIs
-				List<URI> announceURIs = new ArrayList<URI>();		
-				for (String url : announceURLs) { 
+				//Assume all the URI's are first tier trackers
+				List<URI> announceURIs = new ArrayList<URI>();
+				for (String url : announceURLs) {
 					announceURIs.add(new URI(url));
 				}
-				
-				//Create the announce-list as a list of lists of URIs
-				//Assume all the URI's are first tier trackers
-				List<List<URI>> announceList = new ArrayList<List<URI>>();
-				announceList.add(announceURIs);
-				
+
 				File source = new File(otherArgs[0]);
 				if (!source.exists() || !source.canRead()) {
 					throw new IllegalArgumentException(
-						"Cannot access source file or directory " +
-							source.getName());
+							"Cannot access source file or directory " +
+									source.getName());
 				}
 
 				String creator = String.format("%s (ttorrent)",
-					System.getProperty("user.name"));
+						System.getProperty("user.name"));
 
-				Torrent torrent = null;
-				if (source.isDirectory()) {
-					List<File> files = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
-					Collections.sort(files);
-					torrent = Torrent.create(source, files, pieceLengthVal, 
-							announceList, creator);
-				} else {
-					torrent = Torrent.create(source, pieceLengthVal, announceList, creator);
-				}
+				Torrent torrent = new Torrent.Builder()
+						.withSharedSource(source)
+						.withAnnounceURITier(announceURIs)
+						.withPieceLength(pieceLengthVal)
+						.withCreator(creator)
+						.withPrivateFlag(privateFlag)
+						.build();
 
 				torrent.save(fos);
 			} else {

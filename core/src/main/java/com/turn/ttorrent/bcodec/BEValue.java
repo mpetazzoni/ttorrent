@@ -29,6 +29,9 @@ import java.util.Map;
  */
 public class BEValue {
 
+	private static final int BOOLEAN_FALSE = 0;
+	private static final int BOOLEAN_TRUE = 1;
+
 	/**
 	 * The B-encoded value can be a byte array, a Number, a List or a Map.
 	 * Lists and Maps contains BEValues too.
@@ -54,6 +57,10 @@ public class BEValue {
 
 	public BEValue(long value) {
 		this.value = new Long(value);
+	}
+
+	public BEValue(boolean value) {
+		this.value = value ? BOOLEAN_TRUE : BOOLEAN_FALSE;
 	}
 
 	public BEValue(Number value) {
@@ -152,6 +159,15 @@ public class BEValue {
 	}
 
 	/**
+	 * Returns this BEValue as boolean.
+	 *
+	 * @throws InvalidBEncodingException If the value is not convertible to {@link Boolean}.
+	*/
+	public boolean getBoolean() throws InvalidBEncodingException {
+		return this.getInt() == BOOLEAN_TRUE;
+	}
+
+    /**
 	 * Returns this BEValue as a List of BEValues.
 	 *
 	 * @throws InvalidBEncodingException If the value is not an

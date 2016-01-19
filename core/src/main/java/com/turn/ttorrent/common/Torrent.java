@@ -31,16 +31,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -50,6 +41,7 @@ import java.util.concurrent.Future;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +91,107 @@ public class Torrent {
 		}
 	}
 
+	/**
+	 * Builder for Torrent Object
+	 *
+	 * @author jdeketelaere
+	 */
+	public static final class Builder {
+
+		private File source;
+		private List<File> fileList;
+
+		private URI announceURI;
+		private List<List<URI>> announceURIList;
+
+		private String createdBy;
+		private boolean privateFlag = false;
+
+		private int pieceLength = DEFAULT_PIECE_LENGTH;
+
+		public Builder withSharedSource(File source) {
+			if (source != null && source.isDirectory()) {
+				return withSharedDirectory(source);
+			}
+			return withSharedFile(source);
+		}
+
+		public Builder withSharedFile(File file) {
+			checkSource(file, true);
+			this.source = file;
+			return this;
+		}
+
+		public Builder withSharedDirectory(File directory) {
+			return withSharedDirectory(directory, null);
+		}
+
+		public Builder withSharedDirectory(File directory, List<File> files) {
+			checkSource(directory, false);
+			this.source = directory;
+
+			List<File> sharedFiles;
+			if (files != null) {
+				sharedFiles = new ArrayList<File>(files);
+			} else {
+				sharedFiles = new ArrayList<File>(FileUtils.listFiles(source, TrueFileFilter.TRUE, TrueFileFilter.TRUE));
+			}
+			Collections.sort(sharedFiles);
+			this.fileList = Collections.unmodifiableList(sharedFiles);
+
+			return this;
+		}
+
+		private void checkSource(File source, boolean singleFile) {
+			if (source == null) {
+				throw new IllegalArgumentException("Cannot build torrent for source <null>");
+			}
+
+			if (this.source != null) {
+				throw new IllegalArgumentException("Source already set");
+			}
+
+			if (singleFile && !source.isFile()) {
+				throw new IllegalArgumentException("Source is not a file");
+			}
+
+			if (!singleFile && !source.isDirectory()) {
+				throw new IllegalArgumentException("Source is not a directory");
+			}
+		}
+
+		public Builder withPrivateFlag(boolean privateFlag) {
+			this.privateFlag = privateFlag;
+			return this;
+		}
+
+		public Builder withAnnounceURI(URI announceURI) {
+			this.announceURI = announceURI;
+			return this;
+		}
+
+		public Builder withAnnounceURITier(List<URI> announceURIs) {
+			if (announceURIList == null) {
+				announceURIList = new ArrayList<List<URI>>(1);
+			}
+			this.announceURIList.add(announceURIs);
+			return this;
+		}
+
+		public Builder withPieceLength(int length) {
+			this.pieceLength = length;
+			return this;
+		}
+
+		public Builder withCreator(String creator) {
+			this.createdBy = creator;
+			return this;
+		}
+
+		public Torrent build() throws IOException, InterruptedException {
+			return create(source, fileList, pieceLength, announceURI, announceURIList, createdBy, privateFlag);
+		}
+	}
 
 	protected final byte[] encoded;
 	protected final byte[] encoded_info;
@@ -114,6 +207,7 @@ public class Torrent {
 	private final String comment;
 	private final String createdBy;
 	private final String name;
+	private final boolean privateFlag;
 	private final long size;
 	private final int pieceLength;
 
@@ -210,6 +304,7 @@ public class Torrent {
 			? this.decoded.get("created by").getString()
 			: null;
 		this.name = this.decoded_info.get("name").getString();
+		this.privateFlag = this.decoded_info.containsKey("private") && this.decoded_info.get("private").getBoolean();
 		this.pieceLength = this.decoded_info.get("piece length").getInt();
 
 		this.files = new LinkedList<TorrentFile>();
@@ -245,6 +340,7 @@ public class Torrent {
 		logger.info("{}-file torrent information:",
 			this.isMultifile() ? "Multi" : "Single");
 		logger.info("  Torrent name: {}", this.name);
+		logger.info("  Private.....: {}", this.privateFlag);
 		logger.info("  Announced at:" + (this.trackers.size() == 0 ? " Seems to be trackerless" : ""));
 		for (int i=0; i < this.trackers.size(); i++) {
 			List<URI> tier = this.trackers.get(i);
@@ -300,6 +396,13 @@ public class Torrent {
 	}
 
 	/**
+	 * Get the torrent's private flag
+	 */
+	public boolean isPrivate() {
+		return privateFlag;
+	}
+
+    /**
 	 * Get this torrent's comment string.
 	 */
 	public String getComment() {
@@ -494,97 +597,6 @@ public class Torrent {
 		return new Torrent(data, seeder);
 	}
 
-	/** Torrent creation --------------------------------------------------- */
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, URI announce, String createdBy)
-		throws InterruptedException, IOException {
-		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy);
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param parent The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announce The announce URI that will be used for this torrent.
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File parent, List<File> files, URI announce,
-		String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
-				announce, null, createdBy);
-	}
-
-	/**
-	 * Create a {@link Torrent} object for a file.
-	 *
-	 * <p>
-	 * Hash the given file to create the {@link Torrent} object representing
-	 * the Torrent metainfo about this file, needed for announcing and/or
-	 * sharing said file.
-	 * </p>
-	 *
-	 * @param source The file to use in the torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
-			String createdBy) throws InterruptedException, IOException {
-		return Torrent.create(source, null, pieceLength, 
-				null, announceList, createdBy);
-	}
-	
-	/**
-	 * Create a {@link Torrent} object for a set of files.
-	 *
-	 * <p>
-	 * Hash the given files to create the multi-file {@link Torrent} object
-	 * representing the Torrent meta-info about them, needed for announcing
-	 * and/or sharing these files. Since we created the torrent, we're
-	 * considering we'll be a full initial seeder for it.
-	 * </p>
-	 *
-	 * @param source The parent directory or location of the torrent files,
-	 * also used as the torrent's name.
-	 * @param files The files to add into this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
-	 * be used for this torrent
-	 * @param createdBy The creator's name, or any string identifying the
-	 * torrent's creator.
-	 */
-	public static Torrent create(File source, List<File> files, int pieceLength,
-			List<List<URI>> announceList, String createdBy)
-			throws InterruptedException, IOException {
-		return Torrent.create(source, files, pieceLength, 
-				null, announceList, createdBy);
-	}
-	
 	/**
 	 * Helper method to create a {@link Torrent} object for a set of files.
 	 *
@@ -603,9 +615,10 @@ public class Torrent {
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
+	 * @param privateFlag indicates if the torrent should be flagged as private
 	 */
 	private static Torrent create(File parent, List<File> files, int pieceLength,
-				URI announce, List<List<URI>> announceList, String createdBy)
+				URI announce, List<List<URI>> announceList, String createdBy, boolean privateFlag)
 			throws InterruptedException, IOException {
 		if (files == null || files.isEmpty()) {
 			logger.info("Creating single-file torrent for {}...",
@@ -637,6 +650,7 @@ public class Torrent {
 
 		Map<String, BEValue> info = new TreeMap<String, BEValue>();
 		info.put("name", new BEValue(parent.getName()));
+		info.put("private", new BEValue(privateFlag));
 		info.put("piece length", new BEValue(pieceLength));
 
 		if (files == null || files.isEmpty()) {
@@ -705,9 +719,8 @@ public class Torrent {
 	 * Return the concatenation of the SHA-1 hashes of a file's pieces.
 	 *
 	 * <p>
-	 * Hashes the given file piece by piece using the default Torrent piece
-	 * length (see {@link #PIECE_LENGTH}) and returns the concatenation of
-	 * these hashes, as a string.
+	 * Hashes the given file piece by piece using the given piece length and
+	 * returns the concatenation of these hashes, as a string.
 	 * </p>
 	 *
 	 * <p>
@@ -718,7 +731,7 @@ public class Torrent {
 	 */
 	private static String hashFile(File file, int pieceLenght)
 		throws InterruptedException, IOException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLenght);
+		return Torrent.hashFiles(Arrays.asList(file), pieceLenght);
 	}
 
 	private static String hashFiles(List<File> files, int pieceLenght)
