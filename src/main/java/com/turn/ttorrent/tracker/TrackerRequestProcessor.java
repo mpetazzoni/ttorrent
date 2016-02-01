@@ -318,9 +318,9 @@ public class TrackerRequestProcessor {
     this.myAcceptForeignTorrents = acceptForeignTorrents;
   }
 
-  public static interface RequestHandler {
-    public void serveResponse(int code, String description, ByteBuffer responseData);
+  public interface RequestHandler {
+    void serveResponse(int code, String description, ByteBuffer responseData);
 
-    public ConcurrentMap<String, TrackedTorrent> getTorrentsMap();
+    ConcurrentMap<String, TrackedTorrent> getTorrentsMap();
   }
 }
