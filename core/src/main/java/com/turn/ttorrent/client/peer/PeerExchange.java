@@ -78,6 +78,7 @@ class PeerExchange {
 		LoggerFactory.getLogger(PeerExchange.class);
 
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
+	private static final PeerMessage STOP = PeerMessage.KeepAliveMessage.craft();
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
@@ -190,6 +191,13 @@ class PeerExchange {
 	 */
 	public void stop() {
 		this.stop = true;
+
+		try {
+			// Wake-up and shutdown out-going thread immediately
+			this.sendQueue.put(STOP);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 
 		if (this.channel.isConnected()) {
 			IOUtils.closeQuietly(this.channel);
@@ -402,11 +410,11 @@ class PeerExchange {
 								PeerExchange.KEEP_ALIVE_IDLE_MINUTES,
 								TimeUnit.MINUTES);
 
-						if (message == null) {
-							if (stop) {
-								return;
-							}
+						if (message == STOP) {
+							return;
+						}
 
+						if (message == null) {
 							message = PeerMessage.KeepAliveMessage.craft();
 						}
 
