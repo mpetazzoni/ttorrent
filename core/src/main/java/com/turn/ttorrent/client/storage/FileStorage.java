@@ -80,9 +80,11 @@ public class FileStorage implements TorrentByteStorage {
 
 		this.raf = new RandomAccessFile(this.current, "rw");
 
-		// Set the file length to the appropriate size, eventually truncating
-		// or extending the file if it already exists with a different size.
-		this.raf.setLength(this.size);
+		if (file.length() != this.size) {
+			// Set the file length to the appropriate size, eventually truncating
+			// or extending the file if it already exists with a different size.
+			this.raf.setLength(this.size);
+		}
 
 		this.channel = raf.getChannel();
 		logger.info("Initialized byte storage file at {} " +
