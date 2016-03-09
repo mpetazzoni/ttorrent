@@ -299,7 +299,7 @@ class PeerExchange {
 			Iterator it = selector.selectedKeys().iterator();
 			while (it.hasNext()) {
 				SelectionKey key = (SelectionKey) it.next();
-				if (key.isReadable()) {
+				if (key.isValid() && key.isReadable()) {
 					int read = ((SocketChannel) key.channel()).read(buffer);
 					if (read < 0) {
 						throw new IOException("Unexpected end-of-stream while reading");
