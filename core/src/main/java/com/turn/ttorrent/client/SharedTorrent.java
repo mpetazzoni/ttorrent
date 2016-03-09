@@ -285,7 +285,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	/**
 	 * Set the maximum upload rate (in kB/second) for this
-	 * torrent. A setting of <= 0.0 disables rate limiting.
+	 * torrent. A setting of &lt;= 0.0 disables rate limiting.
 	 *
 	 * @param rate The maximum upload rate
 	 */
@@ -299,7 +299,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	/**
 	 * Set the maximum download rate (in kB/second) for this
-	 * torrent. A setting of <= 0.0 disables rate limiting.
+	 * torrent. A setting of &lt;= 0.0 disables rate limiting.
 	 *
 	 * @param rate The maximum download rate
 	 */

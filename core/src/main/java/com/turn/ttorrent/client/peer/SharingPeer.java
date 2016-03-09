@@ -748,7 +748,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * </p>
 	 *
 	 * @author mpetazzoni
-	 * @see Rate.RateComparator
+	 * @see Rate#RATE_COMPARATOR
 	 */
 	public static class DLRateComparator
 			implements Comparator<SharingPeer>, Serializable {
@@ -769,7 +769,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * </p>
 	 *
 	 * @author mpetazzoni
-	 * @see Rate.RateComparator
+	 * @see Rate#RATE_COMPARATOR
 	 */
 	public static class ULRateComparator
 			implements Comparator<SharingPeer>, Serializable {

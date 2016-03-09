@@ -67,8 +67,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * This class does nothing more. All further peer-to-peer communication happens
- * in the {@link com.turn.ttorrent.client.peer.PeerExchange PeerExchange}
- * class.
+ * in the <code>PeerExchange</code> class.
  * </p>
  *
  * @author mpetazzoni

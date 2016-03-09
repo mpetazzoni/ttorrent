@@ -198,7 +198,7 @@ public abstract class PeerMessage {
 	/**
 	 * Keep alive message.
 	 *
-	 * <len=0000>
+	 * <code>&lt;len=0000&gt;</code>
 	 */
 	public static class KeepAliveMessage extends PeerMessage {
 
@@ -225,7 +225,7 @@ public abstract class PeerMessage {
 	/**
 	 * Choke message.
 	 *
-	 * <len=0001><id=0>
+	 * <code>&lt;len=0001&gt;&lt;id=0&gt;</code>
 	 */
 	public static class ChokeMessage extends PeerMessage {
 
@@ -253,7 +253,7 @@ public abstract class PeerMessage {
 	/**
 	 * Unchoke message.
 	 *
-	 * <len=0001><id=1>
+	 * <code>&lt;len=0001&gt;&lt;id=1&gt;</code>
 	 */
 	public static class UnchokeMessage extends PeerMessage {
 
@@ -281,7 +281,7 @@ public abstract class PeerMessage {
 	/**
 	 * Interested message.
 	 *
-	 * <len=0001><id=2>
+	 * <code>&lt;len=0001&lt;&gt;id=2&gt;</code>
 	 */
 	public static class InterestedMessage extends PeerMessage {
 
@@ -309,7 +309,7 @@ public abstract class PeerMessage {
 	/**
 	 * Not interested message.
 	 *
-	 * <len=0001><id=3>
+	 * <code>&lt;len=0001&gt;&lt;id=3&gt;</code>
 	 */
 	public static class NotInterestedMessage extends PeerMessage {
 
@@ -337,7 +337,7 @@ public abstract class PeerMessage {
 	/**
 	 * Have message.
 	 *
-	 * <len=0005><id=4><piece index=xxxx>
+	 * <code>&lt;len=0005&gt;&lt;id=4&gt;&lt;piece index=xxxx&gt;</code>
 	 */
 	public static class HaveMessage extends PeerMessage {
 
@@ -387,7 +387,7 @@ public abstract class PeerMessage {
 	/**
 	 * Bitfield message.
 	 *
-	 * <len=0001+X><id=5><bitfield>
+	 * <code>&lt;len=0001+X&gt;&lt;id=5&gt;&lt;bitfield&gt;</code>
 	 */
 	public static class BitfieldMessage extends PeerMessage {
 
@@ -456,7 +456,7 @@ public abstract class PeerMessage {
 	/**
 	 * Request message.
 	 *
-	 * <len=00013><id=6><piece index><block offset><block length>
+	 * <code>&lt;len=00013&gt;&lt;id=6&gt;&lt;piece index&gt;&lt;block offset&gt;&lt;block length&gt;</code>
 	 */
 	public static class RequestMessage extends PeerMessage {
 
@@ -533,7 +533,7 @@ public abstract class PeerMessage {
 	/**
 	 * Piece message.
 	 *
-	 * <len=0009+X><id=7><piece index><block offset><block data>
+	 * <code>&lt;len=0009+X&gt;&lt;id=7&gt;&lt;piece index&gt;&lt;block offset&gt;&lt;block data&gt;</code>
 	 */
 	public static class PieceMessage extends PeerMessage {
 
@@ -605,7 +605,7 @@ public abstract class PeerMessage {
 	/**
 	 * Cancel message.
 	 *
-	 * <len=00013><id=8><piece index><block offset><block length>
+	 * <code>&lt;len=00013&gt;&lt;id=8&gt;&lt;piece index&gt;&lt;block offset&gt;&lt;block length&gt;</code>
 	 */
 	public static class CancelMessage extends PeerMessage {
 

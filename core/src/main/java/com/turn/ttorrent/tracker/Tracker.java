@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * The tracker usually listens on port 6969 (the standard BitTorrent tracker
- * port). Torrents must be registered directly to this tracker with the
- * {@link #announce(TrackedTorrent torrent)}</code> method.
+ * port). Torrents must be registered directly to this tracker with the {@link
+ * #announce(TrackedTorrent torrent)} method.
  * </p>
  *
  * @author mpetazzoni
