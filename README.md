@@ -77,8 +77,8 @@ section:
     ...
     <dependency>
       <groupId>com.turn</groupId>
-      <artifactId>ttorrent</artifactId>
-      <version>1.4</version>
+      <artifactId>ttorrent-core</artifactId>
+      <version>1.5</version>
     </dependency>
   </dependencies>
 ```
