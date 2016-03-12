@@ -144,7 +144,7 @@ public class Torrent {
 		BEncoder.bencode(this.decoded_info, baos);
 		this.encoded_info = baos.toByteArray();
 		this.info_hash = Torrent.hash(this.encoded_info);
-		this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+		this.hex_info_hash = Utils.bytesToHex(this.info_hash);
 
 		/**
 		 * Parses the announce information from the decoded meta-info
@@ -413,16 +413,6 @@ public class Torrent {
 	}
 
 	/**
-	 * Convert a byte string to a string containing an hexadecimal
-	 * representation of the original data.
-	 *
-	 * @param bytes The byte array to convert.
-	 */
-	public static String byteArrayToHexString(byte[] bytes) {
-		return new BigInteger(1, bytes).toString(16); 
-	}
-
-	/**
 	 * Return an hexadecimal representation of the bytes contained in the
 	 * given string, following the default, expected byte encoding.
 	 *
@@ -431,7 +421,7 @@ public class Torrent {
 	public static String toHexString(String input) {
 		try {
 			byte[] bytes = input.getBytes(Torrent.BYTE_ENCODING);
-			return Torrent.byteArrayToHexString(bytes);
+			return Utils.bytesToHex(bytes);
 		} catch (UnsupportedEncodingException uee) {
 			return null;
 		}
