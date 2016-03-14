@@ -21,6 +21,7 @@ import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.Utils;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 
 import java.io.IOException;
@@ -81,7 +82,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
 	@Override
 	public String getHexInfoHash() {
-		return Torrent.byteArrayToHexString(this.infoHash);
+		return Utils.bytesToHex(this.infoHash);
 	}
 
 	@Override
