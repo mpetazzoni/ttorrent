@@ -642,6 +642,7 @@ public class Client extends Observable implements Runnable,
 			for (SharingPeer peer : choked) {
 				if (optimistic && peer == randomPeer) {
 					logger.debug("Optimistic unchoke of {}.", peer);
+					peer.unchoke();
 					continue;
 				}
 
