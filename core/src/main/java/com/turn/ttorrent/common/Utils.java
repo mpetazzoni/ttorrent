@@ -26,7 +26,7 @@ public class Utils {
      * representation of the original data.
      *
      * @param bytes The byte array to convert.
-     * @see <a href="http://stackoverflow.com/questions/332079">http://stackoverflow.com/questions/332079/a>
+     * @see <a href="http://stackoverflow.com/questions/332079">http://stackoverflow.com/questions/332079</a>
      */
     public static String bytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
