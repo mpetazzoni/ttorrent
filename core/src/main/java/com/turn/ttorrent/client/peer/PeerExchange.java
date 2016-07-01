@@ -350,7 +350,14 @@ class PeerExchange {
 					}
 
 					buffer.rewind();
-
+					
+					if (stop) {
+						// The buffer may contain the type from the last message
+						// if we were stopped before reading the payload and cause
+						// BufferUnderflowException in parsing.
+						break;
+					}
+					
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
