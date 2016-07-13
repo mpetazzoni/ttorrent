@@ -103,4 +103,10 @@ public interface TorrentByteStorage {
 	 * Tells whether this byte storage has been finalized.
 	 */
 	public boolean isFinished();
+
+	/**
+	 * Tells whether this byte storage is hollow, such is the case when a
+	 * file is created, it certainly has nothing of value inside.
+	 */
+	boolean isHollow();
 }
