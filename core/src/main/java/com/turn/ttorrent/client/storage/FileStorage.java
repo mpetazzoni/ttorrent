@@ -46,6 +46,7 @@ public class FileStorage implements TorrentByteStorage {
 	private final File partial;
 	private final long offset;
 	private final long size;
+	private boolean hollow = false;
 
 	private RandomAccessFile raf;
 	private FileChannel channel;
@@ -72,6 +73,7 @@ public class FileStorage implements TorrentByteStorage {
 			logger.debug("Downloading new file to {}...",
 				this.partial.getAbsolutePath());
 			this.current = this.partial;
+			this.hollow = true;
 		} else {
 			logger.debug("Using existing file {}.",
 				this.target.getAbsolutePath());
@@ -99,6 +101,9 @@ public class FileStorage implements TorrentByteStorage {
 	protected long offset() {
 		return this.offset;
 	}
+
+	@Override
+	public boolean isHollow() { return this.hollow; }
 
 	@Override
 	public long size() {
