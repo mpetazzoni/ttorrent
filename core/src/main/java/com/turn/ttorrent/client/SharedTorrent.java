@@ -381,6 +381,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		try {
 			logger.info("Analyzing local data for {} with {} threads ({} pieces)...",
 				new Object[] { this.getName(), threads, nPieces });
+
+			if ( this.bucket.isHollow() ) {
+				logger.info("Skipping validation though, since it's from scratch");
+			}
+
 			for (int idx=0; idx<nPieces; idx++) {
 				byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
 				this.piecesHashes.get(hash);
@@ -396,11 +401,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
 					this.isSeeder());
 
-				Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
-				results.add(executor.submit(hasher));
+				if ( !this.bucket.isHollow() ) {
+					final Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
+					results.add(executor.submit(hasher));
 
-				if (results.size() >= threads) {
-					this.validatePieces(results);
+					if (results.size() >= threads) {
+						this.validatePieces(results);
+					}
 				}
 
 				if (idx / (float)nPieces * 100f > step) {
@@ -409,7 +416,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				}
 			}
 
-			this.validatePieces(results);
+			if ( !this.bucket.isHollow() ) {
+				this.validatePieces(results);
+			}
 		} finally {
 			// Request orderly executor shutdown and wait for hashing tasks to
 			// complete.
