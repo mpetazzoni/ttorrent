@@ -45,6 +45,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 	private final List<FileStorage> files;
 	private final long size;
+	private boolean hollow;
 
 	/**
 	 * Initialize a new multi-file torrent byte storage.
@@ -57,6 +58,14 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		long size) {
 		this.files = files;
 		this.size = size;
+
+		this.hollow = true;
+		for (FileStorage fileStorage : this.files) {
+			if ( !fileStorage.isHollow() ) {
+				this.hollow = false;
+				break;
+			}
+		}
 
 		logger.info("Initialized torrent byte storage on {} file(s) " +
 			"({} total byte(s)).", files.size(), size);
@@ -128,6 +137,9 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 		return true;
 	}
+
+	@Override
+	public boolean isHollow() { return hollow; }
 
 	/**
 	 * File operation details holder.
