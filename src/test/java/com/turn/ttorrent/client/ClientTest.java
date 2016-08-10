@@ -54,7 +54,7 @@ public class ClientTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.DEBUG);
+    Logger.getRootLogger().setLevel(Level.INFO);
     Torrent.setHashingThreadsCount(1);
   }
 
