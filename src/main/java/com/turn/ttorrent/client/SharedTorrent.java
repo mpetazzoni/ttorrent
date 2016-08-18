@@ -22,7 +22,6 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
-import com.turn.ttorrent.common.Cleanable;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.slf4j.Logger;
@@ -261,7 +260,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     logger.debug("Opening file channel for {}. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     try {
       if (myDownloaders.size() == 0) {
-        this.bucket.open(clientState == ClientState.SEEDING);
+        this.bucket.open(clientState == ClientState.SEEDING || isSeeder());
       }
     } catch (IOException e) {
       logger.error("IO error when opening channel to torrent data", e);

@@ -765,6 +765,22 @@ public class ClientTest {
     };
   }
 
+  public void test_seeding_does_not_change_file_modification_date() throws IOException, InterruptedException, NoSuchAlgorithmException {
+    File srcFile = tempFiles.createTempFile(1024);
+    long time = srcFile.lastModified();
+
+    Thread.sleep(1000);
+
+    Client seeder = createAndStartClient();
+
+    final Torrent torrent = Torrent.create(srcFile, null, tracker.getAnnounceURI(), "Test");
+
+    final SharedTorrent sharedTorrent = new SharedTorrent(torrent, srcFile.getParentFile(), true, true);
+    seeder.addTorrent(sharedTorrent);
+
+    assertEquals(time, srcFile.lastModified());
+  }
+
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final File tempDir = tempFiles.createTempDir();
     leech.addTorrent(new SharedTorrent(torrent, tempDir, false));
