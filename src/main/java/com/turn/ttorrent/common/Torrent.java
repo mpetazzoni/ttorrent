@@ -74,6 +74,20 @@ public class Torrent extends Observable implements TorrentInfo {
 	/** The query parameters encoding when parsing byte strings. */
 	public static final String BYTE_ENCODING = "ISO-8859-1";
 
+	public static int HASHING_THREADS_COUNT = Runtime.getRuntime().availableProcessors();
+
+
+
+	private static final ExecutorService HASHING_EXECUTOR = Executors.newFixedThreadPool(HASHING_THREADS_COUNT, new ThreadFactory() {
+		@Override
+		public Thread newThread(final Runnable r) {
+			final Thread thread = new Thread(r);
+			thread.setDaemon(true);
+			return thread;
+		}
+	});
+
+
 	/**
 	 *
 	 * @author dgiffin
@@ -499,22 +513,7 @@ public class Torrent extends Observable implements TorrentInfo {
 		}
 	}
 
-	/**
-	 * Determine how many threads to use for the piece hashing.
-	 *
-	 * <p>
-	 * If the environment variable TTORRENT_HASHING_THREADS is set to an
-	 * integer value greater than 0, its value will be used. Otherwise, it
-	 * defaults to the number of processors detected by the Java Runtime.
-	 * </p>
-	 *
-	 * @return How many threads to use for concurrent piece hashing.
-	 */
-	protected static int getHashingThreadsCount() {
-    return hashingThreadsCount;
-	}
-
-  public Torrent createWithNewTracker(final URI newTracker){
+	public Torrent createWithNewTracker(final URI newTracker){
     trackers.clear();
     trackers.add(Arrays.asList(newTracker));
     try {
@@ -812,27 +811,18 @@ public class Torrent extends Observable implements TorrentInfo {
     List<Future<String>> results = new LinkedList<Future<String>>();
     long length = 0L;
 
-		ByteBuffer buffer = ByteBuffer.allocate(pieceSize);
+		final ByteBuffer buffer = ByteBuffer.allocate(pieceSize);
 
-    int numConcurrentThreads = getHashingThreadsCount();
 
 		final AtomicInteger threadIdx = new AtomicInteger(0);
 		final String firstFileName = files.get(0).getName();
-    final ExecutorService executor = Executors.newFixedThreadPool(numConcurrentThreads, new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable r) {
-				final Thread thread = new Thread(r);
-				thread.setName(String.format("%s hasher #%d", firstFileName, threadIdx.incrementAndGet()));
-				return thread;
-			}
-		});
 
 		StringBuilder hashes = new StringBuilder();
 
 		long start = System.nanoTime();
 		for (File file : files) {
-      logger.debug("Analyzing local data for {} with {} threads...",
-        file.getName(), getHashingThreadsCount());
+			logger.debug("Analyzing local data for {} with {} threads...",
+        file.getName(), HASHING_THREADS_COUNT);
 
 			length += file.length();
 
@@ -843,10 +833,16 @@ public class Torrent extends Observable implements TorrentInfo {
 				while (channel.read(buffer) > 0) {
 					if (buffer.remaining() == 0) {
 						buffer.clear();
-						results.add(executor.submit(new CallableChunkHasher(buffer)));
+						results.add(HASHING_EXECUTOR.submit(new Callable<String>() {
+							@Override
+							public String call() throws Exception {
+								Thread.currentThread().setName(String.format("%s hasher #%d", firstFileName, threadIdx.incrementAndGet()));
+								return new CallableChunkHasher(buffer).call();
+							}
+						}));
 					}
 
-          if (results.size() >= numConcurrentThreads) {
+          if (results.size() >= HASHING_THREADS_COUNT) {
             // process hashers, otherwise they will spend too much memory
             waitForHashesToCalculate(results, hashes);
             results.clear();
@@ -862,21 +858,11 @@ public class Torrent extends Observable implements TorrentInfo {
 		if (buffer.position() > 0) {
 			buffer.limit(buffer.position());
 			buffer.position(0);
-			results.add(executor.submit(new CallableChunkHasher(buffer)));
+			results.add(HASHING_EXECUTOR.submit(new CallableChunkHasher(buffer)));
 		}
 		// here we have only a few hashes to wait for calculation
     waitForHashesToCalculate(results, hashes);
 
-		// Request orderly executor shutdown and wait for hashing tasks to
-		// complete.
-		executor.shutdown();
-		if (!executor.awaitTermination(HASHING_TIMEOUT_SEC, TimeUnit.SECONDS)){
-			final List<Runnable> runnables = executor.shutdownNow();
-			final String errorMsg = String.format("Took more than %d seconds to finish hashing file %s. Has %d items left",
-							HASHING_TIMEOUT_SEC, firstFileName, runnables.size());
-			logger.warn(errorMsg);
-			throw new RuntimeException(errorMsg);
-		}
 		long elapsed = System.nanoTime() - start;
 
 		int expectedPieces = (int) (Math.ceil(
@@ -911,10 +897,8 @@ public class Torrent extends Observable implements TorrentInfo {
    * @param hashingThreadsCount number of concurrent threads for file hash calculation
 	 */
   public static void setHashingThreadsCount(int hashingThreadsCount) {
-    Torrent.hashingThreadsCount = hashingThreadsCount;
+    Torrent.HASHING_THREADS_COUNT = hashingThreadsCount;
 	}
-
-  private static int hashingThreadsCount = Runtime.getRuntime().availableProcessors();
 
   static {
     String threads = System.getenv("TTORRENT_HASHING_THREADS");
@@ -923,7 +907,7 @@ public class Torrent extends Observable implements TorrentInfo {
       try {
         int count = Integer.parseInt(threads);
         if (count > 0) {
-          hashingThreadsCount = count;
+          HASHING_THREADS_COUNT = count;
         }
       } catch (NumberFormatException nfe) {
         // Pass
