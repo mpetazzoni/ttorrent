@@ -764,15 +764,10 @@ public class Torrent extends Observable implements TorrentInfo {
 		private final MessageDigest md;
 		private final ByteBuffer data;
 
-		CallableChunkHasher(ByteBuffer buffer)
+		CallableChunkHasher(final ByteBuffer data)
 			throws NoSuchAlgorithmException {
 			this.md = MessageDigest.getInstance("SHA-1");
-
-			this.data = ByteBuffer.allocate(buffer.remaining());
-			buffer.mark();
-			this.data.put(buffer);
-			this.data.clear();
-			buffer.reset();
+			this.data = data;
 		}
 
 		@Override
@@ -833,11 +828,17 @@ public class Torrent extends Observable implements TorrentInfo {
 				while (channel.read(buffer) > 0) {
 					if (buffer.remaining() == 0) {
 						buffer.clear();
+						final ByteBuffer data = ByteBuffer.allocate(buffer.remaining());
+						buffer.mark();
+						data.put(buffer);
+						data.clear();
+						buffer.reset();
+
 						results.add(HASHING_EXECUTOR.submit(new Callable<String>() {
 							@Override
 							public String call() throws Exception {
 								Thread.currentThread().setName(String.format("%s hasher #%d", firstFileName, threadIdx.incrementAndGet()));
-								return new CallableChunkHasher(buffer).call();
+								return new CallableChunkHasher(data).call();
 							}
 						}));
 					}
