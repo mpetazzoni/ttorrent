@@ -768,6 +768,13 @@ public class Torrent extends Observable implements TorrentInfo {
 			throws NoSuchAlgorithmException {
 			this.md = MessageDigest.getInstance("SHA-1");
 			this.data = data;
+/*
+			this.data = ByteBuffer.allocate(buffer.remaining());
+			buffer.mark();
+			this.data.put(buffer);
+			this.data.clear();
+			buffer.reset();
+*/
 		}
 
 		@Override
@@ -828,11 +835,7 @@ public class Torrent extends Observable implements TorrentInfo {
 				while (channel.read(buffer) > 0) {
 					if (buffer.remaining() == 0) {
 						buffer.clear();
-						final ByteBuffer data = ByteBuffer.allocate(buffer.remaining());
-						buffer.mark();
-						data.put(buffer);
-						data.clear();
-						buffer.reset();
+						final ByteBuffer data = prepareDataFromBuffer(buffer);
 
 						results.add(HASHING_EXECUTOR.submit(new Callable<String>() {
 							@Override
@@ -859,7 +862,8 @@ public class Torrent extends Observable implements TorrentInfo {
 		if (buffer.position() > 0) {
 			buffer.limit(buffer.position());
 			buffer.position(0);
-			results.add(HASHING_EXECUTOR.submit(new CallableChunkHasher(buffer)));
+			final ByteBuffer data = prepareDataFromBuffer(buffer);
+			results.add(HASHING_EXECUTOR.submit(new CallableChunkHasher(data)));
 		}
 		// here we have only a few hashes to wait for calculation
     waitForHashesToCalculate(results, hashes);
@@ -880,7 +884,16 @@ public class Torrent extends Observable implements TorrentInfo {
 		return hashes.toString();
 	}
 
-  private static void waitForHashesToCalculate(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
+	private static ByteBuffer prepareDataFromBuffer(ByteBuffer buffer) {
+		final ByteBuffer data = ByteBuffer.allocate(buffer.remaining());
+		buffer.mark();
+		data.put(buffer);
+		data.clear();
+		buffer.reset();
+		return data;
+	}
+
+	private static void waitForHashesToCalculate(List<Future<String>> results, StringBuilder hashes) throws InterruptedException, IOException {
 		try {
 			for (Future<String> chunk : results) {
 				hashes.append(chunk.get(HASHING_TIMEOUT_SEC, TimeUnit.SECONDS));
