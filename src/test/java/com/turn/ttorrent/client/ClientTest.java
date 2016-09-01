@@ -640,7 +640,7 @@ public class ClientTest {
 
   public void interrupt_download() throws IOException, InterruptedException, NoSuchAlgorithmException {
     tracker.setAcceptForeignTorrents(true);
-    Client seeder = createClient();
+    final Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 60);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
