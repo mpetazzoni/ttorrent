@@ -9,10 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.testng.Assert.*;
 import static org.testng.Assert.assertEqualsNoOrder;
@@ -40,12 +37,22 @@ public class TorrentTest {
     String createdBy = "Test2";
     final File parentDir = new File("src/test/resources/parentFiles/parentDir");
     final long creationTimeSecs = 1376051000;
-    Torrent t = Torrent.create(parentDir,addFilesRecursively(parentDir), announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
+    final String[] fileNames = new String[]
+            {"AccuRevCommon.jar",
+                    "commons-io-cio2.5_3.jar",
+                    "commons-io-cio2.5_3.jar.link",
+                    "inDir/application.wadl",
+                    "storage.version"};
+    final List<File> files = new ArrayList<File>();
+    for (String fileName : fileNames) {
+      files.add(new File(parentDir, fileName));
+    }
+    Torrent createdTorrent = Torrent.create(parentDir,files, announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
     File torrentFileWin = new File("src/test/resources/torrents/parentDir.win.torrent");
     File torrentFileLinux = new File("src/test/resources/torrents/parentDir.linux.torrent");
     final byte[] expectedBytesWin = FileUtils.readFileToByteArray(torrentFileWin);
     final byte[] expectedBytesLinux = FileUtils.readFileToByteArray(torrentFileLinux);
-    final byte[] actualBytes = t.getEncoded();
+    final byte[] actualBytes = createdTorrent.getEncoded();
 
     assertTrue(Hex.encodeHexString(expectedBytesWin).equals(Hex.encodeHexString(actualBytes)) || Hex.encodeHexString(expectedBytesLinux).equals(Hex.encodeHexString(actualBytes)));
   }
@@ -68,19 +75,4 @@ public class TorrentTest {
     System.out.println();
   }
 
-  private static List<File> addFilesRecursively(File baseDir){
-    final File[] files = baseDir.listFiles();
-    if (files == null) {
-      return Collections.emptyList();
-    }
-    List<File> list = new ArrayList<File>();
-    for (File file : files) {
-      if (file.isDirectory()){
-        list.addAll(addFilesRecursively(file));
-      } else if (file.isFile()){
-        list.add(file);
-      }
-    }
-    return list;
-  }
 }
