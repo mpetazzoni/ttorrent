@@ -62,6 +62,18 @@ public class Piece implements Comparable<Piece> {
 	private volatile boolean valid;
 	private int seen;
 	private ByteBuffer data;
+	private static final ThreadLocal<ByteBuffer> validateByteBuffer = new ThreadLocal<ByteBuffer>() {
+		@Override
+		protected ByteBuffer initialValue() {
+			return ByteBuffer.allocate(Torrent.DEFAULT_PIECE_LENGTH);
+		}
+	};
+	private static final ThreadLocal<byte[]> validateByteArray = new ThreadLocal<byte[]> () {
+		@Override
+		protected byte[] initialValue() {
+			return new byte[Torrent.DEFAULT_PIECE_LENGTH];
+		}
+	};
 
 	/**
 	 * Initialize a new piece in the byte bucket.
@@ -159,16 +171,59 @@ public class Piece implements Comparable<Piece> {
 		logger.trace("Validating {}...", this);
 		this.valid = false;
 
-		ByteBuffer buffer = this._read(0, this.length);
-		byte[] data = new byte[(int)this.length];
-		buffer.get(data);
+		int len = (int) this.length;
+		ByteBuffer buffer;
+		byte[] data;
+		// Use thread local buffers when possible so we don't press GC
+		if (len <= Torrent.DEFAULT_PIECE_LENGTH) {
+			buffer = validateByteBuffer.get();
+			buffer.clear();
+			buffer.limit(len);
+			this._read(0, buffer);
+			data = validateByteArray.get();
+		} else {
+			buffer = this._read(0, len);
+			data = new byte[len];
+		}
+		buffer.get(data, 0, len);
 		try {
-			this.valid = Arrays.equals(Torrent.hash(data), this.hash);
+			this.valid = Arrays.equals(Torrent.hash(data, 0, len), this.hash);
 		} catch (NoSuchAlgorithmException e) {
 			this.valid = false;
 		}
 
 		return this.isValid();
+	}
+
+	/**
+	 * Internal piece data read function without memory allocation.
+	 *
+	 * <p>
+	 * This function will read the piece data without checking if the piece has
+	 * been validated. It is simply meant at factoring-in the common read code
+	 * from the validate and read functions.
+	 * </p>
+	 *
+	 * @param offset Offset inside this piece where to start reading.
+	 * @param buffer A byte buffer to read the piece data into.
+	 * @throws IllegalArgumentException If <em>offset + length</em> goes over
+	 * the piece boundary.
+	 * @throws IOException If the read can't be completed (I/O error, or EOF
+	 * reached, which can happen if the piece is not complete).
+	 */
+	private void _read(long offset, ByteBuffer buffer) throws IOException {
+		int length = buffer.remaining();
+		if (offset + length > this.length) {
+			throw new IllegalArgumentException("Piece#" + this.index +
+					" overrun (" + offset + " + " + length + " > " +
+					this.length + ") !");
+		}
+
+		// TODO: remove cast to int when large ByteBuffer support is
+		// implemented in Java.
+		int bytes = this.bucket.read(buffer, this.offset + offset);
+		buffer.rewind();
+		buffer.limit(bytes >= 0 ? bytes : 0);
 	}
 
 	/**
@@ -286,6 +341,14 @@ public class Piece implements Comparable<Piece> {
 		}
 		return this.index == other.index ? 0 :
 			(this.index < other.index ? -1 : 1);
+	}
+
+	/**
+	 * Release the thread local buffers for validation.
+	 */
+	public static void clearValidationBuffers() {
+		validateByteArray.remove();
+		validateByteBuffer.remove();
 	}
 
 	/**

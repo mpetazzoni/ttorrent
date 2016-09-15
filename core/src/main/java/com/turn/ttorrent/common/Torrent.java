@@ -412,6 +412,14 @@ public class Torrent {
 		return crypt.digest();
 	}
 
+	public static byte[] hash(byte[] data, int offset, int length) throws NoSuchAlgorithmException {
+		MessageDigest crypt;
+		crypt = MessageDigest.getInstance("SHA-1");
+		crypt.reset();
+		crypt.update(data, offset, length);
+		return crypt.digest();
+	}
+
 	/**
 	 * Return an hexadecimal representation of the bytes contained in the
 	 * given string, following the default, expected byte encoding.
@@ -506,7 +514,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File source, URI announce, String createdBy)
 		throws InterruptedException, IOException, NoSuchAlgorithmException {
-		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH, 
+		return Torrent.create(source, null, DEFAULT_PIECE_LENGTH,
 				announce, null, createdBy);
 	}
 
@@ -529,7 +537,7 @@ public class Torrent {
 	 */
 	public static Torrent create(File parent, List<File> files, URI announce,
 		String createdBy) throws InterruptedException, IOException, NoSuchAlgorithmException {
-		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH, 
+		return Torrent.create(parent, files, DEFAULT_PIECE_LENGTH,
 				announce, null, createdBy);
 	}
 
@@ -543,17 +551,17 @@ public class Torrent {
 	 * </p>
 	 *
 	 * @param source The file to use in the torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
+	 * @param announceList The announce URIs organized as tiers that will
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
 	 */
 	public static Torrent create(File source, int pieceLength, List<List<URI>> announceList,
 			String createdBy) throws InterruptedException, IOException, NoSuchAlgorithmException {
-		return Torrent.create(source, null, pieceLength, 
+		return Torrent.create(source, null, pieceLength,
 				null, announceList, createdBy);
 	}
-	
+
 	/**
 	 * Create a {@link Torrent} object for a set of files.
 	 *
@@ -567,7 +575,7 @@ public class Torrent {
 	 * @param source The parent directory or location of the torrent files,
 	 * also used as the torrent's name.
 	 * @param files The files to add into this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
+	 * @param announceList The announce URIs organized as tiers that will
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
@@ -575,10 +583,10 @@ public class Torrent {
 	public static Torrent create(File source, List<File> files, int pieceLength,
 			List<List<URI>> announceList, String createdBy)
 			throws InterruptedException, IOException, NoSuchAlgorithmException {
-		return Torrent.create(source, files, pieceLength, 
+		return Torrent.create(source, files, pieceLength,
 				null, announceList, createdBy);
 	}
-	
+
 	/**
 	 * Helper method to create a {@link Torrent} object for a set of files.
 	 *
@@ -593,7 +601,7 @@ public class Torrent {
 	 * also used as the torrent's name.
 	 * @param files The files to add into this torrent.
 	 * @param announce The announce URI that will be used for this torrent.
-	 * @param announceList The announce URIs organized as tiers that will 
+	 * @param announceList The announce URIs organized as tiers that will
 	 * be used for this torrent
 	 * @param createdBy The creator's name, or any string identifying the
 	 * torrent's creator.
@@ -625,7 +633,7 @@ public class Torrent {
 			}
 			torrent.put("announce-list", new BEValue(tiers));
 		}
-		
+
 		torrent.put("creation date", new BEValue(new Date().getTime() / 1000));
 		torrent.put("created by", new BEValue(createdBy));
 
