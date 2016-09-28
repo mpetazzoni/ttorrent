@@ -405,11 +405,7 @@ public class Torrent {
 	}
 
 	public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
-		MessageDigest crypt;
-		crypt = MessageDigest.getInstance("SHA-1");
-		crypt.reset();
-		crypt.update(data);
-		return crypt.digest();
+		return hash(data, 0, data.length);
 	}
 
 	public static byte[] hash(byte[] data, int offset, int length) throws NoSuchAlgorithmException {

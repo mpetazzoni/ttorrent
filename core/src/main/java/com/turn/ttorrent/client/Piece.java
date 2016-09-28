@@ -51,6 +51,7 @@ public class Piece implements Comparable<Piece> {
 
 	private static final Logger logger =
 		LoggerFactory.getLogger(Piece.class);
+	private static final int DEFAULT_BUFFER_LENGTH = 4096 * 1024; // 4 MB
 
 	private final TorrentByteStorage bucket;
 	private final int index;
@@ -65,13 +66,19 @@ public class Piece implements Comparable<Piece> {
 	private static final ThreadLocal<ByteBuffer> validateByteBuffer = new ThreadLocal<ByteBuffer>() {
 		@Override
 		protected ByteBuffer initialValue() {
-			return ByteBuffer.allocate(Torrent.DEFAULT_PIECE_LENGTH);
+			return ByteBuffer.allocate(DEFAULT_BUFFER_LENGTH);
 		}
 	};
 	private static final ThreadLocal<byte[]> validateByteArray = new ThreadLocal<byte[]> () {
 		@Override
 		protected byte[] initialValue() {
-			return new byte[Torrent.DEFAULT_PIECE_LENGTH];
+			return new byte[DEFAULT_BUFFER_LENGTH];
+		}
+	};
+	private static final ThreadLocal<ByteBuffer> recordByteBuffer = new ThreadLocal<ByteBuffer>() {
+		@Override
+		protected ByteBuffer initialValue() {
+			return ByteBuffer.allocate(DEFAULT_BUFFER_LENGTH);
 		}
 	};
 
@@ -175,7 +182,7 @@ public class Piece implements Comparable<Piece> {
 		ByteBuffer buffer;
 		byte[] data;
 		// Use thread local buffers when possible so we don't press GC
-		if (len <= Torrent.DEFAULT_PIECE_LENGTH) {
+		if (len <= DEFAULT_BUFFER_LENGTH) {
 			buffer = validateByteBuffer.get();
 			buffer.clear();
 			buffer.limit(len);
@@ -219,8 +226,6 @@ public class Piece implements Comparable<Piece> {
 					this.length + ") !");
 		}
 
-		// TODO: remove cast to int when large ByteBuffer support is
-		// implemented in Java.
 		int bytes = this.bucket.read(buffer, this.offset + offset);
 		buffer.rewind();
 		buffer.limit(bytes >= 0 ? bytes : 0);
@@ -253,9 +258,7 @@ public class Piece implements Comparable<Piece> {
 		// TODO: remove cast to int when large ByteBuffer support is
 		// implemented in Java.
 		ByteBuffer buffer = ByteBuffer.allocate((int)length);
-		int bytes = this.bucket.read(buffer, this.offset + offset);
-		buffer.rewind();
-		buffer.limit(bytes >= 0 ? bytes : 0);
+		_read(offset, buffer);
 		return buffer;
 	}
 
@@ -304,7 +307,13 @@ public class Piece implements Comparable<Piece> {
 		if (this.data == null || offset == 0) {
 			// TODO: remove cast to int when large ByteBuffer support is
 			// implemented in Java.
-			this.data = ByteBuffer.allocate((int)this.length);
+			if (this.length <= DEFAULT_BUFFER_LENGTH) {
+				this.data = recordByteBuffer.get();
+				this.data.clear();
+				this.data.limit((int) this.length);
+			} else {
+				this.data = ByteBuffer.allocate((int) this.length);
+			}
 		}
 
 		int pos = block.position();
@@ -349,6 +358,7 @@ public class Piece implements Comparable<Piece> {
 	public static void clearValidationBuffers() {
 		validateByteArray.remove();
 		validateByteBuffer.remove();
+		recordByteBuffer.remove();
 	}
 
 	/**
