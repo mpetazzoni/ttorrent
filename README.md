@@ -83,6 +83,12 @@ section:
   </dependencies>
 ```
 
+If you use Gradle, you'll need a line that looks like this instead:
+
+```
+compile 'com.turn:ttorrent-core:1.5'
+```
+
 *Thanks to Anatoli Vladev for the code examples in #16.*
 
 #### Client code
