@@ -448,7 +448,7 @@ public class Client extends Observable implements Runnable,
 			ul += peer.getULRate().get();
 		}
 
-		logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
+		logger.debug("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
 			new Object[] {
 				this.getState().name(),
 				this.torrent.getCompletedPieces().cardinality(),
