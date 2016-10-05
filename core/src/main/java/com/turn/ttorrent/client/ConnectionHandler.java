@@ -134,6 +134,8 @@ public class ConnectionHandler implements Runnable {
 			} catch (IOException ioe) {
 				// Ignore, try next port
 				logger.warn("Could not bind to {}, trying next port...", tryAddress);
+
+				this.channel.close();
 			}
 		}
 
