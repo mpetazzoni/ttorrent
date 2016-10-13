@@ -203,6 +203,15 @@ class PeerExchange {
 			IOUtils.closeQuietly(this.channel);
 		}
 
+		// The selector is not used w/ a timeout, interrupting the thread makes it return
+		if ( this.in.isAlive() ) {
+			this.in.interrupt();
+		}
+
+		if ( this.out.isAlive() ) {
+			this.out.interrupt();
+		}
+
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
