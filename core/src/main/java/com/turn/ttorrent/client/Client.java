@@ -30,6 +30,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.text.MessageFormat;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -431,36 +432,48 @@ public class Client extends Observable implements Runnable,
 	}
 
 	/**
-	 * Display information about the BitTorrent client state.
+	 * Retrieves info about the client's current state.
 	 *
-	 * <p>
-	 * This emits an information line in the log about this client's state. It
-	 * includes the number of choked peers, number of connected peers, number
+	 * @return A string containing the number of choked peers, number of connected peers, number
 	 * of known peers, information about the torrent availability and
 	 * completion and current transmission rates.
-	 * </p>
 	 */
-	public synchronized void info() {
-		float dl = 0;
-		float ul = 0;
+	public synchronized String getInfo() {
+		float dl = 0, ul = 0;
+
 		for (SharingPeer peer : this.connected.values()) {
 			dl += peer.getDLRate().get();
 			ul += peer.getULRate().get();
 		}
 
-		logger.info("{} {}/{} pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
-			new Object[] {
-				this.getState().name(),
-				this.torrent.getCompletedPieces().cardinality(),
-				this.torrent.getPieceCount(),
-				String.format("%.2f", this.torrent.getCompletion()),
-				this.torrent.getAvailablePieces().cardinality(),
-				this.torrent.getRequestedPieces().cardinality(),
-				this.connected.size(),
-				this.peers.size(),
-				String.format("%.2f", dl/1024.0),
-				String.format("%.2f", ul/1024.0),
-			});
+		return new
+				MessageFormat("{0} {1}/{2} pieces ({3}%) [{4}/{5}] with {6}/{7} peers at {8}/{9} kB/s.")
+				.format(
+						new Object[] {
+								this.getState().name(),
+								this.torrent.getCompletedPieces().cardinality(),
+								this.torrent.getPieceCount(),
+								String.format("%.2f", this.torrent.getCompletion()),
+								this.torrent.getAvailablePieces().cardinality(),
+								this.torrent.getRequestedPieces().cardinality(),
+								this.connected.size(),
+								this.peers.size(),
+								String.format("%.2f", dl / 1024.0),
+								String.format("%.2f", ul / 1024.0),
+						});
+	}
+
+	/**
+	 * Display information about the BitTorrent client state.
+	 *
+	 * <p>
+	 * This emits an information line in the log about this client's state
+	 * containing {@link #getInfo()} along with debug info.
+	 * </p>
+	 */
+	public synchronized void info() {
+		logger.info(getInfo());
+
 		for (SharingPeer peer : this.connected.values()) {
 			Piece piece = peer.getRequestedPiece();
 			logger.debug("  | {} {}",
