@@ -439,6 +439,10 @@ public class Client extends Observable implements Runnable,
 	 * completion and current transmission rates.
 	 */
 	public synchronized String getInfo() {
+		if ( !this.torrent.isInitialized() ) {
+			return "Torrent not initialized yet";
+		}
+
 		float dl = 0, ul = 0;
 
 		for (SharingPeer peer : this.connected.values()) {
