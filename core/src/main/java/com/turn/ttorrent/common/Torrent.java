@@ -667,33 +667,7 @@ public class Torrent {
 		return new Torrent(baos.toByteArray(), true);
 	}
 
-	/**
-	 * A {@link Callable} to hash a data chunk.
-	 *
-	 * @author mpetazzoni
-	 */
-	private static class CallableChunkHasher implements Callable<String> {
 
-		private final MessageDigest md;
-		private final ByteBuffer data;
-
-		CallableChunkHasher(ByteBuffer buffer) throws NoSuchAlgorithmException {
-			this.md = MessageDigest.getInstance("SHA-1");
-
-			this.data = ByteBuffer.allocate(buffer.remaining());
-			buffer.mark();
-			this.data.put(buffer);
-			this.data.clear();
-			buffer.reset();
-		}
-
-		@Override
-		public String call() throws UnsupportedEncodingException {
-			this.md.reset();
-			this.md.update(this.data.array());
-			return new String(md.digest(), Torrent.BYTE_ENCODING);
-		}
-	}
 
 	/**
 	 * Return the concatenation of the SHA-1 hashes of a file's pieces.
@@ -710,22 +684,22 @@ public class Torrent {
 	 *
 	 * @param file The file to hash.
 	 */
-	private static String hashFile(File file, int pieceLenght)
+	private static String hashFile(File file, int pieceLength)
 		throws InterruptedException, IOException, NoSuchAlgorithmException {
-		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLenght);
+		return Torrent.hashFiles(Arrays.asList(new File[] { file }), pieceLength);
 	}
 
-	private static String hashFiles(List<File> files, int pieceLenght)
+	private static String hashFiles(List<File> files, int pieceLength)
 		throws InterruptedException, IOException, NoSuchAlgorithmException {
 		int threads = getHashingThreadsCount();
-		ExecutorService executor = Executors.newFixedThreadPool(threads);
-		ByteBuffer buffer = ByteBuffer.allocate(pieceLenght);
 		List<Future<String>> results = new LinkedList<Future<String>>();
 		StringBuilder hashes = new StringBuilder();
+		final ChunkHasher chunkHasher = new ChunkHasher(threads, pieceLength);
 
 		long length = 0L;
 		int pieces = 0;
 
+		ByteBuffer buffer = null;
 		long start = System.nanoTime();
 		for (File file : files) {
 			logger.info("Hashing data from {} with {} threads ({} pieces)...",
@@ -733,7 +707,7 @@ public class Torrent {
 					file.getName(),
 					threads,
 					(int) (Math.ceil(
-						(double)file.length() / pieceLenght))
+						(double)file.length() / pieceLength))
 				});
 
 			length += file.length();
@@ -743,10 +717,14 @@ public class Torrent {
 			int step = 10;
 
 			try {
+				buffer = chunkHasher.getBuffer();
+
 				while (channel.read(buffer) > 0) {
 					if (buffer.remaining() == 0) {
 						buffer.clear();
-						results.add(executor.submit(new CallableChunkHasher(buffer)));
+						results.add(chunkHasher.enqueueChunk(buffer));
+
+						buffer = chunkHasher.getBuffer();
 					}
 
 					if (results.size() >= threads) {
@@ -765,24 +743,19 @@ public class Torrent {
 		}
 
 		// Hash the last bit, if any
-		if (buffer.position() > 0) {
+		if ((buffer != null) && (buffer.position() > 0)) {
 			buffer.limit(buffer.position());
 			buffer.position(0);
-			results.add(executor.submit(new CallableChunkHasher(buffer)));
+			results.add(chunkHasher.enqueueChunk(buffer));
 		}
 
 		pieces += accumulateHashes(hashes, results);
 
-		// Request orderly executor shutdown and wait for hashing tasks to
-		// complete.
-		executor.shutdown();
-		while (!executor.isTerminated()) {
-			Thread.sleep(10);
-		}
+		chunkHasher.shutdown();
 		long elapsed = System.nanoTime() - start;
 
 		int expectedPieces = (int) (Math.ceil(
-				(double)length / pieceLenght));
+				(double)length / pieceLength));
 		logger.info("Hashed {} file(s) ({} bytes) in {} pieces ({} expected) in {}ms.",
 			new Object[] {
 				files.size(),
