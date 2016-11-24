@@ -93,7 +93,7 @@ public class TrackerTest {
 		try {
 			seeder.share();
 
-			waitForSeeder(seeder.getTorrent().getInfoHash());
+			waitForSeeder(seeder.getTorrent().getHexInfoHash());
 
 			Collection<TrackedTorrent> trackedTorrents = this.tracker.getTrackedTorrents();
 			assertEquals(1, trackedTorrents.size());
@@ -191,12 +191,12 @@ public class TrackerTest {
 		assertEquals(1, this.tracker.getTrackedTorrents().size());
 	}
 
-	private void waitForSeeder(final byte[] torrentHash) {
+	private void waitForSeeder(final String torrentHexHash) {
 		new WaitFor() {
 			@Override
 			protected boolean condition() {
 				for (TrackedTorrent tt : TrackerTest.this.tracker.getTrackedTorrents()) {
-					if (tt.seeders() == 1 && tt.getHexInfoHash().equals(Torrent.byteArrayToHexString(torrentHash)))
+					if (tt.seeders() == 1 && tt.getHexInfoHash().equals(torrentHexHash))
 						return true;
 				}
 
