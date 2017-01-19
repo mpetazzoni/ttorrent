@@ -1,4 +1,4 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.common.protocol;
 
 import com.turn.ttorrent.common.protocol.PeerMessage;
 

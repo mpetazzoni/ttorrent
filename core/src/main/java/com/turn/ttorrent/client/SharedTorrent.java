@@ -20,8 +20,10 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
-import com.turn.ttorrent.client.storage.FileStorage;
-import com.turn.ttorrent.client.storage.FileCollectionStorage;
+import com.turn.ttorrent.client.storage.FileStorageFactory;
+import com.turn.ttorrent.client.storage.StorageFactory;
+import com.turn.ttorrent.client.storage.ChildStorageDecorator;
+import com.turn.ttorrent.client.storage.CompositeStorage;
 import com.turn.ttorrent.client.strategy.RequestStrategy;
 import com.turn.ttorrent.client.strategy.RequestStrategyImplRarest;
 
@@ -55,6 +57,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * @author mpetazzoni
+ * @author <a href="mailto:xianguang.zhou@outlook.com">Xianguang Zhou</a>
  */
 public class SharedTorrent extends Torrent implements PeerActivityListener {
 
@@ -137,7 +140,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		this(torrent.getEncoded(), destDir, seeder, DEFAULT_REQUEST_STRATEGY);
+		this(torrent.getEncoded(), new FileStorageFactory(destDir), seeder, DEFAULT_REQUEST_STRATEGY);
 	}
 
 	/**
@@ -161,7 +164,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	public SharedTorrent(Torrent torrent, File destDir, boolean seeder,
 			RequestStrategy requestStrategy)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		this(torrent.getEncoded(), destDir, seeder, requestStrategy);
+		this(torrent.getEncoded(), new FileStorageFactory(destDir), seeder, requestStrategy);
 	}
 
 	/**
@@ -192,14 +195,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 */
 	public SharedTorrent(byte[] torrent, File parent, boolean seeder)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		this(torrent, parent, seeder, DEFAULT_REQUEST_STRATEGY);
+		this(torrent, new FileStorageFactory(parent), seeder, DEFAULT_REQUEST_STRATEGY);
 	}
 
 	/**
 	 * Create a new shared torrent from meta-info binary data.
 	 *
 	 * @param torrent The meta-info byte data.
-	 * @param parent The parent directory or location the torrent files.
+	 * @param storageFactory The factory of {@link TorrentByteStorage}.
 	 * @param seeder Whether we're a seeder for this torrent or not (disables
 	 * validation).
 	 * @param requestStrategy The request strategy implementation.
@@ -207,16 +210,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException If the torrent file cannot be read or decoded.
 	 */
-	public SharedTorrent(byte[] torrent, File parent, boolean seeder,
+	public SharedTorrent(byte[] torrent, StorageFactory storageFactory, boolean seeder,
 			RequestStrategy requestStrategy)
 		throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		super(torrent, seeder);
-
-		if (parent == null || !parent.isDirectory()) {
-			throw new IllegalArgumentException("Invalid parent directory!");
-		}
-
-		String parentPath = parent.getCanonicalPath();
 
 		try {
 			this.pieceLength = this.decoded_info.get("piece length").getInt();
@@ -233,21 +230,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					"Error reading torrent meta-info fields!");
 		}
 
-		List<FileStorage> files = new LinkedList<FileStorage>();
+		List<ChildStorageDecorator> childStorageDecorators = new LinkedList<ChildStorageDecorator>();
 		long offset = 0L;
 		for (Torrent.TorrentFile file : this.files) {
-			File actual = new File(parent, file.file.getPath());
-
-			if (!actual.getCanonicalPath().startsWith(parentPath)) {
-				throw new SecurityException("Torrent file path attempted " +
-					"to break directory jail!");
-			}
-
-			actual.getParentFile().mkdirs();
-			files.add(new FileStorage(actual, offset, file.size));
+			childStorageDecorators.add(new ChildStorageDecorator(storageFactory.create(file), offset));
 			offset += file.size;
 		}
-		this.bucket = new FileCollectionStorage(files, this.getSize());
+		this.bucket = new CompositeStorage(childStorageDecorators, this.getSize());
 
 		this.stop = false;
 

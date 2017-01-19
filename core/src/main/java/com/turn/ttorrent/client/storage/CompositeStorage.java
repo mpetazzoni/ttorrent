@@ -37,29 +37,30 @@ import org.slf4j.LoggerFactory;
  *
  * @author mpetazzoni
  * @author dgiffin
+ * @author <a href="mailto:xianguang.zhou@outlook.com">Xianguang Zhou</a>
  */
-public class FileCollectionStorage implements TorrentByteStorage {
+public class CompositeStorage implements TorrentByteStorage {
 
 	private static final Logger logger =
-		LoggerFactory.getLogger(FileCollectionStorage.class);
+		LoggerFactory.getLogger(CompositeStorage.class);
 
-	private final List<FileStorage> files;
+	private final List<ChildStorageDecorator> children;
 	private final long size;
 
 	/**
 	 * Initialize a new multi-file torrent byte storage.
 	 *
-	 * @param files The list of individual {@link FileStorage}
+	 * @param children The list of individual {@link ChildStorageDecorator}
 	 * objects making up the torrent.
 	 * @param size The total size of the torrent data, in bytes.
 	 */
-	public FileCollectionStorage(List<FileStorage> files,
+	public CompositeStorage(List<ChildStorageDecorator> children,
 		long size) {
-		this.files = files;
+		this.children = children;
 		this.size = size;
 
 		logger.info("Initialized torrent byte storage on {} file(s) " +
-			"({} total byte(s)).", files.size(), size);
+			"({} total byte(s)).", children.size(), size);
 	}
 
 	@Override
@@ -72,11 +73,11 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		int requested = buffer.remaining();
 		int bytes = 0;
 
-		for (FileOffset fo : this.select(offset, requested)) {
+		for (StorageOffset so : this.select(offset, requested)) {
 			// TODO: remove cast to int when large ByteBuffer support is
 			// implemented in Java.
-			buffer.limit((int)(bytes + fo.length));
-			bytes += fo.file.read(buffer, fo.offset);
+			buffer.limit((int)(bytes + so.length));
+			bytes += so.storage.read(buffer, so.offset);
 		}
 
 		if (bytes < requested) {
@@ -92,9 +93,9 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 		int bytes = 0;
 
-		for (FileOffset fo : this.select(offset, requested)) {
-			buffer.limit(bytes + (int)fo.length);
-			bytes += fo.file.write(buffer, fo.offset);
+		for (StorageOffset so : this.select(offset, requested)) {
+			buffer.limit(bytes + (int)so.length);
+			bytes += so.storage.write(buffer, so.offset);
 		}
 
 		if (bytes < requested) {
@@ -106,22 +107,22 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 	@Override
 	public void close() throws IOException {
-		for (FileStorage file : this.files) {
-			file.close();
+		for (TorrentByteStorage child : this.children) {
+			child.close();
 		}
 	}
 
 	@Override
 	public void finish() throws IOException {
-		for (FileStorage file : this.files) {
-			file.finish();
+		for (TorrentByteStorage child : this.children) {
+			child.finish();
 		}
 	}
 
 	@Override
 	public boolean isFinished() {
-		for (FileStorage file : this.files) {
-			if (!file.isFinished()) {
+		for (TorrentByteStorage child : this.children) {
+			if (!child.isFinished()) {
 				return false;
 			}
 		}
@@ -130,24 +131,24 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	}
 
 	/**
-	 * File operation details holder.
+	 * Storage operation details holder.
 	 *
 	 * <p>
 	 * This simple inner class holds the details for a read or write operation
-	 * on one of the underlying {@link FileStorage}s.
+	 * on one of the underlying {@link ChildStorageDecorator}s.
 	 * </p>
 	 *
 	 * @author dgiffin
 	 * @author mpetazzoni
 	 */
-	private static class FileOffset {
+	private static class StorageOffset {
 
-		public final FileStorage file;
+		public final ChildStorageDecorator storage;
 		public final long offset;
 		public final long length;
 
-		FileOffset(FileStorage file, long offset, long length) {
-			this.file = file;
+		StorageOffset(ChildStorageDecorator storage, long offset, long length) {
+			this.storage = storage;
 			this.offset = offset;
 			this.length = length;
 		}
@@ -164,38 +165,38 @@ public class FileCollectionStorage implements TorrentByteStorage {
 	 * @param offset The offset of the operation, in bytes, relative to the
 	 * complete byte storage.
 	 * @param length The number of bytes to read or write.
-	 * @return A list of {@link FileOffset} objects representing the {@link
-	 * FileStorage}s impacted by the operation, bundled with their
+	 * @return A list of {@link StorageOffset} objects representing the {@link
+	 * ChildStorageDecorator}s impacted by the operation, bundled with their
 	 * respective relative offset and number of bytes to read or write.
 	 * @throws IllegalArgumentException If the offset and length go over the
 	 * byte storage size.
 	 * @throws IllegalStateException If the files registered with this byte
 	 * storage can't accommodate the request (should not happen, really).
 	 */
-	private List<FileOffset> select(long offset, long length) {
+	private List<StorageOffset> select(long offset, long length) {
 		if (offset + length > this.size) {
 			throw new IllegalArgumentException("Buffer overrun (" +
 				offset + " + " + length + " > " + this.size + ") !");
 		}
 
-		List<FileOffset> selected = new LinkedList<FileOffset>();
+		List<StorageOffset> selected = new LinkedList<StorageOffset>();
 		long bytes = 0;
 
-		for (FileStorage file : this.files) {
-			if (file.offset() >= offset + length) {
+		for (ChildStorageDecorator child : this.children) {
+			if (child.offset() >= offset + length) {
 				break;
 			}
 
-			if (file.offset() + file.size() < offset) {
+			if (child.offset() + child.size() < offset) {
 				continue;
 			}
 
-			long position = offset - file.offset();
+			long position = offset - child.offset();
 			position = position > 0 ? position : 0;
 			long size = Math.min(
-				file.size() - position,
+				child.size() - position,
 				length - bytes);
-			selected.add(new FileOffset(file, position, size));
+			selected.add(new StorageOffset(child, position, size));
 			bytes += size;
 		}
 

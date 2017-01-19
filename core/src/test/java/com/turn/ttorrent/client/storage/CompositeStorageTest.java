@@ -15,8 +15,9 @@ import static org.testng.Assert.assertTrue;
 /**
  * User: loyd
  * Date: 11/24/13
+ * @author <a href="mailto:xianguang.zhou@outlook.com">Xianguang Zhou</a>
  */
-public class FileCollectionStorageTest {
+public class CompositeStorageTest {
     @Test
     public void testSelect() throws Exception {
         final File file1 = File.createTempFile("testng", "fcst");
@@ -24,10 +25,10 @@ public class FileCollectionStorageTest {
         final File file2 = File.createTempFile("testng", "fcst");
         file2.deleteOnExit();
 
-        final List<FileStorage> files = new ArrayList<FileStorage>();
-        files.add(new FileStorage(file1, 0, 2));
-        files.add(new FileStorage(file2, 2, 2));
-        final FileCollectionStorage storage = new FileCollectionStorage(files, 4);
+        final List<ChildStorageDecorator> childStorageDecorators = new ArrayList<ChildStorageDecorator>();
+        childStorageDecorators.add(new ChildStorageDecorator(new FileStorage(file1, 2), 0));
+        childStorageDecorators.add(new ChildStorageDecorator(new FileStorage(file2, 2), 2));
+        final CompositeStorage storage = new CompositeStorage(childStorageDecorators, 4);
         // since all of these files already exist, we are considered finished
         assertTrue(storage.isFinished());
 
@@ -49,13 +50,18 @@ public class FileCollectionStorageTest {
         check(new byte[]{102,11}, file2);
     }
 
-    private void write(byte[] bytes, int offset, FileCollectionStorage storage) throws IOException {
+    private void write(byte[] bytes, int offset, CompositeStorage storage) throws IOException {
         storage.write(ByteBuffer.wrap(bytes), offset);
         storage.finish();
     }
     private void check(byte[] bytes, File f) throws IOException {
-        final byte[] temp = new byte[bytes.length];
-        assertEquals(new FileInputStream(f).read(temp), temp.length);
-        assertEquals(temp, bytes);
+		final byte[] temp = new byte[bytes.length];
+		FileInputStream fileInputStream = new FileInputStream(f);
+		try {
+			assertEquals(fileInputStream.read(temp), temp.length);
+			assertEquals(temp, bytes);
+		} finally {
+			fileInputStream.close();
+		}
     }
 }
