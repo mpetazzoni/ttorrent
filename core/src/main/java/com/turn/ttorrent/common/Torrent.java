@@ -219,8 +219,9 @@ public class Torrent {
 			for (BEValue file : this.decoded_info.get("files").getList()) {
 				Map<String, BEValue> fileInfo = file.getMap();
 				StringBuilder path = new StringBuilder();
+				// Try UTF-8 path first, but fallback to regular path
 				BEValue beValue = fileInfo.get("path.utf-8");
-				if(null == beValue){
+				if (beValue == null) {
 					beValue = fileInfo.get("path");
 				}
 				for (BEValue pathElement : beValue.getList()) {
