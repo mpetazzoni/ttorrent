@@ -219,7 +219,11 @@ public class Torrent {
 			for (BEValue file : this.decoded_info.get("files").getList()) {
 				Map<String, BEValue> fileInfo = file.getMap();
 				StringBuilder path = new StringBuilder();
-				for (BEValue pathElement : fileInfo.get("path").getList()) {
+				BEValue beValue = fileInfo.get("path.utf-8");
+				if(null == beValue){
+					beValue = fileInfo.get("path");
+				}
+				for (BEValue pathElement : beValue.getList()) {
 					path.append(File.separator)
 						.append(pathElement.getString());
 				}
