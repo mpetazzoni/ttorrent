@@ -125,6 +125,9 @@ client.download();
 client.waitForCompletion();
 
 // At any time you can call client.stop() to interrupt the download.
+
+// If you plan on using the downloaded file(s) right away uncomment the line below
+//client.getTorrent().finish();
 ```
 
 #### Tracker code
