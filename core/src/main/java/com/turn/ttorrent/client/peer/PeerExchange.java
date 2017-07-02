@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage.Type;
@@ -133,7 +134,7 @@ class PeerExchange {
 		}
 	}
 
-	
+
 	/**
 	 * Register a new message listener to receive messages.
 	 *
@@ -181,7 +182,7 @@ class PeerExchange {
 		this.in.start();
 		this.out.start();
 	}
-	
+
 	/**
 	 * Stop the peer exchange.
 	 *
@@ -209,13 +210,13 @@ class PeerExchange {
 	/**
 	 * Abstract Thread subclass that allows conditional rate limiting
 	 * for <code>PIECE</code> messages.
-	 * 
+	 *
 	 * <p>
 	 * To impose rate limits, we only want to throttle when processing PIECE
 	 * messages. All other peer messages should be exchanged as quickly as
 	 * possible.
 	 * </p>
-	 * 
+	 *
 	 * @author ptgoetz
 	 */
 	private abstract class RateLimitThread extends Thread {
@@ -226,19 +227,19 @@ class PeerExchange {
 		/**
 		 * Dynamically determines an amount of time to sleep, based on the
 		 * average read/write throughput.
-		 * 
+		 *
 		 * <p>
 		 * The algorithm is functional, but could certainly be improved upon.
 		 * One obvious drawback is that with large changes in
 		 * <code>maxRate</code>, it will take a while for the sleep time to
 		 * adjust and the throttled rate to "smooth out."
 		 * </p>
-		 * 
+		 *
 		 * <p>
 		 * Ideally, it would calculate the optimal sleep time necessary to hit
 		 * a desired throughput rather than continuously adjust toward a goal.
 		 * </p>
-		 * 
+		 *
 		 * @param maxRate the target rate in kB/second.
 		 * @param messageSize the size, in bytes, of the last message read/written.
 		 * @param message the last <code>PeerMessage</code> read/written.
@@ -276,7 +277,7 @@ class PeerExchange {
 	 * parsed and passed to the peer's <code>handleMessage()</code> method that
 	 * will act based on the message type.
 	 * </p>
-	 * 
+	 *
 	 * @author mpetazzoni
 	 */
 	private class IncomingThread extends RateLimitThread {
@@ -350,14 +351,14 @@ class PeerExchange {
 					}
 
 					buffer.rewind();
-					
+
 					if (stop) {
 						// The buffer may contain the type from the last message
 						// if we were stopped before reading the payload and cause
 						// BufferUnderflowException in parsing.
 						break;
 					}
-					
+
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
@@ -383,6 +384,7 @@ class PeerExchange {
 				} catch (IOException ioe) {
 					this.handleIOE(ioe);
 				}
+				Piece.clearValidationBuffers();
 			}
 		}
 	}
