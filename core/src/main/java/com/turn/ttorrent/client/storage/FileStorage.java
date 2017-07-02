@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  * @author mpetazzoni
+ * @author <a href="mailto:xianguang.zhou@outlook.com">Xianguang Zhou</a>
  */
 public class FileStorage implements TorrentByteStorage {
 
@@ -44,21 +45,15 @@ public class FileStorage implements TorrentByteStorage {
 
 	private final File target;
 	private final File partial;
-	private final long offset;
 	private final long size;
 
 	private RandomAccessFile raf;
 	private FileChannel channel;
 	private File current;
 
-	public FileStorage(File file, long size) throws IOException {
-		this(file, 0, size);
-	}
-
-	public FileStorage(File file, long offset, long size)
+	public FileStorage(File file, long size)
 		throws IOException {
 		this.target = file;
-		this.offset = offset;
 		this.size = size;
 
 		this.partial = new File(this.target.getAbsolutePath() +
@@ -88,16 +83,11 @@ public class FileStorage implements TorrentByteStorage {
 
 		this.channel = raf.getChannel();
 		logger.info("Initialized byte storage file at {} " +
-			"({}+{} byte(s)).",
+			"({} byte(s)).",
 			new Object[] {
 				this.current.getAbsolutePath(),
-				this.offset,
 				this.size,
 			});
-	}
-
-	protected long offset() {
-		return this.offset;
 	}
 
 	@Override
