@@ -121,7 +121,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	public Client(SharedTorrent torrent)
 		throws UnknownHostException, IOException {
-		this(new InetSocketAddress(0), torrent);
+		this(new InetSocketAddress(0), null, torrent);
 	}
 
 	/**
@@ -132,7 +132,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	public Client(InetAddress address, SharedTorrent torrent)
 		throws UnknownHostException, IOException {
-		this(new InetSocketAddress(address, 0), torrent);
+		this(new InetSocketAddress(address, 0), null, torrent);
 	}
 
 	/**
@@ -143,6 +143,21 @@ public class Client extends Observable implements Runnable,
 	 */
 	public Client(InetSocketAddress address, SharedTorrent torrent)
 		throws UnknownHostException, IOException {
+		this(address, null, torrent);
+	}
+
+	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param bindAddress The address to bind to.
+	 * @param torrent The torrent to download and share.
+	 */
+	public Client(
+		InetSocketAddress bindAddress,
+		InetSocketAddress selfPeerAddress,
+		SharedTorrent torrent
+	)
+		throws UnknownHostException, IOException {
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
 
@@ -151,28 +166,39 @@ public class Client extends Observable implements Runnable,
 
 		// Initialize the incoming connection handler and register ourselves to
 		// it.
-		this.service = new ConnectionHandler(this.torrent, id, address);
+		this.service = new ConnectionHandler(this.torrent, id, bindAddress);
 		this.service.register(this);
 
-		this.self = new Peer(
-			this.service.getSocketAddress()
-				.getAddress().getHostAddress(),
-			this.service.getSocketAddress().getPort(),
-			ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING)));
+		if (selfPeerAddress == null) {
+			this.self = new Peer(
+				this.service.getSocketAddress().getAddress().getHostAddress(),
+				this.service.getSocketAddress().getPort(),
+				ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING))
+			);
+		} else {
+			this.self = new Peer(
+				selfPeerAddress.getAddress().getHostAddress(),
+				selfPeerAddress.getPort(),
+				ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING))
+			);
+		}
 
 		// Initialize the announce request thread, and register ourselves to it
 		// as well.
 		this.announce = new Announce(this.torrent, this.self);
 		this.announce.register(this);
 
-		logger.info("BitTorrent client [{}] for {} started and " +
-					"listening at {}:{}...",
+		logger.info(
+			"BitTorrent client [{}] for {} started. " + "Listening address {}:{}, propagates address {}:{}...",
 			new Object[] {
 				this.self.getShortHexPeerId(),
 				this.torrent.getName(),
+				this.service.getSocketAddress().getAddress().getHostAddress(),
+				this.service.getSocketAddress().getPort(),
 				this.self.getIp(),
 				this.self.getPort()
-			});
+			}
+		);
 
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
