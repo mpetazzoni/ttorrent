@@ -27,6 +27,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -114,12 +115,33 @@ public class Client extends Observable implements Runnable,
 	private Random random;
 
 	/**
+	 * Initialize the BitTorrent client with <i>wildcard</i> address.
+	 *
+	 * @param torrent The torrent to download and share.
+	 */
+	public Client(SharedTorrent torrent)
+		throws UnknownHostException, IOException {
+		this(new InetSocketAddress(0), torrent);
+	}
+
+	/**
 	 * Initialize the BitTorrent client.
 	 *
 	 * @param address The address to bind to.
 	 * @param torrent The torrent to download and share.
 	 */
 	public Client(InetAddress address, SharedTorrent torrent)
+		throws UnknownHostException, IOException {
+		this(new InetSocketAddress(address, 0), torrent);
+	}
+
+	/**
+	 * Initialize the BitTorrent client.
+	 *
+	 * @param address The address to bind to.
+	 * @param torrent The torrent to download and share.
+	 */
+	public Client(InetSocketAddress address, SharedTorrent torrent)
 		throws UnknownHostException, IOException {
 		this.torrent = torrent;
 		this.state = ClientState.WAITING;
@@ -144,7 +166,7 @@ public class Client extends Observable implements Runnable,
 		this.announce.register(this);
 
 		logger.info("BitTorrent client [{}] for {} started and " +
-			"listening at {}:{}...",
+					"listening at {}:{}...",
 			new Object[] {
 				this.self.getShortHexPeerId(),
 				this.torrent.getName(),
