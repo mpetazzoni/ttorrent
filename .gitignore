@@ -24,3 +24,4 @@ pom.xml.releaseBackup
 
 .idea
 *.iml
+dist
