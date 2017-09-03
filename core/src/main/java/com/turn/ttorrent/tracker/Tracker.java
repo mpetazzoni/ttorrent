@@ -17,6 +17,14 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Torrent;
 
+import org.simpleframework.http.core.Container;
+import org.simpleframework.http.core.ContainerSocketProcessor;
+import org.simpleframework.transport.SocketProcessor;
+import org.simpleframework.transport.connect.Connection;
+import org.simpleframework.transport.connect.SocketConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -27,11 +35,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import org.simpleframework.transport.connect.Connection;
-import org.simpleframework.transport.connect.SocketConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * BitTorrent tracker.
@@ -59,6 +62,8 @@ public class Tracker {
 	public static final String DEFAULT_VERSION_STRING =
 		"BitTorrent Tracker (ttorrent)";
 
+    private final Container container;
+	private final SocketProcessor processor;
 	private final Connection connection;
 	private final InetSocketAddress address;
 
@@ -104,10 +109,10 @@ public class Tracker {
 	public Tracker(InetSocketAddress address, String version)
 		throws IOException {
 		this.address = address;
-
 		this.torrents = new ConcurrentHashMap<String, TrackedTorrent>();
-		this.connection = new SocketConnection(
-				new TrackerService(version, this.torrents));
+        this.container =  new TrackerService(version, this.torrents);
+        this.processor = new ContainerSocketProcessor(container);
+		this.connection = new SocketConnection(processor);
 	}
 
 	/**
