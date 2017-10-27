@@ -22,6 +22,8 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
+import com.turn.ttorrent.client.strategy.RequestStrategy;
+import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.slf4j.Logger;
@@ -62,6 +64,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * RAREST_PIECE_JITTER available from it.
    */
   private static final int RAREST_PIECE_JITTER = 42;
+  private final static RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplAnyInteresting();
 
     /** End-game trigger ratio.
      *
@@ -91,9 +94,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private boolean initialized;
   private Piece[] pieces;
-  private Set<Integer> rarest;
+  private SortedSet<Piece> rarest;
   private BitSet completedPieces;
   private final BitSet requestedPieces;
+  private final RequestStrategy myRequestStrategy;
 
   private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
@@ -150,7 +154,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash, boolean seeder)
     throws IOException, NoSuchAlgorithmException {
-    this(torrent.getEncoded(), destDir, multiThreadHash, seeder);
+    this(torrent.getEncoded(), destDir, multiThreadHash, seeder, DEFAULT_REQUEST_STRATEGY);
   }
 
   /**
@@ -165,7 +169,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public SharedTorrent(byte[] torrent, File destDir, boolean multiThreadHash)
     throws IOException, NoSuchAlgorithmException {
-    this(torrent, destDir, multiThreadHash, false);
+    this(torrent, destDir, multiThreadHash, false, DEFAULT_REQUEST_STRATEGY);
   }
 
   /**
@@ -178,11 +182,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws IOException              If the torrent file cannot be read or decoded.
    * @throws NoSuchAlgorithmException
    */
-  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder)
+  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, RequestStrategy requestStrategy)
     throws IOException, NoSuchAlgorithmException {
     super(torrent, seeder);
 
     this.parentFile = parent;
+    this.myRequestStrategy = requestStrategy;
 
     this.multiThreadHash = multiThreadHash;
 
@@ -233,7 +238,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
     this.initialized = false;
     this.pieces = new Piece[0];
-    this.rarest = new HashSet<Integer>();
+    this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
     this.completedPieces = new BitSet();
     this.requestedPieces = new BitSet();
   }
@@ -747,29 +752,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         logger.trace("Possible end-game, we're about to request a piece " +
                 "that was already requested from another peer.");
       }
-      List<Piece> rarest = new ArrayList<Piece>();
-      for (Integer pieceIdx : this.rarest) {
-        rarest.add(this.pieces[pieceIdx]);
+
+      Piece chosen = myRequestStrategy.choosePiece(rarest, interesting, pieces);
+      if (chosen == null) {
+        logger.info("chosen piece is null");
+        continue;
       }
-      Collections.sort(rarest);
-      ArrayList<Piece> choice = new ArrayList<Piece>(RAREST_PIECE_JITTER);
-      synchronized (this.rarest) {
-        for (Piece piece : rarest) {
-          if (interesting.get(piece.getIndex())) {
-            choice.add(piece);
-            if (choice.size() >= RAREST_PIECE_JITTER) {
-              break;
-            }
-          }
-        }
-      }
-
-
-
-      final int min = Math.min(choice.size(), SharedTorrent.RAREST_PIECE_JITTER);
-      if (min==0)
-        return;
-      Piece chosen = choice.get(this.random.nextInt(min));
       this.requestedPieces.set(chosen.getIndex());
       logger.trace("Requesting {} from {}, we now have {} " +
               " outstanding request(s): {}.",
@@ -806,7 +794,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     }
 
     piece.seenAt(peer);
-    this.rarest.add(piece.getIndex());
+    this.rarest.add(piece);
 
     logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
       new Object[]{
@@ -855,7 +843,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     for (int i = availablePieces.nextSetBit(0); i >= 0;
          i = availablePieces.nextSetBit(i + 1)) {
       this.pieces[i].seenAt(peer);
-      this.rarest.add(i);
+      this.rarest.add(this.pieces[i]);
     }
 
     logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
@@ -931,7 +919,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     for (int i = availablePieces.nextSetBit(0); i >= 0;
          i = availablePieces.nextSetBit(i + 1)) {
       this.pieces[i].noLongerAt(peer);
-      this.rarest.add(i);
+      this.rarest.add(this.pieces[i]);
     }
 
     Set<Piece> requested = peer.getRequestedPieces();
