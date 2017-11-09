@@ -106,7 +106,6 @@ public class ConnectionUtils {
     try {
       logger.debug("Connecting to {}...", peerInfo);
       channel = SocketChannel.open(address);
-      channel.configureBlocking(true);
       int connectionAttempts = 0;
       while (!channel.isConnected() && ++connectionAttempts <= MAX_CONNECTION_ATTEMPTS) {
         Thread.sleep(50);
