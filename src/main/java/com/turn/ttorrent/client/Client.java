@@ -876,6 +876,12 @@ public class Client implements Runnable,
       }
 
       if (torrent.isComplete()) {
+        //close connection with all peers for this torrent
+        for (SharingPeer p : peers) {
+          if (p.getTorrentHexInfoHash().equals(torrent.getHexInfoHash())) {
+            p.unbind(false);
+          }
+        }
           logger.info("Download of {} complete.", torrent.getName());
 
         torrent.finish();
