@@ -417,7 +417,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             Math.min((int) (piece.size() - lastRequestedOffset),
               PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
         removeBlockRequest(piece.getIndex(), lastRequestedOffset);
-        myRequests.add(request);
+        try {
+          myRequests.offer(request, 1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          unbind(false);
+          return;
+        }
 //        logger.debug("---------Queue size: " + myRequests.size());
         this.send(request);
         myRequestedPieces.put(piece, request.getLength() + lastRequestedOffset);

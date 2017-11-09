@@ -165,10 +165,14 @@ public class PeerExchange {
 	 */
 	public void send(PeerMessage message) {
     if (!stop && !sendQueue.contains(message)) {
-      if (!sendQueue.offer(message)){
-        throw new RuntimeException("Send queue overloaded. Throwing an exception...");
-      }
-    }
+			try {
+				if (!sendQueue.offer(message, 1, TimeUnit.SECONDS)){
+          throw new RuntimeException("Send queue overloaded. Throwing an exception...");
+        }
+			} catch (InterruptedException e) {
+				close();
+			}
+		}
   }
 
 	/**
@@ -218,7 +222,6 @@ public class PeerExchange {
 			try {
 				while (!stop) {
           ConnectionUtils.readAndHandleMessage(buffer, channel, stop, torrent, listeners);
-          Thread.sleep(10);
         }
 			} catch (Exception ioe) {
         logger.debug("Could not read message from {}: {}", peer,
