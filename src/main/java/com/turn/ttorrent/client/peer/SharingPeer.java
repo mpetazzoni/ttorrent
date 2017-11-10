@@ -15,11 +15,8 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.Cleanable;
-import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -66,7 +63,7 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo, Cleanable {
+public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
   private static final int MAX_PIPELINED_REQUESTS = 100;
@@ -78,7 +75,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile boolean choked;
   private volatile boolean interested;
   private SharedTorrent torrent;
-  private final CleanupProcessor myCleanupProcessor;
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final ConcurrentMap<Piece, Integer> myRequestedPieces;
@@ -105,11 +101,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, CleanupProcessor cleanupProcessor) {
+  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
-    myCleanupProcessor = cleanupProcessor;
     this.listeners = new HashSet<PeerActivityListener>();
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
@@ -273,7 +268,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param channel The connected socket channel for this peer.
    */
   public synchronized void bind(SocketChannel channel) throws SocketException {
-    myCleanupProcessor.registerCleanable(this);
     firePeerConnected();
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel);
@@ -317,7 +311,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (isStopped)
       return;
     isStopped = true;
-    myCleanupProcessor.unregisterCleanable(this);
     if (!force) {
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
@@ -851,19 +844,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public TorrentHash getTorrentHash() {
     return torrent;
-  }
-
-  @Override
-  public void cleanUp() {
-    // temporary ignore until I figure out how to handle this in more robust way.
-/*
-    for (PeerMessage.RequestMessage request : myRequests) {
-      if (System.currentTimeMillis() - request.getSendTime() > MAX_REQUEST_TIMEOUT){
-        send(request);
-        request.renew();
-      }
-    }
-*/
   }
 
   /**
