@@ -21,4 +21,8 @@ public class Torrents {
     return torrents.get(hash);
   }
 
+  public void put(String hash, SharedTorrent torrent) {
+    torrents.put(hash, torrent);
+  }
+
 }
