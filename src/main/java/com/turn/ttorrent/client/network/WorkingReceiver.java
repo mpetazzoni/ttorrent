@@ -51,6 +51,7 @@ public class WorkingReceiver implements DataProcessor {
     }
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
+    socketChannel.read(messageBytes);
     if (messageBytes.hasRemaining()) {
       return this;
     }
