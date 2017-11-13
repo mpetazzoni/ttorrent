@@ -121,6 +121,7 @@ public class Client implements Runnable,
     }
 
     this.torrents.put(torrent.getHexInfoHash(), torrent);
+    this.torrentsStorage.put(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
     if (torrent.isFinished()) {
