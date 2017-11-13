@@ -95,8 +95,8 @@ public class Client implements Runnable,
 
   private Random random;
   private boolean myStarted = false;
-  public final PeersStorage peersStorage;
-  public final TorrentsStorage torrentsStorage;
+  private final PeersStorageFactory peersStorageFactory;
+  private final TorrentsStorageFactory torrentsStorageFactory;
   private Runnable connectionReceiver;
   private Future<?> connectionReceiverFuture;
 
@@ -105,8 +105,8 @@ public class Client implements Runnable,
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
-    this.peersStorage = new PeersStorage();
-    this.torrentsStorage = new TorrentsStorage();
+    this.peersStorageFactory = new CachedPeersStorageFactory();
+    this.torrentsStorageFactory = new CachedTorrentsStorageFactory();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -121,7 +121,7 @@ public class Client implements Runnable,
     }
 
     this.torrents.put(torrent.getHexInfoHash(), torrent);
-    this.torrentsStorage.put(torrent.getHexInfoHash(), torrent);
+    this.torrentsStorageFactory.getTorrentsStorage().put(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
     if (torrent.isFinished()) {
@@ -206,7 +206,7 @@ public class Client implements Runnable,
   }
 
   public Peer[] getSelfPeers() {
-    Peer self = peersStorage.getSelf();
+    Peer self = this.peersStorageFactory.getPeersStorage().getSelf();
     if (self == null) {
       return new Peer[0];
     }
@@ -216,7 +216,7 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(this.torrents, bindAddresses, this);
     this.service.register(this);
-    this.connectionReceiver = new ConnectionReceiver(Selector.open(), bindAddresses[0], this);
+    this.connectionReceiver = new ConnectionReceiver(Selector.open(), bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
     connectionReceiverFuture = Executors.newSingleThreadExecutor().submit(connectionReceiver);
 
     // wait until connection receiver is launched

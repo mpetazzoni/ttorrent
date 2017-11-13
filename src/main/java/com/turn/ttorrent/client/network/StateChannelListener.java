@@ -1,7 +1,8 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeersStorageFactory;
+import com.turn.ttorrent.common.TorrentsStorageFactory;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -9,13 +10,14 @@ import java.util.UUID;
 
 public class StateChannelListener implements ChannelListener {
 
-  private final Client client;
-
   private DataProcessor next;
   private String uid;
+  private final PeersStorageFactory peersStorageFactory;
+  private final TorrentsStorageFactory torrentsStorageFactory;
 
-  public StateChannelListener(Client client) {
-    this.client = client;
+  public StateChannelListener(PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) {
+    this.torrentsStorageFactory = torrentsStorageFactory;
+    this.peersStorageFactory = peersStorageFactory;
   }
 
   @Override
@@ -30,8 +32,8 @@ public class StateChannelListener implements ChannelListener {
     String uid;
     do {
       uid = UUID.randomUUID().toString();
-    } while (!client.peersStorage.tryAddPeer(uid, peer));
+    } while (!peersStorageFactory.getPeersStorage().tryAddPeer(uid, peer));
     this.uid = uid;
-    this.next = new HandshakeReceiver(uid, client);
+    this.next = new HandshakeReceiver(uid, peersStorageFactory, torrentsStorageFactory);
   }
 }

@@ -1,9 +1,7 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.common.LoggerUtils;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,14 +23,16 @@ public class ConnectionReceiver implements Runnable, Closeable {
 
   private final Selector selector;
   private final InetAddress inetAddress;
-  private final Client client;
+  private final PeersStorageFactory peersStorageFactory;
+  private final TorrentsStorageFactory torrentsStorageFactory;
   private ServerSocketChannel myServerSocketChannel;
 
-  public ConnectionReceiver(Selector selector, InetAddress inetAddress, Client client) throws IOException {
+  public ConnectionReceiver(Selector selector, InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
     this.selector = selector;
     this.inetAddress = inetAddress;
     myServerSocketChannel = selector.provider().openServerSocketChannel();
-    this.client = client;
+    this.peersStorageFactory = peersStorageFactory;
+    this.torrentsStorageFactory = torrentsStorageFactory;
   }
 
   private void init() throws IOException {
@@ -44,7 +44,7 @@ public class ConnectionReceiver implements Runnable, Closeable {
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
         byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
-        client.peersStorage.setSelf(new Peer(tryAddress, ByteBuffer.wrap(idBytes)));
+        peersStorageFactory.getPeersStorage().setSelf(new Peer(tryAddress, ByteBuffer.wrap(idBytes)));
         return;
       } catch (IOException e) {
         //try next port
@@ -59,7 +59,7 @@ public class ConnectionReceiver implements Runnable, Closeable {
 
     try {
       init();
-      Peer self = client.peersStorage.getSelf();
+      Peer self = peersStorageFactory.getPeersStorage().getSelf();
       logger.info("BitTorrent client [{}] started and " +
                       "listening at {}:{}...",
               new Object[]{
@@ -118,7 +118,7 @@ public class ConnectionReceiver implements Runnable, Closeable {
     if (key.isAcceptable()) {
       SocketChannel socketChannel = myServerSocketChannel.accept();
       logger.trace("server {} get new connection from " + socketChannel.socket(), new Object[]{myServerSocketChannel.getLocalAddress()});
-      StateChannelListener stateChannelListener = new StateChannelListener(client);
+      StateChannelListener stateChannelListener = new StateChannelListener(peersStorageFactory, torrentsStorageFactory);
       stateChannelListener.onConnectionAccept(socketChannel);
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);

@@ -1,8 +1,9 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeersStorageFactory;
+import com.turn.ttorrent.common.TorrentsStorageFactory;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +19,15 @@ public class WorkingReceiver implements DataProcessor {
   private static final Logger logger = LoggerFactory.getLogger(WorkingReceiver.class);
 
   private final String peerUID;
+  private final PeersStorageFactory peersStorageFactory;
+  private final TorrentsStorageFactory torrentsStorageFactory;
   private final ByteBuffer messageBytes;
-  private final Client client;
   private int pstrLength;
 
-  public WorkingReceiver(String uid, Client client) {
+  public WorkingReceiver(String uid, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) {
     this.peerUID = uid;
-    this.client = client;
+    this.peersStorageFactory = peersStorageFactory;
+    this.torrentsStorageFactory = torrentsStorageFactory;
     this.messageBytes = ByteBuffer.allocate(2*1024*1024);
     this.pstrLength = -1;
   }
@@ -57,8 +60,8 @@ public class WorkingReceiver implements DataProcessor {
     }
     messageBytes.rewind();
     try {
-      Peer peer = client.peersStorage.getPeer(peerUID);
-      SharedTorrent torrent = client.torrentsStorage.getTorrent(peer.getHexInfoHash());
+      Peer peer = peersStorageFactory.getPeersStorage().getPeer(peerUID);
+      SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       PeerMessage message = PeerMessage.parse(messageBytes, torrent);
       // TODO: 11/13/17 process message
     } catch (ParseException e) {

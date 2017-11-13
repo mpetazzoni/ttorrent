@@ -1,9 +1,10 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeersStorageFactory;
+import com.turn.ttorrent.common.TorrentsStorageFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,14 +17,16 @@ public class HandshakeReceiver implements DataProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(HandshakeReceiver.class);
 
-  private final Client client;
   private final String uid;
+  private final PeersStorageFactory peersStorageFactory;
+  private final TorrentsStorageFactory torrentsStorageFactory;
   private ByteBuffer messageBytes;
   private int pstrLength;
 
-  public HandshakeReceiver(String uid, Client client) {
-    this.client = client;
+  public HandshakeReceiver(String uid, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) {
     this.uid = uid;
+    this.peersStorageFactory = peersStorageFactory;
+    this.torrentsStorageFactory = torrentsStorageFactory;
     this.pstrLength = -1;
   }
 
@@ -57,16 +60,16 @@ public class HandshakeReceiver implements DataProcessor {
       socketChannel.close();
       return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
     }
-    if (!client.torrentsStorage.hasTorrent(hs.getHexInfoHash())) {
+    if (!torrentsStorageFactory.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
       socketChannel.close();
       return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
     }
 
-    Peer peer = client.peersStorage.getPeer(uid);
+    Peer peer = peersStorageFactory.getPeersStorage().getPeer(uid);
     logger.trace("set peer id to peer " + peer);
     peer.setPeerId(ByteBuffer.wrap(hs.getPeerId()));
     peer.setTorrentHash(hs.getHexInfoHash());
-    ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), client.peersStorage.getSelf().getPeerIdArray());
-    return new WorkingReceiver(this.uid, client);
+    ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageFactory.getPeersStorage().getSelf().getPeerIdArray());
+    return new WorkingReceiver(this.uid, peersStorageFactory, torrentsStorageFactory);
   }
 }
