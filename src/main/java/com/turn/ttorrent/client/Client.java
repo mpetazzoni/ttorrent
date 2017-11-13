@@ -19,9 +19,8 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.announce.TrackerClient;
+import com.turn.ttorrent.client.network.ConnectionReceiver;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.client.peer.PeerExchange;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -33,11 +32,10 @@ import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -97,12 +95,16 @@ public class Client implements Runnable,
 
   private Random random;
   private boolean myStarted = false;
+  public Peers peersStorage;
+  private Runnable connectionReceiver;
+  private Future<?> connectionReceiverFuture;
 
   public Client(){
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
+    this.peersStorage = new Peers();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -201,17 +203,33 @@ public class Client implements Runnable,
   }
 
   public Peer[] getSelfPeers() {
-    return service.getSelfPeers();
+    Peer self = peersStorage.getSelf();
+    if (self == null) {
+      return new Peer[0];
+    }
+    return new Peer[]{self};
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
-    this.service = new ConnectionHandler(this.torrents, bindAddresses);
+    this.service = new ConnectionHandler(this.torrents, bindAddresses, this);
     this.service.register(this);
+    this.connectionReceiver = new ConnectionReceiver(Selector.open(), bindAddresses[0], this);
+    connectionReceiverFuture = Executors.newSingleThreadExecutor().submit(connectionReceiver);
 
-    // Initialize the announce request thread, and register ourselves to it
+    // wait until connection receiver is launched
     // as well.
+    while (getSelfPeers().length == 0) {
+      try {
+        connectionReceiverFuture.get(100, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        this.stop();
+      } catch (TimeoutException ignored) {
+      } catch (ExecutionException e) {
+        LoggerUtils.warnAndDebugDetails(logger,"failed waiting start connection receiver thread", e);
+      }
+    }
 
-    announce.start(defaultTrackerURI, this, service.getSelfPeers(), announceIntervalSec);
+    announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
     this.stop = false;
 
     if (this.thread == null || !this.thread.isAlive()) {
@@ -240,6 +258,7 @@ public class Client implements Runnable,
     if (!myStarted)
       return;
     service.stop();
+    connectionReceiverFuture.cancel(true);
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();

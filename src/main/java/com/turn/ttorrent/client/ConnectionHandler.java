@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
@@ -62,22 +62,22 @@ import java.util.concurrent.*;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
  */
-public class ConnectionHandler implements TorrentConnectionListener{
+public class ConnectionHandler implements TorrentConnectionListener {
 
   private static final Logger logger =
-    LoggerFactory.getLogger(ConnectionHandler.class);
+          LoggerFactory.getLogger(ConnectionHandler.class);
 
   private static final int OUTBOUND_CONNECTIONS_CORE_POOL_SIZE = 1;
   private static final int OUTBOUND_CONNECTIONS_MAX_POOL_SIZE = 20;
   private static final int OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS = 60;
-  private static final int MAX_CONNECTIONS_REQUESTS_POOL_SIZE=100;
+  private static final int MAX_CONNECTIONS_REQUESTS_POOL_SIZE = 100;
 
 
   private final ConcurrentMap<String, SharedTorrent> torrents;
-  private final List<SingleAddressConnectionHandler> myAddressHandlers;
 
   private final Set<CommunicationListener> listeners;
   private ThreadPoolExecutor executor;
+  private final Client client;
 
   /**
    * Create and start a new listening service for out torrent, reporting
@@ -88,19 +88,16 @@ public class ConnectionHandler implements TorrentConnectionListener{
    * PORT_RANGE_START to PORT_RANGE_END.
    * </p>
    *
-   * @param torrents The torrents shared by this client.
-   * @param addresses  The address to bind to.
+   * @param torrents  The torrents shared by this client.
+   * @param addresses The address to bind to.
+   * @param client
    * @throws IOException When the service can't be started because no port in
    *                     the defined range is available or usable.
    */
-  ConnectionHandler(ConcurrentMap<String, SharedTorrent> torrents, InetAddress[] addresses)
-    throws IOException {
+  ConnectionHandler(ConcurrentMap<String, SharedTorrent> torrents, InetAddress[] addresses, Client client)
+          throws IOException {
     this.torrents = torrents;
-
-    myAddressHandlers = new ArrayList<SingleAddressConnectionHandler>();
-    for (InetAddress addr : addresses) {
-      myAddressHandlers.add(new SingleAddressConnectionHandler(addr, this));
-    }
+    this.client = client;
 
     this.listeners = new HashSet<CommunicationListener>();
     this.executor = null;
@@ -127,14 +124,10 @@ public class ConnectionHandler implements TorrentConnectionListener{
       this.executor = new ThreadPoolExecutor(
               OUTBOUND_CONNECTIONS_CORE_POOL_SIZE,
               OUTBOUND_CONNECTIONS_MAX_POOL_SIZE,
-        OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS,
-        TimeUnit.SECONDS,
+              OUTBOUND_CONNECTIONS_THREAD_KEEP_ALIVE_SECS,
+              TimeUnit.SECONDS,
               workQueue,
-        new ConnectorThreadFactory());
-    }
-
-    for (SingleAddressConnectionHandler addressHandler : myAddressHandlers) {
-      addressHandler.start();
+              new ConnectorThreadFactory());
     }
   }
 
@@ -149,40 +142,17 @@ public class ConnectionHandler implements TorrentConnectionListener{
     if (this.executor != null && !this.executor.isShutdown()) {
       this.executor.shutdownNow();
     }
-
-    for (SingleAddressConnectionHandler handler : myAddressHandlers) {
-      handler.stop();
-    }
-
     this.executor = null;
   }
 
-  public void close(){
-    for (SingleAddressConnectionHandler handler : myAddressHandlers) {
-      try {
-        handler.close();
-      } catch (IOException ioe) {
-        logger.warn("Error while releasing bound channel: {}!", ioe.getMessage(), ioe);
-        logger.debug("Error while releasing bound channel: {}!", ioe.getMessage());
-      }
-    }
-  }
-
-  public Peer[] getSelfPeers(){
-    List<Peer> list = new ArrayList<Peer>();
-    for (SingleAddressConnectionHandler handler : myAddressHandlers) {
-      list.add(handler.getSelf());
-    }
-    return list.toArray(new Peer[list.size()]);
-  }
   /**
    * Tells whether the connection handler is running and can be used to
    * handle new peer connections.
    */
   public boolean isAlive() {
     return this.executor != null &&
-      !this.executor.isShutdown() &&
-      !this.executor.isTerminated();
+            !this.executor.isShutdown() &&
+            !this.executor.isTerminated();
   }
 
   /**
@@ -198,9 +168,9 @@ public class ConnectionHandler implements TorrentConnectionListener{
   public void connect(SharingPeer peer) {
     if (!this.isAlive()) {
       throw new IllegalStateException(
-        "Connection handler is not accepting new peers at this time!");
+              "Connection handler is not accepting new peers at this time!");
     }
-    Future connectTask = this.executor.submit(new ConnectorTask(this, peer));
+    Future connectTask = this.executor.submit(new ConnectorTask(this, peer, client));
     peer.setConnectTask(connectTask);
   }
 
@@ -255,12 +225,12 @@ public class ConnectionHandler implements TorrentConnectionListener{
     private TorrentHash myTorrentHash;
     private Map<InetAddress, byte[]> mySelfIdCandidates;
 
-    private ConnectorTask(ConnectionHandler handler, SharingPeer connectPeer) {
+    private ConnectorTask(ConnectionHandler handler, SharingPeer connectPeer, Client client) {
       this.myListeners = handler.listeners;
       this.myConnectPeer = connectPeer;
       this.myTorrentHash = connectPeer.getTorrentHash();
       mySelfIdCandidates = new HashMap<InetAddress, byte[]>();
-      for (Peer selfPeer : handler.getSelfPeers()) {
+      for (Peer selfPeer : client.getSelfPeers()) {
         mySelfIdCandidates.put(selfPeer.getAddress(), selfPeer.getPeerIdArray());
       }
     }
@@ -269,5 +239,5 @@ public class ConnectionHandler implements TorrentConnectionListener{
     public void run() {
       ConnectionUtils.connect(myConnectPeer, mySelfIdCandidates, myTorrentHash, myListeners);
     }
-  };
+  }
 }
