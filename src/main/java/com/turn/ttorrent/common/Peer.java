@@ -39,6 +39,7 @@ public class Peer {
 
 	private ByteBuffer peerId;
 	private String hexPeerId;
+	private String hexInfoHash;
 
 	/**
 	 * Instantiate a new peer.
@@ -202,5 +203,13 @@ public class Peer {
 			(this.hasPeerId()
 				 ? this.hexPeerId.equals(other.hexPeerId)
 				 : true);
+	}
+
+	public void setTorrentHash(String hexInfoHash) {
+		this.hexInfoHash = hexInfoHash;
+	}
+
+	public String getHexInfoHash() {
+		return hexInfoHash;
 	}
 }

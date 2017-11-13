@@ -57,11 +57,16 @@ public class HandshakeReceiver implements DataProcessor {
       socketChannel.close();
       return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
     }
+    if (!client.torrentsStorage.hasTorrent(hs.getHexInfoHash())) {
+      socketChannel.close();
+      return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
+    }
+
     Peer peer = client.peersStorage.getPeer(uid);
     logger.trace("set peer id to peer " + peer);
     peer.setPeerId(ByteBuffer.wrap(hs.getPeerId()));
-    // TODO: 11/13/17 check that torrent with hash hs.getInfoHash() is available
+    peer.setTorrentHash(hs.getHexInfoHash());
     ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), client.peersStorage.getSelf().getPeerIdArray());
-    return new WorkingReceiver(this.uid);
+    return new WorkingReceiver(this.uid, client);
   }
 }
