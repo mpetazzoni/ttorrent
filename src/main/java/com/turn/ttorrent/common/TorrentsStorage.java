@@ -5,11 +5,11 @@ import com.turn.ttorrent.client.SharedTorrent;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class Torrents {
+public class TorrentsStorage {
 
   private final ConcurrentMap<String, SharedTorrent> torrents;
 
-  public Torrents() {
+  public TorrentsStorage() {
     this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
   }
 

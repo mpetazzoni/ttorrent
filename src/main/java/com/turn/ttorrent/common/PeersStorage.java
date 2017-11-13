@@ -2,12 +2,12 @@ package com.turn.ttorrent.common;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Peers {
+public class PeersStorage {
 
   private Peer self = null;
   private final ConcurrentHashMap<String, Peer> connectedPeers;
 
-  public Peers() {
+  public PeersStorage() {
     this.connectedPeers = new ConcurrentHashMap<String, Peer>();
   }
 

@@ -95,8 +95,8 @@ public class Client implements Runnable,
 
   private Random random;
   private boolean myStarted = false;
-  public final Peers peersStorage;
-  public final Torrents torrentsStorage;
+  public final PeersStorage peersStorage;
+  public final TorrentsStorage torrentsStorage;
   private Runnable connectionReceiver;
   private Future<?> connectionReceiverFuture;
 
@@ -105,8 +105,8 @@ public class Client implements Runnable,
     this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
-    this.peersStorage = new Peers();
-    this.torrentsStorage = new Torrents();
+    this.peersStorage = new PeersStorage();
+    this.torrentsStorage = new TorrentsStorage();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
