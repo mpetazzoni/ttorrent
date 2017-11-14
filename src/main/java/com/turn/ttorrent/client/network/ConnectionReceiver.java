@@ -25,18 +25,29 @@ public class ConnectionReceiver implements Runnable, Closeable {
   private final InetAddress inetAddress;
   private final PeersStorageFactory peersStorageFactory;
   private final TorrentsStorageFactory torrentsStorageFactory;
+  private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
 
   public ConnectionReceiver(Selector selector, InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
+    this(selector, inetAddress, peersStorageFactory, torrentsStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
+  }
+
+  public ConnectionReceiver(Selector selector,
+                            InetAddress inetAddress,
+                            PeersStorageFactory peersStorageFactory,
+                            TorrentsStorageFactory torrentsStorageFactory,
+                            ChannelListenerFactory channelListenerFactory) throws IOException {
     this.selector = selector;
     this.inetAddress = inetAddress;
-    myServerSocketChannel = selector.provider().openServerSocketChannel();
     this.peersStorageFactory = peersStorageFactory;
     this.torrentsStorageFactory = torrentsStorageFactory;
+    this.channelListenerFactory = channelListenerFactory;
+    myServerSocketChannel = selector.provider().openServerSocketChannel();
   }
 
   private void init() throws IOException {
     myServerSocketChannel.configureBlocking(false);
+
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
@@ -72,21 +83,24 @@ public class ConnectionReceiver implements Runnable, Closeable {
       return;
     }
 
-    while (!Thread.interrupted()) {
+    while (!Thread.currentThread().isInterrupted()) {
       int selected = -1;
       try {
         selected = selector.select();// TODO: 11/13/17 timeout
+
+        logger.trace("select keys from selector. Keys count is " + selected);
+        if (selected < 0) {
+          logger.info("selected count less that zero");
+        }
+        if (selected == 0) {
+          continue;
+        }
+
+        processSelectedKeys();
       } catch (IOException e) {
         LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
       }
-      logger.trace("select keys from selector. Keys count is " + selected);
-      if (selected < 0) {
-        logger.info("selected count less that zero");
-      }
-      if (selected == 0) {
-        continue;
-      }
-      processSelectedKeys();
+
     }
     try {
       close();
@@ -106,9 +120,13 @@ public class ConnectionReceiver implements Runnable, Closeable {
     for (SelectionKey key : selectionKeys) {
       try {
         processSelectedKey(key);
-      } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "error in processing key", e);
-        // TODO: 11/13/17 close channel?
+      } catch (Exception e) {
+        LoggerUtils.warnAndDebugDetails(logger, "error in processing key. Close channel for this key...", e);
+        try {
+          key.channel().close();
+        } catch (IOException ioe) {
+          LoggerUtils.warnAndDebugDetails(logger, "unable close bad channel", ioe);
+        }
       }
     }
     selectionKeys.clear();
@@ -116,23 +134,39 @@ public class ConnectionReceiver implements Runnable, Closeable {
 
   private void processSelectedKey(SelectionKey key) throws IOException {
     if (key.isAcceptable()) {
-      SocketChannel socketChannel = myServerSocketChannel.accept();
-      logger.trace("server {} get new connection from " + socketChannel.socket(), new Object[]{myServerSocketChannel.getLocalAddress()});
-      StateChannelListener stateChannelListener = new StateChannelListener(peersStorageFactory, torrentsStorageFactory);
+      SelectableChannel channel = key.channel();
+      if (!(channel instanceof ServerSocketChannel)) {
+        logger.error("incorrect instance of server channel. Can not accept connections");
+        channel.close();
+        return;
+      }
+      SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
+      logger.trace("server {} get new connection from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
+
+      ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       stateChannelListener.onConnectionAccept(socketChannel);
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
     }
+
     if (key.isReadable()) {
       SelectableChannel channel = key.channel();
       if (!(channel instanceof SocketChannel)) {
-        logger.info("incorrect instance of channel. Close connection with it");
+        logger.warn("incorrect instance of channel. Close connection with it");
         channel.close();
         return;
       }
+
       SocketChannel socketChannel = (SocketChannel) channel;
-      logger.trace("server {} get new data from " + socketChannel.socket(), new Object[]{myServerSocketChannel.getLocalAddress()});
-      ChannelListener channelListener = (ChannelListener) key.attachment();
+      logger.trace("server {} get new data from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
+
+      Object attachment = key.attachment();
+      if (!(attachment instanceof ChannelListener)) {
+        logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
+        socketChannel.close();
+        return;
+      }
+      ChannelListener channelListener = (ChannelListener) attachment;
       channelListener.onNewDataAvailable(socketChannel);
     }
   }
