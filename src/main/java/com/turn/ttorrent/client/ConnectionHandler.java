@@ -54,10 +54,6 @@ import java.util.concurrent.*;
  * </p>
  * <p/>
  * <p>
- * This class does nothing more. All further peer-to-peer communication happens
- * in the {@link com.turn.ttorrent.client.peer.PeerExchange PeerExchange}
- * class.
- * </p>
  *
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Handshake">BitTorrent handshake specification</a>
@@ -73,8 +69,6 @@ public class ConnectionHandler implements TorrentConnectionListener {
   private static final int MAX_CONNECTIONS_REQUESTS_POOL_SIZE = 100;
 
 
-  private final ConcurrentMap<String, SharedTorrent> torrents;
-
   private final Set<CommunicationListener> listeners;
   private ThreadPoolExecutor executor;
   private final Client client;
@@ -88,15 +82,13 @@ public class ConnectionHandler implements TorrentConnectionListener {
    * PORT_RANGE_START to PORT_RANGE_END.
    * </p>
    *
-   * @param torrents  The torrents shared by this client.
    * @param addresses The address to bind to.
    * @param client
    * @throws IOException When the service can't be started because no port in
    *                     the defined range is available or usable.
    */
-  ConnectionHandler(ConcurrentMap<String, SharedTorrent> torrents, InetAddress[] addresses, Client client)
+  ConnectionHandler(InetAddress[] addresses, Client client)
           throws IOException {
-    this.torrents = torrents;
     this.client = client;
 
     this.listeners = new HashSet<CommunicationListener>();
@@ -176,7 +168,7 @@ public class ConnectionHandler implements TorrentConnectionListener {
 
   @Override
   public boolean hasTorrent(TorrentHash torrentHash) {
-    return torrents.get(torrentHash.getHexInfoHash()) != null;
+    return false;
   }
 
   @Override

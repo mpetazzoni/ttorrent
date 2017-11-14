@@ -19,7 +19,10 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
+import com.turn.ttorrent.client.network.ChannelListener;
 import com.turn.ttorrent.client.network.ConnectionReceiver;
+import com.turn.ttorrent.client.network.DataProcessor;
+import com.turn.ttorrent.client.network.WorkingReceiver;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -32,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.*;
@@ -88,25 +92,27 @@ public class Client implements Runnable,
   private boolean stop;
 
   private ConnectionHandler service;
-  private final Collection<SharingPeer> peers;
+//  private final Collection<SharingPeer> peers;
 
   private Announce announce;
-  private final ConcurrentMap<String, SharedTorrent> torrents;
+//  private final ConcurrentMap<String, SharedTorrent> torrents;
 
   private Random random;
   private boolean myStarted = false;
   private final PeersStorageFactory peersStorageFactory;
   private final TorrentsStorageFactory torrentsStorageFactory;
-  private Runnable connectionReceiver;
+  private final TorrentsStorage torrentsStorage;
+  private final PeersStorage peersStorage;
+  private ConnectionReceiver connectionReceiver;
   private Future<?> connectionReceiverFuture;
 
   public Client(){
-    this.torrents = new ConcurrentHashMap<String, SharedTorrent>();
-    this.peers = new CopyOnWriteArrayList<SharingPeer>();
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
     this.peersStorageFactory = new CachedPeersStorageFactory();
     this.torrentsStorageFactory = new CachedTorrentsStorageFactory();
+    this.torrentsStorage = this.torrentsStorageFactory.getTorrentsStorage();
+    this.peersStorage = this.peersStorageFactory.getPeersStorage();
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -120,7 +126,7 @@ public class Client implements Runnable,
       return;
     }
 
-    this.torrents.put(torrent.getHexInfoHash(), torrent);
+    this.torrentsStorage.put(torrent.getHexInfoHash(), torrent);
     this.torrentsStorageFactory.getTorrentsStorage().put(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
@@ -139,7 +145,7 @@ public class Client implements Runnable,
     logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
     this.announce.removeTorrent(torrentHash);
 
-    SharedTorrent torrent = this.torrents.remove(torrentHash.getHexInfoHash());
+    SharedTorrent torrent = this.torrentsStorage.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
@@ -150,7 +156,7 @@ public class Client implements Runnable,
   public void removeAndDeleteTorrent(TorrentHash torrentHash) {
     this.announce.removeTorrent(torrentHash);
 
-    SharedTorrent torrent = this.torrents.remove(torrentHash.getHexInfoHash());
+    SharedTorrent torrent = this.torrentsStorage.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.delete();
@@ -165,16 +171,12 @@ public class Client implements Runnable,
    * Return the torrent this client is exchanging on.
    */
   public Collection<SharedTorrent> getTorrents() {
-    return this.torrents.values();
-  }
-
-  public Map<String, SharedTorrent> getTorrentsMap(){
-    return torrents;
+    return this.torrentsStorage.values();
   }
 
   public SharedTorrent getTorrentByFilePath(File file){
     String path = file.getAbsolutePath();
-    for (SharedTorrent torrent : torrents.values()) {
+    for (SharedTorrent torrent : torrentsStorage.values()) {
       File parentFile = torrent.getParentFile();
       final List<String> filenames = torrent.getFilenames();
       for (String filename : filenames) {
@@ -195,7 +197,7 @@ public class Client implements Runnable,
    * Returns the set of known peers.
    */
   public Set<SharingPeer> getPeers() {
-    return new HashSet<SharingPeer>(this.peers);
+    return new HashSet<SharingPeer>(this.peersStorage.getSharingPeers());
   }
 
   public void start(final InetAddress... bindAddresses) throws IOException {
@@ -214,13 +216,12 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
-    this.service = new ConnectionHandler(this.torrents, bindAddresses, this);
+    this.service = new ConnectionHandler(bindAddresses, this);
     this.service.register(this);
     this.connectionReceiver = new ConnectionReceiver(bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
     connectionReceiverFuture = Executors.newSingleThreadExecutor().submit(connectionReceiver);
 
     // wait until connection receiver is launched
-    // as well.
     while (getSelfPeers().length == 0) {
       try {
         connectionReceiverFuture.get(100, TimeUnit.MILLISECONDS);
@@ -289,7 +290,7 @@ public class Client implements Runnable,
    * Tells whether we are a seed for the torrent we're sharing.
    */
   public boolean isSeed(String hexInfoHash) {
-    SharedTorrent t = this.torrents.get(hexInfoHash);
+    SharedTorrent t = this.torrentsStorage.getTorrent(hexInfoHash);
     return t != null && t.isComplete();
   }
 
@@ -337,7 +338,7 @@ public class Client implements Runnable,
   }
 
   private void pingPeers(final SharedTorrent torrent){
-    for (SharingPeer sharingPeer : peers) {
+    for (SharingPeer sharingPeer : peersStorage.getSharingPeers()) {
       if (sharingPeer.getTorrent().getHexInfoHash().equals(torrent.getHexInfoHash())){
         torrent.handlePeerReady(sharingPeer);
       }
@@ -405,7 +406,7 @@ public class Client implements Runnable,
 
     // Close all peer connections
     logger.debug("Closing all remaining peer connections...");
-    for (SharingPeer peer : this.peers) {
+    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
       peer.unbind(true);
     }
 
@@ -423,7 +424,7 @@ public class Client implements Runnable,
 
     this.announce.stop();
 
-    for (SharedTorrent torrent : this.torrents.values()) {
+    for (SharedTorrent torrent : this.torrentsStorage.values()) {
       torrent.close();
       if (torrent.isFinished()) {
         torrent.setClientState(ClientState.DONE);
@@ -509,41 +510,16 @@ public class Client implements Runnable,
    * @param hexInfoHash
    */
   private SharingPeer getOrCreatePeer(Peer search, String hexInfoHash) {
-//    SharingPeer peer;
 
-    synchronized (this.peers) {
-      logger.trace("Searching for {}...", search);
-
-      List<SharingPeer> found = new ArrayList<SharingPeer>();
-      for (SharingPeer p : this.peers) {
-        if ((search.getHexPeerId() != null && search.getHexPeerId().equals(p.getHexPeerId())) ||
-          (search.getHostIdentifier() != null && search.getHostIdentifier().equals(p.getHostIdentifier()))) {
-          found.add(p);
-        }
-      }
-
-
-      for (SharingPeer f : found) {
-        if (search.hasPeerId()) {
-          f.setPeerId(search.getPeerId());
-        }
-      }
-
-      for (SharingPeer f : found) {
-        if (f.getTorrentHexInfoHash().equals(hexInfoHash)) {
-          logger.trace("Found peer: {}.", f);
-          return f;
-        }
-      }
-
-      SharedTorrent torrent = this.torrents.get(hexInfoHash);
-
-      SharingPeer peer = new SharingPeer(search.getIp(), search.getPort(),
-        search.getPeerId(), torrent);
-      logger.trace("Created new peer: {}.", peer);
-
-      return peer;
+    SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
+    SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
+            search.getPeerId(), torrent);
+    SharingPeer sharingPeerOld = peersStorage.tryAddSharingPeer(search, sharingPeer);
+    if (sharingPeerOld != null) {
+      logger.trace("Found peer: {}.", sharingPeerOld);
+      return sharingPeerOld;
     }
+    return sharingPeer;
   }
 
   /**
@@ -606,13 +582,13 @@ public class Client implements Runnable,
     List<SharingPeer> bound = new ArrayList<SharingPeer>(getConnectedPeers());
     Collections.sort(bound, this.getPeerRateComparator());
     Collections.reverse(bound);
-
+    logger.error("unchoke {}", Thread.currentThread());
     if (bound.size() == 0) {
       logger.trace("No connected peers, skipping unchoking.");
       return;
     } else {
-      logger.trace("Running unchokePeers() on {} connected peers.",
-        bound.size());
+      logger.trace("Running unchokePeers() on {} connected peers. Client {}",
+        new Object[]{bound.size(), Thread.currentThread()});
     }
 
     int downloaders = 0;
@@ -654,7 +630,7 @@ public class Client implements Runnable,
 
   private Collection<SharingPeer> getConnectedPeers() {
     Set<SharingPeer> result = new HashSet<SharingPeer>();
-    for (SharingPeer peer : this.peers) {
+    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
       if (peer.isConnected()) {
         result.add(peer);
       }
@@ -673,7 +649,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
-    final SharedTorrent sharedTorrent = this.torrents.get(hexInfoHash);
+    final SharedTorrent sharedTorrent = this.torrentsStorage.getTorrent(hexInfoHash);
     if (sharedTorrent != null){
       sharedTorrent.setSeedersCount(complete);
       sharedTorrent.setLastAnnounceTime(System.currentTimeMillis());
@@ -696,6 +672,7 @@ public class Client implements Runnable,
       logger.info("Connection handler service is not available.");
       return;
     }
+    // TODO: 11/14/17 check that peers list contains torrent hash
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
     Set<SharingPeer> addedPeers = new HashSet<SharingPeer>();
@@ -717,16 +694,18 @@ public class Client implements Runnable,
     }
 
     List<SharingPeer> toRemove = new ArrayList<SharingPeer>();
-    for (SharingPeer peer : this.peers) {
+    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
       if (peer.getTorrentHexInfoHash().equals(hexInfoHash) && foundPeers.contains(peer) && !peer.isConnected()) {
         toRemove.add(peer);
       }
     }
-    this.peers.removeAll(toRemove);
+    this.peersStorage.getSharingPeers().removeAll(toRemove);
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
     }
-    peers.addAll(addedPeers);
+    for (SharingPeer sharingPeer : addedPeers) {
+      this.peersStorage.addSharingPeer(sharingPeer, sharingPeer);
+    }
     for (SharingPeer addedPeer : addedPeers) {
       this.service.connect(addedPeer);
     }
@@ -762,7 +741,8 @@ public class Client implements Runnable,
         : null));
 
     logger.debug("Handling new peer connection with {}...", search);
-    SharingPeer peer = this.getOrCreatePeer(search, hexInfoHash);
+    search.setTorrentHash(hexInfoHash);
+    final SharingPeer peer = this.getOrCreatePeer(search, hexInfoHash);
 
     try {
       synchronized (peer) {
@@ -774,14 +754,14 @@ public class Client implements Runnable,
         peer.register(peer.getTorrent());
         peer.register(this);
         peer.bind(channel);
-        peers.add(peer);
+        peersStorage.addSharingPeer(search, peer);
       }
 
       logger.debug("New peer connection with {} [{}/{}].",
         new Object[]{
           peer,
           getConnectedPeers().size(),
-          this.peers.size()
+          this.peersStorage.getSharingPeers().size()
         });
     } catch (Exception e) {
       logger.info("Could not handle new peer connection " +
@@ -803,12 +783,7 @@ public class Client implements Runnable,
   @Override
   public void handleFailedConnection(Peer peer, Throwable cause) {
     logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
-    for (SharingPeer sharingPeer : peers) {
-      if (peer.getIp().equals(sharingPeer.getIp()) && peer.getPort()== sharingPeer.getPort()){
-        peers.remove(sharingPeer);
-        break; // this is safe to do, because we go out from iterator
-      }
-    }
+    peersStorage.removeSharingPeer(peer);
   }
 
   /**
@@ -893,7 +868,7 @@ public class Client implements Runnable,
 
       if (torrent.isComplete()) {
         //close connection with all peers for this torrent
-        for (SharingPeer p : peers) {
+        for (SharingPeer p : peersStorage.getSharingPeers()) {
           if (p.getTorrentHexInfoHash().equals(torrent.getHexInfoHash())) {
             p.unbind(false);
           }
@@ -922,12 +897,12 @@ public class Client implements Runnable,
   @Override
   public void handlePeerDisconnected(SharingPeer peer) {
     final SharedTorrent peerTorrent = peer.getTorrent();
-    this.peers.remove(peer);
+    this.peersStorage.removeSharingPeer(peer);
     logger.debug("Peer {} disconnected, [{}/{}].",
       new Object[]{
         peer,
         getConnectedPeers().size(),
-        this.peers.size()
+        this.peersStorage.getSharingPeers().size()
       });
     pingPeers(peerTorrent);
   }

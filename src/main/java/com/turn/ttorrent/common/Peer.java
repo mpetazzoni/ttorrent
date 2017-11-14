@@ -190,6 +190,8 @@ public class Peer {
 		return s.toString();
 	}
 
+
+
 	/**
 	 * Tells if two peers seem to look alike (i.e. they have the same IP, port
 	 * and peer ID if they have one).

@@ -2,6 +2,7 @@ package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.client.SharedTorrent;
 
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -25,4 +26,11 @@ public class TorrentsStorage {
     torrents.put(hash, torrent);
   }
 
+  public SharedTorrent remove(String hash) {
+    return torrents.remove(hash);
+  }
+
+  public Collection<SharedTorrent> values() {
+    return torrents.values();
+  }
 }
