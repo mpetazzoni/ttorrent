@@ -80,14 +80,10 @@ public class ConnectionReceiver implements Runnable, Closeable {
     }
 
     while (!Thread.currentThread().isInterrupted()) {
-      int selected = -1;
       try {
-        selected = selector.select();// TODO: 11/13/17 timeout
+        int selected = selector.select();// TODO: 11/13/17 timeout
 
         logger.trace("select keys from selector. Keys count is " + selected);
-        if (selected < 0) {
-          logger.info("selected count less that zero");
-        }
         if (selected == 0) {
           continue;
         }
