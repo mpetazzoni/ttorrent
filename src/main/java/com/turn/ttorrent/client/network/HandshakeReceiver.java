@@ -1,6 +1,8 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Handshake;
+import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeersStorageFactory;
@@ -70,6 +72,11 @@ public class HandshakeReceiver implements DataProcessor {
     peer.setPeerId(ByteBuffer.wrap(hs.getPeerId()));
     peer.setTorrentHash(hs.getHexInfoHash());
     ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageFactory.getPeersStorage().getSelf().getPeerIdArray());
+    SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
+    SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(), peer.getPeerId(), torrent);
+    sharingPeer.bind(socketChannel);
+    sharingPeer.register(torrent);
+    peersStorageFactory.getPeersStorage().addSharingPeer(peer, sharingPeer);
     return new WorkingReceiver(this.uid, peersStorageFactory, torrentsStorageFactory);
   }
 }
