@@ -28,7 +28,7 @@ public class WorkingReceiver implements DataProcessor {
     this.peerUID = uid;
     this.peersStorageFactory = peersStorageFactory;
     this.torrentsStorageFactory = torrentsStorageFactory;
-    this.messageBytes = ByteBuffer.allocate(2*1024*1024);
+    this.messageBytes = ByteBuffer.allocate(2 * 1024 * 1024);
     this.pstrLength = -1;
   }
 
@@ -48,7 +48,7 @@ public class WorkingReceiver implements DataProcessor {
       this.pstrLength = messageBytes.getInt(0);
     }
 
-    if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength > messageBytes.capacity()){
+    if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength > messageBytes.capacity()) {
       logger.debug("Proposed limit of {} is larger than capacity of {}",
               PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength, messageBytes.capacity());
     }
@@ -59,14 +59,17 @@ public class WorkingReceiver implements DataProcessor {
       return this;
     }
     messageBytes.rewind();
+    this.pstrLength = -1;
     try {
       Peer peer = peersStorageFactory.getPeersStorage().getPeer(peerUID);
       SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       PeerMessage message = PeerMessage.parse(messageBytes, torrent);
-      // TODO: 11/13/17 process message
+      logger.trace("get message {} from {}", new Object[]{message, socketChannel.socket()});
+      peersStorageFactory.getPeersStorage().getSharingPeer(peer).handleMessage(message);
     } catch (ParseException e) {
       logger.debug("{}", e.getMessage());
     }
+    this.messageBytes.rewind();
     return this;
   }
 }
