@@ -28,16 +28,15 @@ public class ConnectionReceiver implements Runnable, Closeable {
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
 
-  public ConnectionReceiver(Selector selector, InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
-    this(selector, inetAddress, peersStorageFactory, torrentsStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
+  public ConnectionReceiver(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
+    this(inetAddress, peersStorageFactory, torrentsStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
   }
 
-  public ConnectionReceiver(Selector selector,
-                            InetAddress inetAddress,
+  public ConnectionReceiver(InetAddress inetAddress,
                             PeersStorageFactory peersStorageFactory,
                             TorrentsStorageFactory torrentsStorageFactory,
                             ChannelListenerFactory channelListenerFactory) throws IOException {
-    this.selector = selector;
+    this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.peersStorageFactory = peersStorageFactory;
     this.torrentsStorageFactory = torrentsStorageFactory;

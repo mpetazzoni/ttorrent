@@ -216,7 +216,7 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(this.torrents, bindAddresses, this);
     this.service.register(this);
-    this.connectionReceiver = new ConnectionReceiver(Selector.open(), bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
+    this.connectionReceiver = new ConnectionReceiver(bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
     connectionReceiverFuture = Executors.newSingleThreadExecutor().submit(connectionReceiver);
 
     // wait until connection receiver is launched
