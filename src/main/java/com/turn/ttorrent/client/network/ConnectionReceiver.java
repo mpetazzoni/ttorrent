@@ -24,22 +24,19 @@ public class ConnectionReceiver implements Runnable, Closeable {
   private final Selector selector;
   private final InetAddress inetAddress;
   private final PeersStorageFactory peersStorageFactory;
-  private final TorrentsStorageFactory torrentsStorageFactory;
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
 
   public ConnectionReceiver(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
-    this(inetAddress, peersStorageFactory, torrentsStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
+    this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
   }
 
   public ConnectionReceiver(InetAddress inetAddress,
                             PeersStorageFactory peersStorageFactory,
-                            TorrentsStorageFactory torrentsStorageFactory,
                             ChannelListenerFactory channelListenerFactory) throws IOException {
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.peersStorageFactory = peersStorageFactory;
-    this.torrentsStorageFactory = torrentsStorageFactory;
     this.channelListenerFactory = channelListenerFactory;
     myServerSocketChannel = selector.provider().openServerSocketChannel();
   }
