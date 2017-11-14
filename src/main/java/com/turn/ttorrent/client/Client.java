@@ -582,7 +582,6 @@ public class Client implements Runnable,
     List<SharingPeer> bound = new ArrayList<SharingPeer>(getConnectedPeers());
     Collections.sort(bound, this.getPeerRateComparator());
     Collections.reverse(bound);
-    logger.error("unchoke {}", Thread.currentThread());
     if (bound.size() == 0) {
       logger.trace("No connected peers, skipping unchoking.");
       return;
