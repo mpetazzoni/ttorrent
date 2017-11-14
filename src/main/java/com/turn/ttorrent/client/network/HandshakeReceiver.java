@@ -74,7 +74,7 @@ public class HandshakeReceiver implements DataProcessor {
     ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageFactory.getPeersStorage().getSelf().getPeerIdArray());
     SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
     SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(), peer.getPeerId(), torrent);
-    sharingPeer.bind(socketChannel);
+    sharingPeer.bind(socketChannel, true);
     sharingPeer.register(torrent);
     peersStorageFactory.getPeersStorage().addSharingPeer(peer, sharingPeer);
     return new WorkingReceiver(this.uid, peersStorageFactory, torrentsStorageFactory);

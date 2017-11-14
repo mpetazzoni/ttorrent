@@ -267,10 +267,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param channel The connected socket channel for this peer.
    */
-  public synchronized void bind(SocketChannel channel) throws SocketException {
+  public synchronized void bind(SocketChannel channel, boolean onlyWrite) throws SocketException {
     firePeerConnected();
     synchronized (this.exchangeLock) {
-      this.exchange = new PeerExchange(this, this.torrent, channel);
+      this.exchange = new PeerExchange(this, this.torrent, channel, onlyWrite);
       this.exchange.register(this);
       //TODO if I start before registration, some messages may be skipped. It means that we must recheck whether certain
       // torrent exist, even if we didn't get information about them initially.

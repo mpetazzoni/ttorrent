@@ -85,6 +85,7 @@ public class PeerExchange {
 	private OutgoingThread out;
 	private BlockingQueue<PeerMessage> sendQueue;
 	private volatile boolean stop;
+	private final boolean onlyWrite;
 
   public static final AtomicInteger readBytes = new AtomicInteger(0);
 
@@ -96,9 +97,10 @@ public class PeerExchange {
 	 * @param channel A channel on the connected socket to the peer.
 	 */
 	public PeerExchange(SharingPeer peer, SharedTorrent torrent,
-			SocketChannel channel) throws SocketException {
+			SocketChannel channel, boolean onlyWrite) throws SocketException {
 		this.peer = peer;
 		this.torrent = torrent;
+		this.onlyWrite = onlyWrite;
 		this.channel = channel;
 
 		this.listeners = new HashSet<MessageListener>();
@@ -108,9 +110,10 @@ public class PeerExchange {
 			throw new IllegalStateException("Peer does not have a " +
 					"peer ID. Was the handshake made properly?");
 		}
-
-		this.in = new IncomingThread();
-    this.in.setName(String.format("bt-recv(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
+		if (!onlyWrite) {
+			this.in = new IncomingThread();
+			this.in.setName(String.format("bt-recv(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
+		}
 
 		this.out = new OutgoingThread();
     this.out.setName(String.format("bt-send(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
@@ -133,7 +136,9 @@ public class PeerExchange {
      * Start threads separately from creating to avoid race conditions
      */
     public void start(){
-        this.in.start();
+			if (!onlyWrite) {
+				this.in.start();
+			}
         this.out.start();
     }
 

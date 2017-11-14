@@ -704,6 +704,7 @@ public class Client implements Runnable,
       peer.unbind(true);
     }
     for (SharingPeer sharingPeer : addedPeers) {
+      sharingPeer.setTorrentHash(hexInfoHash);
       this.peersStorage.addSharingPeer(sharingPeer, sharingPeer);
     }
     for (SharingPeer addedPeer : addedPeers) {
@@ -753,7 +754,7 @@ public class Client implements Runnable,
 
         peer.register(peer.getTorrent());
         peer.register(this);
-        peer.bind(channel);
+        peer.bind(channel, false);
         peersStorage.addSharingPeer(search, peer);
       }
 
