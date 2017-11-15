@@ -17,9 +17,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class ConnectionReceiver implements Runnable, Closeable {
+public class ConnectionManager implements Runnable, Closeable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionReceiver.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
 
   public static final int PORT_RANGE_START = 6881;
   public static final int PORT_RANGE_END = 6889;
@@ -31,13 +31,13 @@ public class ConnectionReceiver implements Runnable, Closeable {
   private ServerSocketChannel myServerSocketChannel;
   private final BlockingQueue<Peer> myConnectQueue;
 
-  public ConnectionReceiver(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
+  public ConnectionManager(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
     this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
   }
 
-  public ConnectionReceiver(InetAddress inetAddress,
-                            PeersStorageFactory peersStorageFactory,
-                            ChannelListenerFactory channelListenerFactory) throws IOException {
+  public ConnectionManager(InetAddress inetAddress,
+                           PeersStorageFactory peersStorageFactory,
+                           ChannelListenerFactory channelListenerFactory) throws IOException {
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.peersStorageFactory = peersStorageFactory;

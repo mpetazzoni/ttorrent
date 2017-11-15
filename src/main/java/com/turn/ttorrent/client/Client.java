@@ -19,7 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.ConnectionReceiver;
+import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -98,9 +98,9 @@ public class Client implements Runnable,
   private final TorrentsStorageFactory torrentsStorageFactory;
   private final TorrentsStorage torrentsStorage;
   private final PeersStorage peersStorage;
-  private ConnectionReceiver connectionReceiver;
-  private Future<?> connectionReceiverFuture;
-  private ExecutorService myConnectionReceiverExecutor;
+  private ConnectionManager myConnectionManager;
+  private Future<?> myConnectionManagerFuture;
+  private ExecutorService myConnectionManagerExecutor;
 
   public Client(){
     this.random = new Random(System.currentTimeMillis());
@@ -214,14 +214,14 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(bindAddresses, this);
     this.service.register(this);
-    this.connectionReceiver = new ConnectionReceiver(bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
-    myConnectionReceiverExecutor = Executors.newSingleThreadExecutor();
-    connectionReceiverFuture = myConnectionReceiverExecutor.submit(connectionReceiver);
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
+    myConnectionManagerExecutor = Executors.newSingleThreadExecutor();
+    myConnectionManagerFuture = myConnectionManagerExecutor.submit(myConnectionManager);
 
     // wait until connection receiver is launched
     while (getSelfPeers().length == 0) {
       try {
-        connectionReceiverFuture.get(100, TimeUnit.MILLISECONDS);
+        myConnectionManagerFuture.get(100, TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
         this.stop();
       } catch (TimeoutException ignored) {
@@ -259,11 +259,11 @@ public class Client implements Runnable,
     if (!myStarted)
       return;
     service.stop();
-    connectionReceiverFuture.cancel(true);
-    myConnectionReceiverExecutor.shutdown();
+    myConnectionManagerFuture.cancel(true);
+    myConnectionManagerExecutor.shutdown();
     if (wait) {
       try {
-        myConnectionReceiverExecutor.awaitTermination(1, TimeUnit.MINUTES);
+        myConnectionManagerExecutor.awaitTermination(1, TimeUnit.MINUTES);
       } catch (InterruptedException e) {
         LoggerUtils.warnAndDebugDetails(logger, "interrupted in await termination of executor service", e);
       }

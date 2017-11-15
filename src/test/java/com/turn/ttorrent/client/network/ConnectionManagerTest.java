@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.testng.Assert.*;
 
-public class ConnectionReceiverTest {
+public class ConnectionManagerTest {
 
-  private ConnectionReceiver myConnectionReceiver;
+  private ConnectionManager myConnectionManager;
   private ChannelListener channelListener;
 
   @BeforeMethod
@@ -30,7 +30,7 @@ public class ConnectionReceiverTest {
         return channelListener;
       }
     };
-    myConnectionReceiver = new ConnectionReceiver(InetAddress.getByName("127.0.0.1"),
+    myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
             new CachedPeersStorageFactory(),
             channelListenerFactory);
   }
@@ -70,12 +70,12 @@ public class ConnectionReceiverTest {
     };
 
     ExecutorService executorService = Executors.newSingleThreadExecutor();
-    Future<?> future = executorService.submit(myConnectionReceiver);
+    Future<?> future = executorService.submit(myConnectionManager);
 
     assertEquals(acceptCount.get(), 0);
     assertEquals(readCount.get(), 0);
 
-    Socket socket = new Socket("127.0.0.1", ConnectionReceiver.PORT_RANGE_START);
+    Socket socket = new Socket("127.0.0.1", ConnectionManager.PORT_RANGE_START);
 
     tryAcquireOrFail(semaphore);//wait until connection is accepted
 
@@ -83,7 +83,7 @@ public class ConnectionReceiverTest {
     assertEquals(acceptCount.get(), 1);
     assertEquals(readCount.get(), 0);
 
-    Socket socketSecond = new Socket("127.0.0.1", ConnectionReceiver.PORT_RANGE_START);
+    Socket socketSecond = new Socket("127.0.0.1", ConnectionManager.PORT_RANGE_START);
 
     tryAcquireOrFail(semaphore);//wait until connection is accepted
 
@@ -115,7 +115,7 @@ public class ConnectionReceiverTest {
     int otherPeerPort = 6882;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
-    myConnectionReceiver.connectTo(new Peer("127.0.0.1", otherPeerPort));
+    myConnectionManager.connectTo(new Peer("127.0.0.1", otherPeerPort));
     ss.accept();
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);
