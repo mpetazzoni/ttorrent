@@ -332,11 +332,9 @@ public class ClientTest {
         }
         raf.close();
       }
-      System.out.println("------------ start wait for");
       final WaitFor waitFor = new WaitFor(30 * 1000) {
         @Override
         protected boolean condition() {
-          System.out.println("------------ condition");
           for (Client client : clientsList) {
             final SharedTorrent next = client.getTorrents().iterator().next();
             if (next.getCompletedPieces().cardinality() < next.getPieceCount()-1){
@@ -348,7 +346,6 @@ public class ClientTest {
       };
 
       if (!waitFor.isMyResult()){
-        System.out.println("------------ fail");
         fail("All seeders didn't get their files");
       }
       System.out.println("------------ sleep");
@@ -356,9 +353,7 @@ public class ClientTest {
       {
         byte[] piece = new byte[pieceSize];
         FileInputStream fin = new FileInputStream(baseFile);
-        System.out.println("------------ read");
         fin.read(piece);
-        System.out.println("------------ read done");
         fin.close();
         RandomAccessFile raf;
         try {
@@ -372,16 +367,13 @@ public class ClientTest {
           e.printStackTrace();
         }
       }
-      System.out.println("------------ validate");
       validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5);
 
     } finally {
-      System.out.println("------------ stopped");
       for (Client client : clientsList) {
         client.stop();
       }
     }
-    System.out.println("------------ end");
   }
 
   public void corrupted_seeder()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
