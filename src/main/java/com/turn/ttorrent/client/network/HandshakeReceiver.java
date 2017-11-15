@@ -37,9 +37,13 @@ public class HandshakeReceiver implements DataProcessor {
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
     if (pstrLength == -1) {
       ByteBuffer len = ByteBuffer.allocate(1);
-      final int readBytes = socketChannel.read(len);
+      int readBytes = -1;
+      try {
+        readBytes = socketChannel.read(len);
+      } catch (IOException ignored) {
+      }
       if (readBytes == -1) {
-        throw new IOException("Handshake size read underrrun");
+        return new ShutdownProcessor(uid, peersStorageFactory);
       }
       if (readBytes == 0) {
         return this;
@@ -50,7 +54,15 @@ public class HandshakeReceiver implements DataProcessor {
       messageBytes = ByteBuffer.allocate(this.pstrLength + Handshake.BASE_HANDSHAKE_LENGTH);
       messageBytes.put(pstrLen);
     }
-    socketChannel.read(messageBytes);
+    int readBytes = -1;
+    try {
+      readBytes = socketChannel.read(messageBytes);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    if (readBytes == -1) {
+      return new ShutdownProcessor(uid, peersStorageFactory);
+    }
     if (messageBytes.remaining() != 0) {
       return this;
     }

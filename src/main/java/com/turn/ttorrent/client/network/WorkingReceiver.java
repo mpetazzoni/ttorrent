@@ -36,7 +36,12 @@ public class WorkingReceiver implements DataProcessor {
     logger.trace("received data from channel", socketChannel);
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
     if (pstrLength == -1) {
-      final int read = socketChannel.read(messageBytes);
+      final int read;
+      try {
+        read = socketChannel.read(messageBytes);
+      } catch (IOException e) {
+        return new ShutdownProcessor(peerUID, peersStorageFactory);
+      }
       if (read < 0) {
         return new ShutdownProcessor(peerUID, peersStorageFactory);
       }
@@ -52,7 +57,11 @@ public class WorkingReceiver implements DataProcessor {
     }
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
-    socketChannel.read(messageBytes);
+    try {
+      socketChannel.read(messageBytes);
+    } catch (IOException e) {
+      return new ShutdownProcessor(peerUID, peersStorageFactory);
+    }
     if (messageBytes.hasRemaining()) {
       return this;
     }

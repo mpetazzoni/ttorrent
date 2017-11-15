@@ -21,7 +21,11 @@ public class ShutdownProcessor implements DataProcessor {
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
     if (socketChannel.isOpen()) {
-      socketChannel.close();
+      try {
+        socketChannel.close();
+      } catch (IOException e) {
+        //already closed?
+      }
       removePeers();
     }
     return this;
