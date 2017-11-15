@@ -19,10 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.ChannelListener;
 import com.turn.ttorrent.client.network.ConnectionReceiver;
-import com.turn.ttorrent.client.network.DataProcessor;
-import com.turn.ttorrent.client.network.WorkingReceiver;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -35,8 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
@@ -105,6 +100,7 @@ public class Client implements Runnable,
   private final PeersStorage peersStorage;
   private ConnectionReceiver connectionReceiver;
   private Future<?> connectionReceiverFuture;
+  private ExecutorService myConnectionReceiverExecutor;
 
   public Client(){
     this.random = new Random(System.currentTimeMillis());
@@ -219,7 +215,8 @@ public class Client implements Runnable,
     this.service = new ConnectionHandler(bindAddresses, this);
     this.service.register(this);
     this.connectionReceiver = new ConnectionReceiver(bindAddresses[0], peersStorageFactory, torrentsStorageFactory);
-    connectionReceiverFuture = Executors.newSingleThreadExecutor().submit(connectionReceiver);
+    myConnectionReceiverExecutor = Executors.newSingleThreadExecutor();
+    connectionReceiverFuture = myConnectionReceiverExecutor.submit(connectionReceiver);
 
     // wait until connection receiver is launched
     while (getSelfPeers().length == 0) {
@@ -263,6 +260,14 @@ public class Client implements Runnable,
       return;
     service.stop();
     connectionReceiverFuture.cancel(true);
+    myConnectionReceiverExecutor.shutdown();
+    if (wait) {
+      try {
+        myConnectionReceiverExecutor.awaitTermination(1, TimeUnit.MINUTES);
+      } catch (InterruptedException e) {
+        LoggerUtils.warnAndDebugDetails(logger, "interrupted in await termination of executor service", e);
+      }
+    }
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
