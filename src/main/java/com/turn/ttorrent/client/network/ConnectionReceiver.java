@@ -13,6 +13,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class ConnectionReceiver implements Runnable, Closeable {
 
@@ -26,6 +29,7 @@ public class ConnectionReceiver implements Runnable, Closeable {
   private final PeersStorageFactory peersStorageFactory;
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
+  private final BlockingQueue<Peer> myConnectQueue;
 
   public ConnectionReceiver(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
     this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
@@ -38,6 +42,7 @@ public class ConnectionReceiver implements Runnable, Closeable {
     this.inetAddress = inetAddress;
     this.peersStorageFactory = peersStorageFactory;
     this.channelListenerFactory = channelListenerFactory;
+    this.myConnectQueue = new LinkedBlockingQueue<Peer>(100);
     myServerSocketChannel = selector.provider().openServerSocketChannel();
   }
 
@@ -61,6 +66,15 @@ public class ConnectionReceiver implements Runnable, Closeable {
     throw new IOException("No available port for the BitTorrent client!");
   }
 
+  public void connectTo(Peer peer) {
+    try {
+      myConnectQueue.offer(peer, 1, TimeUnit.SECONDS);
+      selector.wakeup();
+    } catch (InterruptedException e) {
+      logger.debug("connect task interrupted before address was added to queue");
+    }
+  }
+
   @Override
   public void run() {
 
@@ -82,7 +96,17 @@ public class ConnectionReceiver implements Runnable, Closeable {
     while (!Thread.currentThread().isInterrupted()) {
       try {
         int selected = selector.select();// TODO: 11/13/17 timeout
-
+        Peer peer;
+        try {
+          while ((peer = myConnectQueue.poll(10, TimeUnit.MILLISECONDS))!= null) {
+            SocketChannel socketChannel = SocketChannel.open();
+            socketChannel.configureBlocking(false);
+            socketChannel.register(selector, SelectionKey.OP_CONNECT, peer);
+            socketChannel.connect(new InetSocketAddress(peer.getIp(), peer.getPort()));
+          }
+        } catch (InterruptedException e) {
+          break;
+        }
         logger.trace("select keys from selector. Keys count is " + selected);
         if (selected == 0) {
           continue;
@@ -137,6 +161,25 @@ public class ConnectionReceiver implements Runnable, Closeable {
 
       ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       stateChannelListener.onConnectionAccept(socketChannel);
+      socketChannel.configureBlocking(false);
+      socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
+    }
+    if (key.isConnectable()) {
+      SelectableChannel channel = key.channel();
+      if (!(channel instanceof SocketChannel)) {
+        logger.warn("incorrect instance of channel. Close connection with it");
+        channel.close();
+        return;
+      }
+      SocketChannel socketChannel = (SocketChannel) channel;
+      ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
+      Object attachment = key.attachment();
+      if (!(attachment instanceof Peer)) {
+        logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
+        socketChannel.close();
+        return;
+      }
+      stateChannelListener.onConnected(socketChannel, (Peer)attachment);
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
     }

@@ -3,6 +3,7 @@ package com.turn.ttorrent.client.network;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeersStorageFactory;
 import com.turn.ttorrent.common.TorrentsStorageFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -34,6 +35,14 @@ public class StateChannelListener implements ChannelListener {
       uid = UUID.randomUUID().toString();
     } while (!peersStorageFactory.getPeersStorage().tryAddPeer(uid, peer));
     this.uid = uid;
-    this.next = new HandshakeReceiver(uid, peersStorageFactory, torrentsStorageFactory);
+  }
+
+  @Override
+  public void onConnected(SocketChannel socketChannel, Peer peer) {
+    // TODO: 11/15/17 impl
+    throw new NotImplementedException();
+//    registerNewPeer(peer);
+//    ConnectionUtils.sendHandshake(socketChannel, peer.getInfoHash(), peersStorageFactory.getPeersStorage().getSelf().getPeerIdArray());
+//    this.next = new HandshakeReceiver(uid, peersStorageFactory, torrentsStorageFactory, false);
   }
 }

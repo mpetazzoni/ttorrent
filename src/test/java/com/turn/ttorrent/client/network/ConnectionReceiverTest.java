@@ -1,19 +1,18 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.common.CachedPeersStorageFactory;
+import com.turn.ttorrent.common.Peer;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.testng.Assert.*;
@@ -40,6 +39,7 @@ public class ConnectionReceiverTest {
   public void canAcceptAndReadData() throws IOException, InterruptedException {
     final AtomicInteger acceptCount = new AtomicInteger();
     final AtomicInteger readCount = new AtomicInteger();
+    final AtomicInteger connectCount = new AtomicInteger();
     final AtomicInteger lastReadBytesCount = new AtomicInteger();
     final ByteBuffer byteBuffer = ByteBuffer.allocate(10);
 
@@ -61,9 +61,16 @@ public class ConnectionReceiverTest {
         acceptCount.incrementAndGet();
         semaphore.release();
       }
+
+      @Override
+      public void onConnected(SocketChannel socketChannel, Peer peer) {
+        connectCount.incrementAndGet();
+        semaphore.release();
+      }
     };
 
-    Future<?> future = Executors.newSingleThreadExecutor().submit(myConnectionReceiver);
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    Future<?> future = executorService.submit(myConnectionReceiver);
 
     assertEquals(acceptCount.get(), 0);
     assertEquals(readCount.get(), 0);
@@ -104,7 +111,18 @@ public class ConnectionReceiverTest {
     socket.close();
     tryAcquireOrFail(semaphore);//wait read that connection is closed
     assertEquals(readCount.get(), 3);
-    future.cancel(true);
+
+    int otherPeerPort = 6882;
+    ServerSocket ss = new ServerSocket(otherPeerPort);
+    assertEquals(connectCount.get(), 0);
+    myConnectionReceiver.connectTo(new Peer("127.0.0.1", otherPeerPort));
+    ss.accept();
+    tryAcquireOrFail(semaphore);
+    assertEquals(connectCount.get(), 1);
+
+    executorService.shutdownNow();
+    boolean executorShutdownCorrectly = executorService.awaitTermination(10, TimeUnit.SECONDS);
+    assertTrue(executorShutdownCorrectly);
   }
 
   private void tryAcquireOrFail(Semaphore semaphore) throws InterruptedException {
