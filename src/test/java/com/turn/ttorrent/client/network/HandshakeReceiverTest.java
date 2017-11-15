@@ -60,7 +60,8 @@ public class HandshakeReceiverTest {
     Handshake hs = Handshake.craft(torrentHash, peerId);
     ByteBuffer byteBuffer = hs.getData();
     client.write(byteBuffer);
-    final File torrent = new File("src/test/resources/torrents/file1.jar.torrent");
+    String torrentPath = "src" + File.separator + "test" + File.separator + "resources" + File.separator + "torrents" + File.separator + "file1.jar.torrent";
+    final File torrent = new File(torrentPath);
     myTorrentsStorage.put(torrentHashHex, new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false));
     assertEquals(myPeersStorage.getSharingPeers().size(), 0);
     myHandshakeReceiver.processAndGetNext(server);
