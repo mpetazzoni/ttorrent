@@ -43,7 +43,7 @@ import static org.testng.Assert.assertTrue;
 @Test
 public class ClientTest {
 
-  private List<Client> clientList = new ArrayList<Client>();
+  private List<Client> clientList;
   private static final String TEST_RESOURCES = "src/test/resources";
   private Tracker tracker;
   private TempFiles tempFiles;
@@ -59,6 +59,7 @@ public class ClientTest {
   @BeforeMethod
   public void setUp() throws IOException {
     tempFiles = new TempFiles();
+    clientList = new ArrayList<Client>();
     startTracker();
   }
 
@@ -348,7 +349,6 @@ public class ClientTest {
       if (!waitFor.isMyResult()){
         fail("All seeders didn't get their files");
       }
-      System.out.println("------------ sleep");
       Thread.sleep(10*1000);
       {
         byte[] piece = new byte[pieceSize];
