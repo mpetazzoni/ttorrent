@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
+import java.util.Arrays;
 
 public class HandshakeReceiver implements DataProcessor {
 
@@ -58,13 +59,14 @@ public class HandshakeReceiver implements DataProcessor {
       messageBytes.rewind();
       hs = Handshake.parse(messageBytes, pstrLength);
     } catch (ParseException e) {
-      logger.debug("incorrect handshake message from " + socketChannel.getLocalAddress() + ". Close channel", e);
-      socketChannel.close();
-      return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
+      logger.debug("incorrect handshake message from " + socketChannel.getLocalAddress(), e);
+      return new ShutdownProcessor();
     }
     if (!torrentsStorageFactory.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
-      socketChannel.close();
-      return this;// TODO: 11/13/17 return shutdown receiver, drop peer from collections
+      logger.debug("peer {} try download torrent with hash {}, but it's unknown torrent for self",
+              Arrays.toString(hs.getPeerId()),
+              hs.getHexInfoHash());
+      return new ShutdownProcessor();
     }
 
     Peer peer = peersStorageFactory.getPeersStorage().getPeer(uid);

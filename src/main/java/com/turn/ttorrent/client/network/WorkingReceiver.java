@@ -39,8 +39,7 @@ public class WorkingReceiver implements DataProcessor {
     if (pstrLength == -1) {
       final int read = socketChannel.read(messageBytes);
       if (read < 0) {
-        throw new EOFException(
-                "Reached end-of-stream while reading size header");
+        return new ShutdownProcessor();
       }
       if (messageBytes.hasRemaining()) {
         return this;
