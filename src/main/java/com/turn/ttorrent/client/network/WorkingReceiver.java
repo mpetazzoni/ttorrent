@@ -38,7 +38,7 @@ public class WorkingReceiver implements DataProcessor {
     if (pstrLength == -1) {
       final int read = socketChannel.read(messageBytes);
       if (read < 0) {
-        return new ShutdownProcessor();
+        return new ShutdownProcessor(peerUID, peersStorageFactory);
       }
       if (messageBytes.hasRemaining()) {
         return this;
@@ -61,6 +61,12 @@ public class WorkingReceiver implements DataProcessor {
     try {
       Peer peer = peersStorageFactory.getPeersStorage().getPeer(peerUID);
       SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
+      if (torrent == null) {
+        //torrent doesn't seed more. Maybe somebody delete it manually. shutdown channel immediately.
+        ShutdownProcessor shutdownProcessor = new ShutdownProcessor(peerUID, peersStorageFactory);
+        return shutdownProcessor.processAndGetNext(socketChannel);
+      }
+      logger.trace("try parse message from {}. Torrent {}", peer, torrent);
       PeerMessage message = PeerMessage.parse(messageBytes, torrent);
       logger.trace("get message {} from {}", message, socketChannel);
       peersStorageFactory.getPeersStorage().getSharingPeer(peer).handleMessage(message);

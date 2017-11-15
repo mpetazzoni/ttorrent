@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.SocketChannel;
 import java.text.ParseException;
 import java.util.Arrays;
 
@@ -61,13 +60,13 @@ public class HandshakeReceiver implements DataProcessor {
       hs = Handshake.parse(messageBytes, pstrLength);
     } catch (ParseException e) {
       logger.debug("incorrect handshake message from " + socketChannel.toString(), e);
-      return new ShutdownProcessor();
+      return new ShutdownProcessor(uid, peersStorageFactory);
     }
     if (!torrentsStorageFactory.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
       logger.debug("peer {} try download torrent with hash {}, but it's unknown torrent for self",
               Arrays.toString(hs.getPeerId()),
               hs.getHexInfoHash());
-      return new ShutdownProcessor();
+      return new ShutdownProcessor(uid, peersStorageFactory);
     }
 
     Peer peer = peersStorageFactory.getPeersStorage().getPeer(uid);

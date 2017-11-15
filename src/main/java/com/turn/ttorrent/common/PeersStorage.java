@@ -40,6 +40,10 @@ public class PeersStorage {
     return old == null;
   }
 
+  public Peer removePeer(String uid) {
+    return connectedPeers.remove(uid);
+  }
+
   public void addSharingPeer(Peer peer, SharingPeer sharingPeer) {
     if (peer.getHexInfoHash() == null) {
       throw new NullPointerException("can not add sharing peer with peer without torrent");// TODO: 11/14/17 correct handle this case
