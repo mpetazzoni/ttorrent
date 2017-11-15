@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -93,7 +94,7 @@ public class ConnectionUtils {
    *
    * @param channel The socket myServerSocketChannel to the remote peer.
    */
-  public static int sendHandshake(SocketChannel channel, byte[] infoHash, byte[] peerId) throws IOException {
+  public static int sendHandshake(ByteChannel channel, byte[] infoHash, byte[] peerId) throws IOException {
     final Handshake craft = Handshake.craft(infoHash,peerId);
     return channel.write(craft.getData());
   }
@@ -169,7 +170,7 @@ public class ConnectionUtils {
             channel.isConnected() ? "+" : "-");
   }
 
-  public static boolean readAndHandleMessage(ByteBuffer buffer, SocketChannel channel, boolean stop, TorrentInfo torrent,
+  public static boolean readAndHandleMessage(ByteBuffer buffer, ByteChannel channel, boolean stop, TorrentInfo torrent,
                                              Collection<MessageListener> listeners) throws IOException {
     buffer.rewind();
     buffer.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);

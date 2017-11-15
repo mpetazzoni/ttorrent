@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -34,7 +35,7 @@ public class HandshakeReceiver implements DataProcessor {
   }
 
   @Override
-  public DataProcessor processAndGetNext(SocketChannel socketChannel) throws IOException {
+  public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
     if (pstrLength == -1) {
       ByteBuffer len = ByteBuffer.allocate(1);
       final int readBytes = socketChannel.read(len);
@@ -59,7 +60,7 @@ public class HandshakeReceiver implements DataProcessor {
       messageBytes.rewind();
       hs = Handshake.parse(messageBytes, pstrLength);
     } catch (ParseException e) {
-      logger.debug("incorrect handshake message from " + socketChannel.getLocalAddress(), e);
+      logger.debug("incorrect handshake message from " + socketChannel.toString(), e);
       return new ShutdownProcessor();
     }
     if (!torrentsStorageFactory.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {

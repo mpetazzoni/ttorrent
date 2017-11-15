@@ -8,10 +8,9 @@ import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 
 public class WorkingReceiver implements DataProcessor {
@@ -33,8 +32,8 @@ public class WorkingReceiver implements DataProcessor {
   }
 
   @Override
-  public DataProcessor processAndGetNext(SocketChannel socketChannel) throws IOException {
-    logger.trace("received data from " + socketChannel.socket());
+  public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
+    logger.trace("received data from channel", socketChannel);
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
     if (pstrLength == -1) {
       final int read = socketChannel.read(messageBytes);
@@ -63,7 +62,7 @@ public class WorkingReceiver implements DataProcessor {
       Peer peer = peersStorageFactory.getPeersStorage().getPeer(peerUID);
       SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       PeerMessage message = PeerMessage.parse(messageBytes, torrent);
-      logger.trace("get message {} from {}", new Object[]{message, socketChannel.socket()});
+      logger.trace("get message {} from {}", message, socketChannel);
       peersStorageFactory.getPeersStorage().getSharingPeer(peer).handleMessage(message);
     } catch (ParseException e) {
       logger.debug("{}", e.getMessage());

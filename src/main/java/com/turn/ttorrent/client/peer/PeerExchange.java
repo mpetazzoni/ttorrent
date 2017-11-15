@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.lang.InterruptedException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -77,7 +78,7 @@ public class PeerExchange {
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
-	private SocketChannel channel;
+	private ByteChannel channel;
 
 	private Set<MessageListener> listeners;
 
@@ -97,7 +98,7 @@ public class PeerExchange {
 	 * @param channel A channel on the connected socket to the peer.
 	 */
 	public PeerExchange(SharingPeer peer, SharedTorrent torrent,
-			SocketChannel channel, boolean onlyWrite) throws SocketException {
+											ByteChannel channel, boolean onlyWrite) throws SocketException {
 		this.peer = peer;
 		this.torrent = torrent;
 		this.onlyWrite = onlyWrite;
@@ -155,7 +156,7 @@ public class PeerExchange {
 	 * Tells if the peer exchange is active.
 	 */
 	public boolean isConnected() {
-		return this.channel.isConnected();
+		return this.channel.isOpen();
 	}
 
 	/**
@@ -190,7 +191,7 @@ public class PeerExchange {
 	public void close() {
 		this.stop = true;
     sendQueue.clear();
-		if (this.channel.isConnected()) {
+		if (this.channel.isOpen()) {
 			try {
 				this.channel.close();
 			} catch (IOException ioe) {
@@ -202,7 +203,7 @@ public class PeerExchange {
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
-  public SocketChannel getChannel() {
+  public ByteChannel getChannel() {
     return channel;
   }
 

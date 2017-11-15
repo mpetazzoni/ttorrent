@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
@@ -267,7 +268,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param channel The connected socket channel for this peer.
    */
-  public synchronized void bind(SocketChannel channel, boolean onlyWrite) throws SocketException {
+  public synchronized void bind(ByteChannel channel, boolean onlyWrite) throws SocketException {
     firePeerConnected();
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel, onlyWrite);
@@ -834,7 +835,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return this.torrent;
   }
 
-  public SocketChannel getSocketChannel() {
+  public ByteChannel getSocketChannel() {
     return exchange.getChannel();
   }
 

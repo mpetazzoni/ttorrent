@@ -1,6 +1,7 @@
 package com.turn.ttorrent.client.network;
 
 import java.io.IOException;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 
 public interface DataProcessor {
@@ -12,6 +13,6 @@ public interface DataProcessor {
    * @return data processor which must process next data
    * @throws IOException if an I/O error occurs
    */
-  DataProcessor processAndGetNext(SocketChannel socketChannel) throws IOException;
+  DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException;
 
 }
