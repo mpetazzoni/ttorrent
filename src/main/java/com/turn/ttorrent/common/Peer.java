@@ -198,12 +198,15 @@ public class Peer {
 
 		Peer peer = (Peer) o;
 
-		return hexPeerId != null ? hexPeerId.equals(peer.hexPeerId) : peer.hexPeerId == null;
+		if (hexPeerId != null ? !hexPeerId.equals(peer.hexPeerId) : peer.hexPeerId != null) return false;
+		return hexInfoHash != null ? hexInfoHash.equals(peer.hexInfoHash) : peer.hexInfoHash == null;
 	}
 
 	@Override
 	public int hashCode() {
-		return hexPeerId != null ? hexPeerId.hashCode() : 0;
+		int result = hexPeerId != null ? hexPeerId.hashCode() : 0;
+		result = 31 * result + (hexInfoHash != null ? hexInfoHash.hashCode() : 0);
+		return result;
 	}
 
 	/**
