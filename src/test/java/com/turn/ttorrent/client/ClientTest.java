@@ -40,7 +40,7 @@ import static org.testng.Assert.assertTrue;
  *         Date: 7/26/13
  *         Time: 2:32 PM
  */
-@Test
+@Test(timeOut = 600000)
 public class ClientTest {
 
   private List<Client> clientList;
