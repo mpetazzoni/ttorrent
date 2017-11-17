@@ -94,6 +94,7 @@ public class Client implements Runnable,
 
   private Random random;
   private boolean myStarted = false;
+  private final String threadNameSuffix;
   private final PeersStorageFactory peersStorageFactory;
   private final TorrentsStorageFactory torrentsStorageFactory;
   private final TorrentsStorage torrentsStorage;
@@ -103,12 +104,17 @@ public class Client implements Runnable,
   private ExecutorService myConnectionManagerExecutor;
 
   public Client(){
+    this("");
+  }
+
+  public Client(String name) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
     this.peersStorageFactory = new CachedPeersStorageFactory();
     this.torrentsStorageFactory = new CachedTorrentsStorageFactory();
     this.torrentsStorage = this.torrentsStorageFactory.getTorrentsStorage();
     this.peersStorage = this.peersStorageFactory.getPeersStorage();
+    this.threadNameSuffix = name;
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -234,7 +240,7 @@ public class Client implements Runnable,
 
     if (this.thread == null || !this.thread.isAlive()) {
       this.thread = new Thread(this);
-      this.thread.setName("bt-client");
+      this.thread.setName("bt-client " + threadNameSuffix);
       this.thread.start();
     }
     myStarted = true;
@@ -586,7 +592,7 @@ public class Client implements Runnable,
   private synchronized void unchokePeers(boolean optimistic) {
     // Build a set of all connected peers, we don't care about peers we're
     // not connected to.
-    List<SharingPeer> bound = new ArrayList<SharingPeer>(getConnectedPeers());
+    List<SharingPeer> bound = new ArrayList<SharingPeer>(peersStorage.getSharingPeers());
     Collections.sort(bound, this.getPeerRateComparator());
     Collections.reverse(bound);
     if (bound.size() == 0) {
