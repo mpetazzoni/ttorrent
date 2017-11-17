@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.DummyPeerActivityListener;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.*;
@@ -44,7 +45,10 @@ public class HandshakeReceiverTest {
     myTorrentsStorage = cachedTorrentsStorageFactory.getTorrentsStorage();
     String peerId = "id";
     myPeersStorage.tryAddPeer(peerId, new Peer("127.0.0.1", 45664));
-    myHandshakeReceiver = new HandshakeReceiver(peerId, cachedPeersStorageFactory, cachedTorrentsStorageFactory);
+    myHandshakeReceiver = new HandshakeReceiver(peerId,
+            cachedPeersStorageFactory,
+            cachedTorrentsStorageFactory,
+            new DummyPeerActivityListener());
   }
 
   public void testReceiveHandshake() throws Exception {

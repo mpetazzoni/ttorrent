@@ -1,6 +1,7 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,11 @@ public class ConnectionManager implements Runnable, Closeable {
   private ServerSocketChannel myServerSocketChannel;
   private final BlockingQueue<Peer> myConnectQueue;
 
-  public ConnectionManager(InetAddress inetAddress, PeersStorageFactory peersStorageFactory, TorrentsStorageFactory torrentsStorageFactory) throws IOException {
-    this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory));
+  public ConnectionManager(InetAddress inetAddress,
+                           PeersStorageFactory peersStorageFactory,
+                           TorrentsStorageFactory torrentsStorageFactory,
+                           PeerActivityListener peerActivityListener) throws IOException {
+    this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory, peerActivityListener));
   }
 
   public ConnectionManager(InetAddress inetAddress,
@@ -149,6 +153,10 @@ public class ConnectionManager implements Runnable, Closeable {
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {
+    if (!key.isValid()) {
+      logger.info("Key for channel {} is invalid. Skipping", key.channel());
+      return;
+    }
     if (key.isAcceptable()) {
       SelectableChannel channel = key.channel();
       if (!(channel instanceof ServerSocketChannel)) {
