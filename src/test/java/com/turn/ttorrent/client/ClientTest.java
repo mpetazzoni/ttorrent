@@ -391,14 +391,12 @@ public class ClientTest {
       final File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
       final File badFile = tempFiles.createTempFile(piecesCount * pieceSize);
 
-      final Client client1 = createAndStartClient();
       final Client client2 = createAndStartClient();
       final File client2Dir = tempFiles.createTempDir();
       final File client2File = new File(client2Dir, baseFile.getName());
       FileUtils.copyFile(badFile, client2File);
 
       final Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
-      client1.addTorrent(new SharedTorrent(torrent, baseFile.getParentFile(), false, true));
       client2.addTorrent(new SharedTorrent(torrent, client2Dir, false, true));
 
       final String baseMD5 = getFileMD5(baseFile, md5);
