@@ -15,8 +15,6 @@
  */
 package com.turn.ttorrent.common;
 
-import com.turn.ttorrent.common.Torrent;
-
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -38,8 +36,8 @@ public class Peer {
 	private final String hostId;
 
 	private ByteBuffer peerId;
-	private String hexPeerId;
-	private String hexInfoHash;
+	private volatile String hexPeerId;
+	private volatile String hexInfoHash;
 
 	/**
 	 * Instantiate a new peer.
@@ -169,28 +167,6 @@ public class Peer {
 		return this.address.getAddress().getAddress();
 	}
 
-	/**
-	 * Returns a human-readable representation of this peer.
-	 */
-	public String toString() {
-		StringBuilder s = new StringBuilder("peer://")
-			.append(this.getIp()).append(":").append(this.getPort())
-			.append("/");
-
-		if (this.hasPeerId()) {
-			s.append(this.hexPeerId.substring(this.hexPeerId.length()-6));
-		} else {
-			s.append("?");
-		}
-
-		if (this.getPort() < 10000) {
-			s.append(" ");
-		}
-
-		return s.toString();
-	}
-
-
 
 	/**
 	 * Tells if two peers seem to look alike (i.e. they have the same IP, port
@@ -213,5 +189,34 @@ public class Peer {
 
 	public String getHexInfoHash() {
 		return hexInfoHash;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		Peer peer = (Peer) o;
+
+		return hexPeerId != null ? hexPeerId.equals(peer.hexPeerId) : peer.hexPeerId == null;
+	}
+
+	@Override
+	public int hashCode() {
+		return hexPeerId != null ? hexPeerId.hashCode() : 0;
+	}
+
+	/**
+	 * Returns a human-readable representation of this peer.
+	 */
+	@Override
+	public String toString() {
+		return "Peer{" +
+						"address=" + address +
+						", hostId='" + hostId + '\'' +
+						", peerId=" + peerId +
+						", hexPeerId='" + hexPeerId + '\'' +
+						", hexInfoHash='" + hexInfoHash + '\'' +
+						'}';
 	}
 }
