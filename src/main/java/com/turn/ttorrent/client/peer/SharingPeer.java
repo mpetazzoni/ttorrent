@@ -316,11 +316,11 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
       try {
-        this.cancelPendingRequests();
         this.send(PeerMessage.NotInterestedMessage.craft());
       } catch (Exception ex) {
       }
     }
+    this.cancelPendingRequests();
 
     PeerExchange exchangeCopy;
     synchronized (this.exchangeLock) {
