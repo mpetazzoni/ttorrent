@@ -333,7 +333,7 @@ public class ClientTest {
         }
         raf.close();
       }
-      final WaitFor waitFor = new WaitFor(30 * 1000) {
+      final WaitFor waitFor = new WaitFor(60 * 1000) {
         @Override
         protected boolean condition() {
           for (Client client : clientsList) {
