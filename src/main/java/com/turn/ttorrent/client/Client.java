@@ -94,7 +94,7 @@ public class Client implements Runnable,
 
   private Random random;
   private boolean myStarted = false;
-  private final String threadNameSuffix;
+  private final String myClientNameSuffix;
   private final PeersStorageFactory peersStorageFactory;
   private final TorrentsStorageFactory torrentsStorageFactory;
   private final TorrentsStorage torrentsStorage;
@@ -114,7 +114,7 @@ public class Client implements Runnable,
     this.torrentsStorageFactory = new CachedTorrentsStorageFactory();
     this.torrentsStorage = this.torrentsStorageFactory.getTorrentsStorage();
     this.peersStorage = this.peersStorageFactory.getPeersStorage();
-    this.threadNameSuffix = name;
+    this.myClientNameSuffix = name;
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -240,7 +240,7 @@ public class Client implements Runnable,
 
     if (this.thread == null || !this.thread.isAlive()) {
       this.thread = new Thread(this);
-      this.thread.setName("bt-client " + threadNameSuffix);
+      this.thread.setName("bt-client " + myClientNameSuffix);
       this.thread.start();
     }
     myStarted = true;
