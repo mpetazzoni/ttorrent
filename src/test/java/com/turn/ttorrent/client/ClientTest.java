@@ -72,7 +72,7 @@ public class ClientTest {
     final File srcDir = tempFiles.createTempDir();
     final File downloadDir = tempFiles.createTempDir();
 
-    Client seeder = createClient();
+    Client seeder = createClient("seeder");
     seeder.start(InetAddress.getLocalHost());
     Client leech = null;
 
@@ -99,7 +99,7 @@ public class ClientTest {
         SharedTorrent st1 = SharedTorrent.fromFile(torrentFile, f.getParentFile(), true);
         seeder.addTorrent(st1);
       }
-      leech = createClient();
+      leech = createClient("leecher");
       leech.start(InetAddress.getLocalHost());
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
@@ -128,7 +128,7 @@ public class ClientTest {
         }
       };
 
-      assertTrue(listFileNames(downloadDir).equals(names));
+      assertEquals(listFileNames(downloadDir), names);
     } finally {
       leech.stop(true);
       seeder.stop(true);
@@ -858,10 +858,14 @@ public class ClientTest {
     client.start(InetAddress.getLocalHost());
     return client;
   }
-  private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
-    final Client client = new Client();
+  private Client createClient(String name) throws IOException, NoSuchAlgorithmException, InterruptedException {
+    final Client client = new Client(name);
     clientList.add(client);
     return client;
+  }
+
+  private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
+    return createClient("");
   }
 
   private SharedTorrent completeTorrent(String name) throws IOException, NoSuchAlgorithmException {
