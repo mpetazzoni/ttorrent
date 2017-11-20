@@ -94,6 +94,11 @@ public class ConnectionManager implements Runnable, Closeable {
               });
     } catch (IOException e) {
       LoggerUtils.warnAndDebugDetails(logger, "error in initialization server channel", e);
+      try {
+        close();
+      } catch (IOException e1) {
+        LoggerUtils.warnAndDebugDetails(logger, "error in closing resources after error in initialization", e);
+      }
       return;
     }
 
@@ -132,7 +137,11 @@ public class ConnectionManager implements Runnable, Closeable {
   @Override
   public void close() throws IOException {
     this.myServerSocketChannel.close();
-    // TODO: 11/13/17 close all opened connections with peers
+    // TODO: 11/20/17 sync!!! if this code will invoke in another thread, it can failed with some exceptions because it is not thread-safe
+    for (SelectionKey key : this.selector.keys()) {
+      key.channel().close();
+    }
+    this.selector.close();
   }
 
   private void processSelectedKeys() {
