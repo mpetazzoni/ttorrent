@@ -95,8 +95,8 @@ public class Client implements Runnable,
   private Random random;
   private boolean myStarted = false;
   private final String myClientNameSuffix;
-  private final PeersStorageFactory peersStorageFactory;
-  private final TorrentsStorageFactory torrentsStorageFactory;
+  private final PeersStorageProvider peersStorageProvider;
+  private final TorrentsStorageProvider torrentsStorageProvider;
   private final TorrentsStorage torrentsStorage;
   private final PeersStorage peersStorage;
   private ConnectionManager myConnectionManager;
@@ -110,10 +110,10 @@ public class Client implements Runnable,
   public Client(String name) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
-    this.peersStorageFactory = new CachedPeersStorageFactory();
-    this.torrentsStorageFactory = new CachedTorrentsStorageFactory();
-    this.torrentsStorage = this.torrentsStorageFactory.getTorrentsStorage();
-    this.peersStorage = this.peersStorageFactory.getPeersStorage();
+    this.peersStorageProvider = new PeersStorageProviderImpl();
+    this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
+    this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
+    this.peersStorage = this.peersStorageProvider.getPeersStorage();
     this.myClientNameSuffix = name;
   }
 
@@ -209,7 +209,7 @@ public class Client implements Runnable,
   }
 
   public Peer[] getSelfPeers() {
-    Peer self = this.peersStorageFactory.getPeersStorage().getSelf();
+    Peer self = this.peersStorageProvider.getPeersStorage().getSelf();
     if (self == null) {
       return new Peer[0];
     }
@@ -219,7 +219,7 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(bindAddresses, this);
     this.service.register(this);
-    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageFactory, torrentsStorageFactory, this);
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this);
     myConnectionManagerExecutor = Executors.newSingleThreadExecutor();
     myConnectionManagerFuture = myConnectionManagerExecutor.submit(myConnectionManager);
 

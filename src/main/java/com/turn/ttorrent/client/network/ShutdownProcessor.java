@@ -3,7 +3,7 @@ package com.turn.ttorrent.client.network;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeersStorage;
-import com.turn.ttorrent.common.PeersStorageFactory;
+import com.turn.ttorrent.common.PeersStorageProvider;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
@@ -11,11 +11,11 @@ import java.nio.channels.ByteChannel;
 public class ShutdownProcessor implements DataProcessor {
 
   private final String uid;
-  private final PeersStorageFactory peersStorageFactory;
+  private final PeersStorageProvider peersStorageProvider;
 
-  public ShutdownProcessor(String uid, PeersStorageFactory peersStorageFactory) {
+  public ShutdownProcessor(String uid, PeersStorageProvider peersStorageProvider) {
     this.uid = uid;
-    this.peersStorageFactory = peersStorageFactory;
+    this.peersStorageProvider = peersStorageProvider;
   }
 
   @Override
@@ -32,7 +32,7 @@ public class ShutdownProcessor implements DataProcessor {
   }
 
   private void removePeers() {
-    PeersStorage peersStorage = peersStorageFactory.getPeersStorage();
+    PeersStorage peersStorage = peersStorageProvider.getPeersStorage();
     Peer peer = peersStorage.removePeer(uid);
     if (peer == null) {
       return;

@@ -6,8 +6,8 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeersStorageFactory;
-import com.turn.ttorrent.common.TorrentsStorageFactory;
+import com.turn.ttorrent.common.PeersStorageProvider;
+import com.turn.ttorrent.common.TorrentsStorageProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,19 +22,19 @@ public class HandshakeReceiver implements DataProcessor {
   private static final Logger logger = LoggerFactory.getLogger(HandshakeReceiver.class);
 
   private final String uid;
-  private final PeersStorageFactory peersStorageFactory;
-  private final TorrentsStorageFactory torrentsStorageFactory;
+  private final PeersStorageProvider peersStorageProvider;
+  private final TorrentsStorageProvider torrentsStorageProvider;
   private ByteBuffer messageBytes;
   private int pstrLength;
   private final PeerActivityListener myPeerActivityListener;
 
   public HandshakeReceiver(String uid,
-                           PeersStorageFactory peersStorageFactory,
-                           TorrentsStorageFactory torrentsStorageFactory,
+                           PeersStorageProvider peersStorageProvider,
+                           TorrentsStorageProvider torrentsStorageProvider,
                            PeerActivityListener myPeerActivityListener) {
     this.uid = uid;
-    this.peersStorageFactory = peersStorageFactory;
-    this.torrentsStorageFactory = torrentsStorageFactory;
+    this.peersStorageProvider = peersStorageProvider;
+    this.torrentsStorageProvider = torrentsStorageProvider;
     this.myPeerActivityListener = myPeerActivityListener;
     this.pstrLength = -1;
   }
@@ -49,7 +49,7 @@ public class HandshakeReceiver implements DataProcessor {
       } catch (IOException ignored) {
       }
       if (readBytes == -1) {
-        return new ShutdownProcessor(uid, peersStorageFactory);
+        return new ShutdownProcessor(uid, peersStorageProvider);
       }
       if (readBytes == 0) {
         return this;
@@ -67,7 +67,7 @@ public class HandshakeReceiver implements DataProcessor {
       e.printStackTrace();
     }
     if (readBytes == -1) {
-      return new ShutdownProcessor(uid, peersStorageFactory);
+      return new ShutdownProcessor(uid, peersStorageProvider);
     }
     if (messageBytes.remaining() != 0) {
       return this;
@@ -78,33 +78,33 @@ public class HandshakeReceiver implements DataProcessor {
       hs = Handshake.parse(messageBytes, pstrLength);
     } catch (ParseException e) {
       logger.debug("incorrect handshake message from " + socketChannel.toString(), e);
-      return new ShutdownProcessor(uid, peersStorageFactory);
+      return new ShutdownProcessor(uid, peersStorageProvider);
     }
-    if (!torrentsStorageFactory.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
+    if (!torrentsStorageProvider.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
       logger.debug("peer {} try download torrent with hash {}, but it's unknown torrent for self",
               Arrays.toString(hs.getPeerId()),
               hs.getHexInfoHash());
-      return new ShutdownProcessor(uid, peersStorageFactory);
+      return new ShutdownProcessor(uid, peersStorageProvider);
     }
 
     logger.debug("get handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
-    Peer peer = peersStorageFactory.getPeersStorage().getPeer(uid);
+    Peer peer = peersStorageProvider.getPeersStorage().getPeer(uid);
     ByteBuffer wrap = ByteBuffer.wrap(hs.getPeerId());
     wrap.rewind();
     peer.setPeerId(wrap);
     peer.setTorrentHash(hs.getHexInfoHash());
     logger.trace("set peer id to peer " + peer);
-    ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageFactory.getPeersStorage().getSelf().getPeerIdArray());
-    SharedTorrent torrent = torrentsStorageFactory.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
+    ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
+    SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
     SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(), peer.getPeerId(), torrent);
     sharingPeer.register(torrent);
     sharingPeer.register(myPeerActivityListener);
     sharingPeer.bind(socketChannel, true);
-    SharingPeer old = peersStorageFactory.getPeersStorage().tryAddSharingPeer(peer, sharingPeer);
+    SharingPeer old = peersStorageProvider.getPeersStorage().tryAddSharingPeer(peer, sharingPeer);
     if (old != null) {
       logger.debug("$$$ already connected to " + peer);
-      return new ShutdownProcessor(uid, peersStorageFactory);
+      return new ShutdownProcessor(uid, peersStorageProvider);
     }
-    return new WorkingReceiver(this.uid, peersStorageFactory, torrentsStorageFactory);
+    return new WorkingReceiver(this.uid, peersStorageProvider, torrentsStorageProvider);
   }
 }

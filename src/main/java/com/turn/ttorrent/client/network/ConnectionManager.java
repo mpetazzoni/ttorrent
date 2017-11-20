@@ -26,24 +26,24 @@ public class ConnectionManager implements Runnable {
 
   private final Selector selector;
   private final InetAddress inetAddress;
-  private final PeersStorageFactory peersStorageFactory;
+  private final PeersStorageProvider peersStorageProvider;
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
   private final BlockingQueue<Peer> myConnectQueue;
 
   public ConnectionManager(InetAddress inetAddress,
-                           PeersStorageFactory peersStorageFactory,
-                           TorrentsStorageFactory torrentsStorageFactory,
+                           PeersStorageProvider peersStorageProvider,
+                           TorrentsStorageProvider torrentsStorageProvider,
                            PeerActivityListener peerActivityListener) throws IOException {
-    this(inetAddress, peersStorageFactory, new ChannelListenerFactoryImpl(peersStorageFactory, torrentsStorageFactory, peerActivityListener));
+    this(inetAddress, peersStorageProvider, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener));
   }
 
   public ConnectionManager(InetAddress inetAddress,
-                           PeersStorageFactory peersStorageFactory,
+                           PeersStorageProvider peersStorageProvider,
                            ChannelListenerFactory channelListenerFactory) throws IOException {
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
-    this.peersStorageFactory = peersStorageFactory;
+    this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
     this.myConnectQueue = new LinkedBlockingQueue<Peer>(100);
     myServerSocketChannel = selector.provider().openServerSocketChannel();
@@ -59,7 +59,7 @@ public class ConnectionManager implements Runnable {
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
         byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
-        peersStorageFactory.getPeersStorage().setSelf(new Peer(tryAddress, ByteBuffer.wrap(idBytes)));
+        peersStorageProvider.getPeersStorage().setSelf(new Peer(tryAddress, ByteBuffer.wrap(idBytes)));
         return;
       } catch (IOException e) {
         //try next port
@@ -83,7 +83,7 @@ public class ConnectionManager implements Runnable {
 
     try {
       init();
-      Peer self = peersStorageFactory.getPeersStorage().getSelf();
+      Peer self = peersStorageProvider.getPeersStorage().getSelf();
       logger.info("BitTorrent client [{}] started and " +
                       "listening at {}:{}...",
               new Object[]{

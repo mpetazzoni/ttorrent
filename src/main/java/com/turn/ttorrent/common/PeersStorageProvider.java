@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-public interface PeersStorageFactory {
+public interface PeersStorageProvider {
 
   /**
    * @return instance of peers storage

@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.CachedPeersStorageFactory;
+import com.turn.ttorrent.common.PeersStorageProviderImpl;
 import com.turn.ttorrent.common.Peer;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -31,7 +31,7 @@ public class ConnectionManagerTest {
       }
     };
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
-            new CachedPeersStorageFactory(),
+            new PeersStorageProviderImpl(),
             channelListenerFactory);
   }
 

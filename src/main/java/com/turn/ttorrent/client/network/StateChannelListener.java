@@ -2,8 +2,8 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeersStorageFactory;
-import com.turn.ttorrent.common.TorrentsStorageFactory;
+import com.turn.ttorrent.common.PeersStorageProvider;
+import com.turn.ttorrent.common.TorrentsStorageProvider;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
@@ -14,15 +14,15 @@ public class StateChannelListener implements ChannelListener {
 
   private DataProcessor next;
   private String uid;
-  private final PeersStorageFactory peersStorageFactory;
-  private final TorrentsStorageFactory torrentsStorageFactory;
+  private final PeersStorageProvider myPeersStorageProvider;
+  private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final PeerActivityListener myPeerActivityListener;
 
-  public StateChannelListener(PeersStorageFactory peersStorageFactory,
-                              TorrentsStorageFactory torrentsStorageFactory,
+  public StateChannelListener(PeersStorageProvider peersStorageProvider,
+                              TorrentsStorageProvider torrentsStorageProvider,
                               PeerActivityListener myPeerActivityListener) {
-    this.torrentsStorageFactory = torrentsStorageFactory;
-    this.peersStorageFactory = peersStorageFactory;
+    this.myTorrentsStorageProvider = torrentsStorageProvider;
+    this.myPeersStorageProvider = peersStorageProvider;
     this.myPeerActivityListener = myPeerActivityListener;
   }
 
@@ -38,9 +38,9 @@ public class StateChannelListener implements ChannelListener {
     String uid;
     do {
       uid = UUID.randomUUID().toString();
-    } while (!peersStorageFactory.getPeersStorage().tryAddPeer(uid, peer));
+    } while (!myPeersStorageProvider.getPeersStorage().tryAddPeer(uid, peer));
     this.uid = uid;
-    this.next = new HandshakeReceiver(uid, peersStorageFactory, torrentsStorageFactory, myPeerActivityListener);
+    this.next = new HandshakeReceiver(uid, myPeersStorageProvider, myTorrentsStorageProvider, myPeerActivityListener);
   }
 
   @Override

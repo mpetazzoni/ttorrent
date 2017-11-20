@@ -36,18 +36,18 @@ public class HandshakeReceiverTest {
   @BeforeMethod
   public void setUp() throws Exception {
 
-    CachedPeersStorageFactory cachedPeersStorageFactory = new CachedPeersStorageFactory();
-    CachedTorrentsStorageFactory cachedTorrentsStorageFactory = new CachedTorrentsStorageFactory();
-    myPeersStorage = cachedPeersStorageFactory.getPeersStorage();
+    PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
+    TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
+    myPeersStorage = peersStorageProviderImpl.getPeersStorage();
     mySelfId = "selfId1selfId2selfId".getBytes();
     ByteBuffer selfId = ByteBuffer.wrap(mySelfId);
     myPeersStorage.setSelf(new Peer("127.0.0.1", 54645, selfId));
-    myTorrentsStorage = cachedTorrentsStorageFactory.getTorrentsStorage();
+    myTorrentsStorage = torrentsStorageProviderImpl.getTorrentsStorage();
     String peerId = "id";
     myPeersStorage.tryAddPeer(peerId, new Peer("127.0.0.1", 45664));
     myHandshakeReceiver = new HandshakeReceiver(peerId,
-            cachedPeersStorageFactory,
-            cachedTorrentsStorageFactory,
+            peersStorageProviderImpl,
+            torrentsStorageProviderImpl,
             new DummyPeerActivityListener());
   }
 

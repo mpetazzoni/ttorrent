@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-public interface TorrentsStorageFactory {
+public interface TorrentsStorageProvider {
 
   /**
    * @return instance of torrents storage
