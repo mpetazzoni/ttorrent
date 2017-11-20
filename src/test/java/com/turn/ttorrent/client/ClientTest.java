@@ -52,7 +52,7 @@ public class ClientTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.INFO);
+    Logger.getRootLogger().setLevel(Level.ALL);
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -786,7 +786,7 @@ public class ClientTest {
         raf.seek(pieceIdx*pieceSize);
         raf.write(piecesList.get(pieceIdx));
       }
-      Client client = createClient();
+      Client client = createClient(" client idx " + i);
       clientList.add(client);
       client.addTorrent(new SharedTorrent(torrent, baseDir, false));
       client.start(InetAddress.getLocalHost());
