@@ -30,12 +30,11 @@ public class HandshakeReceiverTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.ALL);
   }
 
   @BeforeMethod
   public void setUp() throws Exception {
-
+    Logger.getRootLogger().setLevel(Level.INFO);
     PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
     TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
     myPeersStorage = peersStorageProviderImpl.getPeersStorage();

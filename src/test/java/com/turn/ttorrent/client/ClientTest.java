@@ -52,7 +52,6 @@ public class ClientTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.ALL);
     Torrent.setHashingThreadsCount(1);
   }
 
@@ -60,6 +59,7 @@ public class ClientTest {
   public void setUp() throws IOException {
     tempFiles = new TempFiles();
     clientList = new ArrayList<Client>();
+    Logger.getRootLogger().setLevel(Level.ALL);
     startTracker();
   }
 
