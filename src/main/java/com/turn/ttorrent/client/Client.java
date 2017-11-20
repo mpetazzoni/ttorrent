@@ -431,10 +431,14 @@ public class Client implements Runnable,
    * Close torrent and set final client state before signing off.
    */
   private void finish() {
+    logger.trace("try stop announce thread...");
 
     this.announce.stop();
 
+    logger.trace("announce thread is stopped");
+
     for (SharedTorrent torrent : this.torrentsStorage.values()) {
+      logger.trace("try close torrent {}", torrent);
       torrent.close();
       if (torrent.isFinished()) {
         torrent.setClientState(ClientState.DONE);
