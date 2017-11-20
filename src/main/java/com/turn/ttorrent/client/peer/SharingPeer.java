@@ -84,7 +84,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
 
-  private PeerExchange exchange = null;
+  private volatile PeerExchange exchange = null;
   private Rate download;
   private Rate upload;
   private Set<PeerActivityListener> listeners;
