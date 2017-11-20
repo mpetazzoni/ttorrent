@@ -67,7 +67,7 @@ public class Announce implements Runnable {
    * Announce thread and control.
    */
   private Thread thread;
-  private boolean stop;
+  private volatile boolean stop;
   private boolean forceStop;
 
   /**
@@ -217,10 +217,10 @@ public class Announce implements Runnable {
     logger.info("Starting announce loop...");
 
 
-    while (!this.stop && !Thread.interrupted()) {
+    while (!this.stop && !Thread.currentThread().isInterrupted()) {
       logger.debug("Starting announce for {} torrents", torrents.size());
       for (SharedTorrent torrent : this.torrents) {
-        if (this.stop || Thread.interrupted()){
+        if (this.stop || Thread.currentThread().isInterrupted()){
           break;
         }
         try {
