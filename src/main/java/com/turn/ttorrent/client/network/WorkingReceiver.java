@@ -34,8 +34,8 @@ public class WorkingReceiver implements DataProcessor {
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
     logger.trace("received data from channel", socketChannel);
-    messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
     if (pstrLength == -1) {
+      messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE);
       final int read;
       try {
         read = socketChannel.read(messageBytes);
