@@ -8,4 +8,10 @@ public class LoggerUtils {
     logger.warn(message);
     logger.debug("", t);
   }
+
+  public static void errorAndDebugDetails(Logger logger, String message, Throwable t) {
+    logger.error(message);
+    logger.debug("", t);
+  }
+
 }

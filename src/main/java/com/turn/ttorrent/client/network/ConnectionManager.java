@@ -6,7 +6,6 @@ import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,7 +17,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class ConnectionManager implements Runnable, Closeable {
+public class ConnectionManager implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
 
@@ -93,60 +92,78 @@ public class ConnectionManager implements Runnable, Closeable {
                       self.getPort()
               });
     } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "error in initialization server channel", e);
-      try {
-        close();
-      } catch (IOException e1) {
-        LoggerUtils.warnAndDebugDetails(logger, "error in closing resources after error in initialization", e);
-      }
+      LoggerUtils.errorAndDebugDetails(logger, "error in initialization server channel", e);
+      close();
       return;
     }
-
-    while (!Thread.currentThread().isInterrupted()) {
-      try {
-        int selected = selector.select();// TODO: 11/13/17 timeout
-        Peer peer;
-        try {
-          while ((peer = myConnectQueue.poll(10, TimeUnit.MILLISECONDS))!= null) {
-            SocketChannel socketChannel = SocketChannel.open();
-            socketChannel.configureBlocking(false);
-            socketChannel.register(selector, SelectionKey.OP_CONNECT, peer);
-            socketChannel.connect(new InetSocketAddress(peer.getIp(), peer.getPort()));
-          }
-        } catch (InterruptedException e) {
-          break;
-        }
-        logger.trace("select keys from selector. Keys count is " + selected);
-        if (selected == 0) {
-          continue;
-        }
-
-        processSelectedKeys();
-      } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
-      }
-
-    }
     try {
+      while (!Thread.currentThread().isInterrupted()) {
+        try {
+          int selected = selector.select();// TODO: 11/13/17 timeout
+          connectToPeersFromQueue();
+          logger.trace("select keys from selector. Keys count is " + selected);
+          if (selected == 0) {
+            continue;
+          }
+          processSelectedKeys();
+        } catch (Throwable e) {
+          LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
+        }
+      }
+    } catch (Throwable e) {
+      LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
+    } finally {
       close();
-    } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "unable to close connection receiver", e);
     }
   }
 
-  @Override
-  public void close() throws IOException {
-    this.myServerSocketChannel.close();
-    // TODO: 11/20/17 sync!!! if this code will invoke in another thread, it can failed with some exceptions because it is not thread-safe
-    for (SelectionKey key : this.selector.keys()) {
-      key.channel().close();
+  private void connectToPeersFromQueue() {
+    Peer peer;
+    while ((peer = myConnectQueue.poll()) != null) {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
+      try {
+        SocketChannel socketChannel = SocketChannel.open();
+        socketChannel.configureBlocking(false);
+        socketChannel.register(selector, SelectionKey.OP_CONNECT, peer);
+        socketChannel.connect(new InetSocketAddress(peer.getIp(), peer.getPort()));
+      } catch (IOException e) {
+        logger.warn("unable connect to peer {}", peer);
+        logger.debug("", e);
+      }
     }
-    this.selector.close();
+  }
+
+  private void close() {
+    try {
+      this.myServerSocketChannel.close();
+    } catch (Throwable e) {
+      LoggerUtils.errorAndDebugDetails(logger, "unable to close server socket channel", e);
+    }
+    for (SelectionKey key : this.selector.keys()) {
+      try {
+        if (key.isValid()) {
+          key.channel().close();
+        }
+      } catch (Throwable e) {
+        logger.error("unable to close socket channel {}", key.channel());
+        logger.debug("", e);
+      }
+    }
+    try {
+      this.selector.close();
+    } catch (Throwable e) {
+      LoggerUtils.errorAndDebugDetails(logger, "unable to close selector channel", e);
+    }
   }
 
   private void processSelectedKeys() {
     Set<SelectionKey> selectionKeys = selector.selectedKeys();
     for (SelectionKey key : selectionKeys) {
+      if (Thread.currentThread().isInterrupted()) {
+        return;
+      }
       try {
         processSelectedKey(key);
       } catch (Exception e) {
@@ -154,7 +171,7 @@ public class ConnectionManager implements Runnable, Closeable {
         try {
           key.channel().close();
         } catch (IOException ioe) {
-          LoggerUtils.warnAndDebugDetails(logger, "unable close bad channel", ioe);
+          LoggerUtils.errorAndDebugDetails(logger, "unable close bad channel", ioe);
         }
       }
     }
@@ -189,6 +206,10 @@ public class ConnectionManager implements Runnable, Closeable {
         return;
       }
       SocketChannel socketChannel = (SocketChannel) channel;
+      boolean isConnectFinished = socketChannel.finishConnect();
+      if (!isConnectFinished) {
+        return;
+      }
       ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       Object attachment = key.attachment();
       if (!(attachment instanceof Peer)) {
@@ -196,7 +217,7 @@ public class ConnectionManager implements Runnable, Closeable {
         socketChannel.close();
         return;
       }
-      stateChannelListener.onConnected(socketChannel, (Peer)attachment);
+      stateChannelListener.onConnected(socketChannel, (Peer) attachment);
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
     }
