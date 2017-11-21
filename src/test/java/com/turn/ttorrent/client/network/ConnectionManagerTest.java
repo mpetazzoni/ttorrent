@@ -7,9 +7,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.*;
@@ -74,8 +72,18 @@ public class ConnectionManagerTest {
 
     assertEquals(acceptCount.get(), 0);
     assertEquals(readCount.get(), 0);
+    int serverPort = ConnectionManager.PORT_RANGE_START;
+    Socket socket = new Socket();
+    while (serverPort < ConnectionManager.PORT_RANGE_END) {
+      try {
+        socket.connect(new InetSocketAddress("127.0.0.1", serverPort));
+      } catch (ConnectException ignored) {}
+      serverPort++;
+    }
 
-    Socket socket = new Socket("127.0.0.1", ConnectionManager.PORT_RANGE_START);
+    if (!socket.isConnected()) {
+      fail("can not connect to server channel of connection manager");
+    }
 
     tryAcquireOrFail(semaphore);//wait until connection is accepted
 
@@ -83,7 +91,7 @@ public class ConnectionManagerTest {
     assertEquals(acceptCount.get(), 1);
     assertEquals(readCount.get(), 0);
 
-    Socket socketSecond = new Socket("127.0.0.1", ConnectionManager.PORT_RANGE_START);
+    Socket socketSecond = new Socket("127.0.0.1", serverPort);
 
     tryAcquireOrFail(semaphore);//wait until connection is accepted
 
@@ -133,6 +141,8 @@ public class ConnectionManagerTest {
     executorService.shutdownNow();
     boolean executorShutdownCorrectly = executorService.awaitTermination(10, TimeUnit.SECONDS);
     assertTrue(executorShutdownCorrectly);
+    executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
   }
 
   private void tryAcquireOrFail(Semaphore semaphore) throws InterruptedException {
