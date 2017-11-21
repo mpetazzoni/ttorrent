@@ -44,7 +44,6 @@ public class StateChannelListener implements ChannelListener {
             myPeersStorageProvider,
             myTorrentsStorageProvider,
             myPeerActivityListener);
-    handshakeSender.processAndGetNext(socketChannel);
     this.next = handshakeSender.processAndGetNext(socketChannel);
   }
 }
