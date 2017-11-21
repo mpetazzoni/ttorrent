@@ -114,7 +114,6 @@ public class ConnectionUtils {
 
       logger.trace("Connected. Sending handshake to {}...", peerInfo);
       channel.configureBlocking(true);
-      final byte[] socketBytes = channel.socket().getLocalAddress().getAddress();
       byte[] selfPeerId = new byte[20];
       Iterator<Map.Entry<InetAddress, byte[]>> iterator = selfIdCandidates.entrySet().iterator();
       if (iterator.hasNext()) {

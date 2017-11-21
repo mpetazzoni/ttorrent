@@ -88,11 +88,7 @@ public class Client implements Runnable,
   private Thread thread;
   private boolean stop;
 
-  private ConnectionHandler service;
-//  private final Collection<SharingPeer> peers;
-
   private Announce announce;
-//  private final ConcurrentMap<String, SharedTorrent> torrents;
 
   private Random random;
   private boolean myStarted = false;
@@ -221,8 +217,6 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.service = new ConnectionHandler(bindAddresses, this);
-    this.service.register(this);
     this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this);
     myConnectionManagerExecutor = Executors.newSingleThreadExecutor();
     myConnectionManagerFuture = myConnectionManagerExecutor.submit(myConnectionManager);
@@ -268,7 +262,6 @@ public class Client implements Runnable,
     this.stop = true;
     if (!myStarted)
       return;
-    service.stop();
     myConnectionManagerFuture.cancel(true);
     myConnectionManagerExecutor.shutdown();
     if (wait) {
@@ -393,8 +386,6 @@ public class Client implements Runnable,
       this.finish();
       return;
     }
-
-    this.service.start();
 
     int optimisticIterations = 0;
     int rateComputationIterations = 0;
@@ -706,7 +697,7 @@ public class Client implements Runnable,
     logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
-    if (!this.service.isAlive()) {
+    if (this.myConnectionManagerFuture.isDone()) {
       logger.info("Connection handler service is not available.");
       return;
     }
@@ -748,12 +739,10 @@ public class Client implements Runnable,
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       e.getValue().setTorrentHash(hexInfoHash);
       e.getKey().setTorrentHash(hexInfoHash);
-//      this.peersStorage.addSharingPeer(e.getKey(), e.getValue());
     }
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
       this.myConnectionManager.connect(new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), sharingPeer.getTorrentHash()), 1, TimeUnit.SECONDS);
-//      this.service.connect(e.getValue());
     }
 
   }
@@ -808,7 +797,7 @@ public class Client implements Runnable,
 
         peer.register(peer.getTorrent());
         peer.register(this);
-        peer.bind(channel, false);
+        peer.bind(channel);
 
       }
 
@@ -935,12 +924,6 @@ public class Client implements Runnable,
           logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
         }
 
-/*
-        if (seed == 0) {
-          peer.unbind(false);
-          this.announce.removeTorrent(torrent);
-        }
-*/
       }
     }
   }
@@ -978,44 +961,6 @@ public class Client implements Runnable,
   public void torrentStateChanged(ClientState newState, SharedTorrent torrent) {
     if (newState.equals(ClientState.ERROR)) {
       removeTorrent(torrent);
-    }
-  }
-
-
-  /** Post download seeding. ************************************************/
-
-  /**
-   * Timer task to stop seeding.
-   * <p/>
-   * <p>
-   * This TimerTask will be called by a timer set after the download is
-   * complete to stop seeding from this client after a certain amount of
-   * requested seed time (might be 0 for immediate termination).
-   * </p>
-   * <p/>
-   * <p>
-   * This task simply contains a reference to this client instance and calls
-   * its <code>stop()</code> method to interrupt the client's main loop.
-   * </p>
-   *
-   * @author mpetazzoni
-   */
-  private static class ClientShutdown extends TimerTask {
-
-    private final Client client;
-    private final Timer timer;
-
-    ClientShutdown(Client client, Timer timer) {
-      this.client = client;
-      this.timer = timer;
-    }
-
-    @Override
-    public void run() {
-      this.client.stop();
-      if (this.timer != null) {
-        this.timer.cancel();
-      }
     }
   }
 

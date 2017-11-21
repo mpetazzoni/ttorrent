@@ -127,6 +127,6 @@ public class HandshakeReceiver implements DataProcessor {
 
     sharingPeer.register(torrent);
     sharingPeer.register(myPeerActivityListener);
-    sharingPeer.bind(socketChannel, true);
+    sharingPeer.bind(socketChannel);
   }
 }
