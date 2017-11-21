@@ -30,7 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
@@ -267,11 +268,7 @@ public class Client implements Runnable,
     myConnectionManagerFuture.cancel(true);
     myConnectionManagerExecutor.shutdown();
     if (wait) {
-      try {
-        myConnectionManagerExecutor.awaitTermination(1, TimeUnit.MINUTES);
-      } catch (InterruptedException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "interrupted in await termination of executor service", e);
-      }
+      waitForShutdownConnectionExecutor();
     }
 
     if (this.thread != null && this.thread.isAlive()) {
@@ -281,6 +278,20 @@ public class Client implements Runnable,
       }
     }
       this.thread = null;
+  }
+
+  private void waitForShutdownConnectionExecutor() {
+    boolean isShutdownCorrectly;
+    try {
+      isShutdownCorrectly = myConnectionManagerExecutor.awaitTermination(1, TimeUnit.MINUTES);
+    } catch (InterruptedException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "interrupted in await termination of executor service", e);
+      isShutdownCorrectly = false;
+    }
+    if (isShutdownCorrectly) {
+      return;
+    }
+    logger.error("Can not stop connection manager executor! System port was not released");
   }
 
     /**
