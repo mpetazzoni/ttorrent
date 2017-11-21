@@ -59,7 +59,7 @@ public class ClientTest {
   public void setUp() throws IOException {
     tempFiles = new TempFiles();
     clientList = new ArrayList<Client>();
-    Logger.getRootLogger().setLevel(Level.ALL);
+    Logger.getRootLogger().setLevel(Level.INFO);
     startTracker();
   }
 
