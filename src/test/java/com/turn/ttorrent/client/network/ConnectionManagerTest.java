@@ -112,7 +112,7 @@ public class ConnectionManagerTest {
     tryAcquireOrFail(semaphore);//wait read that connection is closed
     assertEquals(readCount.get(), 3);
 
-    int otherPeerPort = 6882;
+    int otherPeerPort = 7575;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
     myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new TorrentHash() {
