@@ -1,7 +1,7 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.common.PeersStorageProviderImpl;
-import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentHash;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -63,7 +63,7 @@ public class ConnectionManagerTest {
       }
 
       @Override
-      public void onConnected(SocketChannel socketChannel, Peer peer) {
+      public void onConnected(SocketChannel socketChannel, ConnectTask connectTask) {
         connectCount.incrementAndGet();
         semaphore.release();
       }
@@ -115,7 +115,17 @@ public class ConnectionManagerTest {
     int otherPeerPort = 6882;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
-    myConnectionManager.connectTo(new Peer("127.0.0.1", otherPeerPort));
+    myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new TorrentHash() {
+      @Override
+      public byte[] getInfoHash() {
+        return new byte[0];
+      }
+
+      @Override
+      public String getHexInfoHash() {
+        return null;
+      }
+    }), 1, TimeUnit.SECONDS);
     ss.accept();
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);

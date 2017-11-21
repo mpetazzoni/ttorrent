@@ -22,6 +22,7 @@ public class HandshakeReceiver implements DataProcessor {
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final String myHostAddress;
   private final int myPort;
+  private final boolean myOnlyRead;
   private ByteBuffer messageBytes;
   private int pstrLength;
   private final PeerActivityListener myPeerActivityListener;
@@ -30,13 +31,15 @@ public class HandshakeReceiver implements DataProcessor {
                            TorrentsStorageProvider torrentsStorageProvider,
                            PeerActivityListener myPeerActivityListener,
                            String hostAddress,
-                           int port) {
+                           int port,
+                           boolean onlyRead) {
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
     this.myPeerActivityListener = myPeerActivityListener;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
+    this.myOnlyRead = onlyRead;
   }
 
   @Override
@@ -89,7 +92,10 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.debug("get handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
-    ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
+    if (!myOnlyRead) {
+      logger.debug("send handshake to {}", socketChannel);
+      ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
+    }
 
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
     SharingPeer sharingPeer = new SharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);

@@ -1,7 +1,5 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.Peer;
-
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
@@ -25,8 +23,10 @@ public interface ChannelListener {
 
   /**
    * invoked when socket is connected to other peer
+   *
    * @param socketChannel connected channel
-   * @param peer peer with which a connection is established
+   * @param peer          peer with which a connection is established
+   * @throws IOException if an I/O error occurs
    */
-  void onConnected(SocketChannel socketChannel, Peer peer);
+  void onConnected(SocketChannel socketChannel, ConnectTask peer) throws IOException;
 }

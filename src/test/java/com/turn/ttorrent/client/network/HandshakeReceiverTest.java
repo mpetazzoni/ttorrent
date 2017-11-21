@@ -47,7 +47,8 @@ public class HandshakeReceiverTest {
             torrentsStorageProviderImpl,
             new DummyPeerActivityListener(),
             "127.0.0.1",
-            45664);
+            45664,
+            false);
   }
 
   public void testReceiveHandshake() throws Exception {

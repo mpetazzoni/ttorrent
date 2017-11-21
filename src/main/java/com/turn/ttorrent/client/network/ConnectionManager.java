@@ -29,7 +29,7 @@ public class ConnectionManager implements Runnable {
   private final PeersStorageProvider peersStorageProvider;
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
-  private final BlockingQueue<Peer> myConnectQueue;
+  private final BlockingQueue<ConnectTask> myConnectQueue;
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
@@ -45,7 +45,7 @@ public class ConnectionManager implements Runnable {
     this.inetAddress = inetAddress;
     this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
-    this.myConnectQueue = new LinkedBlockingQueue<Peer>(100);
+    this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     myServerSocketChannel = selector.provider().openServerSocketChannel();
   }
 
@@ -69,13 +69,16 @@ public class ConnectionManager implements Runnable {
     throw new IOException("No available port for the BitTorrent client!");
   }
 
-  public void connectTo(Peer peer) {
+  public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     try {
-      myConnectQueue.offer(peer, 1, TimeUnit.SECONDS);
-      selector.wakeup();
+      if (myConnectQueue.offer(connectTask, timeout, timeUnit)) {
+        selector.wakeup();
+        return true;
+      }
     } catch (InterruptedException e) {
       logger.debug("connect task interrupted before address was added to queue");
     }
+    return false;
   }
 
   @Override
@@ -118,18 +121,18 @@ public class ConnectionManager implements Runnable {
   }
 
   private void connectToPeersFromQueue() {
-    Peer peer;
-    while ((peer = myConnectQueue.poll()) != null) {
+    ConnectTask connectTask;
+    while ((connectTask = myConnectQueue.poll()) != null) {
       if (Thread.currentThread().isInterrupted()) {
         return;
       }
       try {
         SocketChannel socketChannel = SocketChannel.open();
         socketChannel.configureBlocking(false);
-        socketChannel.register(selector, SelectionKey.OP_CONNECT, peer);
-        socketChannel.connect(new InetSocketAddress(peer.getIp(), peer.getPort()));
+        socketChannel.register(selector, SelectionKey.OP_CONNECT, connectTask);
+        socketChannel.connect(new InetSocketAddress(connectTask.getHost(), connectTask.getPort()));
       } catch (IOException e) {
-        logger.warn("unable connect to peer {}", peer);
+        logger.warn("unable connect. Connect task is {}", connectTask);
         logger.debug("", e);
       }
     }
@@ -212,12 +215,12 @@ public class ConnectionManager implements Runnable {
       }
       ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       Object attachment = key.attachment();
-      if (!(attachment instanceof Peer)) {
+      if (!(attachment instanceof ConnectTask)) {
         logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
         socketChannel.close();
         return;
       }
-      stateChannelListener.onConnected(socketChannel, (Peer) attachment);
+      stateChannelListener.onConnected(socketChannel, (ConnectTask) attachment);
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
     }
