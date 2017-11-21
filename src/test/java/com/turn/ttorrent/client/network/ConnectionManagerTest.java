@@ -77,6 +77,7 @@ public class ConnectionManagerTest {
     while (serverPort < ConnectionManager.PORT_RANGE_END) {
       try {
         socket.connect(new InetSocketAddress("127.0.0.1", serverPort));
+        if (socket.isConnected()) break;
       } catch (ConnectException ignored) {}
       serverPort++;
     }
