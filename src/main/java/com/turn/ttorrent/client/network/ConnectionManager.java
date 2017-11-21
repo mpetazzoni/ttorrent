@@ -72,12 +72,14 @@ public class ConnectionManager implements Runnable {
   public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     try {
       if (myConnectQueue.offer(connectTask, timeout, timeUnit)) {
+        logger.debug("added connect task {}. Wake up selector", connectTask);
         selector.wakeup();
         return true;
       }
     } catch (InterruptedException e) {
       logger.debug("connect task interrupted before address was added to queue");
     }
+    logger.debug("connect task {} was not added", connectTask);
     return false;
   }
 
@@ -102,7 +104,9 @@ public class ConnectionManager implements Runnable {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
+          logger.trace("try select keys from selector");
           int selected = selector.select();// TODO: 11/13/17 timeout
+          logger.trace("selected keys, try connect to peers from queue");
           connectToPeersFromQueue();
           logger.trace("select keys from selector. Keys count is " + selected);
           if (selected == 0) {
@@ -126,6 +130,7 @@ public class ConnectionManager implements Runnable {
       if (Thread.currentThread().isInterrupted()) {
         return;
       }
+      logger.debug("try connect to peer. Connect task is {}", connectTask);
       try {
         SocketChannel socketChannel = SocketChannel.open();
         socketChannel.configureBlocking(false);
@@ -209,10 +214,6 @@ public class ConnectionManager implements Runnable {
         return;
       }
       SocketChannel socketChannel = (SocketChannel) channel;
-      boolean isConnectFinished = socketChannel.finishConnect();
-      if (!isConnectFinished) {
-        return;
-      }
       ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       Object attachment = key.attachment();
       if (!(attachment instanceof ConnectTask)) {
@@ -220,9 +221,13 @@ public class ConnectionManager implements Runnable {
         socketChannel.close();
         return;
       }
-      stateChannelListener.onConnected(socketChannel, (ConnectTask) attachment);
+      boolean isConnectFinished = socketChannel.finishConnect();
+      if (!isConnectFinished) {
+        return;
+      }
       socketChannel.configureBlocking(false);
       socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
+      stateChannelListener.onConnected(socketChannel, (ConnectTask) attachment);
     }
 
     if (key.isReadable()) {

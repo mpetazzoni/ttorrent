@@ -19,6 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
+import com.turn.ttorrent.client.network.ConnectTask;
 import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
@@ -750,7 +751,9 @@ public class Client implements Runnable,
 //      this.peersStorage.addSharingPeer(e.getKey(), e.getValue());
     }
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
-      this.service.connect(e.getValue());
+      SharingPeer sharingPeer = e.getValue();
+      this.myConnectionManager.connect(new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), sharingPeer.getTorrentHash()), 1, TimeUnit.SECONDS);
+//      this.service.connect(e.getValue());
     }
 
   }

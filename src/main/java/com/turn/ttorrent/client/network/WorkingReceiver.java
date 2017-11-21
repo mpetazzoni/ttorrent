@@ -2,6 +2,7 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.PeersStorageProvider;
 import com.turn.ttorrent.common.TorrentsStorageProvider;
@@ -41,15 +42,18 @@ public class WorkingReceiver implements DataProcessor {
       try {
         read = socketChannel.read(messageBytes);
       } catch (IOException e) {
-        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
+        LoggerUtils.warnAndDebugDetails(logger, "unable to read data from channel " + socketChannel, e);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
       }
       if (read < 0) {
-        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
+        logger.debug("channel {} is closed by other peer", socketChannel);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
       }
       if (messageBytes.hasRemaining()) {
         return this;
       }
       this.pstrLength = messageBytes.getInt(0);
+      logger.trace("read of message length finished, Message length is {}", this.pstrLength);
     }
 
     if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength > messageBytes.capacity()) {
@@ -58,14 +62,18 @@ public class WorkingReceiver implements DataProcessor {
     }
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
+    logger.trace("try read data from {}", socketChannel);
     try {
       socketChannel.read(messageBytes);
     } catch (IOException e) {
-      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
     }
     if (messageBytes.hasRemaining()) {
+      logger.trace("buffer is not full, continue reading...");
       return this;
     }
+    logger.trace("finished read data from {}", socketChannel);
+
     messageBytes.rewind();
     this.pstrLength = -1;
     try {

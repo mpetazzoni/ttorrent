@@ -193,6 +193,7 @@ public class PeerExchange {
     sendQueue.clear();
 		if (this.channel.isOpen()) {
 			try {
+				logger.debug("try close peer exchange channel {}" + this.channel);
 				this.channel.close();
 			} catch (IOException ioe) {
         ioe.printStackTrace();
