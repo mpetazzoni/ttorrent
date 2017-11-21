@@ -144,6 +144,7 @@ public class ConnectionManager implements Runnable {
   }
 
   private void close() {
+    logger.debug("try close connection manager channels...");
     try {
       this.myServerSocketChannel.close();
     } catch (Throwable e) {
@@ -164,6 +165,7 @@ public class ConnectionManager implements Runnable {
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "unable to close selector channel", e);
     }
+    logger.debug("connection manager is successfully closed");
   }
 
   private void processSelectedKeys() {
