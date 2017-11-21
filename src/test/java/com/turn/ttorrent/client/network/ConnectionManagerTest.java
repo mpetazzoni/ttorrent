@@ -73,16 +73,16 @@ public class ConnectionManagerTest {
     assertEquals(acceptCount.get(), 0);
     assertEquals(readCount.get(), 0);
     int serverPort = ConnectionManager.PORT_RANGE_START;
-    Socket socket = new Socket();
+    Socket socket = null;
     while (serverPort < ConnectionManager.PORT_RANGE_END) {
       try {
-        socket.connect(new InetSocketAddress("127.0.0.1", serverPort));
+        socket = new Socket("127.0.0.1", serverPort);
         if (socket.isConnected()) break;
       } catch (ConnectException ignored) {}
       serverPort++;
     }
 
-    if (!socket.isConnected()) {
+    if (socket == null || !socket.isConnected()) {
       fail("can not connect to server channel of connection manager");
     }
 
