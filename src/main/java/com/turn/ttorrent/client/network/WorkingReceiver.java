@@ -1,7 +1,8 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.PeersStorageProvider;
 import com.turn.ttorrent.common.TorrentsStorageProvider;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -17,14 +18,14 @@ public class WorkingReceiver implements DataProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(WorkingReceiver.class);
 
-  private final String peerUID;
+  private final PeerUID myPeerUID;
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final ByteBuffer messageBytes;
   private int pstrLength;
 
-  public WorkingReceiver(String uid, PeersStorageProvider peersStorageProvider, TorrentsStorageProvider torrentsStorageProvider) {
-    this.peerUID = uid;
+  public WorkingReceiver(PeerUID peerId, PeersStorageProvider peersStorageProvider, TorrentsStorageProvider torrentsStorageProvider) {
+    this.myPeerUID = peerId;
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
     this.messageBytes = ByteBuffer.allocate(2 * 1024 * 1024);
@@ -40,10 +41,10 @@ public class WorkingReceiver implements DataProcessor {
       try {
         read = socketChannel.read(messageBytes);
       } catch (IOException e) {
-        return new ShutdownProcessor(peerUID, peersStorageProvider);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
       }
       if (read < 0) {
-        return new ShutdownProcessor(peerUID, peersStorageProvider);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
       }
       if (messageBytes.hasRemaining()) {
         return this;
@@ -60,7 +61,7 @@ public class WorkingReceiver implements DataProcessor {
     try {
       socketChannel.read(messageBytes);
     } catch (IOException e) {
-      return new ShutdownProcessor(peerUID, peersStorageProvider);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
     }
     if (messageBytes.hasRemaining()) {
       return this;
@@ -68,17 +69,20 @@ public class WorkingReceiver implements DataProcessor {
     messageBytes.rewind();
     this.pstrLength = -1;
     try {
-      Peer peer = peersStorageProvider.getPeersStorage().getPeer(peerUID);
+
+      SharingPeer peer = peersStorageProvider.getPeersStorage().getSharingPeer(myPeerUID);
+
       SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       if (torrent == null) {
-        //torrent doesn't seed more. Maybe somebody delete it manually. shutdown channel immediately.
-        ShutdownProcessor shutdownProcessor = new ShutdownProcessor(peerUID, peersStorageProvider);
-        return shutdownProcessor.processAndGetNext(socketChannel);
+        logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", peer.getHexInfoHash(), peer);
+        ShutdownAndRemovePeerProcessor shutdownAndRemovePeerProcessor = new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
+        return shutdownAndRemovePeerProcessor.processAndGetNext(socketChannel);
       }
+
       logger.trace("try parse message from {}. Torrent {}", peer, torrent);
       PeerMessage message = PeerMessage.parse(messageBytes, torrent);
       logger.trace("get message {} from {}", message, socketChannel);
-      peersStorageProvider.getPeersStorage().getSharingPeer(peer).handleMessage(message);
+      peer.handleMessage(message);
     } catch (ParseException e) {
       logger.debug("{}", e.getMessage());
     }

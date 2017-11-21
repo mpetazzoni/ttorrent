@@ -17,10 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Contains handy methods that establish various connections
@@ -119,13 +116,9 @@ public class ConnectionUtils {
       channel.configureBlocking(true);
       final byte[] socketBytes = channel.socket().getLocalAddress().getAddress();
       byte[] selfPeerId = new byte[20];
-      for (InetAddress inetAddress : selfIdCandidates.keySet()) {
-        final byte[] candidateBytes = inetAddress.getAddress();
-        if (Arrays.equals(socketBytes, candidateBytes)){
-          logger.info("Local address: " + inetAddress);
-          selfPeerId = selfIdCandidates.get(inetAddress);
-          break;
-        }
+      Iterator<Map.Entry<InetAddress, byte[]>> iterator = selfIdCandidates.entrySet().iterator();
+      if (iterator.hasNext()) {
+        selfPeerId = iterator.next().getValue();
       }
       int sent = sendHandshake(channel, torrentHash.getInfoHash(), selfPeerId);
       logger.trace("Sent handshake ({} bytes), waiting for response...", sent);

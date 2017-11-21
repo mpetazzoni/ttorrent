@@ -541,7 +541,9 @@ public class Client implements Runnable,
 
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
 
-    SharingPeer sharingPeerOld = peersStorage.getSharingPeer(search);
+    PeerUID peerUID = new PeerUID(search.getStringPeerId(), hexInfoHash);
+
+    SharingPeer sharingPeerOld = peersStorage.getSharingPeer(peerUID);
     if (sharingPeerOld != null) {
       logger.trace("Found peer: {}.", sharingPeerOld);
       return sharingPeerOld;
@@ -549,6 +551,7 @@ public class Client implements Runnable,
 
     SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
             search.getPeerId(), torrent);
+    sharingPeer.setTorrentHash(hexInfoHash);
 
     return sharingPeer;
   }
@@ -710,8 +713,11 @@ public class Client implements Runnable,
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
     Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
+    SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
-      SharingPeer match = this.getOrCreatePeer(peer, hexInfoHash);
+      SharingPeer match = new SharingPeer(peer.getIp(), peer.getPort(),
+              peer.getPeerId(), torrent);
+      match.setTorrentHash(hexInfoHash);
       foundPeers.add(match);
 
       // Attempt to connect to the peer if and only if:
@@ -788,10 +794,19 @@ public class Client implements Runnable,
           return;
         }
 
+        PeerUID peerUID = new PeerUID(search.getStringPeerId(), hexInfoHash);
+
+        SharingPeer old = peersStorage.putIfAbsent(peerUID, peer);
+
+        if (old != null) {
+          logger.debug("Already connected with {}, ignoring.", peer);
+          return;
+        }
+
         peer.register(peer.getTorrent());
         peer.register(this);
         peer.bind(channel, false);
-        peersStorage.addSharingPeer(search, peer);
+
       }
 
       logger.debug("New peer connection with {} [{}/{}].",
@@ -820,7 +835,8 @@ public class Client implements Runnable,
   @Override
   public void handleFailedConnection(Peer peer, Throwable cause) {
     logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
-    peersStorage.removeSharingPeer(peer);
+    PeerUID peerUID = new PeerUID(peer.getStringPeerId(), peer.getHexInfoHash());
+    peersStorage.removeSharingPeer(peerUID);
   }
 
   /**
@@ -863,7 +879,7 @@ public class Client implements Runnable,
    * @param piece The piece in question.
    */
   @Override
-  public void handlePieceCompleted(SharingPeer peer, Piece piece)
+  public void handlePieceCompleted(final SharingPeer peer, Piece piece)
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
     synchronized (torrent) {
@@ -905,12 +921,6 @@ public class Client implements Runnable,
 
       if (torrent.isComplete()) {
         //close connection with all peers for this torrent
-        // TODO: 11/17/17 it's bad idea. Maybe other peer want to download from us something
-        for (SharingPeer p : peersStorage.getSharingPeers()) {
-          if (p.getTorrentHexInfoHash().equals(torrent.getHexInfoHash())) {
-            p.unbind(false);
-          }
-        }
         logger.info("Download of {} complete.", torrent.getName());
 
         torrent.finish();
@@ -938,7 +948,8 @@ public class Client implements Runnable,
     Peer p = new Peer(peer.getIp(), peer.getPort());
     p.setPeerId(peer.getPeerId());
     p.setTorrentHash(peer.getHexInfoHash());
-    SharingPeer sharingPeer = this.peersStorage.removeSharingPeer(p);
+    PeerUID peerUID = new PeerUID(p.getStringPeerId(), p.getHexInfoHash());
+    SharingPeer sharingPeer = this.peersStorage.removeSharingPeer(peerUID);
     logger.debug("Peer {} disconnected, [{}/{}].",
             new Object[]{
                     peer,

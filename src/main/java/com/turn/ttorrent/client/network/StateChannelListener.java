@@ -8,12 +8,10 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
-import java.util.UUID;
 
 public class StateChannelListener implements ChannelListener {
 
   private DataProcessor next;
-  private String uid;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final PeerActivityListener myPeerActivityListener;
@@ -33,14 +31,12 @@ public class StateChannelListener implements ChannelListener {
 
   @Override
   public void onConnectionAccept(SocketChannel socketChannel) throws IOException {
-    Peer peer = new Peer(socketChannel.socket().getInetAddress().getHostAddress(),
-            socketChannel.socket().getPort(), null);
-    String uid;
-    do {
-      uid = UUID.randomUUID().toString();
-    } while (!myPeersStorageProvider.getPeersStorage().tryAddPeer(uid, peer));
-    this.uid = uid;
-    this.next = new HandshakeReceiver(uid, myPeersStorageProvider, myTorrentsStorageProvider, myPeerActivityListener);
+    this.next = new HandshakeReceiver(
+            myPeersStorageProvider,
+            myTorrentsStorageProvider,
+            myPeerActivityListener,
+            socketChannel.socket().getInetAddress().getHostAddress(),
+            socketChannel.socket().getPort());
   }
 
   @Override

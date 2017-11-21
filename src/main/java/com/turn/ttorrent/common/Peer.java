@@ -15,6 +15,10 @@
  */
 package com.turn.ttorrent.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -31,6 +35,8 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  */
 public class Peer {
+
+	private static final Logger logger = LoggerFactory.getLogger(Peer.class);
 
 	private final InetSocketAddress address;
 	private final String hostId;
@@ -116,6 +122,15 @@ public class Peer {
 			this.hexPeerId = null;
 		}
 	}
+
+  public String getStringPeerId() {
+    try {
+      return new String(peerId.array(), Torrent.BYTE_ENCODING);
+    } catch (UnsupportedEncodingException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "can not get peer id as string", e);
+    }
+    return null;
+  }
 
 	/**
 	 * Get the hexadecimal-encoded string representation of this peer's ID.

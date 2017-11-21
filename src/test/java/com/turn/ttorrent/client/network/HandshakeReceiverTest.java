@@ -42,12 +42,12 @@ public class HandshakeReceiverTest {
     ByteBuffer selfId = ByteBuffer.wrap(mySelfId);
     myPeersStorage.setSelf(new Peer("127.0.0.1", 54645, selfId));
     myTorrentsStorage = torrentsStorageProviderImpl.getTorrentsStorage();
-    String peerId = "id";
-    myPeersStorage.tryAddPeer(peerId, new Peer("127.0.0.1", 45664));
-    myHandshakeReceiver = new HandshakeReceiver(peerId,
+    myHandshakeReceiver = new HandshakeReceiver(
             peersStorageProviderImpl,
             torrentsStorageProviderImpl,
-            new DummyPeerActivityListener());
+            new DummyPeerActivityListener(),
+            "127.0.0.1",
+            45664);
   }
 
   public void testReceiveHandshake() throws Exception {
@@ -78,7 +78,7 @@ public class HandshakeReceiverTest {
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc
 
-  static class ByteSourceChannel implements ByteChannel {
+  private static class ByteSourceChannel implements ByteChannel {
 
     private final Pipe.SourceChannel readChannel;
     private final Pipe.SinkChannel writeChannel;
