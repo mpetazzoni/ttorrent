@@ -1,12 +1,12 @@
 /**
  * Copyright (C) 2011-2012 Turn, Inc.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,7 +58,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author mpetazzoni
  */
 public class Client implements Runnable,
-  AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
+        AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -104,7 +104,7 @@ public class Client implements Runnable,
   private Future<?> myConnectionManagerFuture;
   private ExecutorService myConnectionManagerExecutor;
 
-  public Client(){
+  public Client() {
     this("");
   }
 
@@ -119,7 +119,7 @@ public class Client implements Runnable,
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
-    if (torrent.getSize() == 0){
+    if (torrent.getSize() == 0) {
       // we don't seed zero-size files
       return;
     }
@@ -155,6 +155,7 @@ public class Client implements Runnable,
       logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
   }
+
   public void removeAndDeleteTorrent(TorrentHash torrentHash) {
     this.announce.removeTorrent(torrentHash);
 
@@ -165,7 +166,7 @@ public class Client implements Runnable,
     }
   }
 
-  public void setAnnounceInterval(final int announceInterval){
+  public void setAnnounceInterval(final int announceInterval) {
     announce.setAnnounceInterval(announceInterval);
   }
 
@@ -176,14 +177,14 @@ public class Client implements Runnable,
     return this.torrentsStorage.values();
   }
 
-  public SharedTorrent getTorrentByFilePath(File file){
+  public SharedTorrent getTorrentByFilePath(File file) {
     String path = file.getAbsolutePath();
     for (SharedTorrent torrent : torrentsStorage.values()) {
       File parentFile = torrent.getParentFile();
       final List<String> filenames = torrent.getFilenames();
       for (String filename : filenames) {
         File seededFile = new File(parentFile, filename);
-        if (seededFile.getAbsolutePath().equals(path)){
+        if (seededFile.getAbsolutePath().equals(path)) {
           return torrent;
         }
       }
@@ -191,7 +192,7 @@ public class Client implements Runnable,
     return null;
   }
 
-  public URI getDefaultTrackerURI(){
+  public URI getDefaultTrackerURI() {
     return announce.getDefaultTrackerURI();
   }
 
@@ -205,6 +206,7 @@ public class Client implements Runnable,
   public void start(final InetAddress... bindAddresses) throws IOException {
     start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
   }
+
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
     start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
@@ -217,7 +219,7 @@ public class Client implements Runnable,
     return new Peer[]{self};
   }
 
-  public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final  URI defaultTrackerURI) throws IOException {
+  public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     this.service = new ConnectionHandler(bindAddresses, this);
     this.service.register(this);
     this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this);
@@ -232,7 +234,7 @@ public class Client implements Runnable,
         this.stop();
       } catch (TimeoutException ignored) {
       } catch (ExecutionException e) {
-        LoggerUtils.warnAndDebugDetails(logger,"failed waiting start connection receiver thread", e);
+        LoggerUtils.warnAndDebugDetails(logger, "failed waiting start connection receiver thread", e);
       }
     }
 
@@ -246,6 +248,7 @@ public class Client implements Runnable,
     }
     myStarted = true;
   }
+
   /**
    * Immediately but gracefully stop this client.
    */
@@ -274,10 +277,10 @@ public class Client implements Runnable,
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
       if (wait) {
-          this.waitForCompletion();
+        this.waitForCompletion();
       }
     }
-      this.thread = null;
+    this.thread = null;
   }
 
   private void waitForShutdownConnectionExecutor() {
@@ -294,17 +297,17 @@ public class Client implements Runnable,
     logger.error("Can not stop connection manager executor! System port was not released");
   }
 
-    /**
-     * Wait for downloading (and seeding, if requested) to complete.
-     */
-    public void waitForCompletion() {
-        if (this.thread != null && this.thread.isAlive()) {
-        try {
-          this.thread.join();
-        } catch (InterruptedException ie) {
-            logger.error(ie.getMessage(), ie);
-        }
+  /**
+   * Wait for downloading (and seeding, if requested) to complete.
+   */
+  public void waitForCompletion() {
+    if (this.thread != null && this.thread.isAlive()) {
+      try {
+        this.thread.join();
+      } catch (InterruptedException ie) {
+        logger.error(ie.getMessage(), ie);
       }
+    }
   }
 
   /**
@@ -327,29 +330,29 @@ public class Client implements Runnable,
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     int seedersCount = torrent.getSeedersCount();
-    long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
+    long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
     long currentLeft = torrent.getLeft();
 
     while (torrent.getClientState() != ClientState.SEEDING &&
             torrent.getClientState() != ClientState.ERROR &&
-        ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
+            ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
             (System.currentTimeMillis() <= maxIdleTime)) {
       if (Thread.currentThread().isInterrupted() || isInterrupted.get())
-        throw new InterruptedException("Download of "+torrent.getName()+" was interrupted");
-      if (currentLeft > torrent.getLeft()){
+        throw new InterruptedException("Download of " + torrent.getName() + " was interrupted");
+      if (currentLeft > torrent.getLeft()) {
         currentLeft = torrent.getLeft();
-        maxIdleTime = System.currentTimeMillis() + idleTimeoutSec *1000;
+        maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
       }
       Thread.sleep(100);
     }
-    if (!(torrent.isFinished() && torrent.getClientState()==ClientState.SEEDING)) {
+    if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
       removeAndDeleteTorrent(torrent);
       final String errorMsg;
-      if (System.currentTimeMillis() > maxIdleTime){
+      if (System.currentTimeMillis() > maxIdleTime) {
         errorMsg = String.format("Timed out (%d seconds elapsed)", idleTimeoutSec);
       } else if (seedersCount < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
-      } else if (torrent.getClientState() == ClientState.ERROR){
+      } else if (torrent.getClientState() == ClientState.ERROR) {
         errorMsg = String.format("Torrent state is ERROR");
       } else {
         errorMsg = "Unknown error";
@@ -358,9 +361,9 @@ public class Client implements Runnable,
     }
   }
 
-  private void pingPeers(final SharedTorrent torrent){
+  private void pingPeers(final SharedTorrent torrent) {
     for (SharingPeer sharingPeer : peersStorage.getSharingPeers()) {
-      if (sharingPeer.getTorrent().getHexInfoHash().equals(torrent.getHexInfoHash())){
+      if (sharingPeer.getTorrent().getHexInfoHash().equals(torrent.getHexInfoHash())) {
         torrent.handlePeerReady(sharingPeer);
       }
     }
@@ -397,14 +400,14 @@ public class Client implements Runnable,
 
     while (!this.stop) {
       optimisticIterations =
-        (optimisticIterations == 0 ?
-          Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
-          optimisticIterations - 1);
+              (optimisticIterations == 0 ?
+                      Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
+                      optimisticIterations - 1);
 
       rateComputationIterations =
-        (rateComputationIterations == 0 ?
-          Client.RATE_COMPUTATION_ITERATIONS :
-          rateComputationIterations - 1);
+              (rateComputationIterations == 0 ?
+                      Client.RATE_COMPUTATION_ITERATIONS :
+                      rateComputationIterations - 1);
 
       try {
         this.unchokePeers(optimisticIterations == 0);
@@ -414,7 +417,7 @@ public class Client implements Runnable,
         }
       } catch (Exception e) {
         logger.error("An exception occurred during the BitTorrent " +
-          "client main loop execution!", e);
+                "client main loop execution!", e);
       }
 
       try {
@@ -434,7 +437,7 @@ public class Client implements Runnable,
     this.finish();
   }
 
-  public boolean isRunning(){
+  public boolean isRunning() {
     return this.thread != null && this.thread.isAlive();
   }
 
@@ -615,7 +618,7 @@ public class Client implements Runnable,
       return;
     } else {
       logger.trace("Running unchokePeers() on {} connected peers. Client {}",
-        new Object[]{bound.size(), Thread.currentThread()});
+              new Object[]{bound.size(), Thread.currentThread()});
     }
 
     int downloaders = 0;
@@ -642,7 +645,7 @@ public class Client implements Runnable,
     // optimistic unchoke.
     if (choked.size() > 0) {
       SharingPeer randomPeer = choked.toArray(
-        new SharingPeer[0])[this.random.nextInt(choked.size())];
+              new SharingPeer[0])[this.random.nextInt(choked.size())];
 
       for (SharingPeer peer : choked) {
         if (optimistic && peer == randomPeer) {
@@ -681,7 +684,7 @@ public class Client implements Runnable,
   @Override
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash) {
     final SharedTorrent sharedTorrent = this.torrentsStorage.getTorrent(hexInfoHash);
-    if (sharedTorrent != null){
+    if (sharedTorrent != null) {
       sharedTorrent.setSeedersCount(complete);
       sharedTorrent.setLastAnnounceTime(System.currentTimeMillis());
     }
@@ -735,12 +738,12 @@ public class Client implements Runnable,
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
     }
-    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()){
+    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       e.getValue().setTorrentHash(hexInfoHash);
       e.getKey().setTorrentHash(hexInfoHash);
 //      this.peersStorage.addSharingPeer(e.getKey(), e.getValue());
     }
-    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()){
+    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       this.service.connect(e.getValue());
     }
 
@@ -766,13 +769,13 @@ public class Client implements Runnable,
    * @see com.turn.ttorrent.client.peer.SharingPeer
    */
   @Override
-	public void handleNewPeerConnection(SocketChannel channel, byte[] peerId, String hexInfoHash) {
+  public void handleNewPeerConnection(SocketChannel channel, byte[] peerId, String hexInfoHash) {
     Peer search = new Peer(
-			channel.socket().getInetAddress().getHostAddress(),
-			channel.socket().getPort(),
-      (peerId != null
-        ? ByteBuffer.wrap(peerId)
-        : null));
+            channel.socket().getInetAddress().getHostAddress(),
+            channel.socket().getPort(),
+            (peerId != null
+                    ? ByteBuffer.wrap(peerId)
+                    : null));
 
     logger.debug("Handling new peer connection with {}...", search);
     search.setTorrentHash(hexInfoHash);
@@ -792,14 +795,14 @@ public class Client implements Runnable,
       }
 
       logger.debug("New peer connection with {} [{}/{}].",
-        new Object[]{
-          peer,
-          getConnectedPeers().size(),
-          this.peersStorage.getSharingPeers().size()
-        });
+              new Object[]{
+                      peer,
+                      getConnectedPeers().size(),
+                      this.peersStorage.getSharingPeers().size()
+              });
     } catch (Exception e) {
       logger.info("Could not handle new peer connection " +
-        "with {}: {}", peer, e.getMessage());
+              "with {}: {}", peer, e.getMessage());
     }
   }
 
@@ -861,7 +864,7 @@ public class Client implements Runnable,
    */
   @Override
   public void handlePieceCompleted(SharingPeer peer, Piece piece)
-    throws IOException {
+          throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
     synchronized (torrent) {
       if (piece.isValid()) {
@@ -872,12 +875,12 @@ public class Client implements Runnable,
         // handler is.
         torrent.markCompleted(piece);
         logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
-          new Object[]{
-            piece,
-            peer,
-            torrent.getCompletedPieces().cardinality(),
-            torrent.getPieceCount()
-          });
+                new Object[]{
+                        piece,
+                        peer,
+                        torrent.getCompletedPieces().cardinality(),
+                        torrent.getPieceCount()
+                });
 
         // Send a HAVE message to all connected peers
         PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
@@ -890,7 +893,7 @@ public class Client implements Runnable,
         BitSet completed = new BitSet();
         completed.or(torrent.getCompletedPieces());
         completed.and(peer.getAvailablePieces());
-        if (completed.equals(peer.getAvailablePieces())){
+        if (completed.equals(peer.getAvailablePieces())) {
           // disconnect when have no interested pieces;
           peer.unbind(false);
         }
@@ -908,7 +911,7 @@ public class Client implements Runnable,
             p.unbind(false);
           }
         }
-          logger.info("Download of {} complete.", torrent.getName());
+        logger.info("Download of {} complete.", torrent.getName());
 
         torrent.finish();
 
@@ -937,11 +940,11 @@ public class Client implements Runnable,
     p.setTorrentHash(peer.getHexInfoHash());
     SharingPeer sharingPeer = this.peersStorage.removeSharingPeer(p);
     logger.debug("Peer {} disconnected, [{}/{}].",
-      new Object[]{
-        peer,
-        getConnectedPeers().size(),
-        this.peersStorage.getSharingPeers().size()
-      });
+            new Object[]{
+                    peer,
+                    getConnectedPeers().size(),
+                    this.peersStorage.getSharingPeers().size()
+            });
     pingPeers(peerTorrent);
   }
 
@@ -959,7 +962,7 @@ public class Client implements Runnable,
 
   @Override
   public void torrentStateChanged(ClientState newState, SharedTorrent torrent) {
-    if (newState.equals(ClientState.ERROR)){
+    if (newState.equals(ClientState.ERROR)) {
       removeTorrent(torrent);
     }
   }
