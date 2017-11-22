@@ -86,7 +86,7 @@ public class Client implements Runnable,
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
   private Thread thread;
-  private boolean stop;
+  private AtomicBoolean stop = new AtomicBoolean(false);
 
   private Announce announce;
 
@@ -225,7 +225,7 @@ public class Client implements Runnable,
     }
 
     announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
-    this.stop = false;
+    this.stop.set(false);
 
     if (this.thread == null || !this.thread.isAlive()) {
       this.thread = new Thread(this);
@@ -250,7 +250,9 @@ public class Client implements Runnable,
    *             the <tt>DONE</tt> or <tt>ERROR</tt> states when this method returns.
    */
   public void stop(boolean wait) {
-    this.stop = true;
+    boolean wasStopped = this.stop.getAndSet(true);
+    if (wasStopped) return;
+
     if (!myStarted)
       return;
     this.myConnectionManager.close(wait);
@@ -354,7 +356,7 @@ public class Client implements Runnable,
   @Override
   public void run() {
     // Detect early stop
-    if (this.stop) {
+    if (this.stop.get()) {
       logger.info("Early stop detected. Stopping...");
       this.finish();
       return;
@@ -363,7 +365,7 @@ public class Client implements Runnable,
     int optimisticIterations = 0;
     int rateComputationIterations = 0;
 
-    while (!this.stop) {
+    while (!this.stop.get()) {
       optimisticIterations =
               (optimisticIterations == 0 ?
                       Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
