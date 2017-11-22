@@ -69,18 +69,7 @@ public class ConnectionManager implements Runnable {
     if (this.myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-    byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
-    Peer self = new Peer(this.myBindAddress, ByteBuffer.wrap(idBytes));
-    peersStorageProvider.getPeersStorage().setSelf(self);
     myWorkerFuture = myExecutorService.submit(this);// TODO: 11/22/17 move runnable part to separate class e.g. ConnectionWorker
-    logger.info("BitTorrent client [{}] started and " +
-                    "listening at {}:{}...",
-            new Object[]{
-                    self.getShortHexPeerId(),
-                    self.getIp(),
-                    self.getPort()
-            });
   }
 
   public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {

@@ -223,6 +223,17 @@ public class Client implements Runnable,
       this.stop();
       return;
     }
+    final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+    byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+    Peer self = new Peer(this.myConnectionManager.getBindAddress(), ByteBuffer.wrap(idBytes));
+    peersStorageProvider.getPeersStorage().setSelf(self);
+    logger.info("BitTorrent client [{}] started and " +
+                    "listening at {}:{}...",
+            new Object[]{
+                    self.getShortHexPeerId(),
+                    self.getIp(),
+                    self.getPort()
+            });
 
     announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
     this.stop.set(false);
