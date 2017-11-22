@@ -84,13 +84,13 @@ public class HandshakeReceiver implements DataProcessor {
     SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
 
     if (torrent == null) {
-      logger.debug("peer {} try download torrent with hash {}, but it's unknown torrent for self",
+      logger.debug("peer {} tries to download unknown torrent {}",
               Arrays.toString(hs.getPeerId()),
               hs.getHexInfoHash());
       return new ShutdownProcessor();
     }
 
-    logger.debug("get handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
+    logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     if (!myOnlyRead) {
       logger.debug("send handshake to {}", socketChannel);
