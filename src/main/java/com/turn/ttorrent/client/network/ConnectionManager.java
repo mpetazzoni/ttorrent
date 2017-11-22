@@ -138,17 +138,17 @@ public class ConnectionManager implements Runnable {
     }
   }
 
-  public void close(boolean await) {
+  public void close(boolean await, int timeout, TimeUnit timeUnit) {
     logger.debug("try close connection manager...");
     boolean successfullyClosed = true;
     myWorkerFuture.cancel(true);
     myExecutorService.shutdown();
     if (await) {
       try {
-        boolean shutdownCorrectly = myExecutorService.awaitTermination(1, TimeUnit.MINUTES);
+        boolean shutdownCorrectly = myExecutorService.awaitTermination(timeout, timeUnit);
         if (!shutdownCorrectly) {
           successfullyClosed = false;
-          logger.warn("unable to terminate executor service in specified timeout");
+          logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
         }
       } catch (InterruptedException e) {
         successfullyClosed = false;
@@ -183,6 +183,10 @@ public class ConnectionManager implements Runnable {
     } else {
       logger.error("connection manager wasn't closed successfully");
     }
+  }
+
+  public void close(boolean await) {
+    close(await, 1, TimeUnit.MINUTES);
   }
 
   private void processSelectedKeys() {
