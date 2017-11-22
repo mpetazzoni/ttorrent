@@ -13,9 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class ConnectionManager implements Runnable {
 
@@ -29,7 +27,10 @@ public class ConnectionManager implements Runnable {
   private final PeersStorageProvider peersStorageProvider;
   private final ChannelListenerFactory channelListenerFactory;
   private ServerSocketChannel myServerSocketChannel;
+  private InetSocketAddress myBindAddress;
   private final BlockingQueue<ConnectTask> myConnectQueue;
+  private final ExecutorService myExecutorService;
+  private Future<?> myWorkerFuture;
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
@@ -41,15 +42,16 @@ public class ConnectionManager implements Runnable {
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
                            ChannelListenerFactory channelListenerFactory) throws IOException {
+    this.myExecutorService = Executors.newSingleThreadExecutor();
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
-    myServerSocketChannel = selector.provider().openServerSocketChannel();
   }
 
-  private void init() throws IOException {
+  public void initAndRunWorker() throws IOException {
+    myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
 
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
@@ -57,16 +59,28 @@ public class ConnectionManager implements Runnable {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-        final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-        byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
-        peersStorageProvider.getPeersStorage().setSelf(new Peer(tryAddress, ByteBuffer.wrap(idBytes)));
-        return;
+        this.myBindAddress = tryAddress;
+        break;
       } catch (IOException e) {
         //try next port
         logger.debug("Could not bind to port {}, trying next port...", port);
       }
     }
-    throw new IOException("No available port for the BitTorrent client!");
+    if (this.myBindAddress == null) {
+      throw new IOException("No available port for the BitTorrent client!");
+    }
+    final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+    byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+    Peer self = new Peer(this.myBindAddress, ByteBuffer.wrap(idBytes));
+    peersStorageProvider.getPeersStorage().setSelf(self);
+    myWorkerFuture = myExecutorService.submit(this);// TODO: 11/22/17 move runnable part to separate class e.g. ConnectionWorker
+    logger.info("BitTorrent client [{}] started and " +
+                    "listening at {}:{}...",
+            new Object[]{
+                    self.getShortHexPeerId(),
+                    self.getIp(),
+                    self.getPort()
+            });
   }
 
   public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
@@ -83,24 +97,13 @@ public class ConnectionManager implements Runnable {
     return false;
   }
 
+  public InetSocketAddress getBindAddress() {
+    return myBindAddress;
+  }
+
   @Override
   public void run() {
 
-    try {
-      init();
-      Peer self = peersStorageProvider.getPeersStorage().getSelf();
-      logger.info("BitTorrent client [{}] started and " +
-                      "listening at {}:{}...",
-              new Object[]{
-                      self.getShortHexPeerId(),
-                      self.getIp(),
-                      self.getPort()
-              });
-    } catch (IOException e) {
-      LoggerUtils.errorAndDebugDetails(logger, "error in initialization server channel", e);
-      close();
-      return;
-    }
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
@@ -119,8 +122,6 @@ public class ConnectionManager implements Runnable {
       }
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
-    } finally {
-      close();
     }
   }
 
@@ -143,12 +144,28 @@ public class ConnectionManager implements Runnable {
     }
   }
 
-  private void close() {
-    logger.debug("try close connection manager channels...");
+  public void close(boolean await) {
+    logger.debug("try close connection manager...");
+    boolean successfullyClosed = true;
+    myWorkerFuture.cancel(true);
+    myExecutorService.shutdown();
+    if (await) {
+      try {
+        boolean shutdownCorrectly = myExecutorService.awaitTermination(1, TimeUnit.MINUTES);
+        if (!shutdownCorrectly) {
+          successfullyClosed = false;
+          logger.warn("unable to terminate executor service in specified timeout");
+        }
+      } catch (InterruptedException e) {
+        successfullyClosed = false;
+        LoggerUtils.warnAndDebugDetails(logger, "unable to await termination executor service, thread was interrupted", e);
+      }
+    }
     try {
       this.myServerSocketChannel.close();
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "unable to close server socket channel", e);
+      successfullyClosed = false;
     }
     for (SelectionKey key : this.selector.keys()) {
       try {
@@ -157,6 +174,7 @@ public class ConnectionManager implements Runnable {
         }
       } catch (Throwable e) {
         logger.error("unable to close socket channel {}", key.channel());
+        successfullyClosed = false;
         logger.debug("", e);
       }
     }
@@ -164,8 +182,13 @@ public class ConnectionManager implements Runnable {
       this.selector.close();
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "unable to close selector channel", e);
+      successfullyClosed = false;
     }
-    logger.debug("connection manager is successfully closed");
+    if (successfullyClosed) {
+      logger.debug("connection manager is successfully closed");
+    } else {
+      logger.error("it was received some errors in stop process of connection manager and worker");
+    }
   }
 
   private void processSelectedKeys() {

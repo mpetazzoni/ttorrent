@@ -98,8 +98,6 @@ public class Client implements Runnable,
   private final TorrentsStorage torrentsStorage;
   private final PeersStorage peersStorage;
   private ConnectionManager myConnectionManager;
-  private Future<?> myConnectionManagerFuture;
-  private ExecutorService myConnectionManagerExecutor;
 
   public Client() {
     this("");
@@ -218,19 +216,12 @@ public class Client implements Runnable,
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this);
-    myConnectionManagerExecutor = Executors.newSingleThreadExecutor();
-    myConnectionManagerFuture = myConnectionManagerExecutor.submit(myConnectionManager);
+    try {
+      this.myConnectionManager.initAndRunWorker();
+    } catch (IOException e) {
+      LoggerUtils.errorAndDebugDetails(logger, "error in initialization server channel", e);
+      this.stop();
 
-    // wait until connection receiver is launched
-    while (getSelfPeers().length == 0) {
-      try {
-        myConnectionManagerFuture.get(100, TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
-        this.stop();
-      } catch (TimeoutException ignored) {
-      } catch (ExecutionException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "failed waiting start connection receiver thread", e);
-      }
     }
 
     announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
@@ -262,11 +253,7 @@ public class Client implements Runnable,
     this.stop = true;
     if (!myStarted)
       return;
-    myConnectionManagerFuture.cancel(true);
-    myConnectionManagerExecutor.shutdown();
-    if (wait) {
-      waitForShutdownConnectionExecutor();
-    }
+    this.myConnectionManager.close(wait);
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
@@ -275,20 +262,6 @@ public class Client implements Runnable,
       }
     }
     this.thread = null;
-  }
-
-  private void waitForShutdownConnectionExecutor() {
-    boolean isShutdownCorrectly;
-    try {
-      isShutdownCorrectly = myConnectionManagerExecutor.awaitTermination(1, TimeUnit.MINUTES);
-    } catch (InterruptedException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "interrupted in await termination of executor service", e);
-      isShutdownCorrectly = false;
-    }
-    if (isShutdownCorrectly) {
-      return;
-    }
-    logger.error("Can not stop connection manager executor! System port was not released");
   }
 
   /**
@@ -697,10 +670,6 @@ public class Client implements Runnable,
     logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
-    if (this.myConnectionManagerFuture.isDone()) {
-      logger.info("Connection handler service is not available.");
-      return;
-    }
     // TODO: 11/14/17 check that peers list contains torrent hash
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
