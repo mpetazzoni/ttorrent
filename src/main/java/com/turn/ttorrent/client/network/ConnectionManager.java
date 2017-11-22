@@ -108,7 +108,12 @@ public class ConnectionManager implements Runnable {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           logger.trace("try select keys from selector");
-          int selected = selector.select();// TODO: 11/13/17 timeout
+          int selected;
+          try {
+            selected = selector.select();// TODO: 11/13/17 timeout
+          } catch (ClosedSelectorException e) {
+            break;
+          }
           logger.trace("selected keys, try connect to peers from queue");
           connectToPeersFromQueue();
           logger.trace("select keys from selector. Keys count is " + selected);
