@@ -181,7 +181,7 @@ public class ConnectionManager implements Runnable {
     if (successfullyClosed) {
       logger.debug("connection manager is successfully closed");
     } else {
-      logger.error("it was received some errors in stop process of connection manager and worker");
+      logger.error("connection manager wasn't closed successfully");
     }
   }
 
