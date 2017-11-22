@@ -19,8 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.ConnectTask;
-import com.turn.ttorrent.client.network.ConnectionManager;
+import com.turn.ttorrent.client.network.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -32,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -221,7 +221,7 @@ public class Client implements Runnable,
     } catch (IOException e) {
       LoggerUtils.errorAndDebugDetails(logger, "error in initialization server channel", e);
       this.stop();
-
+      return;
     }
 
     announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
@@ -713,7 +713,16 @@ public class Client implements Runnable,
     }
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
-      this.myConnectionManager.connect(new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), sharingPeer.getTorrentHash()), 1, TimeUnit.SECONDS);
+
+      ConnectionListener connectionListener = new OutgoingConnectionListener(
+              peersStorageProvider,
+              torrentsStorageProvider,
+              this,
+              torrent,
+              new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
+      );
+
+      this.myConnectionManager.connect(new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), connectionListener), 1, TimeUnit.SECONDS);
     }
 
   }

@@ -7,7 +7,7 @@ import com.turn.ttorrent.common.TorrentsStorageProvider;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-public class StateChannelListener implements ChannelListener {
+public class StateChannelListener implements ConnectionListener {
 
   private DataProcessor next;
   private final PeersStorageProvider myPeersStorageProvider;
@@ -28,7 +28,7 @@ public class StateChannelListener implements ChannelListener {
   }
 
   @Override
-  public void onConnectionAccept(SocketChannel socketChannel) throws IOException {
+  public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
     this.next = new HandshakeReceiver(
             myPeersStorageProvider,
             myTorrentsStorageProvider,
@@ -38,12 +38,50 @@ public class StateChannelListener implements ChannelListener {
             false);
   }
 
-  @Override
-  public void onConnected(SocketChannel socketChannel, ConnectTask connectTask) throws IOException {
-    DataProcessor handshakeSender = new HandshakeSender(connectTask,
-            myPeersStorageProvider,
-            myTorrentsStorageProvider,
-            myPeerActivityListener);
-    this.next = handshakeSender.processAndGetNext(socketChannel);
+
+  /*
+   public static class OutgoingStateChannelListener implements ChannelListener {
+
+    private DataProcessor next;
+    private final PeersStorageProvider myPeersStorageProvider;
+    private final TorrentsStorageProvider myTorrentsStorageProvider;
+    private final PeerActivityListener myPeerActivityListener;
+    private final ConnectTask connectTask;
+
+    public OutgoingStateChannelListener(PeersStorageProvider peersStorageProvider,
+                                TorrentsStorageProvider torrentsStorageProvider,
+                                PeerActivityListener myPeerActivityListener) {
+      this.myTorrentsStorageProvider = torrentsStorageProvider;
+      this.myPeersStorageProvider = peersStorageProvider;
+      this.myPeerActivityListener = myPeerActivityListener;
+    }
+
+    @Override
+    public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
+      this.next = this.next.processAndGetNext(socketChannel);
+    }
+
+//    @Override
+//    public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
+//      this.next = new HandshakeReceiver(
+//              myPeersStorageProvider,
+//              myTorrentsStorageProvider,
+//              myPeerActivityListener,
+//              socketChannel.socket().getInetAddress().getHostAddress(),
+//              socketChannel.socket().getPort(),
+//              false);
+//    }
+
+    @Override
+    public void onConnected(SocketChannel socketChannel) throws IOException {
+      DataProcessor handshakeSender = new HandshakeSender(connectTask,
+              myPeersStorageProvider,
+              myTorrentsStorageProvider,
+              myPeerActivityListener);
+      this.next = handshakeSender.processAndGetNext(socketChannel);
+    }
   }
+  *
+  * */
+
 }

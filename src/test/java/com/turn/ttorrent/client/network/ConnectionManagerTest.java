@@ -21,14 +21,14 @@ import static org.testng.Assert.*;
 public class ConnectionManagerTest {
 
   private ConnectionManager myConnectionManager;
-  private ChannelListener channelListener;
+  private ConnectionListener connectionListener;
 
   @BeforeMethod
   public void setUp() throws Exception {
     ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
       @Override
-      public ChannelListener newChannelListener() {
-        return channelListener;
+      public ConnectionListener newChannelListener() {
+        return connectionListener;
       }
     };
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
@@ -46,7 +46,7 @@ public class ConnectionManagerTest {
 
     final Semaphore semaphore = new Semaphore(0);
 
-    this.channelListener = new ChannelListener() {
+    this.connectionListener = new ConnectionListener() {
       @Override
       public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
         readCount.incrementAndGet();
@@ -58,14 +58,8 @@ public class ConnectionManagerTest {
       }
 
       @Override
-      public void onConnectionAccept(SocketChannel socketChannel) throws IOException {
+      public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
         acceptCount.incrementAndGet();
-        semaphore.release();
-      }
-
-      @Override
-      public void onConnected(SocketChannel socketChannel, ConnectTask connectTask) {
-        connectCount.incrementAndGet();
         semaphore.release();
       }
     };
@@ -116,15 +110,16 @@ public class ConnectionManagerTest {
     int otherPeerPort = 7575;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
-    myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new TorrentHash() {
+    myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new ConnectionListener() {
       @Override
-      public byte[] getInfoHash() {
-        return new byte[0];
+      public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
+
       }
 
       @Override
-      public String getHexInfoHash() {
-        return null;
+      public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
+        connectCount.incrementAndGet();
+        semaphore.release();
       }
     }), 1, TimeUnit.SECONDS);
     ss.accept();

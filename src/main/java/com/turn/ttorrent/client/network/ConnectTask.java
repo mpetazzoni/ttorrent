@@ -1,17 +1,15 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.TorrentHash;
-
 public class ConnectTask {
 
   private final String myHost;
   private final int myPort;
-  private final TorrentHash myTorrentHash;
+  private final ConnectionListener myConnectionListener;
 
-  public ConnectTask(String host, int port, TorrentHash torrentHash) {
+  public ConnectTask(String host, int port, ConnectionListener connectionListener) {
     this.myHost = host;
     this.myPort = port;
-    this.myTorrentHash = torrentHash;
+    this.myConnectionListener = connectionListener;
   }
 
   public String getHost() {
@@ -22,12 +20,8 @@ public class ConnectTask {
     return myPort;
   }
 
-  public byte[] getTorrentHashBytes() {
-    return myTorrentHash.getInfoHash();
-  }
-
-  public String getTorrentHashHex() {
-    return myTorrentHash.getHexInfoHash();
+  public ConnectionListener getConnectionListener() {
+    return myConnectionListener;
   }
 
   @Override
@@ -35,7 +29,6 @@ public class ConnectTask {
     return "ConnectTask{" +
             "myHost='" + myHost + '\'' +
             ", myPort=" + myPort +
-            ", myTorrentHash='" + myTorrentHash + '\'' +
             '}';
   }
 }

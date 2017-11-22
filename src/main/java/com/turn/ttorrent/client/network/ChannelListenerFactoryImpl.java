@@ -20,7 +20,7 @@ public class ChannelListenerFactoryImpl implements ChannelListenerFactory {
   }
 
   @Override
-  public ChannelListener newChannelListener() {
+  public ConnectionListener newChannelListener() {
     return new StateChannelListener(myPeersStorageProvider, myTorrentsStorageProvider, myPeerActivityListener);
   }
 }

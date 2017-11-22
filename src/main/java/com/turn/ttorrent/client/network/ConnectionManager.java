@@ -231,10 +231,10 @@ public class ConnectionManager implements Runnable {
       SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
       logger.trace("server {} get new connection from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
 
-      ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
-      stateChannelListener.onConnectionAccept(socketChannel);
+      ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
+      stateConnectionListener.onConnectionEstablished(socketChannel);
       socketChannel.configureBlocking(false);
-      socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
+      socketChannel.register(selector, SelectionKey.OP_READ, stateConnectionListener);
     }
     if (key.isConnectable()) {
       SelectableChannel channel = key.channel();
@@ -244,7 +244,6 @@ public class ConnectionManager implements Runnable {
         return;
       }
       SocketChannel socketChannel = (SocketChannel) channel;
-      ChannelListener stateChannelListener = channelListenerFactory.newChannelListener();
       Object attachment = key.attachment();
       if (!(attachment instanceof ConnectTask)) {
         logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
@@ -256,8 +255,9 @@ public class ConnectionManager implements Runnable {
         return;
       }
       socketChannel.configureBlocking(false);
-      socketChannel.register(selector, SelectionKey.OP_READ, stateChannelListener);
-      stateChannelListener.onConnected(socketChannel, (ConnectTask) attachment);
+      ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
+      socketChannel.register(selector, SelectionKey.OP_READ, connectionListener);
+      connectionListener.onConnectionEstablished(socketChannel);
     }
 
     if (key.isReadable()) {
@@ -272,13 +272,13 @@ public class ConnectionManager implements Runnable {
       logger.trace("server {} get new data from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
 
       Object attachment = key.attachment();
-      if (!(attachment instanceof ChannelListener)) {
+      if (!(attachment instanceof ConnectionListener)) {
         logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
         socketChannel.close();
         return;
       }
-      ChannelListener channelListener = (ChannelListener) attachment;
-      channelListener.onNewDataAvailable(socketChannel);
+      ConnectionListener connectionListener = (ConnectionListener) attachment;
+      connectionListener.onNewDataAvailable(socketChannel);
     }
   }
 }
