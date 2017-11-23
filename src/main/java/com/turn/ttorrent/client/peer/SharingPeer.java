@@ -320,7 +320,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       } catch (Exception ex) {
       }
     }
-    this.cancelPendingRequests();
+    this.downloading = myRequests.size() > 0;
+    myRequests.clear();
 
     PeerExchange exchangeCopy;
     synchronized (this.exchangeLock) {
@@ -355,6 +356,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.exchange.send(message);
     } else {
       logger.info("Attempting to send a message to non-connected peer {}!", this);
+      unbind(true);
     }
   }
 
