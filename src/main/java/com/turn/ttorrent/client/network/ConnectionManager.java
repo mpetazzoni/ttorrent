@@ -26,11 +26,11 @@ public class ConnectionManager {
   private final InetAddress inetAddress;
   private final CountDownLatch myWorkerShutdownChecker;
   private final ChannelListenerFactory channelListenerFactory;
-  private ConnectionWorker myConnectionWorker;
-  private ServerSocketChannel myServerSocketChannel;
+  private volatile ConnectionWorker myConnectionWorker;
+  private volatile ServerSocketChannel myServerSocketChannel;
   private InetSocketAddress myBindAddress;
   private final ExecutorService myExecutorService;
-  private Future<?> myWorkerFuture;
+  private volatile Future<?> myWorkerFuture;
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
