@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
+import java.util.Arrays;
 
 public class WorkingReceiver implements DataProcessor {
 
@@ -57,8 +58,11 @@ public class WorkingReceiver implements DataProcessor {
     }
 
     if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength > messageBytes.capacity()) {
-      logger.debug("Proposed limit of {} is larger than capacity of {}",
+      logger.warn("Proposed limit of {} is larger than capacity of {}",
               PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength, messageBytes.capacity());
+      logger.warn("current bytes in buffer is {}", Arrays.toString(messageBytes.array()));
+      logger.warn("Close connection with peer {}", myPeerUID);
+      new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
     }
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
