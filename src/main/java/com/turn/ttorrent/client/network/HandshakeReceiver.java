@@ -92,19 +92,23 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
-    if (!myOnlyRead) {
-      logger.debug("send handshake to {}", socketChannel);
-      ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
-    }
-
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
     SharingPeer sharingPeer = new SharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
     SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
     if (old != null) {
-      logger.debug("old peer is {}", old);
-      logger.debug("Already connected to {}, close current connection...", sharingPeer);
-      return new ShutdownAndRemovePeerProcessor(peerUID, peersStorageProvider);
+      logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
+      return new ShutdownProcessor();
+    }
+
+    if (!myOnlyRead) {
+      logger.debug("send handshake to {}", socketChannel);
+      try {
+        ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
+      } catch (IOException e) {
+        LoggerUtils.warnAndDebugDetails(logger, "error in sending handshake to {}", socketChannel, e);
+        return new ShutdownAndRemovePeerProcessor(peerUID, peersStorageProvider);
+      }
     }
 
     registerListenersAndBindChannel(sharingPeer, socketChannel, torrent);
