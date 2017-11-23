@@ -1,11 +1,12 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
-public class DataProcessorUtil {
+public final class DataProcessorUtil {
 
   public static void closeChannelIfOpen(Logger logger, ByteChannel channel) {
     if (channel.isOpen()) {
@@ -13,10 +14,8 @@ public class DataProcessorUtil {
       try {
         channel.close();
       } catch (IOException e) {
-        logger.error("unable to close channel {}", channel);
-        logger.debug("", e);
+        LoggerUtils.errorAndDebugDetails(logger, "unable to close channel {}", channel, e);
       }
     }
   }
-
 }
