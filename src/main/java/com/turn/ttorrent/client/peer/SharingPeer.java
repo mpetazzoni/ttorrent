@@ -414,7 +414,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
               PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
         removeBlockRequest(piece.getIndex(), lastRequestedOffset);
         try {
-          myRequests.offer(request, 1, TimeUnit.SECONDS);
+          boolean addedCorrectly = myRequests.offer(request, 1, TimeUnit.SECONDS);
+          if (!addedCorrectly) {
+            logger.warn("unable to add message {} to my requests queue in specified timeout. Try unbind from peer {}", request, this);
+            unbind(true);
+            return;
+          }
         } catch (InterruptedException e) {
           unbind(false);
           return;

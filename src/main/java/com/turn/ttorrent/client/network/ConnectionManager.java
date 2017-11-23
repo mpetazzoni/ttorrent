@@ -24,7 +24,6 @@ public class ConnectionManager {
 
   private final Selector selector;
   private final InetAddress inetAddress;
-  private final PeersStorageProvider peersStorageProvider;
   private final CountDownLatch myWorkerShutdownChecker;
   private final ChannelListenerFactory channelListenerFactory;
   private ConnectionWorker myConnectionWorker;
@@ -38,17 +37,15 @@ public class ConnectionManager {
                            TorrentsStorageProvider torrentsStorageProvider,
                            PeerActivityListener peerActivityListener,
                            ExecutorService executorService) throws IOException {
-    this(inetAddress, peersStorageProvider, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener), executorService);
+    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener), executorService);
   }
 
   public ConnectionManager(InetAddress inetAddress,
-                           PeersStorageProvider peersStorageProvider,
                            ChannelListenerFactory channelListenerFactory,
                            ExecutorService executorService) throws IOException {
     this.myExecutorService = executorService;
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
-    this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
     this.myWorkerShutdownChecker = new CountDownLatch(1);
   }

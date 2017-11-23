@@ -35,7 +35,6 @@ public class ConnectionManagerTest {
       }
     };
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
-            new PeersStorageProviderImpl(),
             channelListenerFactory,
             myExecutorService);
   }

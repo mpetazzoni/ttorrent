@@ -756,9 +756,12 @@ public class Client implements Runnable,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
       );
 
-      this.myConnectionManager.connect(new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), connectionListener), 1, TimeUnit.SECONDS);
+      boolean connectTaskAdded = this.myConnectionManager.connect(
+              new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), connectionListener), 1, TimeUnit.SECONDS);
+      if (!connectTaskAdded) {
+        logger.warn("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
+      }
     }
-
   }
 
   /** CommunicationListener handler(s). ********************************/

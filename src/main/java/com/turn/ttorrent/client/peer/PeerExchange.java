@@ -159,7 +159,8 @@ public class PeerExchange {
     if (!stop && !sendQueue.contains(message)) {
 			try {
 				if (!sendQueue.offer(message, 1, TimeUnit.SECONDS)){
-          throw new RuntimeException("Send queue overloaded. Throwing an exception...");
+					logger.warn("unable to add message {} to my requests queue in specified timeout. Try unbind from peer {}", message, this);
+					peer.unbind(true);
         }
 			} catch (InterruptedException e) {
 				close();
