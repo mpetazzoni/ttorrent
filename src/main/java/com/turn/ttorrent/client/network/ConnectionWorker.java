@@ -6,7 +6,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.*;
+import java.nio.channels.ClosedSelectorException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -19,14 +24,17 @@ public class ConnectionWorker implements Runnable {
   private volatile boolean stop = false;
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
-  private final ServerSocketChannel myServerSocketChannel;
   private final CountDownLatch myCountDownLatch;
+  private final List<KeyProcessor> myKeyProcessors;
 
-  public ConnectionWorker(Selector selector, ServerSocketChannel myServerSocketChannel, CountDownLatch countDownLatch) {
+  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch) {
     this.selector = selector;
-    this.myServerSocketChannel = myServerSocketChannel;
     this.myCountDownLatch = countDownLatch;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
+    this.myKeyProcessors = Arrays.asList(
+            new AcceptableKeyProcessor(selector, serverSocketStringRepresentation),
+            new ConnectableKeyProcessor(selector),
+            new ReadableKeyProcessor(serverSocketStringRepresentation));
   }
 
   @Override
@@ -106,18 +114,11 @@ public class ConnectionWorker implements Runnable {
       logger.info("Key for channel {} is invalid. Skipping", key.channel());
       return;
     }
-    if (key.isAcceptable()) {
-      AcceptableKeyProcessor acceptableKeyProcessor = new AcceptableKeyProcessor(selector, myServerSocketChannel.getLocalAddress().toString());
-      acceptableKeyProcessor.process(key);
-    }
-    if (key.isConnectable()) {
-      ConnectableKeyProcessor connectableKeyProcessor = new ConnectableKeyProcessor(selector);
-      connectableKeyProcessor.process(key);
-    }
-
-    if (key.isReadable()) {
-      ReadableKeyProcessor readableKeyProcessor = new ReadableKeyProcessor(myServerSocketChannel.getLocalAddress().toString());
-      readableKeyProcessor.process(key);
+    for (KeyProcessor keyProcessor : myKeyProcessors) {
+      if (keyProcessor.accept(key)) {
+        keyProcessor.process(key);
+        break;
+      }
     }
   }
 

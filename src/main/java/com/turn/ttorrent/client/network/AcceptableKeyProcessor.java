@@ -42,4 +42,9 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     socketChannel.configureBlocking(false);
     socketChannel.register(mySelector, SelectionKey.OP_READ, stateConnectionListener);
   }
+
+  @Override
+  public boolean accept(SelectionKey key) {
+    return key.isAcceptable();
+  }
 }

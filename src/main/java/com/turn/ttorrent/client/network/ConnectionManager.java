@@ -69,7 +69,7 @@ public class ConnectionManager {
     if (this.myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel, myWorkerShutdownChecker);
+    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), myWorkerShutdownChecker);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 

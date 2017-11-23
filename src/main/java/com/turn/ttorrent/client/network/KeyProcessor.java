@@ -7,4 +7,6 @@ public interface KeyProcessor {
 
   void process(SelectionKey key) throws IOException;
 
+  boolean accept(SelectionKey key);
+
 }

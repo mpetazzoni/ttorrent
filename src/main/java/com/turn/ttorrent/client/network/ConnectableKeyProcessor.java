@@ -43,4 +43,9 @@ public class ConnectableKeyProcessor implements KeyProcessor{
     socketChannel.register(mySelector, SelectionKey.OP_READ, connectionListener);
     connectionListener.onConnectionEstablished(socketChannel);
   }
+
+  @Override
+  public boolean accept(SelectionKey key) {
+    return key.isConnectable();
+  }
 }

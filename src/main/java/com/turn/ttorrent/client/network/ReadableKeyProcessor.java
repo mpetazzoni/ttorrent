@@ -39,4 +39,9 @@ public class ReadableKeyProcessor implements KeyProcessor {
     ConnectionListener connectionListener = (ConnectionListener) attachment;
     connectionListener.onNewDataAvailable(socketChannel);
   }
+
+  @Override
+  public boolean accept(SelectionKey key) {
+    return key.isReadable();
+  }
 }
