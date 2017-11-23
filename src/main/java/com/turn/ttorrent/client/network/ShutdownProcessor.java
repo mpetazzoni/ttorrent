@@ -12,7 +12,7 @@ public class ShutdownProcessor implements DataProcessor {
 
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
-    DataProcessors.closeChannelIfOpen(logger, socketChannel);
+    DataProcessorUtil.closeChannelIfOpen(logger, socketChannel);
     return this;
   }
 }

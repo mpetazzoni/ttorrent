@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
-public class DataProcessors {
+public class DataProcessorUtil {
 
   public static void closeChannelIfOpen(Logger logger, ByteChannel channel) {
     if (channel.isOpen()) {

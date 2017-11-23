@@ -24,7 +24,7 @@ public class ShutdownAndRemovePeerProcessor implements DataProcessor {
 
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
-    DataProcessors.closeChannelIfOpen(logger, socketChannel);
+    DataProcessorUtil.closeChannelIfOpen(logger, socketChannel);
     logger.debug("try remove and unbind peer. Peer UID - {}", myPeerUID);
     removePeer();
     return new ShutdownProcessor();
