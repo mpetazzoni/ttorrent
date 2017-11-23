@@ -19,7 +19,10 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.*;
+import com.turn.ttorrent.client.network.ConnectTask;
+import com.turn.ttorrent.client.network.ConnectionListener;
+import com.turn.ttorrent.client.network.ConnectionManager;
+import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -36,7 +39,9 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -98,6 +103,7 @@ public class Client implements Runnable,
   private final TorrentsStorage torrentsStorage;
   private final PeersStorage peersStorage;
   private ConnectionManager myConnectionManager;
+  private ExecutorService myExecutorService;
 
   public Client() {
     this("");
@@ -110,6 +116,7 @@ public class Client implements Runnable,
     this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
+    this.myExecutorService = Executors.newSingleThreadExecutor();
     this.myClientNameSuffix = name;
   }
 
@@ -215,7 +222,7 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this);
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this, myExecutorService);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {
@@ -261,12 +268,28 @@ public class Client implements Runnable,
    *             the <tt>DONE</tt> or <tt>ERROR</tt> states when this method returns.
    */
   public void stop(boolean wait) {
+    stop(wait, 1, TimeUnit.MINUTES);
+  }
+
+  public void stop(boolean wait, int timeout, TimeUnit timeUnit) {
     boolean wasStopped = this.stop.getAndSet(true);
     if (wasStopped) return;
 
     if (!myStarted)
       return;
     this.myConnectionManager.close(wait);
+
+    myExecutorService.shutdown();
+    if (wait) {
+      try {
+        boolean shutdownCorrectly = myExecutorService.awaitTermination(timeout, timeUnit);
+        if (!shutdownCorrectly) {
+          logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
+        }
+      } catch (InterruptedException e) {
+        LoggerUtils.warnAndDebugDetails(logger, "unable to await termination executor service, thread was interrupted", e);
+      }
+    }
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();

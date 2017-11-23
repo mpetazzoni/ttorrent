@@ -1,7 +1,6 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.common.PeersStorageProviderImpl;
-import com.turn.ttorrent.common.TorrentHash;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -12,6 +11,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,10 +22,12 @@ import static org.testng.Assert.*;
 public class ConnectionManagerTest {
 
   private ConnectionManager myConnectionManager;
+  private ExecutorService myExecutorService;
   private ConnectionListener connectionListener;
 
   @BeforeMethod
   public void setUp() throws Exception {
+    myExecutorService = Executors.newSingleThreadExecutor();
     ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
       @Override
       public ConnectionListener newChannelListener() {
@@ -33,7 +36,8 @@ public class ConnectionManagerTest {
     };
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
             new PeersStorageProviderImpl(),
-            channelListenerFactory);
+            channelListenerFactory,
+            myExecutorService);
   }
 
   @Test
@@ -127,6 +131,8 @@ public class ConnectionManagerTest {
     assertEquals(connectCount.get(), 1);
 
     this.myConnectionManager.close(true);
+    myExecutorService.shutdown();
+    assertTrue(myExecutorService.awaitTermination(10, TimeUnit.SECONDS));
   }
 
   private void tryAcquireOrFail(Semaphore semaphore) throws InterruptedException {

@@ -13,10 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class ConnectionManager {
 
@@ -28,6 +25,7 @@ public class ConnectionManager {
   private final Selector selector;
   private final InetAddress inetAddress;
   private final PeersStorageProvider peersStorageProvider;
+  private final CountDownLatch myWorkerShutdownChecker;
   private final ChannelListenerFactory channelListenerFactory;
   private ConnectionWorker myConnectionWorker;
   private ServerSocketChannel myServerSocketChannel;
@@ -38,18 +36,21 @@ public class ConnectionManager {
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
-                           PeerActivityListener peerActivityListener) throws IOException {
-    this(inetAddress, peersStorageProvider, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener));
+                           PeerActivityListener peerActivityListener,
+                           ExecutorService executorService) throws IOException {
+    this(inetAddress, peersStorageProvider, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener), executorService);
   }
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
-                           ChannelListenerFactory channelListenerFactory) throws IOException {
-    this.myExecutorService = Executors.newSingleThreadExecutor();
+                           ChannelListenerFactory channelListenerFactory,
+                           ExecutorService executorService) throws IOException {
+    this.myExecutorService = executorService;
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
+    this.myWorkerShutdownChecker = new CountDownLatch(1);
   }
 
   public void initAndRunWorker() throws IOException {
@@ -71,7 +72,7 @@ public class ConnectionManager {
     if (this.myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel);
+    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel, myWorkerShutdownChecker);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
@@ -92,18 +93,17 @@ public class ConnectionManager {
     if (myConnectionWorker != null) {
       myWorkerFuture.cancel(true);
       myConnectionWorker.stop();
-    }
-    myExecutorService.shutdown();
-    if (await) {
-      try {
-        boolean shutdownCorrectly = myExecutorService.awaitTermination(timeout, timeUnit);
-        if (!shutdownCorrectly) {
+      if (await) {
+        try {
+          boolean shutdownCorrectly = this.myWorkerShutdownChecker.await(timeout, timeUnit);
+          if (!shutdownCorrectly) {
+            successfullyClosed = false;
+            logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);
+          }
+        } catch (InterruptedException e) {
           successfullyClosed = false;
-          logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
+          LoggerUtils.warnAndDebugDetails(logger, "unable to await termination worker, thread was interrupted", e);
         }
-      } catch (InterruptedException e) {
-        successfullyClosed = false;
-        LoggerUtils.warnAndDebugDetails(logger, "unable to await termination executor service, thread was interrupted", e);
       }
     }
     try {

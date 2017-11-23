@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -19,10 +20,12 @@ public class ConnectionWorker implements Runnable {
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
   private final ServerSocketChannel myServerSocketChannel;
+  private final CountDownLatch myCountDownLatch;
 
-  public ConnectionWorker(Selector selector, ServerSocketChannel myServerSocketChannel) {
+  public ConnectionWorker(Selector selector, ServerSocketChannel myServerSocketChannel, CountDownLatch countDownLatch) {
     this.selector = selector;
     this.myServerSocketChannel = myServerSocketChannel;
+    this.myCountDownLatch = countDownLatch;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
   }
 
@@ -51,6 +54,8 @@ public class ConnectionWorker implements Runnable {
       }
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
+    } finally {
+      myCountDownLatch.countDown();
     }
   }
 
