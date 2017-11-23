@@ -93,8 +93,8 @@ public class TrackerTest{
       waitForFileInDir(downloadDir, "file1.jar");
       assertFilesEqual(new File(TEST_RESOURCES + "/parentFiles/file1.jar"), new File(downloadDir, "file1.jar"));
     } finally {
-      leech.stop(true);
-      seeder.stop(true);
+      leech.stop();
+      seeder.stop();
     }
   }
 
@@ -118,7 +118,7 @@ public class TrackerTest{
       assertEquals(1, trackedTorrent.seeders());
       assertEquals(0, trackedTorrent.leechers());
     } finally {
-      seeder.stop(true);
+      seeder.stop();
     }
   }
 
@@ -144,7 +144,7 @@ public class TrackerTest{
       assertEquals(0, trackedTorrent.seeders());
       assertEquals(1, trackedTorrent.leechers());
     } finally {
-      leech.stop(true);
+      leech.stop();
     }
   }
 
@@ -225,8 +225,8 @@ public class TrackerTest{
 
       waitForFileInDir(downloadDir, "file1.jar");
     } finally {
-      seeder.stop(true);
-      leech.stop(true);
+      seeder.stop();
+      leech.stop();
     }
   }
 

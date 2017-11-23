@@ -13,7 +13,10 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class ConnectionManager {
 
@@ -84,23 +87,21 @@ public class ConnectionManager {
     return myBindAddress;
   }
 
-  public void close(boolean await, int timeout, TimeUnit timeUnit) {
+  public void close(int timeout, TimeUnit timeUnit) {
     logger.debug("try close connection manager...");
     boolean successfullyClosed = true;
     if (myConnectionWorker != null) {
       myWorkerFuture.cancel(true);
       myConnectionWorker.stop();
-      if (await) {
-        try {
-          boolean shutdownCorrectly = this.myWorkerShutdownChecker.await(timeout, timeUnit);
-          if (!shutdownCorrectly) {
-            successfullyClosed = false;
-            logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);
-          }
-        } catch (InterruptedException e) {
+      try {
+        boolean shutdownCorrectly = this.myWorkerShutdownChecker.await(timeout, timeUnit);
+        if (!shutdownCorrectly) {
           successfullyClosed = false;
-          LoggerUtils.warnAndDebugDetails(logger, "unable to await termination worker, thread was interrupted", e);
+          logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);
         }
+      } catch (InterruptedException e) {
+        successfullyClosed = false;
+        LoggerUtils.warnAndDebugDetails(logger, "unable to await termination worker, thread was interrupted", e);
       }
     }
     try {
@@ -133,8 +134,8 @@ public class ConnectionManager {
     }
   }
 
-  public void close(boolean await) {
-    close(await, 1, TimeUnit.MINUTES);
+  public void close() {
+    close(1, TimeUnit.MINUTES);
   }
 
 }

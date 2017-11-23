@@ -129,7 +129,7 @@ public class ConnectionManagerTest {
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);
 
-    this.myConnectionManager.close(true);
+    this.myConnectionManager.close();
     myExecutorService.shutdown();
     assertTrue(myExecutorService.awaitTermination(10, TimeUnit.SECONDS));
   }

@@ -130,8 +130,8 @@ public class ClientTest {
 
       assertEquals(listFileNames(downloadDir), names);
     } finally {
-      leech.stop(true);
-      seeder.stop(true);
+      leech.stop();
+      seeder.stop();
     }
   }
 
@@ -172,8 +172,8 @@ public class ClientTest {
       waitForFileInDir(downloadDir, tempFile.getName());
       assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
     } finally {
-      seeder.stop(true);
-      leech.stop(true);
+      seeder.stop();
+      leech.stop();
     }
   }
 
@@ -280,7 +280,7 @@ public class ClientTest {
 
     assertTrue(listFileNames(downloadDir).contains(srcFile.getName()));
 
-    leech1.stop(true);
+    leech1.stop();
     leech1=null;
 
     assertTrue(srcFile.delete());

@@ -257,27 +257,18 @@ public class Client implements Runnable,
    * Immediately but gracefully stop this client.
    */
   public void stop() {
-    this.stop(true);
+    this.stop(60, TimeUnit.SECONDS);
   }
 
-  /**
-   * Immediately but gracefully stop this client.
-   *
-   * @param wait Whether to wait for the client execution thread to complete
-   *             or not. This allows for the client's state to be settled down in one of
-   *             the <tt>DONE</tt> or <tt>ERROR</tt> states when this method returns.
-   */
-  public void stop(boolean wait) {
-    stop(wait, 1, TimeUnit.MINUTES);
-  }
-
-  public void stop(boolean wait, int timeout, TimeUnit timeUnit) {
+  public void stop(int timeout, TimeUnit timeUnit) {
     boolean wasStopped = this.stop.getAndSet(true);
     if (wasStopped) return;
 
     if (!myStarted)
       return;
-    this.myConnectionManager.close(wait);
+
+    boolean wait = timeout != 0;
+    this.myConnectionManager.close();
 
     myExecutorService.shutdown();
     if (wait) {
