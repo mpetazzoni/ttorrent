@@ -1,21 +1,24 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.PeersStorageProvider;
+import com.turn.ttorrent.common.TorrentsStorageProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.*;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
-public class ConnectionManager implements Runnable {
+public class ConnectionManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
 
@@ -26,9 +29,9 @@ public class ConnectionManager implements Runnable {
   private final InetAddress inetAddress;
   private final PeersStorageProvider peersStorageProvider;
   private final ChannelListenerFactory channelListenerFactory;
+  private ConnectionWorker myConnectionWorker;
   private ServerSocketChannel myServerSocketChannel;
   private InetSocketAddress myBindAddress;
-  private final BlockingQueue<ConnectTask> myConnectQueue;
   private final ExecutorService myExecutorService;
   private Future<?> myWorkerFuture;
 
@@ -47,7 +50,6 @@ public class ConnectionManager implements Runnable {
     this.inetAddress = inetAddress;
     this.peersStorageProvider = peersStorageProvider;
     this.channelListenerFactory = channelListenerFactory;
-    this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
   }
 
   public void initAndRunWorker() throws IOException {
@@ -58,7 +60,7 @@ public class ConnectionManager implements Runnable {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
-        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, channelListenerFactory);
         this.myBindAddress = tryAddress;
         break;
       } catch (IOException e) {
@@ -69,77 +71,28 @@ public class ConnectionManager implements Runnable {
     if (this.myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myWorkerFuture = myExecutorService.submit(this);// TODO: 11/22/17 move runnable part to separate class e.g. ConnectionWorker
+    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel);
+    myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
   public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
-    try {
-      if (myConnectQueue.offer(connectTask, timeout, timeUnit)) {
-        logger.debug("added connect task {}. Wake up selector", connectTask);
-        selector.wakeup();
-        return true;
-      }
-    } catch (InterruptedException e) {
-      logger.debug("connect task interrupted before address was added to queue");
+    if (myConnectionWorker == null) {
+      return false;
     }
-    logger.debug("connect task {} was not added", connectTask);
-    return false;
+    return myConnectionWorker.connect(connectTask, timeout, timeUnit);
   }
 
   public InetSocketAddress getBindAddress() {
     return myBindAddress;
   }
 
-  @Override
-  public void run() {
-
-    try {
-      while (!Thread.currentThread().isInterrupted()) {
-        try {
-          logger.trace("try select keys from selector");
-          int selected;
-          try {
-            selected = selector.select();// TODO: 11/13/17 timeout
-          } catch (ClosedSelectorException e) {
-            break;
-          }
-          connectToPeersFromQueue();
-          logger.trace("select keys from selector. Keys count is " + selected);
-          if (selected == 0) {
-            continue;
-          }
-          processSelectedKeys();
-        } catch (Throwable e) {
-          LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
-        }
-      }
-    } catch (Throwable e) {
-      LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
-    }
-  }
-
-  private void connectToPeersFromQueue() {
-    ConnectTask connectTask;
-    while ((connectTask = myConnectQueue.poll()) != null) {
-      if (Thread.currentThread().isInterrupted()) {
-        return;
-      }
-      logger.debug("try connect to peer. Connect task is {}", connectTask);
-      try {
-        SocketChannel socketChannel = SocketChannel.open();
-        socketChannel.configureBlocking(false);
-        socketChannel.register(selector, SelectionKey.OP_CONNECT, connectTask);
-        socketChannel.connect(new InetSocketAddress(connectTask.getHost(), connectTask.getPort()));
-      } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "unable connect. Connect task is {}", connectTask, e);
-      }
-    }
-  }
-
   public void close(boolean await, int timeout, TimeUnit timeUnit) {
     logger.debug("try close connection manager...");
     boolean successfullyClosed = true;
-    myWorkerFuture.cancel(true);
+    if (myConnectionWorker != null) {
+      myWorkerFuture.cancel(true);
+      myConnectionWorker.stop();
+    }
     myExecutorService.shutdown();
     if (await) {
       try {
@@ -187,43 +140,4 @@ public class ConnectionManager implements Runnable {
     close(await, 1, TimeUnit.MINUTES);
   }
 
-  private void processSelectedKeys() {
-    Set<SelectionKey> selectionKeys = selector.selectedKeys();
-    for (SelectionKey key : selectionKeys) {
-      if (Thread.currentThread().isInterrupted()) {
-        return;
-      }
-      try {
-        processSelectedKey(key);
-      } catch (Exception e) {
-        LoggerUtils.warnAndDebugDetails(logger, "error in processing key. Close channel for this key...", e);
-        try {
-          key.channel().close();
-        } catch (IOException ioe) {
-          LoggerUtils.errorAndDebugDetails(logger, "unable close bad channel", ioe);
-        }
-      }
-    }
-    selectionKeys.clear();
-  }
-
-  private void processSelectedKey(SelectionKey key) throws IOException {
-    if (!key.isValid()) {
-      logger.info("Key for channel {} is invalid. Skipping", key.channel());
-      return;
-    }
-    if (key.isAcceptable()) {
-      AcceptableKeyProcessor acceptableKeyProcessor = new AcceptableKeyProcessor(channelListenerFactory, selector, myServerSocketChannel.getLocalAddress().toString());
-      acceptableKeyProcessor.process(key);
-    }
-    if (key.isConnectable()) {
-      ConnectableKeyProcessor connectableKeyProcessor = new ConnectableKeyProcessor(selector);
-      connectableKeyProcessor.process(key);
-    }
-
-    if (key.isReadable()) {
-      ReadableKeyProcessor readableKeyProcessor = new ReadableKeyProcessor(myServerSocketChannel.getLocalAddress().toString());
-      readableKeyProcessor.process(key);
-    }
-  }
 }

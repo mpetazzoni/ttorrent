@@ -10,12 +10,10 @@ public class AcceptableKeyProcessor implements KeyProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AcceptableKeyProcessor.class);
 
-  private final ChannelListenerFactory myChannelListenerFactory;
   private final Selector mySelector;
   private final String myServerSocketLocalAddress;
 
-  public AcceptableKeyProcessor(ChannelListenerFactory channelListenerFactory, Selector selector, String serverSocketLocalAddress) {
-    this.myChannelListenerFactory = channelListenerFactory;
+  public AcceptableKeyProcessor(Selector selector, String serverSocketLocalAddress) {
     this.mySelector = selector;
     this.myServerSocketLocalAddress = serverSocketLocalAddress;
   }
@@ -25,13 +23,21 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     SelectableChannel channel = key.channel();
     if (!(channel instanceof ServerSocketChannel)) {
       logger.error("incorrect instance of server channel. Can not accept connections");
-      channel.close();
+      key.cancel();
       return;
     }
+    Object attachment = key.attachment();
+    if (!(attachment instanceof ChannelListenerFactory)) {
+      logger.error("incorrect instance of server channel key attachment");
+      key.cancel();
+      return;
+    }
+    ChannelListenerFactory channelListenerFactory = (ChannelListenerFactory) attachment;
+
     SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
     logger.trace("server {} get new connection from {}", new Object[]{myServerSocketLocalAddress, socketChannel.socket()});
 
-    ConnectionListener stateConnectionListener = myChannelListenerFactory.newChannelListener();
+    ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);
     socketChannel.configureBlocking(false);
     socketChannel.register(mySelector, SelectionKey.OP_READ, stateConnectionListener);
