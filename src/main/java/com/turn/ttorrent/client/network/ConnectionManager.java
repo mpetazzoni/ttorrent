@@ -103,7 +103,6 @@ public class ConnectionManager implements Runnable {
           } catch (ClosedSelectorException e) {
             break;
           }
-          logger.trace("selected keys, try connect to peers from queue");
           connectToPeersFromQueue();
           logger.trace("select keys from selector. Keys count is " + selected);
           if (selected == 0) {
@@ -132,8 +131,7 @@ public class ConnectionManager implements Runnable {
         socketChannel.register(selector, SelectionKey.OP_CONNECT, connectTask);
         socketChannel.connect(new InetSocketAddress(connectTask.getHost(), connectTask.getPort()));
       } catch (IOException e) {
-        logger.warn("unable connect. Connect task is {}", connectTask);
-        logger.debug("", e);
+        LoggerUtils.warnAndDebugDetails(logger, "unable connect. Connect task is {}", connectTask, e);
       }
     }
   }
@@ -215,63 +213,17 @@ public class ConnectionManager implements Runnable {
       return;
     }
     if (key.isAcceptable()) {
-      SelectableChannel channel = key.channel();
-      if (!(channel instanceof ServerSocketChannel)) {
-        logger.error("incorrect instance of server channel. Can not accept connections");
-        channel.close();
-        return;
-      }
-      SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
-      logger.trace("server {} get new connection from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
-
-      ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
-      stateConnectionListener.onConnectionEstablished(socketChannel);
-      socketChannel.configureBlocking(false);
-      socketChannel.register(selector, SelectionKey.OP_READ, stateConnectionListener);
+      AcceptableKeyProcessor acceptableKeyProcessor = new AcceptableKeyProcessor(channelListenerFactory, selector, myServerSocketChannel.getLocalAddress().toString());
+      acceptableKeyProcessor.process(key);
     }
     if (key.isConnectable()) {
-      SelectableChannel channel = key.channel();
-      if (!(channel instanceof SocketChannel)) {
-        logger.warn("incorrect instance of channel. Close connection with it");
-        channel.close();
-        return;
-      }
-      SocketChannel socketChannel = (SocketChannel) channel;
-      Object attachment = key.attachment();
-      if (!(attachment instanceof ConnectTask)) {
-        logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
-        socketChannel.close();
-        return;
-      }
-      boolean isConnectFinished = socketChannel.finishConnect();
-      if (!isConnectFinished) {
-        return;
-      }
-      socketChannel.configureBlocking(false);
-      ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-      socketChannel.register(selector, SelectionKey.OP_READ, connectionListener);
-      connectionListener.onConnectionEstablished(socketChannel);
+      ConnectableKeyProcessor connectableKeyProcessor = new ConnectableKeyProcessor(selector);
+      connectableKeyProcessor.process(key);
     }
 
     if (key.isReadable()) {
-      SelectableChannel channel = key.channel();
-      if (!(channel instanceof SocketChannel)) {
-        logger.warn("incorrect instance of channel. Close connection with it");
-        channel.close();
-        return;
-      }
-
-      SocketChannel socketChannel = (SocketChannel) channel;
-      logger.trace("server {} get new data from {}", new Object[]{myServerSocketChannel.getLocalAddress(), socketChannel.socket()});
-
-      Object attachment = key.attachment();
-      if (!(attachment instanceof ConnectionListener)) {
-        logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
-        socketChannel.close();
-        return;
-      }
-      ConnectionListener connectionListener = (ConnectionListener) attachment;
-      connectionListener.onNewDataAvailable(socketChannel);
+      ReadableKeyProcessor readableKeyProcessor = new ReadableKeyProcessor(myServerSocketChannel.getLocalAddress().toString());
+      readableKeyProcessor.process(key);
     }
   }
 }

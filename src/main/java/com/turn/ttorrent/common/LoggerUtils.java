@@ -9,6 +9,11 @@ public class LoggerUtils {
     logger.debug("", t);
   }
 
+  public static void warnAndDebugDetails(Logger logger, String message, Object arg, Throwable t) {
+    logger.warn(message, arg);
+    logger.debug("", t);
+  }
+
   public static void errorAndDebugDetails(Logger logger, String message, Throwable t) {
     logger.error(message);
     logger.debug("", t);
