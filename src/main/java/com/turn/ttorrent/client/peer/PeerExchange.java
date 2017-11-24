@@ -16,15 +16,15 @@
 package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.lang.InterruptedException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.ByteChannel;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,9 +32,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -77,11 +74,10 @@ public class PeerExchange {
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
-	private SocketChannel channel;
+	private ByteChannel channel;
 
 	private Set<MessageListener> listeners;
 
-	private IncomingThread in;
 	private OutgoingThread out;
 	private BlockingQueue<PeerMessage> sendQueue;
 	private volatile boolean stop;
@@ -96,7 +92,7 @@ public class PeerExchange {
 	 * @param channel A channel on the connected socket to the peer.
 	 */
 	public PeerExchange(SharingPeer peer, SharedTorrent torrent,
-			SocketChannel channel) throws SocketException {
+											ByteChannel channel) throws SocketException {
 		this.peer = peer;
 		this.torrent = torrent;
 		this.channel = channel;
@@ -108,9 +104,6 @@ public class PeerExchange {
 			throw new IllegalStateException("Peer does not have a " +
 					"peer ID. Was the handshake made properly?");
 		}
-
-		this.in = new IncomingThread();
-    this.in.setName(String.format("bt-recv(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
 
 		this.out = new OutgoingThread();
     this.out.setName(String.format("bt-send(%s, %s)", this.peer.getShortHexPeerId(), torrent.toString()));
@@ -133,7 +126,6 @@ public class PeerExchange {
      * Start threads separately from creating to avoid race conditions
      */
     public void start(){
-        this.in.start();
         this.out.start();
     }
 
@@ -150,7 +142,7 @@ public class PeerExchange {
 	 * Tells if the peer exchange is active.
 	 */
 	public boolean isConnected() {
-		return this.channel.isConnected();
+		return this.channel.isOpen();
 	}
 
 	/**
@@ -165,10 +157,15 @@ public class PeerExchange {
 	 */
 	public void send(PeerMessage message) {
     if (!stop && !sendQueue.contains(message)) {
-      if (!sendQueue.offer(message)){
-        throw new RuntimeException("Send queue overloaded. Throwing an exception...");
-      }
-    }
+			try {
+				if (!sendQueue.offer(message, 1, TimeUnit.SECONDS)){
+					logger.warn("unable to add message {} to my requests queue in specified timeout. Try unbind from peer {}", message, this);
+					peer.unbind(true);
+        }
+			} catch (InterruptedException e) {
+				close();
+			}
+		}
   }
 
 	/**
@@ -181,8 +178,9 @@ public class PeerExchange {
 	public void close() {
 		this.stop = true;
     sendQueue.clear();
-		if (this.channel.isConnected()) {
+		if (this.channel.isOpen()) {
 			try {
+				logger.debug("try close peer exchange channel {}" + this.channel);
 				this.channel.close();
 			} catch (IOException ioe) {
         ioe.printStackTrace();
@@ -193,44 +191,9 @@ public class PeerExchange {
 		logger.debug("Peer exchange with {} closed.", this.peer);
 	}
 
-  public SocketChannel getChannel() {
+  public ByteChannel getChannel() {
     return channel;
   }
-
-  /**
-	 * Incoming messages thread.
-	 *
-	 * <p>
-	 * The incoming messages thread reads from the socket's input stream and
-	 * waits for incoming messages. When a message is fully retrieve, it is
-	 * parsed and passed to the peer's <code>handleMessage()</code> method that
-	 * will act based on the message type.
-	 * </p>
-	 * 
-	 * @author mpetazzoni
-	 */
-	private class IncomingThread extends Thread {
-
-		@Override
-		public void run() {
-			ByteBuffer buffer = ByteBuffer.allocate(2*1024*1024);
-
-			try {
-				while (!stop) {
-          ConnectionUtils.readAndHandleMessage(buffer, channel, stop, torrent, listeners);
-          Thread.sleep(10);
-        }
-			} catch (Exception ioe) {
-        logger.debug("Could not read message from {}: {}", peer,
-                ioe.getMessage() != null
-                        ? ioe.getMessage()
-                        : ioe.getClass().getName());
-      } finally {
-        peer.unbind(true);
-      }
-    }
-	}
-
 
   /**
 	 * Outgoing messages thread.

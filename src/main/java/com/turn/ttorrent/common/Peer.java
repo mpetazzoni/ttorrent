@@ -15,8 +15,10 @@
  */
 package com.turn.ttorrent.common;
 
-import com.turn.ttorrent.common.Torrent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -34,11 +36,14 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
+	private static final Logger logger = LoggerFactory.getLogger(Peer.class);
+
 	private final InetSocketAddress address;
 	private final String hostId;
 
 	private ByteBuffer peerId;
-	private String hexPeerId;
+	private volatile String hexPeerId;
+	private volatile String hexInfoHash;
 
 	/**
 	 * Instantiate a new peer.
@@ -118,6 +123,15 @@ public class Peer {
 		}
 	}
 
+  public String getStringPeerId() {
+    try {
+      return new String(peerId.array(), Torrent.BYTE_ENCODING);
+    } catch (UnsupportedEncodingException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "can not get peer id as string", e);
+    }
+    return null;
+  }
+
 	/**
 	 * Get the hexadecimal-encoded string representation of this peer's ID.
 	 */
@@ -168,26 +182,6 @@ public class Peer {
 		return this.address.getAddress().getAddress();
 	}
 
-	/**
-	 * Returns a human-readable representation of this peer.
-	 */
-	public String toString() {
-		StringBuilder s = new StringBuilder("peer://")
-			.append(this.getIp()).append(":").append(this.getPort())
-			.append("/");
-
-		if (this.hasPeerId()) {
-			s.append(this.hexPeerId.substring(this.hexPeerId.length()-6));
-		} else {
-			s.append("?");
-		}
-
-		if (this.getPort() < 10000) {
-			s.append(" ");
-		}
-
-		return s.toString();
-	}
 
 	/**
 	 * Tells if two peers seem to look alike (i.e. they have the same IP, port
@@ -202,5 +196,45 @@ public class Peer {
 			(this.hasPeerId()
 				 ? this.hexPeerId.equals(other.hexPeerId)
 				 : true);
+	}
+
+	public void setTorrentHash(String hexInfoHash) {
+		this.hexInfoHash = hexInfoHash;
+	}
+
+	public String getHexInfoHash() {
+		return hexInfoHash;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		Peer peer = (Peer) o;
+
+		if (hexPeerId != null ? !hexPeerId.equals(peer.hexPeerId) : peer.hexPeerId != null) return false;
+		return hexInfoHash != null ? hexInfoHash.equals(peer.hexInfoHash) : peer.hexInfoHash == null;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = hexPeerId != null ? hexPeerId.hashCode() : 0;
+		result = 31 * result + (hexInfoHash != null ? hexInfoHash.hashCode() : 0);
+		return result;
+	}
+
+	/**
+	 * Returns a human-readable representation of this peer.
+	 */
+	@Override
+	public String toString() {
+		return "Peer{" +
+						"address=" + address +
+						", hostId='" + hostId + '\'' +
+						", peerId=" + peerId +
+						", hexPeerId='" + hexPeerId + '\'' +
+						", hexInfoHash='" + hexInfoHash + '\'' +
+						'}';
 	}
 }

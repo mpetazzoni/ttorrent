@@ -15,11 +15,8 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.Cleanable;
-import com.turn.ttorrent.common.CleanupProcessor;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -30,6 +27,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
@@ -66,7 +64,7 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo, Cleanable {
+public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
 
   private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
   private static final int MAX_PIPELINED_REQUESTS = 100;
@@ -78,7 +76,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile boolean choked;
   private volatile boolean interested;
   private SharedTorrent torrent;
-  private final CleanupProcessor myCleanupProcessor;
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final ConcurrentMap<Piece, Integer> myRequestedPieces;
@@ -87,7 +84,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
 
-  private PeerExchange exchange = null;
+  private volatile PeerExchange exchange = null;
   private Rate download;
   private Rate upload;
   private Set<PeerActivityListener> listeners;
@@ -105,11 +102,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, CleanupProcessor cleanupProcessor) {
+  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
-    myCleanupProcessor = cleanupProcessor;
     this.listeners = new HashSet<PeerActivityListener>();
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
@@ -272,8 +268,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param channel The connected socket channel for this peer.
    */
-  public synchronized void bind(SocketChannel channel) throws SocketException {
-    myCleanupProcessor.registerCleanable(this);
+  public synchronized void bind(ByteChannel channel) throws SocketException {
     firePeerConnected();
     synchronized (this.exchangeLock) {
       this.exchange = new PeerExchange(this, this.torrent, channel);
@@ -317,16 +312,16 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (isStopped)
       return;
     isStopped = true;
-    myCleanupProcessor.unregisterCleanable(this);
     if (!force) {
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
       try {
-        this.cancelPendingRequests();
         this.send(PeerMessage.NotInterestedMessage.craft());
       } catch (Exception ex) {
       }
     }
+    this.downloading = myRequests.size() > 0;
+    myRequests.clear();
 
     PeerExchange exchangeCopy;
     synchronized (this.exchangeLock) {
@@ -361,6 +356,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.exchange.send(message);
     } else {
       logger.info("Attempting to send a message to non-connected peer {}!", this);
+      unbind(true);
     }
   }
 
@@ -417,7 +413,17 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             Math.min((int) (piece.size() - lastRequestedOffset),
               PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
         removeBlockRequest(piece.getIndex(), lastRequestedOffset);
-        myRequests.add(request);
+        try {
+          boolean addedCorrectly = myRequests.offer(request, 1, TimeUnit.SECONDS);
+          if (!addedCorrectly) {
+            logger.warn("unable to add message {} to my requests queue in specified timeout. Try unbind from peer {}", request, this);
+            unbind(true);
+            return;
+          }
+        } catch (InterruptedException e) {
+          unbind(false);
+          return;
+        }
 //        logger.debug("---------Queue size: " + myRequests.size());
         this.send(request);
         myRequestedPieces.put(piece, request.getLength() + lastRequestedOffset);
@@ -836,7 +842,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return this.torrent;
   }
 
-  public SocketChannel getSocketChannel() {
+  public ByteChannel getSocketChannel() {
     return exchange.getChannel();
   }
 
@@ -846,19 +852,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public TorrentHash getTorrentHash() {
     return torrent;
-  }
-
-  @Override
-  public void cleanUp() {
-    // temporary ignore until I figure out how to handle this in more robust way.
-/*
-    for (PeerMessage.RequestMessage request : myRequests) {
-      if (System.currentTimeMillis() - request.getSendTime() > MAX_REQUEST_TIMEOUT){
-        send(request);
-        request.renew();
-      }
-    }
-*/
   }
 
   /**

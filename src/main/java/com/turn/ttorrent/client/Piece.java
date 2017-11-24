@@ -169,6 +169,7 @@ public class Piece implements Comparable<Piece> {
 			buffer.get(data);
       final byte[] calculatedHash = Torrent.hash(data);
       this.valid = Arrays.equals(calculatedHash, this.hash);
+      logger.trace("validating result of piece {} is {}", this.index, this.valid);
 		} catch (NoSuchAlgorithmException nsae) {
 			logger.error("{}", nsae);
 		}
