@@ -46,6 +46,6 @@ public class ReadableKeyProcessor implements KeyProcessor {
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isReadable();
+    return key.isValid() && key.isReadable();
   }
 }

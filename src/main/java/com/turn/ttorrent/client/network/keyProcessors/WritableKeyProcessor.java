@@ -3,6 +3,7 @@ package com.turn.ttorrent.client.network.keyProcessors;
 import com.turn.ttorrent.client.network.ConnectionListener;
 import com.turn.ttorrent.client.network.KeyAttachment;
 import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,10 +29,15 @@ public class WritableKeyProcessor implements KeyProcessor {
     SocketChannel socketChannel = (SocketChannel) channel;
 
     if (mustGetNextTaskFromQueue()) {
+      if (currentTaskExistAndDone()) {
+        processedTask.getListener().onWriteDone();
+      }
       Object attachment = key.attachment();
       if (!(attachment instanceof KeyAttachment)) {
         logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
-        socketChannel.close();
+        processedTask.getListener().onWriteFailed();
+        processedTask = null;
+        key.cancel();
         return;
       }
       processedTask = ((KeyAttachment) attachment).getWriteTasks().poll();
@@ -40,7 +46,17 @@ public class WritableKeyProcessor implements KeyProcessor {
         return;
       }
     }
-    socketChannel.write(processedTask.getByteBuffer());
+    try {
+      socketChannel.write(processedTask.getByteBuffer());
+    } catch (IOException e) {
+      LoggerUtils.errorAndDebugDetails(logger, "unable to write data to channel {}", socketChannel, e);
+      processedTask.getListener().onWriteFailed();
+      processedTask = null;
+    }
+  }
+
+  private boolean currentTaskExistAndDone() {
+    return processedTask != null && !processedTask.getByteBuffer().hasRemaining();
   }
 
   private boolean mustGetNextTaskFromQueue() {
@@ -49,6 +65,6 @@ public class WritableKeyProcessor implements KeyProcessor {
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isWritable();
+    return key.isValid() && key.isWritable();
   }
 }

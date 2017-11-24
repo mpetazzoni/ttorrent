@@ -7,8 +7,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.*;
-import java.util.ArrayList;
+import java.nio.channels.ClosedSelectorException;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -23,10 +25,10 @@ public class ConnectionWorker implements Runnable {
   private volatile boolean stop = false;
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
+  private final BlockingQueue<WriteTask> myWriteQueue;
   private final CountDownLatch myCountDownLatch;
   private final List<KeyProcessor> myKeyProcessors;
   private final InetSocketAddress myBindAddress;
-  private final List<SocketChannel> channelsForWriteRegister;
 
   public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch, InetSocketAddress myBindAddress) {
     this.selector = selector;
@@ -38,7 +40,7 @@ public class ConnectionWorker implements Runnable {
             new ConnectableKeyProcessor(selector),
             new ReadableKeyProcessor(serverSocketStringRepresentation),
             new WritableKeyProcessor());
-    this.channelsForWriteRegister = new ArrayList<SocketChannel>();
+    this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
   }
 
   @Override
@@ -55,7 +57,7 @@ public class ConnectionWorker implements Runnable {
             break;
           }
           connectToPeersFromQueue();
-          registerChannelForWrite();
+          processWriteTasks();
           logger.trace("select keys from selector. Keys count is " + selected);
           if (selected == 0) {
             continue;
@@ -72,21 +74,28 @@ public class ConnectionWorker implements Runnable {
     }
   }
 
-  private void registerChannelForWrite() {
-    synchronized (channelsForWriteRegister) {
-      for (SocketChannel socketChannel : channelsForWriteRegister) {
-        SelectionKey selectionKey = socketChannel.keyFor(selector);
-        if (selectionKey == null) {
-          logger.error("Can not find key for channel {}", socketChannel);
-          continue;
-        }
-        try {
-          selectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-        } catch (CancelledKeyException e) {
-          LoggerUtils.warnAndDebugDetails(logger, "try write to channel {}, but key was cancelled ", socketChannel, e);
-        }
+  private void processWriteTasks() {
+
+    WriteTask writeTask;
+    while ((writeTask = myWriteQueue.poll()) != null) {
+      if (stop || Thread.currentThread().isInterrupted()) {
+        return;
       }
-      channelsForWriteRegister.clear();
+      logger.debug("try register channel for write. Write task is {}", writeTask);
+      SocketChannel socketChannel = writeTask.getSocketChannel();
+      SelectionKey key = socketChannel.keyFor(selector);
+      if (key == null) {
+        logger.warn("unable to find key for channel {}", socketChannel);
+        continue;
+      }
+      Object attachment = key.attachment();
+      if (!(attachment instanceof KeyAttachment)) {
+        logger.warn("incorrect attachment {} for channel {}", attachment, socketChannel);
+        continue;
+      }
+      KeyAttachment keyAttachment = (KeyAttachment) attachment;
+      keyAttachment.getWriteTasks().offer(writeTask);
+      key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
     }
   }
 
@@ -144,7 +153,6 @@ public class ConnectionWorker implements Runnable {
     for (KeyProcessor keyProcessor : myKeyProcessors) {
       if (keyProcessor.accept(key)) {
         keyProcessor.process(key);
-        break;
       }
     }
   }
@@ -154,25 +162,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
-    SocketChannel socketChannel = writeTask.getSocketChannel();
-    SelectionKey key = socketChannel.keyFor(selector);
-    if (key == null) {
-      logger.warn("unable to find key for channel {}", socketChannel);
-      return false;
-    }
-    Object attachment = key.attachment();
-    if (!(attachment instanceof KeyAttachment)) {
-      logger.warn("incorrect attachment {} for channel {}", attachment, socketChannel);
-      return false;
-    }
-    KeyAttachment keyAttachment = (KeyAttachment) attachment;
-    boolean addedCorrectly = addTaskToQueue(writeTask, timeout, timeUnit, keyAttachment.getWriteTasks());
-    if (addedCorrectly) {
-      synchronized (channelsForWriteRegister) {
-        channelsForWriteRegister.add(socketChannel);
-      }
-    }
-    return addedCorrectly;
+    return addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);
   }
 
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {

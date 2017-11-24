@@ -49,6 +49,6 @@ public class AcceptableKeyProcessor implements KeyProcessor {
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isAcceptable();
+    return key.isValid() && key.isAcceptable();
   }
 }

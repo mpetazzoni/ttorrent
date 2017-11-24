@@ -48,6 +48,6 @@ public class ConnectableKeyProcessor implements KeyProcessor {
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isConnectable();
+    return key.isValid() && key.isConnectable();
   }
 }
