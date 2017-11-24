@@ -1,5 +1,6 @@
-package com.turn.ttorrent.client.network;
+package com.turn.ttorrent.client.network.keyProcessors;
 
+import com.turn.ttorrent.client.network.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,9 +10,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-public class ConnectableKeyProcessor implements KeyProcessor{
+public class ConnectableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConnectableKeyProcessor.class);
 
   private final Selector mySelector;
 

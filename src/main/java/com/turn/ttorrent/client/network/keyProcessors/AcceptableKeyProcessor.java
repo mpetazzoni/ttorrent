@@ -1,5 +1,8 @@
-package com.turn.ttorrent.client.network;
+package com.turn.ttorrent.client.network.keyProcessors;
 
+import com.turn.ttorrent.client.network.ChannelListenerFactory;
+import com.turn.ttorrent.client.network.ConnectionListener;
+import com.turn.ttorrent.client.network.KeyAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

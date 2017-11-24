@@ -1,17 +1,15 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.network.keyProcessors.*;
 import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedSelectorException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -28,6 +26,7 @@ public class ConnectionWorker implements Runnable {
   private final CountDownLatch myCountDownLatch;
   private final List<KeyProcessor> myKeyProcessors;
   private final InetSocketAddress myBindAddress;
+  private final List<SocketChannel> channelsForWriteRegister;
 
   public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch, InetSocketAddress myBindAddress) {
     this.selector = selector;
@@ -37,7 +36,9 @@ public class ConnectionWorker implements Runnable {
     this.myKeyProcessors = Arrays.asList(
             new AcceptableKeyProcessor(selector, serverSocketStringRepresentation),
             new ConnectableKeyProcessor(selector),
-            new ReadableKeyProcessor(serverSocketStringRepresentation));
+            new ReadableKeyProcessor(serverSocketStringRepresentation),
+            new WritableKeyProcessor());
+    this.channelsForWriteRegister = new ArrayList<SocketChannel>();
   }
 
   @Override
@@ -54,6 +55,7 @@ public class ConnectionWorker implements Runnable {
             break;
           }
           connectToPeersFromQueue();
+          registerChannelForWrite();
           logger.trace("select keys from selector. Keys count is " + selected);
           if (selected == 0) {
             continue;
@@ -67,6 +69,24 @@ public class ConnectionWorker implements Runnable {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
     } finally {
       myCountDownLatch.countDown();
+    }
+  }
+
+  private void registerChannelForWrite() {
+    synchronized (channelsForWriteRegister) {
+      for (SocketChannel socketChannel : channelsForWriteRegister) {
+        SelectionKey selectionKey = socketChannel.keyFor(selector);
+        if (selectionKey == null) {
+          logger.error("Can not find key for channel {}", socketChannel);
+          continue;
+        }
+        try {
+          selectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+        } catch (CancelledKeyException e) {
+          LoggerUtils.warnAndDebugDetails(logger, "try write to channel {}, but key was cancelled ", socketChannel, e);
+        }
+      }
+      channelsForWriteRegister.clear();
     }
   }
 
@@ -146,7 +166,13 @@ public class ConnectionWorker implements Runnable {
       return false;
     }
     KeyAttachment keyAttachment = (KeyAttachment) attachment;
-    return addTaskToQueue(writeTask, timeout, timeUnit, keyAttachment.getWriteTasks());
+    boolean addedCorrectly = addTaskToQueue(writeTask, timeout, timeUnit, keyAttachment.getWriteTasks());
+    if (addedCorrectly) {
+      synchronized (channelsForWriteRegister) {
+        channelsForWriteRegister.add(socketChannel);
+      }
+    }
+    return addedCorrectly;
   }
 
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {
