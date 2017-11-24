@@ -10,9 +10,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -81,6 +83,14 @@ public class ConnectionManager {
     }
     return myConnectionWorker.offerConnect(connectTask, timeout, timeUnit);
   }
+
+  public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
+    if (myConnectionWorker == null) {
+      return false;
+    }
+    return myConnectionWorker.offerWrite(writeTask, timeout, timeUnit);
+  }
+
 
   public InetSocketAddress getBindAddress() {
     if (myConnectionWorker == null) {

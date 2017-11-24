@@ -129,16 +129,25 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
+    return addTaskToQueue(connectTask, timeout, timeUnit, myConnectQueue);
+  }
+
+  public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
+//    return addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);//todo separate queue for each channel
+    return false;
+  }
+
+  private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {
     try {
-      if (myConnectQueue.offer(connectTask, timeout, timeUnit)) {
-        logger.debug("added connect task {}. Wake up selector", connectTask);
+      if (queue.offer(task, timeout, timeUnit)) {
+        logger.debug("added task {}. Wake up selector", task);
         selector.wakeup();
         return true;
       }
     } catch (InterruptedException e) {
-      logger.debug("connect task interrupted before address was added to queue");
+      logger.debug("Task {} interrupted before was added to queue", task);
     }
-    logger.debug("connect task {} was not added", connectTask);
+    logger.debug("Task {} was not added", task);
     return false;
   }
 }
