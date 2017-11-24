@@ -26,10 +26,12 @@ public class ConnectionWorker implements Runnable {
   private final BlockingQueue<ConnectTask> myConnectQueue;
   private final CountDownLatch myCountDownLatch;
   private final List<KeyProcessor> myKeyProcessors;
+  private final InetSocketAddress myBindAddress;
 
-  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch) {
+  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch, InetSocketAddress myBindAddress) {
     this.selector = selector;
     this.myCountDownLatch = countDownLatch;
+    this.myBindAddress = myBindAddress;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = Arrays.asList(
             new AcceptableKeyProcessor(selector, serverSocketStringRepresentation),
@@ -107,6 +109,10 @@ public class ConnectionWorker implements Runnable {
       }
     }
     selectionKeys.clear();
+  }
+
+  public InetSocketAddress getBindAddress() {
+    return myBindAddress;
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {

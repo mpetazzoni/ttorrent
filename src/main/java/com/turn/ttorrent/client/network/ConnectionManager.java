@@ -31,7 +31,6 @@ public class ConnectionManager {
   private final ChannelListenerFactory channelListenerFactory;
   private volatile ConnectionWorker myConnectionWorker;
   private volatile ServerSocketChannel myServerSocketChannel;
-  private InetSocketAddress myBindAddress;
   private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
 
@@ -56,23 +55,23 @@ public class ConnectionManager {
   public void initAndRunWorker() throws IOException {
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
-
+    InetSocketAddress bindAddress = null;
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, channelListenerFactory);
-        this.myBindAddress = tryAddress;
+        bindAddress = tryAddress;
         break;
       } catch (IOException e) {
         //try next port
         logger.debug("Could not bind to port {}, trying next port...", port);
       }
     }
-    if (this.myBindAddress == null) {
+    if (bindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), myWorkerShutdownChecker);
+    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), myWorkerShutdownChecker, bindAddress);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
@@ -84,7 +83,10 @@ public class ConnectionManager {
   }
 
   public InetSocketAddress getBindAddress() {
-    return myBindAddress;
+    if (myConnectionWorker == null) {
+      return null;
+    }
+    return myConnectionWorker.getBindAddress();
   }
 
   public void close(int timeout, TimeUnit timeUnit) {
