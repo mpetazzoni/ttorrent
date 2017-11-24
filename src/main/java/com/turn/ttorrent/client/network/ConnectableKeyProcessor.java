@@ -40,7 +40,8 @@ public class ConnectableKeyProcessor implements KeyProcessor{
     }
     socketChannel.configureBlocking(false);
     ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-    socketChannel.register(mySelector, SelectionKey.OP_READ, connectionListener);
+    KeyAttachment keyAttachment = new KeyAttachment(connectionListener);
+    socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);
   }
 

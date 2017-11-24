@@ -31,12 +31,12 @@ public class ReadableKeyProcessor implements KeyProcessor {
     logger.trace("server {} get new data from {}", myServerSocketLocalAddress, socketChannel);
 
     Object attachment = key.attachment();
-    if (!(attachment instanceof ConnectionListener)) {
+    if (!(attachment instanceof KeyAttachment)) {
       logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
       socketChannel.close();
       return;
     }
-    ConnectionListener connectionListener = (ConnectionListener) attachment;
+    ConnectionListener connectionListener = ((KeyAttachment) attachment).getConnectionListener();
     connectionListener.onNewDataAvailable(socketChannel);
   }
 

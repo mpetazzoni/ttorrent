@@ -11,6 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -133,8 +134,19 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
-//    return addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);//todo separate queue for each channel
-    return false;
+    SocketChannel socketChannel = writeTask.getSocketChannel();
+    SelectionKey key = socketChannel.keyFor(selector);
+    if (key == null) {
+      logger.warn("unable to find key for channel {}", socketChannel);
+      return false;
+    }
+    Object attachment = key.attachment();
+    if (!(attachment instanceof KeyAttachment)) {
+      logger.warn("incorrect attachment {} for channel {}", attachment, socketChannel);
+      return false;
+    }
+    KeyAttachment keyAttachment = (KeyAttachment) attachment;
+    return addTaskToQueue(writeTask, timeout, timeUnit, keyAttachment.getWriteTasks());
   }
 
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {

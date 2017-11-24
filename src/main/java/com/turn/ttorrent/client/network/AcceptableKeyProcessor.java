@@ -40,7 +40,8 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);
     socketChannel.configureBlocking(false);
-    socketChannel.register(mySelector, SelectionKey.OP_READ, stateConnectionListener);
+    KeyAttachment keyAttachment = new KeyAttachment(stateConnectionListener);
+    socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
   }
 
   @Override
