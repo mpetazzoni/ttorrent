@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.PeersStorageProviderImpl;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -113,7 +112,7 @@ public class ConnectionManagerTest {
     int otherPeerPort = 7575;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
-    myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new ConnectionListener() {
+    myConnectionManager.offerConnect(new ConnectTask("127.0.0.1", otherPeerPort, new ConnectionListener() {
       @Override
       public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
 

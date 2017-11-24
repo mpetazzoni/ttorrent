@@ -128,7 +128,7 @@ public class ConnectionWorker implements Runnable {
     }
   }
 
-  public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
+  public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     try {
       if (myConnectQueue.offer(connectTask, timeout, timeUnit)) {
         logger.debug("added connect task {}. Wake up selector", connectTask);

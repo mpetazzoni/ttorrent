@@ -75,11 +75,11 @@ public class ConnectionManager {
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
-  public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
+  public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     if (myConnectionWorker == null) {
       return false;
     }
-    return myConnectionWorker.connect(connectTask, timeout, timeUnit);
+    return myConnectionWorker.offerConnect(connectTask, timeout, timeUnit);
   }
 
   public InetSocketAddress getBindAddress() {
