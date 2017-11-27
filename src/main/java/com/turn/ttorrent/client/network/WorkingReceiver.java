@@ -62,7 +62,7 @@ public class WorkingReceiver implements DataProcessor {
               PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength, messageBytes.capacity());
       logger.warn("current bytes in buffer is {}", Arrays.toString(messageBytes.array()));
       logger.warn("Close connection with peer {}", myPeerUID);
-      new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
     }
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
@@ -87,8 +87,7 @@ public class WorkingReceiver implements DataProcessor {
       SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       if (torrent == null) {
         logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", peer.getHexInfoHash(), peer);
-        ShutdownAndRemovePeerProcessor shutdownAndRemovePeerProcessor = new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider);
-        return shutdownAndRemovePeerProcessor.processAndGetNext(socketChannel);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
       }
 
       logger.trace("try parse message from {}. Torrent {}", peer, torrent);
