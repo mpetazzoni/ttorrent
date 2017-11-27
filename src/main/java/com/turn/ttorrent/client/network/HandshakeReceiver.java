@@ -20,22 +20,25 @@ public class HandshakeReceiver implements DataProcessor {
 
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
+  private final SharingPeerFactory sharingPeerFactory;
   private final String myHostAddress;
   private final int myPort;
   private final boolean myOnlyRead;
   private ByteBuffer messageBytes;
   private int pstrLength;
-  private final PeerActivityListener myPeerActivityListener;
+  private final SharingPeerRegister mySharingPeerRegister;
 
   public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
-                           PeerActivityListener myPeerActivityListener,
+                           SharingPeerFactory sharingPeerFactory,
+                           SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
                            int port,
                            boolean onlyRead) {
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
-    this.myPeerActivityListener = myPeerActivityListener;
+    this.sharingPeerFactory = sharingPeerFactory;
+    this.mySharingPeerRegister = sharingPeerRegister;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
@@ -67,7 +70,7 @@ public class HandshakeReceiver implements DataProcessor {
     try {
       readBytes = socketChannel.read(messageBytes);
     } catch (IOException e) {
-      e.printStackTrace();
+      LoggerUtils.warnAndDebugDetails(logger, "unable to read data from {}", socketChannel, e);
     }
     if (readBytes == -1) {
       return new ShutdownProcessor();
@@ -93,7 +96,8 @@ public class HandshakeReceiver implements DataProcessor {
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
-    SharingPeer sharingPeer = new SharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
+
+    SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
     SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
     if (old != null) {
@@ -111,7 +115,7 @@ public class HandshakeReceiver implements DataProcessor {
       }
     }
 
-    registerListenersAndBindChannel(sharingPeer, socketChannel, torrent);
+    mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
 
     return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider);
   }
@@ -126,11 +130,5 @@ public class HandshakeReceiver implements DataProcessor {
     return null;
   }
 
-  private void registerListenersAndBindChannel(SharingPeer sharingPeer, ByteChannel socketChannel, SharedTorrent torrent) throws IOException {
-    sharingPeer.setTorrentHash(torrent.getHexInfoHash());
 
-    sharingPeer.register(torrent);
-    sharingPeer.register(myPeerActivityListener);
-    sharingPeer.bind(socketChannel);
-  }
 }

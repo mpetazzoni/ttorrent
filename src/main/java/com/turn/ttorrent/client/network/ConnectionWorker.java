@@ -82,7 +82,7 @@ public class ConnectionWorker implements Runnable {
         return;
       }
       logger.debug("try register channel for write. Write task is {}", writeTask);
-      SocketChannel socketChannel = writeTask.getSocketChannel();
+      SocketChannel socketChannel = (SocketChannel)writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
         continue;
       }

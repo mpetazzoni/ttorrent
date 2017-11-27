@@ -2,10 +2,7 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeersStorageProvider;
-import com.turn.ttorrent.common.TorrentHash;
-import com.turn.ttorrent.common.TorrentsStorageProvider;
+import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,19 +19,22 @@ public class HandshakeSender implements DataProcessor {
   private final TorrentHash myTorrentHash;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
-  private final PeerActivityListener myPeerActivityListener;
+  private final SharingPeerRegister mySharingPeerRegister;
   private final InetSocketAddress mySendAddress;
+  private final SharingPeerFactory mySharingPeerFactory;
 
   public HandshakeSender(TorrentHash torrentHash,
                          PeersStorageProvider peersStorageProvider,
                          TorrentsStorageProvider torrentsStorageProvider,
-                         PeerActivityListener peerActivityListener,
-                         InetSocketAddress sendAddress) {
+                         SharingPeerRegister sharingPeerRegister,
+                         InetSocketAddress sendAddress,
+                         SharingPeerFactory sharingPeerFactory) {
     this.myTorrentHash = torrentHash;
     this.myPeersStorageProvider = peersStorageProvider;
     this.myTorrentsStorageProvider = torrentsStorageProvider;
-    this.myPeerActivityListener = peerActivityListener;
+    this.mySharingPeerRegister = sharingPeerRegister;
     this.mySendAddress = sendAddress;
+    this.mySharingPeerFactory = sharingPeerFactory;
   }
 
   @Override
@@ -56,7 +56,8 @@ public class HandshakeSender implements DataProcessor {
     return new HandshakeReceiver(
             myPeersStorageProvider,
             myTorrentsStorageProvider,
-            myPeerActivityListener,
+            mySharingPeerFactory,
+            mySharingPeerRegister,
             mySendAddress.getHostName(),
             mySendAddress.getPort(),
             true);

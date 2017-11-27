@@ -222,7 +222,10 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this, myExecutorService);
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider,
+            new SharingPeerRegisterImpl(this),
+            new SharingPeerFactoryImpl(this),
+            myExecutorService);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {
@@ -542,7 +545,7 @@ public class Client implements Runnable,
     }
 
     SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
-            search.getPeerId(), torrent);
+            search.getPeerId(), torrent, this);
     sharingPeer.setTorrentHash(hexInfoHash);
 
     return sharingPeer;
@@ -704,7 +707,7 @@ public class Client implements Runnable,
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
       SharingPeer match = new SharingPeer(peer.getIp(), peer.getPort(),
-              peer.getPeerId(), torrent);
+              peer.getPeerId(), torrent, this);
       match.setTorrentHash(hexInfoHash);
       foundPeers.add(match);
 
@@ -742,8 +745,8 @@ public class Client implements Runnable,
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
-              this,
-              torrent,
+              new SharingPeerRegisterImpl(this),
+              new SharingPeerFactoryImpl(this), torrent,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
       );
 
@@ -980,4 +983,8 @@ public class Client implements Runnable,
 
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
+
+  public ConnectionManager getConnectionManager() {
+    return myConnectionManager;
+  }
 }

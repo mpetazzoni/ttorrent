@@ -1,21 +1,22 @@
 package com.turn.ttorrent.client.network;
 
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.SocketChannel;
 
 public class WriteTask {
 
-  private final SocketChannel socketChannel;
+  private final ByteChannel socketChannel;
   private final ByteBuffer byteBuffer;
   private final WriteListener listener;
 
-  public WriteTask(SocketChannel socketChannel, ByteBuffer byteBuffer, WriteListener listener) {
+  public WriteTask(ByteChannel socketChannel, ByteBuffer byteBuffer, WriteListener listener) {
     this.socketChannel = socketChannel;
     this.byteBuffer = byteBuffer;
     this.listener = listener;
   }
 
-  public SocketChannel getSocketChannel() {
+  public ByteChannel getSocketChannel() {
     return socketChannel;
   }
 

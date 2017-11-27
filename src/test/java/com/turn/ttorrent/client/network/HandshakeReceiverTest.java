@@ -1,10 +1,13 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.DummyPeerActivityListener;
+import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import org.apache.log4j.*;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -24,7 +27,9 @@ public class HandshakeReceiverTest {
   private HandshakeReceiver myHandshakeReceiver;
   private PeersStorage myPeersStorage;
   private TorrentsStorage myTorrentsStorage;
+  private Mockery myMockery;
   private byte[] mySelfId;
+  private SharingPeerRegister mySharingPeerRegister;
 
   public HandshakeReceiverTest() {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
@@ -34,6 +39,8 @@ public class HandshakeReceiverTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    myMockery = new Mockery();
+    mySharingPeerRegister = myMockery.mock(SharingPeerRegister.class);
     Logger.getRootLogger().setLevel(Level.INFO);
     PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
     TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
@@ -45,13 +52,19 @@ public class HandshakeReceiverTest {
     myHandshakeReceiver = new HandshakeReceiver(
             peersStorageProviderImpl,
             torrentsStorageProviderImpl,
-            new DummyPeerActivityListener(),
+            new SharingPeerFactoryImpl(new Client()),
+            mySharingPeerRegister,
             "127.0.0.1",
             45664,
             false);
   }
 
   public void testReceiveHandshake() throws Exception {
+    myMockery.checking(new Expectations() {{
+      oneOf(mySharingPeerRegister).registerPeer(with(any(SharingPeer.class)), with(any(SharedTorrent.class)),
+              with(any(ByteChannel.class)));
+
+    }});
     Pipe p1 = Pipe.open();
     Pipe p2 = Pipe.open();
     ByteChannel client = new ByteSourceChannel(p1.source(), p2.sink());
@@ -75,6 +88,7 @@ public class HandshakeReceiverTest {
     answer.rewind();
     Handshake answerHs = Handshake.parse(answer);
     assertEquals(answerHs.getPeerId(), mySelfId);
+    myMockery.assertIsSatisfied();
   }
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc

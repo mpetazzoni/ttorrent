@@ -1,20 +1,16 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.common.LoggerUtils;
-import com.turn.ttorrent.common.PeersStorageProvider;
-import com.turn.ttorrent.common.TorrentsStorageProvider;
+import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -39,9 +35,13 @@ public class ConnectionManager {
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
-                           PeerActivityListener peerActivityListener,
+                           SharingPeerRegister sharingPeerRegister,
+                           SharingPeerFactoryImpl sharingPeerFactory,
                            ExecutorService executorService) throws IOException {
-    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener), executorService);
+    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
+            torrentsStorageProvider,
+            sharingPeerRegister,
+            sharingPeerFactory), executorService);
   }
 
   public ConnectionManager(InetAddress inetAddress,
