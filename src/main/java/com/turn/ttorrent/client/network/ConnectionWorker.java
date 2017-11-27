@@ -84,21 +84,27 @@ public class ConnectionWorker implements Runnable {
       logger.debug("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel)writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
+        writeTask.getListener().onWriteFailed();
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
+        writeTask.getListener().onWriteFailed();
         continue;
       }
       Object attachment = key.attachment();
       if (!(attachment instanceof KeyAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
+        writeTask.getListener().onWriteFailed();
         continue;
       }
       KeyAttachment keyAttachment = (KeyAttachment) attachment;
-      keyAttachment.getWriteTasks().offer(writeTask);
-      key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+      if (keyAttachment.getWriteTasks().offer(writeTask)) {
+        key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+      } else {
+        writeTask.getListener().onWriteFailed();
+      }
     }
   }
 

@@ -366,7 +366,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (this.isConnected()) {
       ByteBuffer data = message.getData();
       data.rewind();
-      this.client.getConnectionManager().offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
+      boolean writeTaskAdded = this.client.getConnectionManager().offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
         @Override
         public void onWriteFailed() {
           unbind(true);
@@ -376,6 +376,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         public void onWriteDone() {
         }
       }), 1, TimeUnit.SECONDS);
+      if (!writeTaskAdded) {
+        unbind(true);
+      }
     } else {
       logger.info("Attempting to send a message to non-connected peer {}!", this);
       unbind(true);
