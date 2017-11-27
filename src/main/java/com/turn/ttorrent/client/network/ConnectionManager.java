@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,6 @@ public class ConnectionManager {
 
   private final Selector selector;
   private final InetAddress inetAddress;
-  private final CountDownLatch myWorkerShutdownChecker;
   private final ChannelListenerFactory channelListenerFactory;
   private volatile ConnectionWorker myConnectionWorker;
   private volatile ServerSocketChannel myServerSocketChannel;
@@ -51,7 +49,6 @@ public class ConnectionManager {
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.channelListenerFactory = channelListenerFactory;
-    this.myWorkerShutdownChecker = new CountDownLatch(1);
   }
 
   public void initAndRunWorker() throws IOException {
@@ -73,7 +70,7 @@ public class ConnectionManager {
     if (bindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), myWorkerShutdownChecker, bindAddress);
+    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), bindAddress);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
@@ -106,7 +103,7 @@ public class ConnectionManager {
       myWorkerFuture.cancel(true);
       myConnectionWorker.stop();
       try {
-        boolean shutdownCorrectly = this.myWorkerShutdownChecker.await(timeout, timeUnit);
+        boolean shutdownCorrectly = myConnectionWorker.getCountDownLatch().await(timeout, timeUnit);
         if (!shutdownCorrectly) {
           successfullyClosed = false;
           logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);

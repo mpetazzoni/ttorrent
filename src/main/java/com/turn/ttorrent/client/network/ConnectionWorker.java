@@ -30,9 +30,9 @@ public class ConnectionWorker implements Runnable {
   private final List<KeyProcessor> myKeyProcessors;
   private final InetSocketAddress myBindAddress;
 
-  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, CountDownLatch countDownLatch, InetSocketAddress myBindAddress) {
+  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, InetSocketAddress myBindAddress) {
     this.selector = selector;
-    this.myCountDownLatch = countDownLatch;
+    this.myCountDownLatch = new CountDownLatch(1);
     this.myBindAddress = myBindAddress;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = Arrays.asList(
@@ -41,6 +41,10 @@ public class ConnectionWorker implements Runnable {
             new ReadableKeyProcessor(serverSocketStringRepresentation),
             new WritableKeyProcessor());
     this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
+  }
+
+  public CountDownLatch getCountDownLatch() {
+    return myCountDownLatch;
   }
 
   @Override
