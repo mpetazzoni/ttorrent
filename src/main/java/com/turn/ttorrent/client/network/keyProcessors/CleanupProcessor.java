@@ -12,7 +12,7 @@ public interface CleanupProcessor {
   void processCleanup(SelectionKey key);
 
   /**
-   * invoked when writing or reading is available for channel associated with this key
+   * invoked when get any activity for channel associated with this key
    *
    * @param key specified key
    */
