@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.network.keyProcessors.CleanupProcessor;
 import com.turn.ttorrent.client.network.keyProcessors.KeyProcessor;
 import com.turn.ttorrent.common.MockTimeService;
 import org.testng.annotations.Test;
@@ -34,7 +35,8 @@ public class ConnectionWorkerTest {
             Arrays.asList(acceptProcessor, notAcceptProcessor),
             10,
             0,
-            new MockTimeService());
+            new MockTimeService(),
+            mock(CleanupProcessor.class));
     connectionWorker.run();
     verify(mockSelector).selectedKeys();
     verify(mockKey).isValid();

@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.network.keyProcessors.CleanupProcessor;
 import com.turn.ttorrent.client.network.keyProcessors.KeyProcessor;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
@@ -32,17 +33,20 @@ public class ConnectionWorker implements Runnable {
   private long lastCleanupTime;
   private final long mySelectorTimeoutMillis;
   private final long myCleanupTimeoutMillis;
+  private final CleanupProcessor myCleanupProcessor;
 
   public ConnectionWorker(Selector selector,
                           List<KeyProcessor> keyProcessors,
                           long selectorTimeoutMillis,
                           long cleanupTimeoutMillis,
-                          TimeService timeService) {
+                          TimeService timeService,
+                          CleanupProcessor cleanupProcessor) {
     this.selector = selector;
     this.myTimeService = timeService;
     this.lastCleanupTime = timeService.now();
     this.mySelectorTimeoutMillis = selectorTimeoutMillis;
     this.myCleanupTimeoutMillis = cleanupTimeoutMillis;
+    this.myCleanupProcessor = cleanupProcessor;
     this.myCountDownLatch = new CountDownLatch(1);
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = keyProcessors;
@@ -89,6 +93,10 @@ public class ConnectionWorker implements Runnable {
 
   private void cleanup() {
     lastCleanupTime = myTimeService.now();
+    for (SelectionKey key : selector.keys()) {
+      if (!key.isValid()) continue;
+      //myCleanupProcessor.processCleanup(key);
+    }
   }
 
   private boolean needRunCleanup() {
@@ -176,6 +184,7 @@ public class ConnectionWorker implements Runnable {
       logger.info("Key for channel {} is invalid. Skipping", key.channel());
       return;
     }
+    myCleanupProcessor.processSelected(key);
     for (KeyProcessor keyProcessor : myKeyProcessors) {
       if (keyProcessor.accept(key)) {
         keyProcessor.process(key);

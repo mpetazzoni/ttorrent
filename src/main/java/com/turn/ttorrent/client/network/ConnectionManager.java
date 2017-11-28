@@ -1,9 +1,6 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.network.keyProcessors.AcceptableKeyProcessor;
-import com.turn.ttorrent.client.network.keyProcessors.ConnectableKeyProcessor;
-import com.turn.ttorrent.client.network.keyProcessors.ReadableKeyProcessor;
-import com.turn.ttorrent.client.network.keyProcessors.WritableKeyProcessor;
+import com.turn.ttorrent.client.network.keyProcessors.*;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,8 +77,9 @@ public class ConnectionManager {
             new AcceptableKeyProcessor(selector, serverName),
             new ConnectableKeyProcessor(selector),
             new ReadableKeyProcessor(serverName),
-            new WritableKeyProcessor()), 100, 60000,
-            new SystemTimeService());
+            new WritableKeyProcessor()), 100, 12000,
+            new SystemTimeService(),
+            new CleanupKeyProcessor(7000));
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
