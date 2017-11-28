@@ -28,4 +28,13 @@ public class KeyAttachment {
   public BlockingQueue<WriteTask> getWriteTasks() {
     return writeTasks;
   }
+
+  public long getLastCommunicationTime() {
+    return lastCommunicationTime;
+  }
+
+  public void communicated() {
+    lastCommunicationTime = myTimeService.now();
+  }
+
 }

@@ -64,6 +64,11 @@ public class ConnectionManagerTest {
         acceptCount.incrementAndGet();
         semaphore.release();
       }
+
+      @Override
+      public void onError(SocketChannel socketChannel, Throwable ex) {
+
+      }
     };
 
     myConnectionManager.initAndRunWorker();
@@ -122,6 +127,11 @@ public class ConnectionManagerTest {
       public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
         connectCount.incrementAndGet();
         semaphore.release();
+      }
+
+      @Override
+      public void onError(SocketChannel socketChannel, Throwable ex) {
+
       }
     }), 1, TimeUnit.SECONDS);
     ss.accept();

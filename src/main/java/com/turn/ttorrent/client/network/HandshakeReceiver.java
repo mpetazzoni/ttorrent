@@ -2,7 +2,6 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
@@ -130,5 +129,8 @@ public class HandshakeReceiver implements DataProcessor {
     return null;
   }
 
-
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return new ShutdownProcessor().processAndGetNext(socketChannel);
+  }
 }

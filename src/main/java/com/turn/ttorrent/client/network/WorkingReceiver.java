@@ -100,4 +100,9 @@ public class WorkingReceiver implements DataProcessor {
     this.messageBytes.rewind();
     return this;
   }
+
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
+  }
 }

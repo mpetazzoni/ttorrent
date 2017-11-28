@@ -41,6 +41,7 @@ public class ConnectionWorkerTest {
     verify(acceptProcessor).accept(mockKey);
     verify(acceptProcessor).process(mockKey);
     verify(notAcceptProcessor).accept(mockKey);
+    verifyNoMoreInteractions(notAcceptProcessor);
   }
 }
 

@@ -39,4 +39,9 @@ public class ShutdownAndRemovePeerProcessor implements DataProcessor {
     }
     removedPeer.unbind(true);
   }
+
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return processAndGetNext(socketChannel);
+  }
 }

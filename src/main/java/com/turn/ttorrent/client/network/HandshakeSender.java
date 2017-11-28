@@ -62,4 +62,9 @@ public class HandshakeSender implements DataProcessor {
             mySendAddress.getPort(),
             true);
   }
+
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return new ShutdownProcessor().processAndGetNext(socketChannel);
+  }
 }
