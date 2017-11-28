@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.*;
 
 import java.io.IOException;

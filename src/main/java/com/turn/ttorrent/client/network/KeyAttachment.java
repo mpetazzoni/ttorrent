@@ -33,6 +33,11 @@ public class KeyAttachment {
     return lastCommunicationTime;
   }
 
+  public boolean isTimeoutElapsed(long timeoutMillis) {
+    long minTimeForKeepAlive = myTimeService.now() - timeoutMillis;
+    return minTimeForKeepAlive > lastCommunicationTime;
+  }
+
   public void communicated() {
     lastCommunicationTime = myTimeService.now();
   }
