@@ -32,6 +32,7 @@ public class CleanupKeyProcessorTest {
     myKey = mock(SelectionKey.class);
     myChannel = SocketChannel.open();
     when(myKey.channel()).thenReturn(myChannel);
+    when(myKey.interestOps()).thenReturn(SelectionKey.OP_READ);
     myKey.attach(myKeyAttachment);
   }
 
@@ -66,6 +67,7 @@ public class CleanupKeyProcessorTest {
 
     verify(myKey).cancel();
     verify(myKey).channel();
+    verify(myKey).interestOps();
     verifyNoMoreInteractions(myKey);
 
     verify(myConnetionListener).onError(any(SocketChannel.class), any(SocketTimeoutException.class));
@@ -83,6 +85,7 @@ public class CleanupKeyProcessorTest {
     cleanupProcessor.processCleanup(myKey);
 
     assertEquals(myKeyAttachment.getLastCommunicationTime(), 10);
+    verify(myKey).interestOps();
     verify(myKey, never()).cancel();
   }
 

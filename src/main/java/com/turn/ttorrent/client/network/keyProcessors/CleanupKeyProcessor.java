@@ -22,17 +22,22 @@ public class CleanupKeyProcessor implements CleanupProcessor {
 
   @Override
   public void processCleanup(SelectionKey key) {
-    KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key, logger);
+    int interestOps = key.interestOps();
+    boolean isReadKey = (interestOps & SelectionKey.OP_READ) != 0;
+    boolean isWriteKey = (interestOps & SelectionKey.OP_WRITE) != 0;
+    if (!isWriteKey && !isReadKey) return;
+    KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key);
     if (attachment == null) {
       key.cancel();
       return;
     }
-    SocketChannel channel = KeyProcessorUtil.getCastedChannelOrNull(key, logger);
+    SocketChannel channel = KeyProcessorUtil.getCastedChannelOrNull(key);
     if (channel == null) {
       key.cancel();
       return;
     }
     if (attachment.isTimeoutElapsed(timeoutMillis)) {
+      logger.trace("channel {} was inactive in specified timeout {}ms. Close channel...", channel, timeoutMillis);
       try {
         channel.close();
         key.cancel();
@@ -45,7 +50,7 @@ public class CleanupKeyProcessor implements CleanupProcessor {
 
   @Override
   public void processSelected(SelectionKey key) {
-    KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key, logger);
+    KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key);
     if (attachment == null) {
       key.cancel();
       return;
