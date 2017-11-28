@@ -6,8 +6,6 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import org.apache.log4j.*;
-import org.jmock.Expectations;
-import org.jmock.Mockery;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -19,6 +17,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
 @Test
@@ -27,7 +29,6 @@ public class HandshakeReceiverTest {
   private HandshakeReceiver myHandshakeReceiver;
   private PeersStorage myPeersStorage;
   private TorrentsStorage myTorrentsStorage;
-  private Mockery myMockery;
   private byte[] mySelfId;
   private SharingPeerRegister mySharingPeerRegister;
 
@@ -39,8 +40,7 @@ public class HandshakeReceiverTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
-    myMockery = new Mockery();
-    mySharingPeerRegister = myMockery.mock(SharingPeerRegister.class);
+    mySharingPeerRegister = mock(SharingPeerRegister.class);
     Logger.getRootLogger().setLevel(Level.INFO);
     PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
     TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
@@ -60,11 +60,6 @@ public class HandshakeReceiverTest {
   }
 
   public void testReceiveHandshake() throws Exception {
-    myMockery.checking(new Expectations() {{
-      oneOf(mySharingPeerRegister).registerPeer(with(any(SharingPeer.class)), with(any(SharedTorrent.class)),
-              with(any(ByteChannel.class)));
-
-    }});
     Pipe p1 = Pipe.open();
     Pipe p2 = Pipe.open();
     ByteChannel client = new ByteSourceChannel(p1.source(), p2.sink());
@@ -88,7 +83,7 @@ public class HandshakeReceiverTest {
     answer.rewind();
     Handshake answerHs = Handshake.parse(answer);
     assertEquals(answerHs.getPeerId(), mySelfId);
-    myMockery.assertIsSatisfied();
+    verify(mySharingPeerRegister).registerPeer(any(SharingPeer.class), any(SharedTorrent.class), any(ByteChannel.class));
   }
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc
