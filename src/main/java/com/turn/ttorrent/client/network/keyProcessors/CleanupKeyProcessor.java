@@ -22,10 +22,8 @@ public class CleanupKeyProcessor implements CleanupProcessor {
 
   @Override
   public void processCleanup(SelectionKey key) {
-    int interestOps = key.interestOps();
-    boolean isReadKey = (interestOps & SelectionKey.OP_READ) != 0;
-    boolean isWriteKey = (interestOps & SelectionKey.OP_WRITE) != 0;
-    if (!isWriteKey && !isReadKey) return;
+    boolean isConnectOrAcceptKey = isConnectOrAcceptKey(key);
+    if (isConnectOrAcceptKey) return;
     KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key);
     if (attachment == null) {
       key.cancel();
@@ -48,8 +46,17 @@ public class CleanupKeyProcessor implements CleanupProcessor {
     }
   }
 
+  private boolean isConnectOrAcceptKey(SelectionKey key) {
+    int interestOps = key.interestOps();
+    boolean isConnect = (interestOps & SelectionKey.OP_ACCEPT) != 0;
+    boolean isAccept = (interestOps & SelectionKey.OP_CONNECT) != 0;
+    return isConnect || isAccept;
+  }
+
   @Override
   public void processSelected(SelectionKey key) {
+    boolean isConnectOrAcceptKey = isConnectOrAcceptKey(key);
+    if (isConnectOrAcceptKey) return;
     KeyAttachment attachment = KeyProcessorUtil.getCastedAttachmentOrNull(key);
     if (attachment == null) {
       key.cancel();
