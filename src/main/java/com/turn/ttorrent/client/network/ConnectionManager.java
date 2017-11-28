@@ -1,5 +1,9 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.network.keyProcessors.AcceptableKeyProcessor;
+import com.turn.ttorrent.client.network.keyProcessors.ConnectableKeyProcessor;
+import com.turn.ttorrent.client.network.keyProcessors.ReadableKeyProcessor;
+import com.turn.ttorrent.client.network.keyProcessors.WritableKeyProcessor;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +14,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +30,7 @@ public class ConnectionManager {
   private final InetAddress inetAddress;
   private final ChannelListenerFactory channelListenerFactory;
   private volatile ConnectionWorker myConnectionWorker;
+  private InetSocketAddress myBindAddress;
   private volatile ServerSocketChannel myServerSocketChannel;
   private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
@@ -53,23 +59,29 @@ public class ConnectionManager {
   public void initAndRunWorker() throws IOException {
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
-    InetSocketAddress bindAddress = null;
+    myBindAddress = null;
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, channelListenerFactory);
-        bindAddress = tryAddress;
+        myBindAddress = tryAddress;
         break;
       } catch (IOException e) {
         //try next port
         logger.debug("Could not bind to port {}, trying next port...", port);
       }
     }
-    if (bindAddress == null) {
+    if (myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), bindAddress);
+    String serverName = myServerSocketChannel.getLocalAddress().toString();
+    myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
+            new AcceptableKeyProcessor(selector, serverName),
+            new ConnectableKeyProcessor(selector),
+            new ReadableKeyProcessor(serverName),
+            new WritableKeyProcessor()), 100, 60000,
+            new SystemTimeService());
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
@@ -89,10 +101,7 @@ public class ConnectionManager {
 
 
   public InetSocketAddress getBindAddress() {
-    if (myConnectionWorker == null) {
-      return null;
-    }
-    return myConnectionWorker.getBindAddress();
+    return myBindAddress;
   }
 
   public void close(int timeout, TimeUnit timeUnit) {

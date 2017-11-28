@@ -1,7 +1,8 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.network.keyProcessors.*;
+import com.turn.ttorrent.client.network.keyProcessors.KeyProcessor;
 import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +12,6 @@ import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -28,18 +28,24 @@ public class ConnectionWorker implements Runnable {
   private final BlockingQueue<WriteTask> myWriteQueue;
   private final CountDownLatch myCountDownLatch;
   private final List<KeyProcessor> myKeyProcessors;
-  private final InetSocketAddress myBindAddress;
+  private final TimeService myTimeService;
+  private long lastCleanupTime;
+  private final long mySelectorTimeoutMillis;
+  private final long myCleanupTimeoutMillis;
 
-  public ConnectionWorker(Selector selector, String serverSocketStringRepresentation, InetSocketAddress myBindAddress) {
+  public ConnectionWorker(Selector selector,
+                          List<KeyProcessor> keyProcessors,
+                          long selectorTimeoutMillis,
+                          long cleanupTimeoutMillis,
+                          TimeService timeService) {
     this.selector = selector;
+    this.myTimeService = timeService;
+    this.lastCleanupTime = timeService.now();
+    this.mySelectorTimeoutMillis = selectorTimeoutMillis;
+    this.myCleanupTimeoutMillis = cleanupTimeoutMillis;
     this.myCountDownLatch = new CountDownLatch(1);
-    this.myBindAddress = myBindAddress;
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
-    this.myKeyProcessors = Arrays.asList(
-            new AcceptableKeyProcessor(selector, serverSocketStringRepresentation),
-            new ConnectableKeyProcessor(selector),
-            new ReadableKeyProcessor(serverSocketStringRepresentation),
-            new WritableKeyProcessor());
+    this.myKeyProcessors = keyProcessors;
     this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
   }
 
@@ -56,7 +62,7 @@ public class ConnectionWorker implements Runnable {
           logger.trace("try select keys from selector");
           int selected;
           try {
-            selected = selector.select();// TODO: 11/13/17 timeout
+            selected = selector.select(mySelectorTimeoutMillis);
           } catch (ClosedSelectorException e) {
             break;
           }
@@ -67,6 +73,9 @@ public class ConnectionWorker implements Runnable {
             continue;
           }
           processSelectedKeys();
+          if (needRunCleanup()) {
+            cleanup();
+          }
         } catch (Throwable e) {
           LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
         }
@@ -78,6 +87,14 @@ public class ConnectionWorker implements Runnable {
     }
   }
 
+  private void cleanup() {
+    lastCleanupTime = myTimeService.now();
+  }
+
+  private boolean needRunCleanup() {
+    return (myTimeService.now() - lastCleanupTime) < myCleanupTimeoutMillis;
+  }
+
   private void processWriteTasks() {
 
     WriteTask writeTask;
@@ -86,7 +103,7 @@ public class ConnectionWorker implements Runnable {
         return;
       }
       logger.debug("try register channel for write. Write task is {}", writeTask);
-      SocketChannel socketChannel = (SocketChannel)writeTask.getSocketChannel();
+      SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
         writeTask.getListener().onWriteFailed();
         continue;
@@ -152,10 +169,6 @@ public class ConnectionWorker implements Runnable {
       }
     }
     selectionKeys.clear();
-  }
-
-  public InetSocketAddress getBindAddress() {
-    return myBindAddress;
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {
