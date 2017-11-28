@@ -1,6 +1,7 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.*;
+import com.turn.ttorrent.common.SystemTimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
     }
     socketChannel.configureBlocking(false);
     ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-    KeyAttachment keyAttachment = new KeyAttachment(connectionListener);
+    KeyAttachment keyAttachment = new KeyAttachment(connectionListener, new SystemTimeService());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);
   }
