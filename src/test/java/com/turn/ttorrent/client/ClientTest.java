@@ -100,7 +100,7 @@ public class ClientTest {
         seeder.addTorrent(st1);
       }
       leech = createClient("leecher");
-      leech.start(InetAddress.getLocalHost());
+      leech.start(new InetAddress[]{InetAddress.getLocalHost()}, 5, null);
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
         SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);

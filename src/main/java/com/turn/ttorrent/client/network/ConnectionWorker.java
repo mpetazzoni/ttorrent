@@ -95,7 +95,7 @@ public class ConnectionWorker implements Runnable {
     lastCleanupTime = myTimeService.now();
     for (SelectionKey key : selector.keys()) {
       if (!key.isValid()) continue;
-      //myCleanupProcessor.processCleanup(key);
+      myCleanupProcessor.processCleanup(key);
     }
   }
 
