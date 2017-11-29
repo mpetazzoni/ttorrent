@@ -19,10 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.ConnectTask;
-import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.ConnectionManager;
-import com.turn.ttorrent.client.network.OutgoingConnectionListener;
+import com.turn.ttorrent.client.network.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -102,6 +99,8 @@ public class Client implements Runnable,
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final TorrentsStorage torrentsStorage;
+  private final CountLimitConnectionAllower myInConnectionAllower;
+  private final CountLimitConnectionAllower myOutConnectionAllower;
   private final PeersStorage peersStorage;
   private ConnectionManager myConnectionManager;
   private ExecutorService myExecutorService;
@@ -119,6 +118,8 @@ public class Client implements Runnable,
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
     this.myExecutorService = Executors.newSingleThreadExecutor();
     this.myClientNameSuffix = name;
+    this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
+    this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -206,6 +207,14 @@ public class Client implements Runnable,
     return new HashSet<SharingPeer>(this.peersStorage.getSharingPeers());
   }
 
+  public void setMaxInConnectionsCount(int maxConnectionsCount) {
+    this.myInConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
+  }
+
+  public void setMaxOutConnectionsCount(int maxConnectionsCount) {
+    this.myOutConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
+  }
+
   public void start(final InetAddress... bindAddresses) throws IOException {
     start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
   }
@@ -227,7 +236,9 @@ public class Client implements Runnable,
             new SharingPeerRegisterImpl(this),
             new SharingPeerFactoryImpl(this),
             myExecutorService,
-            new SystemTimeService());
+            new SystemTimeService(),
+            myInConnectionAllower,
+            myOutConnectionAllower);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {

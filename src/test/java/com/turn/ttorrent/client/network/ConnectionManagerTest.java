@@ -19,6 +19,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.*;
 
 public class ConnectionManagerTest {
@@ -43,10 +45,14 @@ public class ConnectionManagerTest {
         return connectionListener;
       }
     };
+    NewConnectionAllower newConnectionAllower = mock(NewConnectionAllower.class);
+    when(newConnectionAllower.isNewConnectionAllowed()).thenReturn(true);
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
             channelListenerFactory,
             myExecutorService,
-            new MockTimeService());
+            new MockTimeService(),
+            newConnectionAllower,
+            newConnectionAllower);
   }
 
   @Test

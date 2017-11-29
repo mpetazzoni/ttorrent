@@ -34,19 +34,21 @@ public class ConnectionWorker implements Runnable {
   private final int mySelectorTimeoutMillis;
   private final int myCleanupTimeoutMillis;
   private final CleanupProcessor myCleanupProcessor;
+  private final NewConnectionAllower myNewConnectionAllower;
 
   public ConnectionWorker(Selector selector,
                           List<KeyProcessor> keyProcessors,
                           int selectorTimeoutMillis,
                           int cleanupTimeoutMillis,
                           TimeService timeService,
-                          CleanupProcessor cleanupProcessor) {
+                          CleanupProcessor cleanupProcessor, NewConnectionAllower myNewConnectionAllower) {
     this.selector = selector;
     this.myTimeService = timeService;
     this.lastCleanupTime = timeService.now();
     this.mySelectorTimeoutMillis = selectorTimeoutMillis;
     this.myCleanupTimeoutMillis = cleanupTimeoutMillis;
     this.myCleanupProcessor = cleanupProcessor;
+    this.myNewConnectionAllower = myNewConnectionAllower;
     this.myCountDownLatch = new CountDownLatch(1);
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = keyProcessors;
@@ -193,6 +195,9 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
+    if (!myNewConnectionAllower.isNewConnectionAllowed()) {
+      return false;
+    }
     return addTaskToQueue(connectTask, timeout, timeUnit, myConnectQueue);
   }
 

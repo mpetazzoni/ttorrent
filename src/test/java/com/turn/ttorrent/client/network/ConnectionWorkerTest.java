@@ -36,7 +36,8 @@ public class ConnectionWorkerTest {
             10,
             0,
             new MockTimeService(),
-            mock(CleanupProcessor.class));
+            mock(CleanupProcessor.class),
+            mock(NewConnectionAllower.class));
     connectionWorker.run();
     verify(mockSelector).selectedKeys();
     verify(mockKey).isValid();

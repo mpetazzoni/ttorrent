@@ -1,9 +1,6 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.AcceptAttachment;
-import com.turn.ttorrent.client.network.ChannelListenerFactory;
-import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.client.network.*;
 import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +17,16 @@ public class AcceptableKeyProcessor implements KeyProcessor {
   private final Selector mySelector;
   private final String myServerSocketLocalAddress;
   private final TimeService myTimeService;
+  private final NewConnectionAllower myNewConnectionAllower;
 
-  public AcceptableKeyProcessor(Selector selector, String serverSocketLocalAddress, TimeService timeService) {
+  public AcceptableKeyProcessor(Selector selector,
+                                String serverSocketLocalAddress,
+                                TimeService timeService,
+                                NewConnectionAllower newConnectionAllower) {
     this.mySelector = selector;
     this.myServerSocketLocalAddress = serverSocketLocalAddress;
     this.myTimeService = timeService;
+    this.myNewConnectionAllower = newConnectionAllower;
   }
 
   @Override
@@ -45,6 +47,12 @@ public class AcceptableKeyProcessor implements KeyProcessor {
 
     SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
     logger.trace("server {} get new connection from {}", new Object[]{myServerSocketLocalAddress, socketChannel.socket()});
+
+    if (!myNewConnectionAllower.isNewConnectionAllowed()) {
+      logger.info("new connection is not allowed. New connection is closed");
+      socketChannel.close();
+      return;
+    }
 
     ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);

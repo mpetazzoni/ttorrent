@@ -34,6 +34,8 @@ public class ConnectionManager {
   private volatile ServerSocketChannel myServerSocketChannel;
   private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
+  private final NewConnectionAllower myIncomingConnectionAllower;
+  private final NewConnectionAllower myOutgoingConnectionAllower;
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
@@ -41,24 +43,32 @@ public class ConnectionManager {
                            SharingPeerRegister sharingPeerRegister,
                            SharingPeerFactoryImpl sharingPeerFactory,
                            ExecutorService executorService,
-                           TimeService timeService) throws IOException {
+                           TimeService timeService,
+                           NewConnectionAllower newIncomingConnectionAllower,
+                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
     this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
             sharingPeerRegister,
             sharingPeerFactory),
             executorService,
-            timeService);
+            timeService,
+            newIncomingConnectionAllower,
+            newOutgoingConnectionAllower);
   }
 
   public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
                            ExecutorService executorService,
-                           TimeService timeService) throws IOException {
+                           TimeService timeService,
+                           NewConnectionAllower newIncomingConnectionAllower,
+                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
     this.myExecutorService = executorService;
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.channelListenerFactory = channelListenerFactory;
     this.myTimeService = timeService;
+    this.myIncomingConnectionAllower = newIncomingConnectionAllower;
+    this.myOutgoingConnectionAllower = newOutgoingConnectionAllower;
   }
 
   public void initAndRunWorker() throws IOException {
@@ -82,12 +92,13 @@ public class ConnectionManager {
     }
     String serverName = myServerSocketChannel.getLocalAddress().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
-            new AcceptableKeyProcessor(selector, serverName, myTimeService),
+            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower),
             new ConnectableKeyProcessor(selector, myTimeService),
             new ReadableKeyProcessor(serverName),
             new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
             myTimeService,
-            new CleanupKeyProcessor(myTimeService));
+            new CleanupKeyProcessor(myTimeService),
+            myOutgoingConnectionAllower);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
