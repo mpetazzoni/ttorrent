@@ -196,6 +196,7 @@ public class ConnectionWorker implements Runnable {
 
   public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     if (!myNewConnectionAllower.isNewConnectionAllowed()) {
+      logger.info("can not add connect task {} to queue. New connection is not allowed", connectTask);
       return false;
     }
     return addTaskToQueue(connectTask, timeout, timeUnit, myConnectQueue);
