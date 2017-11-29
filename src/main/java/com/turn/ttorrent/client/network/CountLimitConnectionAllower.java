@@ -23,7 +23,6 @@ public class CountLimitConnectionAllower implements NewConnectionAllower {
 
   @Override
   public boolean isNewConnectionAllowed() {
-//    return myPeersStorage.getSharingPeers().size() < myMaxConnectionCount.get();
-    return true;
+    return myPeersStorage.getSharingPeers().size() < myMaxConnectionCount.get();
   }
 }
