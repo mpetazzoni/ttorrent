@@ -31,14 +31,14 @@ public class ConnectionWorker implements Runnable {
   private final List<KeyProcessor> myKeyProcessors;
   private final TimeService myTimeService;
   private long lastCleanupTime;
-  private final long mySelectorTimeoutMillis;
-  private final long myCleanupTimeoutMillis;
+  private final int mySelectorTimeoutMillis;
+  private final int myCleanupTimeoutMillis;
   private final CleanupProcessor myCleanupProcessor;
 
   public ConnectionWorker(Selector selector,
                           List<KeyProcessor> keyProcessors,
-                          long selectorTimeoutMillis,
-                          long cleanupTimeoutMillis,
+                          int selectorTimeoutMillis,
+                          int cleanupTimeoutMillis,
                           TimeService timeService,
                           CleanupProcessor cleanupProcessor) {
     this.selector = selector;
@@ -123,12 +123,12 @@ public class ConnectionWorker implements Runnable {
         continue;
       }
       Object attachment = key.attachment();
-      if (!(attachment instanceof KeyAttachment)) {
+      if (!(attachment instanceof ReadWriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
         writeTask.getListener().onWriteFailed();
         continue;
       }
-      KeyAttachment keyAttachment = (KeyAttachment) attachment;
+      ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {

@@ -2,13 +2,15 @@ package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.ChannelListenerFactory;
 import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.KeyAttachment;
-import com.turn.ttorrent.common.SystemTimeService;
+import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.*;
+
+import static com.turn.ttorrent.client.network.keyProcessors.Constants.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 public class AcceptableKeyProcessor implements KeyProcessor {
 
@@ -16,10 +18,12 @@ public class AcceptableKeyProcessor implements KeyProcessor {
 
   private final Selector mySelector;
   private final String myServerSocketLocalAddress;
+  private final TimeService myTimeService;
 
-  public AcceptableKeyProcessor(Selector selector, String serverSocketLocalAddress) {
+  public AcceptableKeyProcessor(Selector selector, String serverSocketLocalAddress, TimeService timeService) {
     this.mySelector = selector;
     this.myServerSocketLocalAddress = serverSocketLocalAddress;
+    this.myTimeService = timeService;
   }
 
   @Override
@@ -44,7 +48,7 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);
     socketChannel.configureBlocking(false);
-    KeyAttachment keyAttachment = new KeyAttachment(stateConnectionListener, new SystemTimeService());
+    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(stateConnectionListener, myTimeService.now(), SOCKET_CONNECTION_TIMEOUT_MILLIS);
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
   }
 

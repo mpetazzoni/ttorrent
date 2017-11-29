@@ -1,6 +1,7 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.KeyAttachment;
+import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.client.network.TimeoutAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,12 +13,12 @@ public class KeyProcessorUtil {
 
   private final static Logger logger = LoggerFactory.getLogger(KeyProcessorUtil.class);
 
-  public static KeyAttachment getCastedAttachmentOrNull(SelectionKey key) {
+  public static TimeoutAttachment getAttachmentAsTimeoutOrNull(SelectionKey key) {
     Object attachment = key.attachment();
     try {
-      return (KeyAttachment) attachment;
+      return (TimeoutAttachment) attachment;
     } catch (ClassCastException e) {
-      logger.warn("unable to cast attachment {} to specified type", attachment);
+      logger.error("unable to cast attachment {} to timeout attachment type", attachment);
     }
     return null;
   }

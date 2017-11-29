@@ -225,7 +225,8 @@ public class Client implements Runnable,
     this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider,
             new SharingPeerRegisterImpl(this),
             new SharingPeerFactoryImpl(this),
-            myExecutorService);
+            myExecutorService,
+            new SystemTimeService());
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {

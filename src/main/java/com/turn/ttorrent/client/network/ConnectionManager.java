@@ -22,10 +22,13 @@ public class ConnectionManager {
 
   public static final int PORT_RANGE_START = 6881;
   public static final int PORT_RANGE_END = 6889;
+  private static final int SELECTOR_SELECT_TIMEOUT = 100;
+  private static final int CLEANUP_RUN_TIMEOUT = 12000;
 
   private final Selector selector;
   private final InetAddress inetAddress;
   private final ChannelListenerFactory channelListenerFactory;
+  private final TimeService myTimeService;
   private volatile ConnectionWorker myConnectionWorker;
   private InetSocketAddress myBindAddress;
   private volatile ServerSocketChannel myServerSocketChannel;
@@ -37,20 +40,25 @@ public class ConnectionManager {
                            TorrentsStorageProvider torrentsStorageProvider,
                            SharingPeerRegister sharingPeerRegister,
                            SharingPeerFactoryImpl sharingPeerFactory,
-                           ExecutorService executorService) throws IOException {
+                           ExecutorService executorService,
+                           TimeService timeService) throws IOException {
     this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
             sharingPeerRegister,
-            sharingPeerFactory), executorService);
+            sharingPeerFactory),
+            executorService,
+            timeService);
   }
 
   public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
-                           ExecutorService executorService) throws IOException {
+                           ExecutorService executorService,
+                           TimeService timeService) throws IOException {
     this.myExecutorService = executorService;
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.channelListenerFactory = channelListenerFactory;
+    this.myTimeService = timeService;
   }
 
   public void initAndRunWorker() throws IOException {
@@ -74,12 +82,12 @@ public class ConnectionManager {
     }
     String serverName = myServerSocketChannel.getLocalAddress().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
-            new AcceptableKeyProcessor(selector, serverName),
-            new ConnectableKeyProcessor(selector),
+            new AcceptableKeyProcessor(selector, serverName, myTimeService),
+            new ConnectableKeyProcessor(selector, myTimeService),
             new ReadableKeyProcessor(serverName),
-            new WritableKeyProcessor()), 100, 12000,
+            new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
             new SystemTimeService(),
-            new CleanupKeyProcessor(7000));
+            new CleanupKeyProcessor(new SystemTimeService()));
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 

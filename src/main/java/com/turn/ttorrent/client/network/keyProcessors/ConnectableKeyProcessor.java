@@ -1,7 +1,7 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.*;
-import com.turn.ttorrent.common.SystemTimeService;
+import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,14 +11,18 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import static com.turn.ttorrent.client.network.keyProcessors.Constants.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+
 public class ConnectableKeyProcessor implements KeyProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectableKeyProcessor.class);
 
   private final Selector mySelector;
+  private final TimeService myTimeService;
 
-  public ConnectableKeyProcessor(Selector selector) {
+  public ConnectableKeyProcessor(Selector selector, TimeService timeService) {
     this.mySelector = selector;
+    this.myTimeService = timeService;
   }
 
   @Override
@@ -42,7 +46,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
     }
     socketChannel.configureBlocking(false);
     ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-    KeyAttachment keyAttachment = new KeyAttachment(connectionListener, new SystemTimeService());
+    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), SOCKET_CONNECTION_TIMEOUT_MILLIS);
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);
   }

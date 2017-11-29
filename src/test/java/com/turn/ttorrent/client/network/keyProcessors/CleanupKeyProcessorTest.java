@@ -1,7 +1,7 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.KeyAttachment;
+import com.turn.ttorrent.client.network.TimeoutAttachment;
 import com.turn.ttorrent.common.MockTimeService;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -13,13 +13,14 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import static org.mockito.Mockito.*;
-import static org.testng.Assert.assertEquals;
 
 @Test
 public class CleanupKeyProcessorTest {
 
+  private final int CLOSE_TIMEOUT = 100;
+
   private MockTimeService myTimeService;
-  private KeyAttachment myKeyAttachment;
+  private TimeoutAttachment myTimeoutAttachment;
   private SelectionKey myKey;
   private SelectableChannel myChannel;
   private ConnectionListener myConnetionListener;
@@ -28,12 +29,12 @@ public class CleanupKeyProcessorTest {
   public void setUp() throws Exception {
     myTimeService = new MockTimeService();
     myConnetionListener = mock(ConnectionListener.class);
-    myKeyAttachment = new KeyAttachment(myConnetionListener, myTimeService);
+    myTimeoutAttachment = mock(TimeoutAttachment.class);
     myKey = mock(SelectionKey.class);
     myChannel = SocketChannel.open();
     when(myKey.channel()).thenReturn(myChannel);
     when(myKey.interestOps()).thenReturn(SelectionKey.OP_READ);
-    myKey.attach(myKeyAttachment);
+    myKey.attach(myTimeoutAttachment);
   }
 
   public void testSelected() {
@@ -41,51 +42,41 @@ public class CleanupKeyProcessorTest {
     long oldTime = 10;
     myTimeService.setTime(oldTime);
 
-    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(100);
+    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(myTimeService);
     cleanupProcessor.processSelected(myKey);
 
-    assertEquals(myKeyAttachment.getLastCommunicationTime(), oldTime);
+    verify(myTimeoutAttachment).communicatedNow(eq(oldTime));
 
     long newTime = 100;
     myTimeService.setTime(newTime);
 
     cleanupProcessor.processSelected(myKey);
 
-    assertEquals(myKeyAttachment.getLastCommunicationTime(), newTime);
+    verify(myTimeoutAttachment).communicatedNow(eq(newTime));
   }
 
   public void testCleanupWillCloseWithTimeout() throws Exception {
-    long timeoutForClose = 20;
-    myTimeService.setTime(10);
 
-    myKeyAttachment.communicated();
+    when(myTimeoutAttachment.isTimeoutElapsed(anyLong())).thenReturn(true);
 
-    myTimeService.setTime(50);
-
-    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(timeoutForClose);
+    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(myTimeService);
     cleanupProcessor.processCleanup(myKey);
 
     verify(myKey).cancel();
     verify(myKey).channel();
-    verify(myKey).interestOps();
+    verify(myTimeoutAttachment).onTimeoutElapsed(any(SocketChannel.class));
     verifyNoMoreInteractions(myKey);
-
-    verify(myConnetionListener).onError(any(SocketChannel.class), any(SocketTimeoutException.class));
   }
 
   public void testCleanupWithoutClose() {
-    long timeoutForClose = 100;
-    myTimeService.setTime(10);
+    when(myTimeoutAttachment.isTimeoutElapsed(anyLong())).thenReturn(false);
 
-    myKeyAttachment.communicated();
+    myTimeService.setTime(200);
 
-    myTimeService.setTime(50);
-
-    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(timeoutForClose);
+    CleanupProcessor cleanupProcessor = new CleanupKeyProcessor(myTimeService);
     cleanupProcessor.processCleanup(myKey);
 
-    assertEquals(myKeyAttachment.getLastCommunicationTime(), 10);
-    verify(myKey).interestOps();
+    verify(myTimeoutAttachment).isTimeoutElapsed(myTimeService.now());
     verify(myKey, never()).cancel();
   }
 

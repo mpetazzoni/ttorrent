@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.KeyAttachment;
+import com.turn.ttorrent.client.network.ReadWriteAttachment;
 import com.turn.ttorrent.client.network.WriteTask;
 import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
@@ -28,13 +28,13 @@ public class WritableKeyProcessor implements KeyProcessor {
     SocketChannel socketChannel = (SocketChannel) channel;
 
     Object attachment = key.attachment();
-    if (!(attachment instanceof KeyAttachment)) {
+    if (!(attachment instanceof ReadWriteAttachment)) {
       logger.error("incorrect instance of attachment for channel {}", channel);
       key.cancel();
       return;
     }
 
-    KeyAttachment keyAttachment = (KeyAttachment) attachment;
+    ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
 
     if (keyAttachment.getWriteTasks().isEmpty()) {
       key.interestOps(SelectionKey.OP_READ);
