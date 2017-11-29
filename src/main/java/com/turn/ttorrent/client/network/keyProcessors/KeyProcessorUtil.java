@@ -28,7 +28,7 @@ public class KeyProcessorUtil {
     try {
       return (SocketChannel) channel;
     } catch (ClassCastException e) {
-      logger.warn("unable to cast channel {} to specified type");
+      logger.error("unable to cast channel {} to specified type");
     }
     return null;
   }

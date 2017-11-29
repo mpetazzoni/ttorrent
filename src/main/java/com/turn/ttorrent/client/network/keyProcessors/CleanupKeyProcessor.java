@@ -29,12 +29,14 @@ public class CleanupKeyProcessor implements CleanupProcessor {
       key.cancel();
       return;
     }
-    SocketChannel channel = KeyProcessorUtil.getCastedChannelOrNull(key);
-    if (channel == null) {
-      key.cancel();
-      return;
-    }
     if (attachment.isTimeoutElapsed(myTimeService.now())) {
+
+      SocketChannel channel = KeyProcessorUtil.getCastedChannelOrNull(key);
+      if (channel == null) {
+        key.cancel();
+        return;
+      }
+
       logger.debug("channel {} was inactive in specified timeout. Close channel...", channel);
       try {
         channel.close();

@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
+import com.turn.ttorrent.client.network.AcceptAttachment;
 import com.turn.ttorrent.client.network.ChannelListenerFactory;
 import com.turn.ttorrent.client.network.ConnectionListener;
 import com.turn.ttorrent.client.network.ReadWriteAttachment;
@@ -35,12 +36,12 @@ public class AcceptableKeyProcessor implements KeyProcessor {
       return;
     }
     Object attachment = key.attachment();
-    if (!(attachment instanceof ChannelListenerFactory)) {
+    if (!(attachment instanceof AcceptAttachment)) {
       logger.error("incorrect instance of server channel key attachment");
       key.cancel();
       return;
     }
-    ChannelListenerFactory channelListenerFactory = (ChannelListenerFactory) attachment;
+    ChannelListenerFactory channelListenerFactory = ((AcceptAttachment) attachment).getChannelListenerFactory();
 
     SocketChannel socketChannel = ((ServerSocketChannel) key.channel()).accept();
     logger.trace("server {} get new connection from {}", new Object[]{myServerSocketLocalAddress, socketChannel.socket()});

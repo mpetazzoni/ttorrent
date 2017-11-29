@@ -89,6 +89,7 @@ public class Client implements Runnable,
   private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+  private static final int CONNECTION_TIMEOUT = 10000;
 
   private Thread thread;
   private AtomicBoolean stop = new AtomicBoolean(false);
@@ -752,7 +753,11 @@ public class Client implements Runnable,
       );
 
       boolean connectTaskAdded = this.myConnectionManager.offerConnect(
-              new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), connectionListener), 1, TimeUnit.SECONDS);
+              new ConnectTask(sharingPeer.getIp(),
+                      sharingPeer.getPort(),
+                      connectionListener,
+                      new SystemTimeService().now(),
+                      CONNECTION_TIMEOUT), 1, TimeUnit.SECONDS);
       if (!connectTaskAdded) {
         logger.warn("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
       }

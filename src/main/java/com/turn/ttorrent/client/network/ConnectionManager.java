@@ -69,7 +69,7 @@ public class ConnectionManager {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
-        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, channelListenerFactory);
+        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(channelListenerFactory));
         myBindAddress = tryAddress;
         break;
       } catch (IOException e) {
@@ -86,8 +86,8 @@ public class ConnectionManager {
             new ConnectableKeyProcessor(selector, myTimeService),
             new ReadableKeyProcessor(serverName),
             new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
-            new SystemTimeService(),
-            new CleanupKeyProcessor(new SystemTimeService()));
+            myTimeService,
+            new CleanupKeyProcessor(myTimeService));
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 

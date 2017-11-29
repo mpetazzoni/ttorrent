@@ -1,6 +1,8 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.common.MockTimeService;
+import com.turn.ttorrent.common.SystemTimeService;
+import org.apache.log4j.*;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -25,8 +27,15 @@ public class ConnectionManagerTest {
   private ExecutorService myExecutorService;
   private ConnectionListener connectionListener;
 
+  public ConnectionManagerTest() {
+    if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
+      return;
+    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
+  }
+
   @BeforeMethod
   public void setUp() throws Exception {
+    Logger.getRootLogger().setLevel(Level.INFO);
     myExecutorService = Executors.newSingleThreadExecutor();
     ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
       @Override
@@ -135,7 +144,7 @@ public class ConnectionManagerTest {
       public void onError(SocketChannel socketChannel, Throwable ex) {
 
       }
-    }), 1, TimeUnit.SECONDS);
+    }, 0, 100), 1, TimeUnit.SECONDS);
     ss.accept();
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);
