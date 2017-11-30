@@ -582,6 +582,14 @@ public class ClientTest {
     }
   }
 
+  public void canStartAndStopClientTwice() throws Exception {
+    final Client client = createClient();
+    client.start(InetAddress.getLocalHost());
+    client.stop();
+    client.start(InetAddress.getLocalHost());
+    client.stop();
+  }
+
   public void peer_dies_during_download() throws InterruptedException, NoSuchAlgorithmException, IOException {
     tracker.setAnnounceInterval(5);
     final Client seed1 = createClient();
