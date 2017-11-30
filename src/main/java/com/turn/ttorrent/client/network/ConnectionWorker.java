@@ -32,7 +32,7 @@ public class ConnectionWorker implements Runnable {
   private final TimeService myTimeService;
   private long lastCleanupTime;
   private final int mySelectorTimeoutMillis;
-  private final int myCleanupTimeoutMillis;
+  private volatile long myCleanupTimeoutMillis;
   private final CleanupProcessor myCleanupProcessor;
   private final NewConnectionAllower myNewConnectionAllower;
 
@@ -41,7 +41,8 @@ public class ConnectionWorker implements Runnable {
                           int selectorTimeoutMillis,
                           int cleanupTimeoutMillis,
                           TimeService timeService,
-                          CleanupProcessor cleanupProcessor, NewConnectionAllower myNewConnectionAllower) {
+                          CleanupProcessor cleanupProcessor,
+                          NewConnectionAllower myNewConnectionAllower) {
     this.selector = selector;
     this.myTimeService = timeService;
     this.lastCleanupTime = timeService.now();
@@ -218,5 +219,9 @@ public class ConnectionWorker implements Runnable {
     }
     logger.debug("Task {} was not added", task);
     return false;
+  }
+
+  public void setCleanupTimeout(long timeoutMillis) {
+    this.myCleanupTimeoutMillis = timeoutMillis;
   }
 }

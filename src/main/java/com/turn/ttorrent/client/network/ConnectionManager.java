@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.turn.ttorrent.TorrentDefaults.CLEANUP_RUN_TIMEOUT;
 import static com.turn.ttorrent.TorrentDefaults.SELECTOR_SELECT_TIMEOUT;
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 public class ConnectionManager {
 
@@ -37,6 +38,7 @@ public class ConnectionManager {
   private volatile Future<?> myWorkerFuture;
   private final NewConnectionAllower myIncomingConnectionAllower;
   private final NewConnectionAllower myOutgoingConnectionAllower;
+  private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
@@ -93,8 +95,8 @@ public class ConnectionManager {
     }
     String serverName = myServerSocketChannel.getLocalAddress().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
-            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower),
-            new ConnectableKeyProcessor(selector, myTimeService),
+            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
+            new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
             new ReadableKeyProcessor(serverName),
             new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
             myTimeService,
@@ -173,4 +175,13 @@ public class ConnectionManager {
     close(1, TimeUnit.MINUTES);
   }
 
+  public void setCleanupTimeout(long timeoutMillis) {
+    if (myConnectionWorker != null) {
+      myConnectionWorker.setCleanupTimeout(timeoutMillis);
+    }
+  }
+
+  public void setSocketConnectionTimeout(long timeoutMillis) {
+    socketTimeoutStorage.setTimeout(timeoutMillis);
+  }
 }

@@ -19,10 +19,12 @@ public class ConnectableKeyProcessor implements KeyProcessor {
 
   private final Selector mySelector;
   private final TimeService myTimeService;
+  private final TimeoutStorage myTimeoutStorage;
 
-  public ConnectableKeyProcessor(Selector selector, TimeService timeService) {
+  public ConnectableKeyProcessor(Selector selector, TimeService timeService, TimeoutStorage timeoutStorage) {
     this.mySelector = selector;
     this.myTimeService = timeService;
+    this.myTimeoutStorage = timeoutStorage;
   }
 
   @Override
@@ -46,7 +48,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
     }
     socketChannel.configureBlocking(false);
     ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), SOCKET_CONNECTION_TIMEOUT_MILLIS);
+    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);
   }

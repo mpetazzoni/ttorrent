@@ -41,6 +41,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+
 /**
  * A pure-java BitTorrent client.
  * <p/>
@@ -102,7 +104,7 @@ public class Client implements Runnable,
   private final CountLimitConnectionAllower myInConnectionAllower;
   private final CountLimitConnectionAllower myOutConnectionAllower;
   private final PeersStorage peersStorage;
-  private ConnectionManager myConnectionManager;
+  private volatile ConnectionManager myConnectionManager;
   private ExecutorService myExecutorService;
 
   public Client() {
@@ -239,6 +241,7 @@ public class Client implements Runnable,
             new SystemTimeService(),
             myInConnectionAllower,
             myOutConnectionAllower);
+    this.setSocketConnectionTimeout(SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {
@@ -306,6 +309,19 @@ public class Client implements Runnable,
     }
     this.thread = null;
   }
+
+  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) {
+    if (myConnectionManager != null) {
+      myConnectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
+    }
+  }
+
+  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) {
+    if (myConnectionManager != null) {
+      myConnectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
+    }
+  }
+
 
   /**
    * Wait for downloading (and seeding, if requested) to complete.

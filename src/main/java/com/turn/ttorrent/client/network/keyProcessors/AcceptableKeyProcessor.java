@@ -18,15 +18,18 @@ public class AcceptableKeyProcessor implements KeyProcessor {
   private final String myServerSocketLocalAddress;
   private final TimeService myTimeService;
   private final NewConnectionAllower myNewConnectionAllower;
+  private final TimeoutStorage myTimeoutStorage;
 
   public AcceptableKeyProcessor(Selector selector,
                                 String serverSocketLocalAddress,
                                 TimeService timeService,
-                                NewConnectionAllower newConnectionAllower) {
+                                NewConnectionAllower newConnectionAllower,
+                                TimeoutStorage timeoutStorage) {
     this.mySelector = selector;
     this.myServerSocketLocalAddress = serverSocketLocalAddress;
     this.myTimeService = timeService;
     this.myNewConnectionAllower = newConnectionAllower;
+    this.myTimeoutStorage = timeoutStorage;
   }
 
   @Override
@@ -57,7 +60,7 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);
     socketChannel.configureBlocking(false);
-    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(stateConnectionListener, myTimeService.now(), SOCKET_CONNECTION_TIMEOUT_MILLIS);
+    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(stateConnectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
   }
 

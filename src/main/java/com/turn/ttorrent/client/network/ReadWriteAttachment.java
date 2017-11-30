@@ -12,10 +12,10 @@ public class ReadWriteAttachment implements ReadAttachment, WriteAttachment, Tim
 
   private long lastCommunicationTime;
   private final ConnectionListener connectionListener;
-  private final int myTimeoutMillis;
+  private final long myTimeoutMillis;
   private final BlockingQueue<WriteTask> writeTasks;
 
-  public ReadWriteAttachment(ConnectionListener connectionListener, long lastCommunicationTime, int timeoutMillis) {
+  public ReadWriteAttachment(ConnectionListener connectionListener, long lastCommunicationTime, long timeoutMillis) {
     this.connectionListener = connectionListener;
     this.writeTasks = new LinkedBlockingQueue<WriteTask>(WRITE_TASK_QUEUE_SIZE);
     this.lastCommunicationTime = lastCommunicationTime;
