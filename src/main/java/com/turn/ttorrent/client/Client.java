@@ -118,7 +118,6 @@ public class Client implements Runnable,
     this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
-    this.myExecutorService = Executors.newSingleThreadExecutor();
     this.myClientNameSuffix = name;
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
@@ -234,6 +233,7 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
+    this.myExecutorService = Executors.newSingleThreadExecutor();
     this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider,
             new SharingPeerRegisterImpl(this),
             new SharingPeerFactoryImpl(this),
@@ -699,6 +699,10 @@ public class Client implements Runnable,
       this.peersStorage.removeSharingPeer(peer);
     }
     return result;
+  }
+
+  public boolean containsTorrentWithHash(String hash) {
+    return torrentsStorage.hasTorrent(hash);
   }
 
   /** AnnounceResponseListener handler(s). **********************************/
