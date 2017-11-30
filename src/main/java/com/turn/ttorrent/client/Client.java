@@ -771,6 +771,18 @@ public class Client implements Runnable,
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
 
+      boolean alreadyConnectedToThisPeer = false;
+      String peerId = peersStorage.getPeerIdByAddress(sharingPeer.getIp(), sharingPeer.getPort());
+      if (peerId != null) {
+        PeerUID peerUID = new PeerUID(peerId, hexInfoHash);
+        alreadyConnectedToThisPeer = peersStorage.getSharingPeer(peerUID) != null;
+      }
+
+      if (alreadyConnectedToThisPeer) {
+        logger.debug("skipping peer {}, because we already connected to this peer", sharingPeer);
+        continue;
+      }
+
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
@@ -779,6 +791,8 @@ public class Client implements Runnable,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
       );
 
+      logger.trace("trying to connect to the peer {}", sharingPeer);
+
       boolean connectTaskAdded = this.myConnectionManager.offerConnect(
               new ConnectTask(sharingPeer.getIp(),
                       sharingPeer.getPort(),
@@ -786,7 +800,7 @@ public class Client implements Runnable,
                       new SystemTimeService().now(),
                       CONNECTION_TIMEOUT), 1, TimeUnit.SECONDS);
       if (!connectTaskAdded) {
-        logger.warn("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
+        logger.info("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
       }
     }
   }

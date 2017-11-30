@@ -98,7 +98,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
-    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
+    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myOnlyRead);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
       return new ShutdownProcessor();
