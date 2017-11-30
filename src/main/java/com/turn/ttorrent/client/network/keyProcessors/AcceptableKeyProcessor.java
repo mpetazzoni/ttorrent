@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.*;
 
-import static com.turn.ttorrent.client.network.keyProcessors.Constants.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 public class AcceptableKeyProcessor implements KeyProcessor {
 

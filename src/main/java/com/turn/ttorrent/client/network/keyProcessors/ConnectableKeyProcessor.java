@@ -11,7 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-import static com.turn.ttorrent.client.network.keyProcessors.Constants.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 public class ConnectableKeyProcessor implements KeyProcessor {
 

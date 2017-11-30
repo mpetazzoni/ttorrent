@@ -25,5 +25,9 @@ public class TorrentDefaults {
   public static final int ANNOUNCE_INTERVAL_SEC=60;
   public static final int FILESIZE_THRESHOLD_MB=10;
 
+  public final static int SOCKET_CONNECTION_TIMEOUT_MILLIS = 100000;
+  public static final int SELECTOR_SELECT_TIMEOUT = 10000;
+  public static final int CLEANUP_RUN_TIMEOUT = 120000;
+
 
 }

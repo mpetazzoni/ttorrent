@@ -16,14 +16,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.turn.ttorrent.TorrentDefaults.CLEANUP_RUN_TIMEOUT;
+import static com.turn.ttorrent.TorrentDefaults.SELECTOR_SELECT_TIMEOUT;
+
 public class ConnectionManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
 
   public static final int PORT_RANGE_START = 6881;
   public static final int PORT_RANGE_END = 6889;
-  private static final int SELECTOR_SELECT_TIMEOUT = 100;
-  private static final int CLEANUP_RUN_TIMEOUT = 12000;
 
   private final Selector selector;
   private final InetAddress inetAddress;
