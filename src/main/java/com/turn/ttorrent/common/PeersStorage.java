@@ -3,6 +3,7 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -83,11 +84,24 @@ public class PeersStorage {
     }
   }
 
+  public void removeSharingPeer(SharingPeer peer) {
+    Lock writeLock = myLock.writeLock();
+    try {
+      writeLock.lock();
+      boolean removed = connectedSharingPeers.values().remove(peer);
+      if (removed) {
+        addressPeerIdMapping.remove(new InetSocketAddress(peer.getIp(), peer.getPort()));
+      }
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
   public Collection<SharingPeer> getSharingPeers() {
     Lock readLock = myLock.readLock();
     try {
       readLock.lock();
-      return connectedSharingPeers.values();// TODO: 11/30/17 return copy
+      return new ArrayList<SharingPeer>(connectedSharingPeers.values());
     } finally {
       readLock.unlock();
     }

@@ -695,7 +695,9 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
-    this.peersStorage.getSharingPeers().removeAll(toRemove);
+    for (SharingPeer peer : toRemove) {
+      this.peersStorage.removeSharingPeer(peer);
+    }
     return result;
   }
 
@@ -760,7 +762,9 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
-    this.peersStorage.getSharingPeers().removeAll(toRemove);
+    for (SharingPeer peer : toRemove) {
+      this.peersStorage.removeSharingPeer(peer);
+    }
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
     }
