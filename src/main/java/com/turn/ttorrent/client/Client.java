@@ -313,16 +313,20 @@ public class Client implements Runnable,
     this.thread = null;
   }
 
-  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) {
-    if (myConnectionManager != null) {
-      myConnectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
+  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) throws IllegalStateException {
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
     }
+    connectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
   }
 
-  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) {
-    if (myConnectionManager != null) {
-      myConnectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
+  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) throws IllegalStateException {
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
     }
+    connectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
   }
 
 
@@ -1046,7 +1050,7 @@ public class Client implements Runnable,
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
 
-  public ConnectionManager getConnectionManager() {
+  public ConnectionManager getConnectionManager() throws IllegalStateException {
     ConnectionManager connectionManager = this.myConnectionManager;
     if (connectionManager == null) {
       throw new IllegalStateException("connection manager is null");
