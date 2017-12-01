@@ -15,4 +15,9 @@ public class ShutdownProcessor implements DataProcessor {
     DataProcessorUtil.closeChannelIfOpen(logger, socketChannel);
     return this;
   }
+
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return processAndGetNext(socketChannel);
+  }
 }

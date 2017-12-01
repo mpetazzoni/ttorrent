@@ -21,4 +21,12 @@ public interface ConnectionListener {
    */
   void onConnectionEstablished(SocketChannel socketChannel) throws IOException;
 
+  /**
+   * invoked when an error occurs
+   *
+   * @param socketChannel specified channel, associated with this channel
+   * @param ex            specified exception
+   * @throws IOException if an I/O error occurs
+   */
+  void onError(SocketChannel socketChannel, Throwable ex) throws IOException;
 }

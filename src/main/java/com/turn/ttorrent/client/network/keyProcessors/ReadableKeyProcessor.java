@@ -1,5 +1,7 @@
-package com.turn.ttorrent.client.network;
+package com.turn.ttorrent.client.network.keyProcessors;
 
+import com.turn.ttorrent.client.network.ConnectionListener;
+import com.turn.ttorrent.client.network.ReadWriteAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class ReadableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(ReadableKeyProcessor.class);
 
   private final String myServerSocketLocalAddress;
 
@@ -31,17 +33,17 @@ public class ReadableKeyProcessor implements KeyProcessor {
     logger.trace("server {} get new data from {}", myServerSocketLocalAddress, socketChannel);
 
     Object attachment = key.attachment();
-    if (!(attachment instanceof ConnectionListener)) {
+    if (!(attachment instanceof ReadWriteAttachment)) {
       logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
       socketChannel.close();
       return;
     }
-    ConnectionListener connectionListener = (ConnectionListener) attachment;
+    ConnectionListener connectionListener = ((ReadWriteAttachment) attachment).getConnectionListener();
     connectionListener.onNewDataAvailable(socketChannel);
   }
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isReadable();
+    return key.isValid() && key.isReadable();
   }
 }

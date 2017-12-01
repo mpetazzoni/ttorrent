@@ -2,7 +2,6 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
@@ -20,22 +19,25 @@ public class HandshakeReceiver implements DataProcessor {
 
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
+  private final SharingPeerFactory sharingPeerFactory;
   private final String myHostAddress;
   private final int myPort;
   private final boolean myOnlyRead;
   private ByteBuffer messageBytes;
   private int pstrLength;
-  private final PeerActivityListener myPeerActivityListener;
+  private final SharingPeerRegister mySharingPeerRegister;
 
   public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
-                           PeerActivityListener myPeerActivityListener,
+                           SharingPeerFactory sharingPeerFactory,
+                           SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
                            int port,
                            boolean onlyRead) {
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
-    this.myPeerActivityListener = myPeerActivityListener;
+    this.sharingPeerFactory = sharingPeerFactory;
+    this.mySharingPeerRegister = sharingPeerRegister;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
@@ -67,7 +69,7 @@ public class HandshakeReceiver implements DataProcessor {
     try {
       readBytes = socketChannel.read(messageBytes);
     } catch (IOException e) {
-      e.printStackTrace();
+      LoggerUtils.warnAndDebugDetails(logger, "unable to read data from {}", socketChannel, e);
     }
     if (readBytes == -1) {
       return new ShutdownProcessor();
@@ -93,9 +95,10 @@ public class HandshakeReceiver implements DataProcessor {
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
-    SharingPeer sharingPeer = new SharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
+
+    SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
-    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
+    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myOnlyRead);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
       return new ShutdownProcessor();
@@ -111,7 +114,7 @@ public class HandshakeReceiver implements DataProcessor {
       }
     }
 
-    registerListenersAndBindChannel(sharingPeer, socketChannel, torrent);
+    mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
 
     return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider);
   }
@@ -126,11 +129,8 @@ public class HandshakeReceiver implements DataProcessor {
     return null;
   }
 
-  private void registerListenersAndBindChannel(SharingPeer sharingPeer, ByteChannel socketChannel, SharedTorrent torrent) throws IOException {
-    sharingPeer.setTorrentHash(torrent.getHexInfoHash());
-
-    sharingPeer.register(torrent);
-    sharingPeer.register(myPeerActivityListener);
-    sharingPeer.bind(socketChannel);
+  @Override
+  public DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException {
+    return new ShutdownProcessor().processAndGetNext(socketChannel);
   }
 }

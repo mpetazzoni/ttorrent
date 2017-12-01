@@ -1,9 +1,7 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.common.LoggerUtils;
-import com.turn.ttorrent.common.PeersStorageProvider;
-import com.turn.ttorrent.common.TorrentsStorageProvider;
+import com.turn.ttorrent.client.network.keyProcessors.*;
+import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,10 +11,14 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
-import java.util.concurrent.CountDownLatch;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import static com.turn.ttorrent.TorrentDefaults.CLEANUP_RUN_TIMEOUT;
+import static com.turn.ttorrent.TorrentDefaults.SELECTOR_SELECT_TIMEOUT;
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 public class ConnectionManager {
 
@@ -27,66 +29,99 @@ public class ConnectionManager {
 
   private final Selector selector;
   private final InetAddress inetAddress;
-  private final CountDownLatch myWorkerShutdownChecker;
   private final ChannelListenerFactory channelListenerFactory;
+  private final TimeService myTimeService;
   private volatile ConnectionWorker myConnectionWorker;
+  private InetSocketAddress myBindAddress;
   private volatile ServerSocketChannel myServerSocketChannel;
   private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
+  private final NewConnectionAllower myIncomingConnectionAllower;
+  private final NewConnectionAllower myOutgoingConnectionAllower;
+  private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
 
   public ConnectionManager(InetAddress inetAddress,
                            PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
-                           PeerActivityListener peerActivityListener,
-                           ExecutorService executorService) throws IOException {
-    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider, torrentsStorageProvider, peerActivityListener), executorService);
+                           SharingPeerRegister sharingPeerRegister,
+                           SharingPeerFactoryImpl sharingPeerFactory,
+                           ExecutorService executorService,
+                           TimeService timeService,
+                           NewConnectionAllower newIncomingConnectionAllower,
+                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
+    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
+            torrentsStorageProvider,
+            sharingPeerRegister,
+            sharingPeerFactory),
+            executorService,
+            timeService,
+            newIncomingConnectionAllower,
+            newOutgoingConnectionAllower);
   }
 
   public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
-                           ExecutorService executorService) throws IOException {
+                           ExecutorService executorService,
+                           TimeService timeService,
+                           NewConnectionAllower newIncomingConnectionAllower,
+                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
     this.myExecutorService = executorService;
     this.selector = Selector.open();
     this.inetAddress = inetAddress;
     this.channelListenerFactory = channelListenerFactory;
-    this.myWorkerShutdownChecker = new CountDownLatch(1);
+    this.myTimeService = timeService;
+    this.myIncomingConnectionAllower = newIncomingConnectionAllower;
+    this.myOutgoingConnectionAllower = newOutgoingConnectionAllower;
   }
 
   public void initAndRunWorker() throws IOException {
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
-    InetSocketAddress bindAddress = null;
+    myBindAddress = null;
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
         myServerSocketChannel.socket().bind(tryAddress);
-        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, channelListenerFactory);
-        bindAddress = tryAddress;
+        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(channelListenerFactory));
+        myBindAddress = tryAddress;
         break;
       } catch (IOException e) {
         //try next port
         logger.debug("Could not bind to port {}, trying next port...", port);
       }
     }
-    if (bindAddress == null) {
+    if (myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    myConnectionWorker = new ConnectionWorker(selector, myServerSocketChannel.getLocalAddress().toString(), myWorkerShutdownChecker, bindAddress);
+    String serverName = myServerSocketChannel.getLocalAddress().toString();
+    myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
+            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
+            new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
+            new ReadableKeyProcessor(serverName),
+            new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
+            myTimeService,
+            new CleanupKeyProcessor(myTimeService),
+            myOutgoingConnectionAllower);
     myWorkerFuture = myExecutorService.submit(myConnectionWorker);
   }
 
-  public boolean connect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
+  public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     if (myConnectionWorker == null) {
       return false;
     }
-    return myConnectionWorker.connect(connectTask, timeout, timeUnit);
+    return myConnectionWorker.offerConnect(connectTask, timeout, timeUnit);
   }
 
-  public InetSocketAddress getBindAddress() {
+  public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
     if (myConnectionWorker == null) {
-      return null;
+      return false;
     }
-    return myConnectionWorker.getBindAddress();
+    return myConnectionWorker.offerWrite(writeTask, timeout, timeUnit);
+  }
+
+
+  public InetSocketAddress getBindAddress() {
+    return myBindAddress;
   }
 
   public void close(int timeout, TimeUnit timeUnit) {
@@ -96,7 +131,7 @@ public class ConnectionManager {
       myWorkerFuture.cancel(true);
       myConnectionWorker.stop();
       try {
-        boolean shutdownCorrectly = this.myWorkerShutdownChecker.await(timeout, timeUnit);
+        boolean shutdownCorrectly = myConnectionWorker.getCountDownLatch().await(timeout, timeUnit);
         if (!shutdownCorrectly) {
           successfullyClosed = false;
           logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);
@@ -140,4 +175,13 @@ public class ConnectionManager {
     close(1, TimeUnit.MINUTES);
   }
 
+  public void setCleanupTimeout(long timeoutMillis) {
+    if (myConnectionWorker != null) {
+      myConnectionWorker.setCleanupTimeout(timeoutMillis);
+    }
+  }
+
+  public void setSocketConnectionTimeout(long timeoutMillis) {
+    socketTimeoutStorage.setTimeout(timeoutMillis);
+  }
 }

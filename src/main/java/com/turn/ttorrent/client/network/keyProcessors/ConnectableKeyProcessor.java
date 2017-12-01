@@ -1,5 +1,7 @@
-package com.turn.ttorrent.client.network;
+package com.turn.ttorrent.client.network.keyProcessors;
 
+import com.turn.ttorrent.client.network.*;
+import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,14 +11,20 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-public class ConnectableKeyProcessor implements KeyProcessor{
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
+public class ConnectableKeyProcessor implements KeyProcessor {
+
+  private static final Logger logger = LoggerFactory.getLogger(ConnectableKeyProcessor.class);
 
   private final Selector mySelector;
+  private final TimeService myTimeService;
+  private final TimeoutStorage myTimeoutStorage;
 
-  public ConnectableKeyProcessor(Selector selector) {
+  public ConnectableKeyProcessor(Selector selector, TimeService timeService, TimeoutStorage timeoutStorage) {
     this.mySelector = selector;
+    this.myTimeService = timeService;
+    this.myTimeoutStorage = timeoutStorage;
   }
 
   @Override
@@ -40,12 +48,13 @@ public class ConnectableKeyProcessor implements KeyProcessor{
     }
     socketChannel.configureBlocking(false);
     ConnectionListener connectionListener = ((ConnectTask) attachment).getConnectionListener();
-    socketChannel.register(mySelector, SelectionKey.OP_READ, connectionListener);
+    ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
+    socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);
   }
 
   @Override
   public boolean accept(SelectionKey key) {
-    return key.isConnectable();
+    return key.isValid() && key.isConnectable();
   }
 }

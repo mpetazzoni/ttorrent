@@ -1,6 +1,8 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.PeersStorageProviderImpl;
+import com.turn.ttorrent.common.MockTimeService;
+import com.turn.ttorrent.common.SystemTimeService;
+import org.apache.log4j.*;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -17,6 +19,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.*;
 
 public class ConnectionManagerTest {
@@ -25,8 +29,15 @@ public class ConnectionManagerTest {
   private ExecutorService myExecutorService;
   private ConnectionListener connectionListener;
 
+  public ConnectionManagerTest() {
+    if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
+      return;
+    BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
+  }
+
   @BeforeMethod
   public void setUp() throws Exception {
+    Logger.getRootLogger().setLevel(Level.INFO);
     myExecutorService = Executors.newSingleThreadExecutor();
     ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
       @Override
@@ -34,9 +45,14 @@ public class ConnectionManagerTest {
         return connectionListener;
       }
     };
+    NewConnectionAllower newConnectionAllower = mock(NewConnectionAllower.class);
+    when(newConnectionAllower.isNewConnectionAllowed()).thenReturn(true);
     myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
             channelListenerFactory,
-            myExecutorService);
+            myExecutorService,
+            new MockTimeService(),
+            newConnectionAllower,
+            newConnectionAllower);
   }
 
   @Test
@@ -64,6 +80,11 @@ public class ConnectionManagerTest {
       public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
         acceptCount.incrementAndGet();
         semaphore.release();
+      }
+
+      @Override
+      public void onError(SocketChannel socketChannel, Throwable ex) {
+
       }
     };
 
@@ -113,7 +134,7 @@ public class ConnectionManagerTest {
     int otherPeerPort = 7575;
     ServerSocket ss = new ServerSocket(otherPeerPort);
     assertEquals(connectCount.get(), 0);
-    myConnectionManager.connect(new ConnectTask("127.0.0.1", otherPeerPort, new ConnectionListener() {
+    myConnectionManager.offerConnect(new ConnectTask("127.0.0.1", otherPeerPort, new ConnectionListener() {
       @Override
       public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
 
@@ -124,7 +145,12 @@ public class ConnectionManagerTest {
         connectCount.incrementAndGet();
         semaphore.release();
       }
-    }), 1, TimeUnit.SECONDS);
+
+      @Override
+      public void onError(SocketChannel socketChannel, Throwable ex) {
+
+      }
+    }, 0, 100), 1, TimeUnit.SECONDS);
     ss.accept();
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);

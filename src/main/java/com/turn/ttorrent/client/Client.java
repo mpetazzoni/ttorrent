@@ -19,10 +19,7 @@ import com.turn.ttorrent.TorrentDefaults;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.ConnectTask;
-import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.ConnectionManager;
-import com.turn.ttorrent.client.network.OutgoingConnectionListener;
+import com.turn.ttorrent.client.network.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
@@ -43,6 +40,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 /**
  * A pure-java BitTorrent client.
@@ -89,6 +88,7 @@ public class Client implements Runnable,
   private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+  private static final int CONNECTION_TIMEOUT = 10000;
 
   private Thread thread;
   private AtomicBoolean stop = new AtomicBoolean(false);
@@ -101,8 +101,10 @@ public class Client implements Runnable,
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final TorrentsStorage torrentsStorage;
+  private final CountLimitConnectionAllower myInConnectionAllower;
+  private final CountLimitConnectionAllower myOutConnectionAllower;
   private final PeersStorage peersStorage;
-  private ConnectionManager myConnectionManager;
+  private volatile ConnectionManager myConnectionManager;
   private ExecutorService myExecutorService;
 
   public Client() {
@@ -116,8 +118,9 @@ public class Client implements Runnable,
     this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
-    this.myExecutorService = Executors.newSingleThreadExecutor();
     this.myClientNameSuffix = name;
+    this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
+    this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -205,6 +208,14 @@ public class Client implements Runnable,
     return new HashSet<SharingPeer>(this.peersStorage.getSharingPeers());
   }
 
+  public void setMaxInConnectionsCount(int maxConnectionsCount) {
+    this.myInConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
+  }
+
+  public void setMaxOutConnectionsCount(int maxConnectionsCount) {
+    this.myOutConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
+  }
+
   public void start(final InetAddress... bindAddresses) throws IOException {
     start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
   }
@@ -222,7 +233,15 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider, this, myExecutorService);
+    this.myExecutorService = Executors.newSingleThreadExecutor();
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider,
+            new SharingPeerRegisterImpl(this),
+            new SharingPeerFactoryImpl(this),
+            myExecutorService,
+            new SystemTimeService(),
+            myInConnectionAllower,
+            myOutConnectionAllower);
+    this.setSocketConnectionTimeout(SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {
@@ -290,6 +309,19 @@ public class Client implements Runnable,
     }
     this.thread = null;
   }
+
+  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) {
+    if (myConnectionManager != null) {
+      myConnectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
+    }
+  }
+
+  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) {
+    if (myConnectionManager != null) {
+      myConnectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
+    }
+  }
+
 
   /**
    * Wait for downloading (and seeding, if requested) to complete.
@@ -542,7 +574,7 @@ public class Client implements Runnable,
     }
 
     SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
-            search.getPeerId(), torrent);
+            search.getPeerId(), torrent, this);
     sharingPeer.setTorrentHash(hexInfoHash);
 
     return sharingPeer;
@@ -663,8 +695,14 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
-    this.peersStorage.getSharingPeers().removeAll(toRemove);
+    for (SharingPeer peer : toRemove) {
+      this.peersStorage.removeSharingPeer(peer);
+    }
     return result;
+  }
+
+  public boolean containsTorrentWithHash(String hash) {
+    return torrentsStorage.hasTorrent(hash);
   }
 
   /** AnnounceResponseListener handler(s). **********************************/
@@ -704,7 +742,7 @@ public class Client implements Runnable,
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
       SharingPeer match = new SharingPeer(peer.getIp(), peer.getPort(),
-              peer.getPeerId(), torrent);
+              peer.getPeerId(), torrent, this);
       match.setTorrentHash(hexInfoHash);
       foundPeers.add(match);
 
@@ -728,7 +766,9 @@ public class Client implements Runnable,
         toRemove.add(peer);
       }
     }
-    this.peersStorage.getSharingPeers().removeAll(toRemove);
+    for (SharingPeer peer : toRemove) {
+      this.peersStorage.removeSharingPeer(peer);
+    }
     for (SharingPeer peer : toRemove) {
       peer.unbind(true);
     }
@@ -739,18 +779,36 @@ public class Client implements Runnable,
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
 
+      boolean alreadyConnectedToThisPeer = false;
+      String peerId = peersStorage.getPeerIdByAddress(sharingPeer.getIp(), sharingPeer.getPort());
+      if (peerId != null) {
+        PeerUID peerUID = new PeerUID(peerId, hexInfoHash);
+        alreadyConnectedToThisPeer = peersStorage.getSharingPeer(peerUID) != null;
+      }
+
+      if (alreadyConnectedToThisPeer) {
+        logger.debug("skipping peer {}, because we already connected to this peer", sharingPeer);
+        continue;
+      }
+
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
-              this,
-              torrent,
+              new SharingPeerRegisterImpl(this),
+              new SharingPeerFactoryImpl(this), torrent,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
       );
 
-      boolean connectTaskAdded = this.myConnectionManager.connect(
-              new ConnectTask(sharingPeer.getIp(), sharingPeer.getPort(), connectionListener), 1, TimeUnit.SECONDS);
+      logger.trace("trying to connect to the peer {}", sharingPeer);
+
+      boolean connectTaskAdded = this.myConnectionManager.offerConnect(
+              new ConnectTask(sharingPeer.getIp(),
+                      sharingPeer.getPort(),
+                      connectionListener,
+                      new SystemTimeService().now(),
+                      CONNECTION_TIMEOUT), 1, TimeUnit.SECONDS);
       if (!connectTaskAdded) {
-        logger.warn("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
+        logger.info("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
       }
     }
   }
@@ -980,4 +1038,8 @@ public class Client implements Runnable,
 
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
+
+  public ConnectionManager getConnectionManager() {
+    return myConnectionManager;
+  }
 }

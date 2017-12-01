@@ -100,7 +100,7 @@ public class ClientTest {
         seeder.addTorrent(st1);
       }
       leech = createClient("leecher");
-      leech.start(InetAddress.getLocalHost());
+      leech.start(new InetAddress[]{InetAddress.getLocalHost()}, 5, null);
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
         SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);
@@ -580,6 +580,14 @@ public class ClientTest {
     } catch (IOException ex){
       assertEquals(st.getClientState(),ClientState.DONE);
     }
+  }
+
+  public void canStartAndStopClientTwice() throws Exception {
+    final Client client = createClient();
+    client.start(InetAddress.getLocalHost());
+    client.stop();
+    client.start(InetAddress.getLocalHost());
+    client.stop();
   }
 
   public void peer_dies_during_download() throws InterruptedException, NoSuchAlgorithmException, IOException {

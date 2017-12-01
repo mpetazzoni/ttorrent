@@ -15,4 +15,13 @@ public interface DataProcessor {
    */
   DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException;
 
+  /**
+   * the method must handle error and correctly release resources
+   * @param socketChannel specified channel
+   * @param e specified exception
+   * @return data processor which must process next error. Can be null
+   * @throws IOException if an I/O error occurs
+   */
+  DataProcessor handleError(ByteChannel socketChannel, Throwable e) throws IOException;
+
 }
