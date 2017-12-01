@@ -27,7 +27,7 @@ public class ShutdownAndRemovePeerProcessor implements DataProcessor {
     DataProcessorUtil.closeChannelIfOpen(logger, socketChannel);
     logger.debug("try remove and unbind peer. Peer UID - {}", myPeerUID);
     removePeer();
-    return new ShutdownProcessor();
+    return null;
   }
 
   private void removePeer() {
