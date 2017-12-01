@@ -21,6 +21,7 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.network.WriteListener;
 import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -369,7 +370,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       data.rewind();
       boolean writeTaskAdded = connectionManager.offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
         @Override
-        public void onWriteFailed() {
+        public void onWriteFailed(String message, Throwable e) {
+          logger.debug(message, e);
           unbind(true);
         }
 

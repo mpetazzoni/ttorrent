@@ -116,28 +116,32 @@ public class ConnectionWorker implements Runnable {
       logger.debug("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), null);
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), null);
         continue;
       }
       Object attachment = key.attachment();
       if (!(attachment instanceof ReadWriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
         continue;
       }
       ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "write queue in current attachment is overflow"), null);
       }
     }
+  }
+
+  private String getDefaultWriteErrorMessageWithSuffix(SocketChannel socketChannel, String suffix) {
+    return "unable write data to channel " + socketChannel + ". " + suffix;
   }
 
   private void connectToPeersFromQueue() {
