@@ -579,10 +579,7 @@ public class Client implements Runnable,
       return sharingPeerOld;
     }
 
-    SharingPeer sharingPeer = createSharingPeer(search, torrent);
-    sharingPeer.setTorrentHash(hexInfoHash);
-
-    return sharingPeer;
+    return createSharingPeer(search, torrent, hexInfoHash);
   }
 
   /**
@@ -746,8 +743,7 @@ public class Client implements Runnable,
     Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
-      SharingPeer match = createSharingPeer(peer, torrent);
-      match.setTorrentHash(hexInfoHash);
+      SharingPeer match = createSharingPeer(peer, torrent, hexInfoHash);
       foundPeers.add(match);
 
       // Attempt to connect to the peer if and only if:
@@ -818,9 +814,11 @@ public class Client implements Runnable,
     }
   }
 
-  private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent) {
-    return new SharingPeer(peer.getIp(), peer.getPort(),
+  private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent, String hexInfoHash) {
+    SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(),
             peer.getPeerId(), torrent, this.getConnectionManager());
+    sharingPeer.setTorrentHash(hexInfoHash);
+    return sharingPeer;
   }
 
   /** CommunicationListener handler(s). ********************************/
