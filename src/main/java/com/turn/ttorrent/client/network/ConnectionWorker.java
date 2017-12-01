@@ -208,7 +208,11 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
-    return addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);
+    boolean done = addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);
+    if (!done) {
+      writeTask.getListener().onWriteFailed("unable add task " + writeTask + " to the queue. Maybe queue if overload", null);
+    }
+    return done;
   }
 
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {
