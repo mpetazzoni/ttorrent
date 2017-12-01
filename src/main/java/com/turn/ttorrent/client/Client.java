@@ -105,7 +105,7 @@ public class Client implements Runnable,
   private final ChannelListenerFactory myChannelListenerFactory;
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
-  private ExecutorService myExecutorService;
+  private volatile ExecutorService myExecutorService;
 
   public Client() {
     this("");
@@ -777,6 +777,7 @@ public class Client implements Runnable,
       e.getValue().setTorrentHash(hexInfoHash);
       e.getKey().setTorrentHash(hexInfoHash);
     }
+
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
 
