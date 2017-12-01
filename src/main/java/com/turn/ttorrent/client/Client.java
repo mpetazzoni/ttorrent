@@ -572,8 +572,7 @@ public class Client implements Runnable,
       return sharingPeerOld;
     }
 
-    SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
-            search.getPeerId(), torrent, this);
+    SharingPeer sharingPeer = createSharingPeer(search, torrent);
     sharingPeer.setTorrentHash(hexInfoHash);
 
     return sharingPeer;
@@ -740,8 +739,7 @@ public class Client implements Runnable,
     Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
-      SharingPeer match = new SharingPeer(peer.getIp(), peer.getPort(),
-              peer.getPeerId(), torrent, this);
+      SharingPeer match = createSharingPeer(peer, torrent);
       match.setTorrentHash(hexInfoHash);
       foundPeers.add(match);
 
@@ -810,6 +808,11 @@ public class Client implements Runnable,
         logger.info("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
       }
     }
+  }
+
+  private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent) {
+    return new SharingPeer(peer.getIp(), peer.getPort(),
+            peer.getPeerId(), torrent, this);
   }
 
   /** CommunicationListener handler(s). ********************************/
