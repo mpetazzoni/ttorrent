@@ -1,8 +1,8 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.common.MockTimeService;
-import com.turn.ttorrent.common.SystemTimeService;
 import org.apache.log4j.*;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -53,6 +53,20 @@ public class ConnectionManagerTest {
             new MockTimeService(),
             newConnectionAllower,
             newConnectionAllower);
+  }
+
+  @Test(expectedExceptions = IllegalStateException.class)
+  public void testThatDoubleInitThrowException() {
+    try {
+      myConnectionManager.initAndRunWorker();
+    } catch (IOException e) {
+      fail("unable to init and run worker", e);
+    }
+    try {
+      myConnectionManager.initAndRunWorker();
+    } catch (IOException e) {
+      fail("unable to init and run worker", e);
+    }
   }
 
   @Test
@@ -154,7 +168,10 @@ public class ConnectionManagerTest {
     ss.accept();
     tryAcquireOrFail(semaphore);
     assertEquals(connectCount.get(), 1);
+  }
 
+  @AfterMethod
+  public void tearDown() throws Exception {
     this.myConnectionManager.close();
     myExecutorService.shutdown();
     assertTrue(myExecutorService.awaitTermination(10, TimeUnit.SECONDS));
