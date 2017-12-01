@@ -40,25 +40,6 @@ public class ConnectionManager {
   private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
 
   public ConnectionManager(InetAddress inetAddress,
-                           PeersStorageProvider peersStorageProvider,
-                           TorrentsStorageProvider torrentsStorageProvider,
-                           SharingPeerRegister sharingPeerRegister,
-                           SharingPeerFactoryImpl sharingPeerFactory,
-                           ExecutorService executorService,
-                           TimeService timeService,
-                           NewConnectionAllower newIncomingConnectionAllower,
-                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
-    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
-            torrentsStorageProvider,
-            sharingPeerRegister,
-            sharingPeerFactory),
-            executorService,
-            timeService,
-            newIncomingConnectionAllower,
-            newOutgoingConnectionAllower);
-  }
-
-  public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
                            ExecutorService executorService,
                            TimeService timeService,
