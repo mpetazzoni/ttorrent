@@ -49,10 +49,12 @@ public class HandshakeReceiverTest {
     ByteBuffer selfId = ByteBuffer.wrap(mySelfId);
     myPeersStorage.setSelf(new Peer("127.0.0.1", 54645, selfId));
     myTorrentsStorage = torrentsStorageProviderImpl.getTorrentsStorage();
+    Client client = mock(Client.class);
+    when(client.getConnectionManager()).thenReturn(mock(ConnectionManager.class));
     myHandshakeReceiver = new HandshakeReceiver(
             peersStorageProviderImpl,
             torrentsStorageProviderImpl,
-            new SharingPeerFactoryImpl(new Client()),
+            new SharingPeerFactoryImpl(client),
             mySharingPeerRegister,
             "127.0.0.1",
             45664,

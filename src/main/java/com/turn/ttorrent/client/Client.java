@@ -817,7 +817,7 @@ public class Client implements Runnable,
 
   private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent) {
     return new SharingPeer(peer.getIp(), peer.getPort(),
-            peer.getPeerId(), torrent, this);
+            peer.getPeerId(), torrent, this.getConnectionManager());
   }
 
   /** CommunicationListener handler(s). ********************************/
@@ -1047,6 +1047,10 @@ public class Client implements Runnable,
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
 
   public ConnectionManager getConnectionManager() {
-    return myConnectionManager;
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
+    }
+    return connectionManager;
   }
 }

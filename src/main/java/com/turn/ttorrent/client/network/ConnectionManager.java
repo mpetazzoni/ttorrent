@@ -8,9 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.*;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -172,5 +170,9 @@ public class ConnectionManager {
 
   public void setSocketConnectionTimeout(long timeoutMillis) {
     socketTimeoutStorage.setTimeout(timeoutMillis);
+  }
+
+  public void closeChannel(Channel channel) throws IOException {
+    channel.close();
   }
 }

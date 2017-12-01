@@ -16,6 +16,6 @@ public class SharingPeerFactoryImpl implements SharingPeerFactory {
 
   @Override
   public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent) {
-    return new SharingPeer(host, port, peerId, torrent, myClient);
+    return new SharingPeer(host, port, peerId, torrent, myClient.getConnectionManager());
   }
 }
