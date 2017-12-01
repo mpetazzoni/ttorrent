@@ -126,12 +126,12 @@ public class ConnectionWorker implements Runnable {
         continue;
       }
       Object attachment = key.attachment();
-      if (!(attachment instanceof ReadWriteAttachment)) {
+      if (!(attachment instanceof WriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
         continue;
       }
-      ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
+      WriteAttachment keyAttachment = (WriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {

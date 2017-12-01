@@ -1,7 +1,7 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.ConnectionListener;
-import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.client.network.ReadAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,12 +33,12 @@ public class ReadableKeyProcessor implements KeyProcessor {
     logger.trace("server {} get new data from {}", myServerSocketLocalAddress, socketChannel);
 
     Object attachment = key.attachment();
-    if (!(attachment instanceof ReadWriteAttachment)) {
+    if (!(attachment instanceof ReadAttachment)) {
       logger.warn("incorrect instance of attachment for channel {}", new Object[]{socketChannel.socket()});
       socketChannel.close();
       return;
     }
-    ConnectionListener connectionListener = ((ReadWriteAttachment) attachment).getConnectionListener();
+    ConnectionListener connectionListener = ((ReadAttachment) attachment).getConnectionListener();
     connectionListener.onNewDataAvailable(socketChannel);
   }
 
