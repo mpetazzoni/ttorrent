@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.turn.ttorrent.Constants.DEFAULT_MAX_CONNECTION_COUNT;
 
 /**
- * this implementation allowed fixed count of open connection at the same time
+ * this implementation allows fixed count of open connection simultaneously
  */
 public class CountLimitConnectionAllower implements NewConnectionAllower {
 
