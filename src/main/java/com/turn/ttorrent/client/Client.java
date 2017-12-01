@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.TorrentDefaults;
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
@@ -41,7 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 /**
  * A pure-java BitTorrent client.
@@ -217,11 +217,11 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress... bindAddresses) throws IOException {
-    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, null);
   }
 
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
-    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
 
   public Peer[] getSelfPeers() {
@@ -241,7 +241,7 @@ public class Client implements Runnable,
             new SystemTimeService(),
             myInConnectionAllower,
             myOutConnectionAllower);
-    this.setSocketConnectionTimeout(SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    this.setSocketConnectionTimeout(DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {

@@ -16,9 +16,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static com.turn.ttorrent.TorrentDefaults.CLEANUP_RUN_TIMEOUT;
-import static com.turn.ttorrent.TorrentDefaults.SELECTOR_SELECT_TIMEOUT;
-import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS;
 
 public class ConnectionManager {
 
@@ -98,7 +97,7 @@ public class ConnectionManager {
             new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
             new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
             new ReadableKeyProcessor(serverName),
-            new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
+            new WritableKeyProcessor()), DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS, DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS,
             myTimeService,
             new CleanupKeyProcessor(myTimeService),
             myOutgoingConnectionAllower);
