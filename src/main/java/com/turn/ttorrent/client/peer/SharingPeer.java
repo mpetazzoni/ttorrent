@@ -99,7 +99,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile boolean isStopped = false;
 
   private final ConnectionManager connectionManager;
-  private ByteChannel socketChannel;
+  private volatile ByteChannel socketChannel;
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -368,7 +368,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (this.isConnected()) {
       ByteBuffer data = message.getData();
       data.rewind();
-      boolean writeTaskAdded = connectionManager.offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
+      connectionManager.offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
         @Override
         public void onWriteFailed(String message, Throwable e) {
           logger.debug(message, e);
@@ -379,9 +379,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         public void onWriteDone() {
         }
       }), 1, TimeUnit.SECONDS);
-      if (!writeTaskAdded) {
-        unbind(true);
-      }
     } else {
       logger.info("Attempting to send a message to non-connected peer {}!", this);
       unbind(true);
