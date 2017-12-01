@@ -102,7 +102,6 @@ public class Client implements Runnable,
   private final TorrentsStorage torrentsStorage;
   private final CountLimitConnectionAllower myInConnectionAllower;
   private final CountLimitConnectionAllower myOutConnectionAllower;
-  private final ChannelListenerFactory myChannelListenerFactory;
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
   private volatile ExecutorService myExecutorService;
@@ -121,10 +120,6 @@ public class Client implements Runnable,
     this.myClientNameSuffix = name;
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
-    this.myChannelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
-            torrentsStorageProvider,
-            new SharingPeerRegisterImpl(this),
-            new SharingPeerFactoryImpl(this));
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -238,8 +233,12 @@ public class Client implements Runnable,
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     this.myExecutorService = Executors.newSingleThreadExecutor();
+    ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
+            torrentsStorageProvider,
+            new SharingPeerRegisterImpl(this),
+            new SharingPeerFactoryImpl(this));
     this.myConnectionManager = new ConnectionManager(bindAddresses[0],
-            myChannelListenerFactory,
+            channelListenerFactory,
             myExecutorService,
             new SystemTimeService(),
             myInConnectionAllower,
