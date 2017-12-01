@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.turn.ttorrent.Constants.DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS;
 import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS;
@@ -38,6 +39,7 @@ public class ConnectionManager {
   private final NewConnectionAllower myIncomingConnectionAllower;
   private final NewConnectionAllower myOutgoingConnectionAllower;
   private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
+  private final AtomicBoolean alreadyInit = new AtomicBoolean(false);
 
   public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
@@ -55,6 +57,13 @@ public class ConnectionManager {
   }
 
   public void initAndRunWorker() throws IOException {
+
+    boolean wasInit = alreadyInit.getAndSet(true);
+
+    if (wasInit) {
+      throw new IllegalStateException("connection manager was already initialized");
+    }
+
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
     myBindAddress = null;
