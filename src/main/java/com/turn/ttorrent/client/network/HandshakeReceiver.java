@@ -22,7 +22,7 @@ public class HandshakeReceiver implements DataProcessor {
   private final SharingPeerFactory sharingPeerFactory;
   private final String myHostAddress;
   private final int myPort;
-  private final boolean myOnlyRead;
+  private final boolean myIsOutgoingConnection;
   private ByteBuffer messageBytes;
   private int pstrLength;
   private final SharingPeerRegister mySharingPeerRegister;
@@ -33,7 +33,7 @@ public class HandshakeReceiver implements DataProcessor {
                            SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
                            int port,
-                           boolean onlyRead) {
+                           boolean isOutgoingListener) {
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
     this.sharingPeerFactory = sharingPeerFactory;
@@ -41,7 +41,7 @@ public class HandshakeReceiver implements DataProcessor {
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
-    this.myOnlyRead = onlyRead;
+    this.myIsOutgoingConnection = isOutgoingListener;
   }
 
   @Override
@@ -98,13 +98,14 @@ public class HandshakeReceiver implements DataProcessor {
 
     SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
-    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myOnlyRead);
+
+    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myIsOutgoingConnection);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
       return new ShutdownProcessor();
     }
 
-    if (!myOnlyRead) {
+    if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
         ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
