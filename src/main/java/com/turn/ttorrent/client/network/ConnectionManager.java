@@ -8,17 +8,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.*;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.turn.ttorrent.TorrentDefaults.CLEANUP_RUN_TIMEOUT;
-import static com.turn.ttorrent.TorrentDefaults.SELECTOR_SELECT_TIMEOUT;
-import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS;
 
 public class ConnectionManager {
 
@@ -39,25 +37,7 @@ public class ConnectionManager {
   private final NewConnectionAllower myIncomingConnectionAllower;
   private final NewConnectionAllower myOutgoingConnectionAllower;
   private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
-
-  public ConnectionManager(InetAddress inetAddress,
-                           PeersStorageProvider peersStorageProvider,
-                           TorrentsStorageProvider torrentsStorageProvider,
-                           SharingPeerRegister sharingPeerRegister,
-                           SharingPeerFactoryImpl sharingPeerFactory,
-                           ExecutorService executorService,
-                           TimeService timeService,
-                           NewConnectionAllower newIncomingConnectionAllower,
-                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
-    this(inetAddress, new ChannelListenerFactoryImpl(peersStorageProvider,
-            torrentsStorageProvider,
-            sharingPeerRegister,
-            sharingPeerFactory),
-            executorService,
-            timeService,
-            newIncomingConnectionAllower,
-            newOutgoingConnectionAllower);
-  }
+  private final AtomicBoolean alreadyInit = new AtomicBoolean(false);
 
   public ConnectionManager(InetAddress inetAddress,
                            ChannelListenerFactory channelListenerFactory,
@@ -75,6 +55,13 @@ public class ConnectionManager {
   }
 
   public void initAndRunWorker() throws IOException {
+
+    boolean wasInit = alreadyInit.getAndSet(true);
+
+    if (wasInit) {
+      throw new IllegalStateException("connection manager was already initialized");
+    }
+
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
     myBindAddress = null;
@@ -98,7 +85,7 @@ public class ConnectionManager {
             new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
             new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
             new ReadableKeyProcessor(serverName),
-            new WritableKeyProcessor()), SELECTOR_SELECT_TIMEOUT, CLEANUP_RUN_TIMEOUT,
+            new WritableKeyProcessor()), DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS, DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS,
             myTimeService,
             new CleanupKeyProcessor(myTimeService),
             myOutgoingConnectionAllower);
@@ -183,5 +170,9 @@ public class ConnectionManager {
 
   public void setSocketConnectionTimeout(long timeoutMillis) {
     socketTimeoutStorage.setTimeout(timeoutMillis);
+  }
+
+  public void closeChannel(Channel channel) throws IOException {
+    channel.close();
   }
 }

@@ -45,6 +45,6 @@ public class StateChannelListener implements ConnectionListener {
 
   @Override
   public void onError(SocketChannel socketChannel, Throwable ex) throws IOException {
-    this.next.handleError(socketChannel, ex);
+    this.next = this.next.handleError(socketChannel, ex);
   }
 }

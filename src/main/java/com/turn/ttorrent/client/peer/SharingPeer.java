@@ -18,8 +18,10 @@ package com.turn.ttorrent.client.peer;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.network.WriteListener;
 import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -96,8 +98,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile Future connectTask;
   private volatile boolean isStopped = false;
 
-  private final Client client;
-  private ByteChannel socketChannel;
+  private final ConnectionManager connectionManager;
+  private volatile ByteChannel socketChannel;
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -107,7 +109,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, Client client) {
+  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, ConnectionManager connectionManager) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
@@ -120,7 +122,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.availablePiecesLock = new Object();
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
-    this.client = client;
+    this.connectionManager = connectionManager;
     this.reset();
   }
 
@@ -341,7 +343,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     synchronized (this.exchangeLock) {
       try {
-        socketChannel.close();
+        connectionManager.closeChannel(socketChannel);
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -366,9 +368,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     if (this.isConnected()) {
       ByteBuffer data = message.getData();
       data.rewind();
-      boolean writeTaskAdded = this.client.getConnectionManager().offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
+      connectionManager.offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
         @Override
-        public void onWriteFailed() {
+        public void onWriteFailed(String message, Throwable e) {
+          logger.debug(message, e);
           unbind(true);
         }
 
@@ -376,9 +379,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         public void onWriteDone() {
         }
       }), 1, TimeUnit.SECONDS);
-      if (!writeTaskAdded) {
-        unbind(true);
-      }
     } else {
       logger.info("Attempting to send a message to non-connected peer {}!", this);
       unbind(true);

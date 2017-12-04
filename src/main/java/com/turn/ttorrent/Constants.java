@@ -21,13 +21,16 @@ package com.turn.ttorrent;
  *         Date: 9/19/13
  *         Time: 2:57 PM
  */
-public class TorrentDefaults {
-  public static final int ANNOUNCE_INTERVAL_SEC=60;
-  public static final int FILESIZE_THRESHOLD_MB=10;
+public class Constants {
+  public static final int DEFAULT_ANNOUNCE_INTERVAL_SEC =60;
+  public static final int DEFAULT_FILESIZE_THRESHOLD_MB =10;
 
-  public final static int SOCKET_CONNECTION_TIMEOUT_MILLIS = 100000;
-  public static final int SELECTOR_SELECT_TIMEOUT = 10000;
-  public static final int CLEANUP_RUN_TIMEOUT = 120000;
+  public final static int DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS = 100000;
+  public static final int DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS = 10000;
+  public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MILLIS = 10000;
+
+  public static final int DEFAULT_MAX_CONNECTION_COUNT = 10;
 
 
 }

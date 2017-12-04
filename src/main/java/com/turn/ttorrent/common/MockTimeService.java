@@ -2,7 +2,7 @@ package com.turn.ttorrent.common;
 
 public class MockTimeService implements TimeService {
 
-  private long time = 0;
+  private volatile long time = 0;
 
   @Override
   public long now() {

@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.TorrentDefaults;
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
@@ -41,7 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.turn.ttorrent.TorrentDefaults.SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
 /**
  * A pure-java BitTorrent client.
@@ -88,7 +88,6 @@ public class Client implements Runnable,
   private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
-  private static final int CONNECTION_TIMEOUT = 10000;
 
   private Thread thread;
   private AtomicBoolean stop = new AtomicBoolean(false);
@@ -105,7 +104,7 @@ public class Client implements Runnable,
   private final CountLimitConnectionAllower myOutConnectionAllower;
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
-  private ExecutorService myExecutorService;
+  private volatile ExecutorService myExecutorService;
 
   public Client() {
     this("");
@@ -217,11 +216,11 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress... bindAddresses) throws IOException {
-    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, null);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, null);
   }
 
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
-    start(bindAddresses, TorrentDefaults.ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
 
   public Peer[] getSelfPeers() {
@@ -234,14 +233,17 @@ public class Client implements Runnable,
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     this.myExecutorService = Executors.newSingleThreadExecutor();
-    this.myConnectionManager = new ConnectionManager(bindAddresses[0], peersStorageProvider, torrentsStorageProvider,
+    ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
+            torrentsStorageProvider,
             new SharingPeerRegisterImpl(this),
-            new SharingPeerFactoryImpl(this),
+            new SharingPeerFactoryImpl(this));
+    this.myConnectionManager = new ConnectionManager(bindAddresses[0],
+            channelListenerFactory,
             myExecutorService,
             new SystemTimeService(),
             myInConnectionAllower,
             myOutConnectionAllower);
-    this.setSocketConnectionTimeout(SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+    this.setSocketConnectionTimeout(DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
       this.myConnectionManager.initAndRunWorker();
     } catch (IOException e) {
@@ -310,16 +312,20 @@ public class Client implements Runnable,
     this.thread = null;
   }
 
-  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) {
-    if (myConnectionManager != null) {
-      myConnectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
+  public void setCleanupTimeout(int timeout, TimeUnit timeUnit) throws IllegalStateException {
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
     }
+    connectionManager.setCleanupTimeout(timeUnit.toMillis(timeout));
   }
 
-  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) {
-    if (myConnectionManager != null) {
-      myConnectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
+  public void setSocketConnectionTimeout(int timeout, TimeUnit timeUnit) throws IllegalStateException {
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
     }
+    connectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
   }
 
 
@@ -573,11 +579,7 @@ public class Client implements Runnable,
       return sharingPeerOld;
     }
 
-    SharingPeer sharingPeer = new SharingPeer(search.getIp(), search.getPort(),
-            search.getPeerId(), torrent, this);
-    sharingPeer.setTorrentHash(hexInfoHash);
-
-    return sharingPeer;
+    return createSharingPeer(search, torrent, hexInfoHash);
   }
 
   /**
@@ -741,9 +743,7 @@ public class Client implements Runnable,
     Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
     for (Peer peer : peers) {
-      SharingPeer match = new SharingPeer(peer.getIp(), peer.getPort(),
-              peer.getPeerId(), torrent, this);
-      match.setTorrentHash(hexInfoHash);
+      SharingPeer match = createSharingPeer(peer, torrent, hexInfoHash);
       foundPeers.add(match);
 
       // Attempt to connect to the peer if and only if:
@@ -776,6 +776,7 @@ public class Client implements Runnable,
       e.getValue().setTorrentHash(hexInfoHash);
       e.getKey().setTorrentHash(hexInfoHash);
     }
+
     for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
       SharingPeer sharingPeer = e.getValue();
 
@@ -806,11 +807,18 @@ public class Client implements Runnable,
                       sharingPeer.getPort(),
                       connectionListener,
                       new SystemTimeService().now(),
-                      CONNECTION_TIMEOUT), 1, TimeUnit.SECONDS);
+                      Constants.DEFAULT_CONNECTION_TIMEOUT_MILLIS), 1, TimeUnit.SECONDS);
       if (!connectTaskAdded) {
         logger.info("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
       }
     }
+  }
+
+  private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent, String hexInfoHash) {
+    SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(),
+            peer.getPeerId(), torrent, this.getConnectionManager());
+    sharingPeer.setTorrentHash(hexInfoHash);
+    return sharingPeer;
   }
 
   /** CommunicationListener handler(s). ********************************/
@@ -1039,7 +1047,11 @@ public class Client implements Runnable,
   @Override
   public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
 
-  public ConnectionManager getConnectionManager() {
-    return myConnectionManager;
+  public ConnectionManager getConnectionManager() throws IllegalStateException {
+    ConnectionManager connectionManager = this.myConnectionManager;
+    if (connectionManager == null) {
+      throw new IllegalStateException("connection manager is null");
+    }
+    return connectionManager;
   }
 }

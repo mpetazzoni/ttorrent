@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.client.network.WriteAttachment;
 import com.turn.ttorrent.client.network.WriteTask;
 import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
@@ -28,13 +28,13 @@ public class WritableKeyProcessor implements KeyProcessor {
     SocketChannel socketChannel = (SocketChannel) channel;
 
     Object attachment = key.attachment();
-    if (!(attachment instanceof ReadWriteAttachment)) {
+    if (!(attachment instanceof WriteAttachment)) {
       logger.error("incorrect instance of attachment for channel {}", channel);
       key.cancel();
       return;
     }
 
-    ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
+    WriteAttachment keyAttachment = (WriteAttachment) attachment;
 
     if (keyAttachment.getWriteTasks().isEmpty()) {
       key.interestOps(SelectionKey.OP_READ);
@@ -55,7 +55,7 @@ public class WritableKeyProcessor implements KeyProcessor {
       }
     } catch (IOException e) {
       LoggerUtils.errorAndDebugDetails(logger, "unable to write data to channel {}", socketChannel, e);
-      processedTask.getListener().onWriteFailed();
+      processedTask.getListener().onWriteFailed("I/O error occurs. " + e.getMessage(), e);
       keyAttachment.getWriteTasks().clear();
       key.cancel();
     }

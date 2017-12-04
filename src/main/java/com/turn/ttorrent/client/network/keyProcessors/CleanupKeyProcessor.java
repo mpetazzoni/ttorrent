@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.ReadWriteAttachment;
 import com.turn.ttorrent.client.network.TimeoutAttachment;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
@@ -48,17 +47,8 @@ public class CleanupKeyProcessor implements CleanupProcessor {
     }
   }
 
-  private boolean isConnectOrAcceptKey(SelectionKey key) {
-    int interestOps = key.interestOps();
-    boolean isConnect = (interestOps & SelectionKey.OP_ACCEPT) != 0;
-    boolean isAccept = (interestOps & SelectionKey.OP_CONNECT) != 0;
-    return isConnect || isAccept;
-  }
-
   @Override
   public void processSelected(SelectionKey key) {
-    boolean isConnectOrAcceptKey = isConnectOrAcceptKey(key);
-    if (isConnectOrAcceptKey) return;
     TimeoutAttachment attachment = KeyProcessorUtil.getAttachmentAsTimeoutOrNull(key);
     if (attachment == null) {
       key.cancel();

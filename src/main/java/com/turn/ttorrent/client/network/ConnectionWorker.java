@@ -116,28 +116,32 @@ public class ConnectionWorker implements Runnable {
       logger.debug("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), null);
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), null);
         continue;
       }
       Object attachment = key.attachment();
-      if (!(attachment instanceof ReadWriteAttachment)) {
+      if (!(attachment instanceof WriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
         continue;
       }
-      ReadWriteAttachment keyAttachment = (ReadWriteAttachment) attachment;
+      WriteAttachment keyAttachment = (WriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {
-        writeTask.getListener().onWriteFailed();
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "write queue in current attachment is overflow"), null);
       }
     }
+  }
+
+  private String getDefaultWriteErrorMessageWithSuffix(SocketChannel socketChannel, String suffix) {
+    return "unable write data to channel " + socketChannel + ". " + suffix;
   }
 
   private void connectToPeersFromQueue() {
@@ -204,7 +208,11 @@ public class ConnectionWorker implements Runnable {
   }
 
   public boolean offerWrite(WriteTask writeTask, int timeout, TimeUnit timeUnit) {
-    return addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);
+    boolean done = addTaskToQueue(writeTask, timeout, timeUnit, myWriteQueue);
+    if (!done) {
+      writeTask.getListener().onWriteFailed("unable add task " + writeTask + " to the queue. Maybe queue is overload", null);
+    }
+    return done;
   }
 
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {
