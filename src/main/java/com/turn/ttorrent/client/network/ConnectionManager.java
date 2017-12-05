@@ -80,7 +80,7 @@ public class ConnectionManager {
     if (myBindAddress == null) {
       throw new IOException("No available port for the BitTorrent client!");
     }
-    String serverName = myServerSocketChannel.getLocalAddress().toString();
+    String serverName = myServerSocketChannel.socket().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
             new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
             new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
