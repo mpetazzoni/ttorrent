@@ -43,16 +43,17 @@ public class WritableKeyProcessor implements KeyProcessor {
 
     WriteTask processedTask = keyAttachment.getWriteTasks().peek();
 
-    if (!processedTask.getByteBuffer().hasRemaining()) {
-      keyAttachment.getWriteTasks().remove();
-      return;
-    }
-
     try {
       int writeCount = socketChannel.write(processedTask.getByteBuffer());
       if (writeCount < 0) {
         throw new EOFException("Reached end of stream while writing");
       }
+
+      if (!processedTask.getByteBuffer().hasRemaining()) {
+        processedTask.getListener().onWriteDone();
+        keyAttachment.getWriteTasks().remove();
+      }
+
     } catch (IOException e) {
       LoggerUtils.errorAndDebugDetails(logger, "unable to write data to channel {}", socketChannel, e);
       processedTask.getListener().onWriteFailed("I/O error occurs. " + e.getMessage(), e);
