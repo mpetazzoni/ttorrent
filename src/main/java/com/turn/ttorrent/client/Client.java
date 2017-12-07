@@ -37,7 +37,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -104,13 +103,17 @@ public class Client implements Runnable,
   private final CountLimitConnectionAllower myOutConnectionAllower;
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
-  private volatile ExecutorService myExecutorService;
+  private final ExecutorService myExecutorService;
 
-  public Client() {
-    this("");
+  public Client(ExecutorService executorService) {
+    this("", executorService);
   }
 
-  public Client(String name) {
+  /**
+   * @param name client thread name
+   * @param executorService executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   */
+  public Client(String name, ExecutorService executorService) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
     this.peersStorageProvider = new PeersStorageProviderImpl();
@@ -120,6 +123,7 @@ public class Client implements Runnable,
     this.myClientNameSuffix = name;
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
+    this.myExecutorService = executorService;
   }
 
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
@@ -232,10 +236,10 @@ public class Client implements Runnable,
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.myExecutorService = Executors.newSingleThreadExecutor();
     ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
             new SharingPeerRegisterImpl(this),
+            myExecutorService,
             new SharingPeerFactoryImpl(this));
     this.myConnectionManager = new ConnectionManager(bindAddresses[0],
             channelListenerFactory,
@@ -290,18 +294,6 @@ public class Client implements Runnable,
 
     boolean wait = timeout != 0;
     this.myConnectionManager.close();
-
-    myExecutorService.shutdown();
-    if (wait) {
-      try {
-        boolean shutdownCorrectly = myExecutorService.awaitTermination(timeout, timeUnit);
-        if (!shutdownCorrectly) {
-          logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
-        }
-      } catch (InterruptedException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "unable to await termination executor service, thread was interrupted", e);
-      }
-    }
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
@@ -797,8 +789,8 @@ public class Client implements Runnable,
               torrentsStorageProvider,
               new SharingPeerRegisterImpl(this),
               new SharingPeerFactoryImpl(this), torrent,
-              new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort())
-      );
+              new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort()),
+              myExecutorService);
 
       logger.trace("trying to connect to the peer {}", sharingPeer);
 

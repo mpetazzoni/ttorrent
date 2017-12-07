@@ -12,6 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
 
 public class HandshakeReceiver implements DataProcessor {
 
@@ -19,6 +20,7 @@ public class HandshakeReceiver implements DataProcessor {
 
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
+  private final ExecutorService executorService;
   private final SharingPeerFactory sharingPeerFactory;
   private final String myHostAddress;
   private final int myPort;
@@ -29,6 +31,7 @@ public class HandshakeReceiver implements DataProcessor {
 
   public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
+                           ExecutorService executorService,
                            SharingPeerFactory sharingPeerFactory,
                            SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
@@ -36,6 +39,7 @@ public class HandshakeReceiver implements DataProcessor {
                            boolean isOutgoingListener) {
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
+    this.executorService = executorService;
     this.sharingPeerFactory = sharingPeerFactory;
     this.mySharingPeerRegister = sharingPeerRegister;
     myHostAddress = hostAddress;
@@ -117,7 +121,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
 
-    return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider);
+    return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider, executorService);
   }
 
   private Handshake parseHandshake(String socketChannelForLog) throws IOException {

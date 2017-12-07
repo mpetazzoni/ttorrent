@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
@@ -25,12 +26,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static com.turn.ttorrent.ClientFactory.DEFAULT_POOL_SIZE;
 import static org.testng.Assert.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -43,12 +46,15 @@ import static org.testng.Assert.assertTrue;
 @Test(timeOut = 600000)
 public class ClientTest {
 
+  private ClientFactory clientFactory;
+
   private List<Client> clientList;
   private static final String TEST_RESOURCES = "src/test/resources";
   private Tracker tracker;
   private TempFiles tempFiles;
 
   public ClientTest(){
+    clientFactory = new ClientFactory();
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
@@ -486,13 +492,20 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
 
       final AtomicInteger interrupts = new AtomicInteger(0);
-      final Client leech = new Client(){
+      final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+      final Client leech = new Client(es){
         @Override
         public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
           super.handlePieceCompleted(peer, piece);
           if (piece.getIndex()%4==0 && interrupts.incrementAndGet() <= 2){
             peer.getSocketChannel().close();
           }
+        }
+
+        @Override
+        public void stop(int timeout, TimeUnit timeUnit) {
+          super.stop(timeout, timeUnit);
+          es.shutdown();
         }
       };
       //manually add leech here for graceful shutdown.
@@ -527,7 +540,14 @@ public class ClientTest {
 
     seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    final Client leecher = new Client(){
+    final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final Client leecher = new Client(es){
+      @Override
+      public void stop(int timeout, TimeUnit timeUnit) {
+        super.stop(timeout, timeUnit);
+        es.shutdown();
+      }
+
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         super.handlePieceCompleted(peer, piece);
@@ -560,7 +580,8 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
     final AtomicInteger piecesDownloaded = new AtomicInteger(0);
-    Client leecher = new Client(){
+    final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    Client leecher = new Client(es){
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         piecesDownloaded.incrementAndGet();
@@ -569,6 +590,12 @@ public class ClientTest {
         } catch (InterruptedException e) {
 
         }
+      }
+
+      @Override
+      public void stop(int timeout, TimeUnit timeUnit) {
+        super.stop(timeout, timeUnit);
+        es.shutdown();
       }
     };
     clientList.add(leecher);
@@ -583,11 +610,17 @@ public class ClientTest {
   }
 
   public void canStartAndStopClientTwice() throws Exception {
-    final Client client = createClient();
-    client.start(InetAddress.getLocalHost());
-    client.stop();
-    client.start(InetAddress.getLocalHost());
-    client.stop();
+    ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final Client client = new Client(es);
+    clientList.add(client);
+    try {
+      client.start(InetAddress.getLocalHost());
+      client.stop();
+      client.start(InetAddress.getLocalHost());
+      client.stop();
+    } finally {
+      es.shutdown();
+    }
   }
 
   public void peer_dies_during_download() throws InterruptedException, NoSuchAlgorithmException, IOException {
@@ -867,7 +900,7 @@ public class ClientTest {
     return client;
   }
   private Client createClient(String name) throws IOException, NoSuchAlgorithmException, InterruptedException {
-    final Client client = new Client(name);
+    final Client client = clientFactory.getClient(name);
     clientList.add(client);
     return client;
   }

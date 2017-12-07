@@ -1,5 +1,6 @@
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
@@ -35,8 +36,11 @@ public class TrackerTest{
 //  private String myLogfile;
   private List<Client> clientList = new ArrayList<Client>();
 
+  private final ClientFactory clientFactory;
+
 
   public  TrackerTest(){
+    clientFactory = new ClientFactory();
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
@@ -264,7 +268,7 @@ public class TrackerTest{
   }
 
   private Client createClient() throws IOException, NoSuchAlgorithmException, InterruptedException {
-    final Client client = new Client();
+    final Client client = clientFactory.getClient("");
     clientList.add(client);
     return client;
   }

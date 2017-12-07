@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
 
 public class WorkingReceiver implements DataProcessor {
 
@@ -24,12 +25,17 @@ public class WorkingReceiver implements DataProcessor {
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final ByteBuffer messageBytes;
+  private final ExecutorService executorService;
   private int pstrLength;
 
-  public WorkingReceiver(PeerUID peerId, PeersStorageProvider peersStorageProvider, TorrentsStorageProvider torrentsStorageProvider) {
+  public WorkingReceiver(PeerUID peerId,
+                         PeersStorageProvider peersStorageProvider,
+                         TorrentsStorageProvider torrentsStorageProvider,
+                         ExecutorService executorService) {
     this.myPeerUID = peerId;
     this.peersStorageProvider = peersStorageProvider;
     this.torrentsStorageProvider = torrentsStorageProvider;
+    this.executorService = executorService;
     this.messageBytes = ByteBuffer.allocate(2 * 1024 * 1024);
     this.pstrLength = -1;
   }
@@ -82,7 +88,7 @@ public class WorkingReceiver implements DataProcessor {
     this.pstrLength = -1;
     try {
 
-      SharingPeer peer = peersStorageProvider.getPeersStorage().getSharingPeer(myPeerUID);
+      final SharingPeer peer = peersStorageProvider.getPeersStorage().getSharingPeer(myPeerUID);
 
       SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
       if (torrent == null) {
@@ -91,9 +97,14 @@ public class WorkingReceiver implements DataProcessor {
       }
 
       logger.trace("try parse message from {}. Torrent {}", peer, torrent);
-      PeerMessage message = PeerMessage.parse(messageBytes, torrent);
+      final PeerMessage message = PeerMessage.parse(messageBytes, torrent);
       logger.trace("get message {} from {}", message, socketChannel);
-      peer.handleMessage(message);
+      executorService.submit(new Runnable() {
+        @Override
+        public void run() {
+          peer.handleMessage(message);
+        }
+      });
     } catch (ParseException e) {
       logger.debug("{}", e.getMessage());
     }
