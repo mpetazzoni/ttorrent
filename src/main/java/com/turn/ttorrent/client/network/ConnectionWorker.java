@@ -13,6 +13,7 @@ import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -108,34 +109,39 @@ public class ConnectionWorker implements Runnable {
 
   private void processWriteTasks() {
 
-    WriteTask writeTask;
-    while ((writeTask = myWriteQueue.poll()) != null) {
+    final Iterator<WriteTask> iterator = myWriteQueue.iterator();
+    while (iterator.hasNext()) {
+      WriteTask writeTask = iterator.next();
       if (stop || Thread.currentThread().isInterrupted()) {
         return;
       }
       logger.debug("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), null);
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), null);
         continue;
       }
       Object attachment = key.attachment();
       if (!(attachment instanceof WriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
         continue;
       }
       WriteAttachment keyAttachment = (WriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
+        iterator.remove();
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {
-        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "write queue in current attachment is overflow"), null);
+        logger.warn("write queue in current attachment is overflow");
       }
     }
   }
