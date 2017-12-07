@@ -97,7 +97,8 @@ public class WorkingReceiver implements DataProcessor {
       }
 
       logger.trace("try parse message from {}. Torrent {}", peer, torrent);
-      final PeerMessage message = PeerMessage.parse(messageBytes, torrent);
+      ByteBuffer bufferCopy = ByteBuffer.wrap(Arrays.copyOf(messageBytes.array(), messageBytes.limit()));
+      final PeerMessage message = PeerMessage.parse(bufferCopy, torrent);
       logger.trace("get message {} from {}", message, socketChannel);
       executorService.submit(new Runnable() {
         @Override
