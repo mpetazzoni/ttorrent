@@ -4,11 +4,8 @@ import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.client.ClientState;
-import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.*;
@@ -16,30 +13,32 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.*;
-import java.net.*;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
+import java.io.File;
+import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static com.turn.ttorrent.tracker.TrackerUtils.TEST_RESOURCES;
 import static org.testng.Assert.*;
 
 @Test
-public class TrackerTest{
-  private static final String TEST_RESOURCES = "src/test/resources";
+public class TrackerTest {
+
   private Tracker tracker;
   private TempFiles tempFiles;
-//  private String myLogfile;
+  //  private String myLogfile;
   private List<Client> clientList = new ArrayList<Client>();
 
   private final ClientFactory clientFactory;
 
 
-  public  TrackerTest(){
+  public TrackerTest() {
     clientFactory = new ClientFactory();
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
@@ -58,17 +57,17 @@ public class TrackerTest{
   public void test_tracker_all_ports() throws IOException {
     final int port = tracker.getAnnounceURI().getPort();
     final Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces();
-    while (e.hasMoreElements()){
+    while (e.hasMoreElements()) {
       final NetworkInterface ni = e.nextElement();
       final Enumeration<InetAddress> addresses = ni.getInetAddresses();
-      while (addresses.hasMoreElements()){
+      while (addresses.hasMoreElements()) {
         final InetAddress addr = addresses.nextElement();
         try {
           Socket s = new Socket(addr, port);
           s.close();
-        } catch (Exception ex){
-          if (System.getProperty("java.version").startsWith("1.7.") || addr instanceof Inet4Address){
-              fail("Unable to connect to " + addr, ex);
+        } catch (Exception ex) {
+          if (System.getProperty("java.version").startsWith("1.7.") || addr instanceof Inet4Address) {
+            fail("Unable to connect to " + addr, ex);
           }
         }
       }
@@ -169,7 +168,7 @@ public class TrackerTest{
     assertTrackedTorrentContainPeers(tt, c2.getPeers());
 
     c2.stop();
-    new WaitFor(30*1000){
+    new WaitFor(30 * 1000) {
 
       @Override
       protected boolean condition() {
@@ -179,6 +178,7 @@ public class TrackerTest{
     assertTrackedTorrentContainPeers(tt, c1.getPeers());
     assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
   }
+
   public void tracker_removes_peer_after_timeout() throws IOException, NoSuchAlgorithmException, InterruptedException {
     tracker.setAcceptForeignTorrents(true);
     tracker.setPeerCollectorExpireTimeout(10);
@@ -200,7 +200,7 @@ public class TrackerTest{
     assertTrackedTorrentContainPeers(tt, c1.getPeers());
     assertTrackedTorrentContainPeers(tt, c2.getPeers());
 
-    new WaitFor(30*1000){
+    new WaitFor(30 * 1000) {
 
       @Override
       protected boolean condition() {
@@ -211,7 +211,7 @@ public class TrackerTest{
     assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
   }
 
-//  @Test(invocationCount = 50)
+  //  @Test(invocationCount = 50)
   public void tracker_accepts_torrent_from_seeder_plus_leech() throws IOException, NoSuchAlgorithmException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
     assertEquals(0, this.tracker.getTrackedTorrents().size());
@@ -234,16 +234,6 @@ public class TrackerTest{
     }
   }
 
-//  @Test(invocationCount = 50)
-
-  public void test_announce() throws IOException, NoSuchAlgorithmException {
-    assertEquals(0, this.tracker.getTrackedTorrents().size());
-
-    this.tracker.announce(loadTorrent("file1.jar.torrent"));
-
-    assertEquals(1, this.tracker.getTrackedTorrents().size());
-  }
-
   private TrackedTorrent loadTorrent(String name) throws IOException, NoSuchAlgorithmException {
     return new TrackedTorrent(Torrent.load(new File(TEST_RESOURCES + "/torrents", name)));
   }
@@ -254,6 +244,7 @@ public class TrackerTest{
     tracker.setPeerCollectorExpireTimeout(10);
     this.tracker.start(true);
   }
+
   private void stopTracker() {
     this.tracker.stop();
   }
@@ -328,13 +319,14 @@ public class TrackerTest{
     assertEquals(c1.getValue(), c2.getValue());
   }
 
-  private void assertTrackedTorrentContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers){
+  private void assertTrackedTorrentContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers) {
     for (SharingPeer peer : peers) {
       assertNotNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
               String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
     }
   }
-  private void assertTrackedTorrentNotContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers){
+
+  private void assertTrackedTorrentNotContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers) {
     for (SharingPeer peer : peers) {
       assertNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
               String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
