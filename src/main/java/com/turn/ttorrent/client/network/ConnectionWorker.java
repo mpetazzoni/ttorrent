@@ -57,10 +57,6 @@ public class ConnectionWorker implements Runnable {
     this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
   }
 
-  public Semaphore getSemaphore() {
-    return mySemaphore;
-  }
-
   @Override
   public void run() {
 
@@ -97,7 +93,7 @@ public class ConnectionWorker implements Runnable {
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
     } finally {
-      getSemaphore().release();
+      mySemaphore.release();
     }
   }
 
@@ -174,8 +170,12 @@ public class ConnectionWorker implements Runnable {
     }
   }
 
-  public void stop() {
+  public boolean stop(int timeout, TimeUnit timeUnit) throws InterruptedException {
     stop = true;
+    if (timeout <= 0) {
+      return true;
+    }
+    return mySemaphore.tryAcquire(timeout, timeUnit);
   }
 
   private void processSelectedKeys() {

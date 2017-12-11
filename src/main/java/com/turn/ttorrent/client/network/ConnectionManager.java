@@ -120,9 +120,8 @@ public class ConnectionManager {
     boolean successfullyClosed = true;
     if (myConnectionWorker != null) {
       myWorkerFuture.cancel(true);
-      myConnectionWorker.stop();
       try {
-        boolean shutdownCorrectly = myConnectionWorker.getSemaphore().tryAcquire(timeout, timeUnit);
+        boolean shutdownCorrectly = myConnectionWorker.stop(timeout, timeUnit);
         if (!shutdownCorrectly) {
           successfullyClosed = false;
           logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);
