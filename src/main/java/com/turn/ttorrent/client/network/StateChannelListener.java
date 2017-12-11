@@ -7,6 +7,7 @@ import com.turn.ttorrent.common.TorrentsStorageProvider;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
 
 public class StateChannelListener implements ConnectionListener {
 
@@ -14,15 +15,18 @@ public class StateChannelListener implements ConnectionListener {
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final SharingPeerRegister mySharingPeerRegister;
+  private final ExecutorService myExecutorService;
   private final SharingPeerFactory mySharingPeerFactory;
 
   public StateChannelListener(PeersStorageProvider peersStorageProvider,
                               TorrentsStorageProvider torrentsStorageProvider,
                               SharingPeerRegister sharingPeerRegister,
+                              ExecutorService executorService,
                               SharingPeerFactory sharingPeerFactory) {
     this.myTorrentsStorageProvider = torrentsStorageProvider;
     this.myPeersStorageProvider = peersStorageProvider;
     this.mySharingPeerRegister = sharingPeerRegister;
+    this.myExecutorService = executorService;
     this.mySharingPeerFactory = sharingPeerFactory;
   }
 
@@ -36,6 +40,7 @@ public class StateChannelListener implements ConnectionListener {
     this.next = new HandshakeReceiver(
             myPeersStorageProvider,
             myTorrentsStorageProvider,
+            myExecutorService,
             mySharingPeerFactory,
             mySharingPeerRegister,
             socketChannel.socket().getInetAddress().getHostAddress(),

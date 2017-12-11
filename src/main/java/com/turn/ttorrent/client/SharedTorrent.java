@@ -724,7 +724,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     interesting.andNot(this.requestedPieces);
 //    interesting.andNot(peer.getPoorlyAvailablePieces());
 
-    do {
+    while (peer.getDownloadingPiecesCount() < Math.min(10, interesting.cardinality())) {
       if (!peer.isConnected()){
         break;
       }
@@ -769,7 +769,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       interesting.clear(chosen.getIndex());
       //stop requesting if in endGameMode
       if (endGameMode) return;
-    } while (peer.getDownloadingPiecesCount() < Math.min(10, interesting.cardinality()));
+    }
   }
 
   /**

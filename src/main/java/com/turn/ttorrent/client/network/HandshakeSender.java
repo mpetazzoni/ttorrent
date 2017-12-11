@@ -1,7 +1,6 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Handshake;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
 
 public class HandshakeSender implements DataProcessor {
 
@@ -22,19 +22,22 @@ public class HandshakeSender implements DataProcessor {
   private final SharingPeerRegister mySharingPeerRegister;
   private final InetSocketAddress mySendAddress;
   private final SharingPeerFactory mySharingPeerFactory;
+  private final ExecutorService myExecutorService;
 
   public HandshakeSender(TorrentHash torrentHash,
                          PeersStorageProvider peersStorageProvider,
                          TorrentsStorageProvider torrentsStorageProvider,
                          SharingPeerRegister sharingPeerRegister,
                          InetSocketAddress sendAddress,
-                         SharingPeerFactory sharingPeerFactory) {
+                         SharingPeerFactory sharingPeerFactory,
+                         ExecutorService executorService) {
     this.myTorrentHash = torrentHash;
     this.myPeersStorageProvider = peersStorageProvider;
     this.myTorrentsStorageProvider = torrentsStorageProvider;
     this.mySharingPeerRegister = sharingPeerRegister;
     this.mySendAddress = sendAddress;
     this.mySharingPeerFactory = sharingPeerFactory;
+    this.myExecutorService = executorService;
   }
 
   @Override
@@ -56,6 +59,7 @@ public class HandshakeSender implements DataProcessor {
     return new HandshakeReceiver(
             myPeersStorageProvider,
             myTorrentsStorageProvider,
+            myExecutorService,
             mySharingPeerFactory,
             mySharingPeerRegister,
             mySendAddress.getHostName(),

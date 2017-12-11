@@ -1,14 +1,18 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.network.keyProcessors.*;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.*;
+import java.nio.channels.Channel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -116,9 +120,8 @@ public class ConnectionManager {
     boolean successfullyClosed = true;
     if (myConnectionWorker != null) {
       myWorkerFuture.cancel(true);
-      myConnectionWorker.stop();
       try {
-        boolean shutdownCorrectly = myConnectionWorker.getCountDownLatch().await(timeout, timeUnit);
+        boolean shutdownCorrectly = myConnectionWorker.stop(timeout, timeUnit);
         if (!shutdownCorrectly) {
           successfullyClosed = false;
           logger.warn("unable to terminate worker in {} {}", timeout, timeUnit);

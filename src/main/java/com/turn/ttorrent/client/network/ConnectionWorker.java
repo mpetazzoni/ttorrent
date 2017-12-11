@@ -13,11 +13,12 @@ import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class ConnectionWorker implements Runnable {
@@ -27,7 +28,7 @@ public class ConnectionWorker implements Runnable {
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
   private final BlockingQueue<WriteTask> myWriteQueue;
-  private final CountDownLatch myCountDownLatch;
+  private final Semaphore mySemaphore;
   private final List<KeyProcessor> myKeyProcessors;
   private final TimeService myTimeService;
   private long lastCleanupTime;
@@ -50,18 +51,20 @@ public class ConnectionWorker implements Runnable {
     this.myCleanupTimeoutMillis = cleanupTimeoutMillis;
     this.myCleanupProcessor = cleanupProcessor;
     this.myNewConnectionAllower = myNewConnectionAllower;
-    this.myCountDownLatch = new CountDownLatch(1);
+    this.mySemaphore = new Semaphore(1);
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = keyProcessors;
     this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
   }
 
-  public CountDownLatch getCountDownLatch() {
-    return myCountDownLatch;
-  }
-
   @Override
   public void run() {
+
+    try {
+      mySemaphore.acquire();
+    } catch (InterruptedException e) {
+      return;
+    }
 
     try {
       while (!stop && (!Thread.currentThread().isInterrupted())) {
@@ -90,7 +93,7 @@ public class ConnectionWorker implements Runnable {
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
     } finally {
-      myCountDownLatch.countDown();
+      mySemaphore.release();
     }
   }
 
@@ -108,34 +111,39 @@ public class ConnectionWorker implements Runnable {
 
   private void processWriteTasks() {
 
-    WriteTask writeTask;
-    while ((writeTask = myWriteQueue.poll()) != null) {
+    final Iterator<WriteTask> iterator = myWriteQueue.iterator();
+    while (iterator.hasNext()) {
+      WriteTask writeTask = iterator.next();
       if (stop || Thread.currentThread().isInterrupted()) {
         return;
       }
       logger.debug("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), null);
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), null);
         continue;
       }
       Object attachment = key.attachment();
       if (!(attachment instanceof WriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
+        iterator.remove();
         writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
         continue;
       }
       WriteAttachment keyAttachment = (WriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
+        iterator.remove();
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
       } else {
-        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "write queue in current attachment is overflow"), null);
+        logger.warn("write queue in current attachment is overflow");
       }
     }
   }
@@ -162,8 +170,12 @@ public class ConnectionWorker implements Runnable {
     }
   }
 
-  public void stop() {
+  public boolean stop(int timeout, TimeUnit timeUnit) throws InterruptedException {
     stop = true;
+    if (timeout <= 0) {
+      return true;
+    }
+    return mySemaphore.tryAcquire(timeout, timeUnit);
   }
 
   private void processSelectedKeys() {

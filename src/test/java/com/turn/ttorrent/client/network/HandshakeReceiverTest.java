@@ -8,7 +8,6 @@ import com.turn.ttorrent.common.*;
 import org.apache.log4j.*;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +15,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
+import java.util.concurrent.ExecutorService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -54,6 +54,7 @@ public class HandshakeReceiverTest {
     myHandshakeReceiver = new HandshakeReceiver(
             peersStorageProviderImpl,
             torrentsStorageProviderImpl,
+            mock(ExecutorService.class),
             new SharingPeerFactoryImpl(client),
             mySharingPeerRegister,
             "127.0.0.1",
@@ -112,7 +113,7 @@ public class HandshakeReceiverTest {
 
     @Override
     public boolean isOpen() {
-      throw new NotImplementedException();
+      throw new RuntimeException("not implemented");
     }
 
     @Override

@@ -1,11 +1,11 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.common.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.ExecutorService;
 
 public class OutgoingConnectionListener implements ConnectionListener {
 
@@ -16,19 +16,22 @@ public class OutgoingConnectionListener implements ConnectionListener {
   private final SharingPeerFactory mySharingPeerFactory;
   private final TorrentHash torrentHash;
   private final InetSocketAddress mySendAddress;
+  private final ExecutorService myExecutorService;
 
   public OutgoingConnectionListener(PeersStorageProvider myPeersStorageProvider,
                                     TorrentsStorageProvider myTorrentsStorageProvider,
                                     SharingPeerRegister sharingPeerRegister,
                                     SharingPeerFactory mySharingPeerFactory,
                                     TorrentHash torrentHash,
-                                    InetSocketAddress sendAddress) {
+                                    InetSocketAddress sendAddress,
+                                    ExecutorService myExecutorService) {
     this.myPeersStorageProvider = myPeersStorageProvider;
     this.myTorrentsStorageProvider = myTorrentsStorageProvider;
     this.mySharingPeerRegister = sharingPeerRegister;
     this.mySharingPeerFactory = mySharingPeerFactory;
     this.torrentHash = torrentHash;
     this.mySendAddress = sendAddress;
+    this.myExecutorService = myExecutorService;
   }
 
   @Override
@@ -43,7 +46,9 @@ public class OutgoingConnectionListener implements ConnectionListener {
             myPeersStorageProvider,
             myTorrentsStorageProvider,
             mySharingPeerRegister,
-            mySendAddress, mySharingPeerFactory);
+            mySendAddress,
+            mySharingPeerFactory,
+            myExecutorService);
     this.myNext = handshakeSender.processAndGetNext(socketChannel);
   }
 
