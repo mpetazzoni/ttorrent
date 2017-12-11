@@ -17,8 +17,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class ConnectionWorker implements Runnable {
@@ -28,7 +28,7 @@ public class ConnectionWorker implements Runnable {
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
   private final BlockingQueue<WriteTask> myWriteQueue;
-  private final CountDownLatch myCountDownLatch;
+  private final Semaphore mySemaphore;
   private final List<KeyProcessor> myKeyProcessors;
   private final TimeService myTimeService;
   private long lastCleanupTime;
@@ -51,18 +51,24 @@ public class ConnectionWorker implements Runnable {
     this.myCleanupTimeoutMillis = cleanupTimeoutMillis;
     this.myCleanupProcessor = cleanupProcessor;
     this.myNewConnectionAllower = myNewConnectionAllower;
-    this.myCountDownLatch = new CountDownLatch(1);
+    this.mySemaphore = new Semaphore(1);
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = keyProcessors;
     this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
   }
 
-  public CountDownLatch getCountDownLatch() {
-    return myCountDownLatch;
+  public Semaphore getSemaphore() {
+    return mySemaphore;
   }
 
   @Override
   public void run() {
+
+    try {
+      mySemaphore.acquire();
+    } catch (InterruptedException e) {
+      return;
+    }
 
     try {
       while (!stop && (!Thread.currentThread().isInterrupted())) {
@@ -91,7 +97,7 @@ public class ConnectionWorker implements Runnable {
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
     } finally {
-      myCountDownLatch.countDown();
+      getSemaphore().release();
     }
   }
 
