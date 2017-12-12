@@ -33,7 +33,6 @@ import java.io.Serializable;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -326,7 +325,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param force Force unbind without sending cancel requests.
    */
-  public void unbind(boolean force) {
+  public synchronized void unbind(boolean force) {
     if (isStopped)
       return;
     isStopped = true;
@@ -343,7 +342,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     synchronized (this.exchangeLock) {
       try {
-        connectionManager.closeChannel(socketChannel);
+        if (socketChannel != null) {
+          connectionManager.closeChannel(socketChannel);
+        }
       } catch (IOException e) {
         e.printStackTrace();
       }
