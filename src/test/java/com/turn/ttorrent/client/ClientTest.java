@@ -498,7 +498,7 @@ public class ClientTest {
         public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
           super.handlePieceCompleted(peer, piece);
           if (piece.getIndex()%4==0 && interrupts.incrementAndGet() <= 2){
-            peer.getSocketChannel().close();
+            peer.unbind(true);
           }
         }
 
