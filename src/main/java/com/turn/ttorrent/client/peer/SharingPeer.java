@@ -564,6 +564,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         break;
       case NOT_INTERESTED:
         this.interested = false;
+        if (!interesting) {
+          unbind(true);
+        }
         break;
       case HAVE:
         // Record this peer has the given piece

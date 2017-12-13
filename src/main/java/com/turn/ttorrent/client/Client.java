@@ -970,9 +970,6 @@ public class Client implements Runnable,
         if (completed.equals(peer.getAvailablePieces())) {
           // send not interested when have no interested pieces;
           peer.send(PeerMessage.NotInterestedMessage.craft());
-          if (!peer.isInterested()) {
-            peer.unbind(true);
-          }
         }
 
       } else {
