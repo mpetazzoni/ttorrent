@@ -55,8 +55,7 @@ public class WritableKeyProcessor implements KeyProcessor {
       }
 
     } catch (IOException e) {
-      LoggerUtils.errorAndDebugDetails(logger, "unable to write data to channel {}", socketChannel, e);
-      processedTask.getListener().onWriteFailed("I/O error occurs. " + e.getMessage(), e);
+      processedTask.getListener().onWriteFailed("I/O error occurs on write to channel " + socketChannel, e);
       keyAttachment.getWriteTasks().clear();
       key.cancel();
     }
