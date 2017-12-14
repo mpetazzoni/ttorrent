@@ -480,6 +480,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       try {
         results.add(hasher.call());
+      } catch (InterruptedException e) {
+        break;
       } catch (Exception e) {
         logger.error("There was a problem initializing piece " + idx);
       }
