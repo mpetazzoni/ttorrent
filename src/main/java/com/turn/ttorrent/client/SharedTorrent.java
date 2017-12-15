@@ -481,6 +481,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       try {
         results.add(hasher.call());
       } catch (Exception e) {
+        if (Thread.currentThread().isInterrupted()) break;
         logger.error("There was a problem initializing piece " + idx);
       }
     }

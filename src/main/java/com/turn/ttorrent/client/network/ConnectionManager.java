@@ -86,6 +86,7 @@ public class ConnectionManager {
     }
     String serverName = myServerSocketChannel.socket().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
+            new InvalidKeyProcessor(),
             new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
             new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
             new ReadableKeyProcessor(serverName),

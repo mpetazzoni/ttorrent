@@ -9,10 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedSelectorException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -142,8 +139,6 @@ public class ConnectionWorker implements Runnable {
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         iterator.remove();
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
-      } else {
-        logger.warn("write queue in current attachment is overflow");
       }
     }
   }
@@ -199,10 +194,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {
-    if (!key.isValid()) {
-      logger.info("Key for channel {} is invalid. Skipping", key.channel());
-      return;
-    }
+    logger.trace("try process key for channel {}", key.channel());
     myCleanupProcessor.processSelected(key);
     for (KeyProcessor keyProcessor : myKeyProcessors) {
       if (keyProcessor.accept(key)) {

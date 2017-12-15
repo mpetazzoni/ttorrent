@@ -40,7 +40,6 @@ public class ConnectionWorkerTest {
             mock(NewConnectionAllower.class));
     connectionWorker.run();
     verify(mockSelector).selectedKeys();
-    verify(mockKey).isValid();
     verify(acceptProcessor).accept(mockKey);
     verify(acceptProcessor).process(mockKey);
     verify(notAcceptProcessor).accept(mockKey);

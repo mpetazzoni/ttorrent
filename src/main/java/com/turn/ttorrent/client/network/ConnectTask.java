@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.channels.SocketChannel;
 
-public class ConnectTask implements TimeoutAttachment {
+public class ConnectTask implements TimeoutAttachment, ReadAttachment {
 
   private long lastCommunicationTime;
   private final int myTimeoutMillis;
@@ -28,6 +28,7 @@ public class ConnectTask implements TimeoutAttachment {
     return myPort;
   }
 
+  @Override
   public ConnectionListener getConnectionListener() {
     return myConnectionListener;
   }

@@ -968,8 +968,8 @@ public class Client implements Runnable,
         completed.or(torrent.getCompletedPieces());
         completed.and(peer.getAvailablePieces());
         if (completed.equals(peer.getAvailablePieces())) {
-          // disconnect when have no interested pieces;
-          peer.unbind(false);
+          // send not interested when have no interested pieces;
+          peer.send(PeerMessage.NotInterestedMessage.craft());
         }
 
       } else {
