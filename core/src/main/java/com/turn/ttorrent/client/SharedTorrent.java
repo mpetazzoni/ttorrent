@@ -30,12 +30,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -91,7 +86,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 	private boolean initialized;
 	private Piece[] pieces;
-	private SortedSet<Piece> rarest;
+	private Set<Integer> rarest;
 	private BitSet completedPieces;
 	private BitSet requestedPieces;
 	private RequestStrategy requestStrategy;
@@ -257,7 +252,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		this.initialized = false;
 		this.pieces = new Piece[0];
-		this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
+		this.rarest = new HashSet<Integer>();
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
 
@@ -685,6 +680,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				"that was already requested from another peer.");
 		}
 
+		SortedSet<Piece> rarest = new TreeSet<Piece>();
+		for (Integer pieceIdx : this.rarest) {
+			rarest.add(this.pieces[pieceIdx]);
+		}
+
 		Piece chosen = requestStrategy.choosePiece(rarest, interesting, pieces);
 		this.requestedPieces.set(chosen.getIndex());
 
@@ -721,9 +721,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			peer.interesting();
 		}
 
-		this.rarest.remove(piece);
 		piece.seenAt(peer);
-		this.rarest.add(piece);
+		this.rarest.add(piece.getIndex());
 
 		logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
 			new Object[] {
@@ -771,9 +770,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		// Record that the peer has all the pieces it told us it had.
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.rarest.remove(this.pieces[i]);
 			this.pieces[i].seenAt(peer);
-			this.rarest.add(this.pieces[i]);
+			this.rarest.add(i);
 		}
 
 		logger.trace("Peer {} contributes {} piece(s) ({} interesting) " +
@@ -850,9 +848,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
 		for (int i = availablePieces.nextSetBit(0); i >= 0;
 				i = availablePieces.nextSetBit(i+1)) {
-			this.rarest.remove(this.pieces[i]);
 			this.pieces[i].noLongerAt(peer);
-			this.rarest.add(this.pieces[i]);
+			this.rarest.add(i);
 		}
 
 		Piece requested = peer.getRequestedPiece();
