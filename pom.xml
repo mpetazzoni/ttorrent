@@ -142,6 +142,7 @@
 							<argLine>-Xmx768M</argLine>
 							<systemPropertyVariables>
 								<com.turn.ttorrent.logLevel>${testLogLevel}</com.turn.ttorrent.logLevel>
+								<java.nio.channels.spi.SelectorProvider>${java.nio.channels.spi.SelectorProvider}</java.nio.channels.spi.SelectorProvider>
 								<buildDirectory>${project.build.directory}</buildDirectory>
 							</systemPropertyVariables>
 					</configuration>
