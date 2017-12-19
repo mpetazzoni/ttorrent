@@ -30,7 +30,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.BitSet;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -680,12 +686,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				"that was already requested from another peer.");
 		}
 
-		SortedSet<Piece> rarest = new TreeSet<Piece>();
+		SortedSet<Piece> rarestPieces = new TreeSet<Piece>();
 		for (Integer pieceIdx : this.rarest) {
-			rarest.add(this.pieces[pieceIdx]);
+			rarestPieces.add(this.pieces[pieceIdx]);
 		}
 
-		Piece chosen = requestStrategy.choosePiece(rarest, interesting, pieces);
+		Piece chosen = requestStrategy.choosePiece(rarestPieces, interesting, pieces);
 		this.requestedPieces.set(chosen.getIndex());
 
 		logger.trace("Requesting {} from {}, we now have {} " +
