@@ -64,6 +64,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<testLogLevel>INFO</testLogLevel>
 	</properties>
 
 	<repositories>
@@ -140,6 +141,10 @@
 					<version>2.12.3</version>
 					<configuration>
 							<argLine>-Xmx768M</argLine>
+							<systemPropertyVariables>
+								<com.turn.ttorrent.logLevel>${testLogLevel}</com.turn.ttorrent.logLevel>
+								<buildDirectory>${project.build.directory}</buildDirectory>
+							</systemPropertyVariables>
 					</configuration>
 			</plugin>
 
