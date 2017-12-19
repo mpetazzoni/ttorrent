@@ -64,7 +64,6 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<testLogLevel>INFO</testLogLevel>
 	</properties>
 
 	<repositories>
