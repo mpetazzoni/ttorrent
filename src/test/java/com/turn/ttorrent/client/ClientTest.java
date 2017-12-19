@@ -2,6 +2,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
+import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.Torrent;
@@ -65,7 +66,7 @@ public class ClientTest {
   public void setUp() throws IOException {
     tempFiles = new TempFiles();
     clientList = new ArrayList<Client>();
-    Logger.getRootLogger().setLevel(Level.INFO);
+    Logger.getRootLogger().setLevel(Utils.getLogLevel());
     startTracker();
   }
 

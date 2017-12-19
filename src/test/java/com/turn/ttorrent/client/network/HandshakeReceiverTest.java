@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
@@ -41,7 +42,7 @@ public class HandshakeReceiverTest {
   @BeforeMethod
   public void setUp() throws Exception {
     mySharingPeerRegister = mock(SharingPeerRegister.class);
-    Logger.getRootLogger().setLevel(Level.INFO);
+    Logger.getRootLogger().setLevel(Utils.getLogLevel());
     PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
     TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
     myPeersStorage = peersStorageProviderImpl.getPeersStorage();

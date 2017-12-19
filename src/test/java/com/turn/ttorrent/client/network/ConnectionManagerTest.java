@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.common.MockTimeService;
 import org.apache.log4j.*;
 import org.testng.annotations.AfterMethod;
@@ -37,7 +38,7 @@ public class ConnectionManagerTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
-    Logger.getRootLogger().setLevel(Level.INFO);
+    Logger.getRootLogger().setLevel(Utils.getLogLevel());
     myExecutorService = Executors.newSingleThreadExecutor();
     ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
       @Override

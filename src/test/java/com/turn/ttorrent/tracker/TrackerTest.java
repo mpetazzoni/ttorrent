@@ -2,6 +2,7 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
+import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
@@ -43,7 +44,7 @@ public class TrackerTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
-    Logger.getRootLogger().setLevel(Level.INFO);
+    Logger.getRootLogger().setLevel(Utils.getLogLevel());
     Torrent.setHashingThreadsCount(1);
   }
 
