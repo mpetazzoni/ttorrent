@@ -126,16 +126,8 @@ public class HTTPTrackerClient extends TrackerClient {
     }
 
     try {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-      byte[] buf = new byte[8192];
-      int len;
-      while ((len=in.read(buf)) > 0){
-        baos.write(buf, 0, len);
-      }
-
       // Parse and handle the response
-      return HTTPTrackerMessage.parse(ByteBuffer.wrap(baos.toByteArray()));
+      return HTTPTrackerMessage.parse(in);
     } catch (IOException ioe) {
       throw new AnnounceException("Error reading tracker response!", ioe);
     } catch (MessageValidationException mve) {

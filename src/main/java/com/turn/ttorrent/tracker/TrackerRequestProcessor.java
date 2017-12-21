@@ -16,7 +16,6 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.*;
@@ -26,7 +25,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -250,8 +248,7 @@ public class TrackerRequestProcessor {
 				Torrent.BYTE_ENCODING));
 		}
 
-
-		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
+		return HTTPAnnounceRequestMessage.parse(new BEValue(params));
 	}
 
 	private void recordParam(Map<String, BEValue> params, String key, String value) {

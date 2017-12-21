@@ -15,7 +15,6 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -88,9 +87,8 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 		return this.hexInfoHash;
 	}
 
-	public static HTTPAnnounceResponseMessage parse(ByteBuffer data)
+	public static HTTPAnnounceResponseMessage parse(BEValue decoded)
 		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
 		if (decoded == null) {
 			throw new MessageValidationException(
 				"Could not decode tracker message (not B-encoded?)!");
@@ -112,13 +110,13 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
 			}
 
 			if (params.get("torrentIdentifier") != null) {
-				return new HTTPAnnounceResponseMessage(data,
+				return new HTTPAnnounceResponseMessage(null,
 					params.get("interval").getInt(),
 					params.get("complete").getInt(),
 					params.get("incomplete").getInt(),
 					peers, params.get("torrentIdentifier").getString());
 			} else {
-			return new HTTPAnnounceResponseMessage(data,
+			return new HTTPAnnounceResponseMessage(null,
 				params.get("interval").getInt(),
           params.get("complete") != null ? params.get("complete").getInt() : 0,
           params.get("incomplete") != null ? params.get("incomplete").getInt() : 0,
