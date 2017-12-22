@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.common.TorrentInfo;
 
 import java.nio.ByteBuffer;
@@ -593,7 +594,7 @@ public abstract class PeerMessage {
 
 		public static PieceMessage craft(int piece, int offset,
 				ByteBuffer buffer) {
-			return new PieceMessage(buffer, piece, offset, null);
+			return new PieceMessage(buffer, piece, offset, Constants.EMPTY_BUFFER);
 		}
 
 		public static ByteBuffer createBufferWithHeaderForMessage(int piece, int offset, int blockSize) {

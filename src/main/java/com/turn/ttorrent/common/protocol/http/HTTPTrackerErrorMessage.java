@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -58,12 +59,12 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
 
 		try {
 			return new HTTPTrackerErrorMessage(
-				null,
-				params.get("failure reason")
-					.getString(Torrent.BYTE_ENCODING));
+							Constants.EMPTY_BUFFER,
+							params.get("failure reason")
+											.getString(Torrent.BYTE_ENCODING));
 		} catch (InvalidBEncodingException ibee) {
 			throw new MessageValidationException("Invalid tracker error " +
-				"message!", ibee);
+							"message!", ibee);
 		}
 	}
 
