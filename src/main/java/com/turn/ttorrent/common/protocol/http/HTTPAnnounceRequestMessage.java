@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.http;
 
-import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -177,9 +177,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 		return new URL(url.toString());
 	}
 
-	public static HTTPAnnounceRequestMessage parse(ByteBuffer data)
+	public static HTTPAnnounceRequestMessage parse(BEValue decoded)
 		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
 		if (decoded == null) {
 			throw new MessageValidationException(
 				"Could not decode tracker message (not B-encoded?)!");
@@ -252,7 +251,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 					.getString(Torrent.BYTE_ENCODING));
 			}
 
-			return new HTTPAnnounceRequestMessage(data, infoHash,
+			return new HTTPAnnounceRequestMessage(Constants.EMPTY_BUFFER, infoHash,
 				new Peer(ip, port, ByteBuffer.wrap(peerId)),
 				downloaded, uploaded, left, compact, noPeerId,
 				event, numWant);

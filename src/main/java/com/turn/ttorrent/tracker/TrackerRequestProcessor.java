@@ -16,26 +16,26 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
-import com.turn.ttorrent.common.protocol.http.*;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPTrackerErrorMessage;
+import org.simpleframework.http.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.simpleframework.http.Status;
 
 
 /**
@@ -70,6 +70,7 @@ public class TrackerRequestProcessor {
 			"port", "uploaded", "downloaded", "left",
 			"compact", "no_peer_id", "numwant"
 		};
+  private static final int SEEDER_ANNOUNCE_INTERVAL = 40;
 
   private boolean myAcceptForeignTorrents=true; //default to true
   private int myAnnounceInterval = 60; //default value
@@ -110,19 +111,22 @@ public class TrackerRequestProcessor {
 			return;
 		}
 
-		// The requested torrent must be announced by the tracker.
-		TrackedTorrent torrent = requestHandler.getTorrentsMap().get(announceRequest.getHexInfoHash());
-
-    if (torrent == null && this.myAcceptForeignTorrents) {
-        torrent = new TrackedTorrent(announceRequest.getInfoHash());
-      requestHandler.getTorrentsMap().put(torrent.getHexInfoHash(), torrent);
+    // The requested torrent must be announced by the tracker if and only if myAcceptForeignTorrents is false
+    final ConcurrentMap<String, TrackedTorrent> torrentsMap = requestHandler.getTorrentsMap();
+    TrackedTorrent torrent = torrentsMap.get(announceRequest.getHexInfoHash());
+    if (!this.myAcceptForeignTorrents && torrent == null) {
+      logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
+      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
+      return;
     }
 
-		if (torrent == null) {
-			logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
-      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
-			return;
-		}
+    if (torrent == null) {
+      torrent = new TrackedTorrent(announceRequest.getInfoHash());
+      TrackedTorrent oldTorrent = requestHandler.getTorrentsMap().putIfAbsent(torrent.getHexInfoHash(), torrent);
+      if (oldTorrent != null) {
+        torrent = oldTorrent;
+      }
+    }
 
 		AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
 		String peerId = announceRequest.getHexPeerId();
@@ -186,11 +190,13 @@ public class TrackerRequestProcessor {
   private void writeAnnounceResponse(TrackedTorrent torrent, TrackedPeer peer, RequestHandler requestHandler) throws IOException {
 		HTTPAnnounceResponseMessage announceResponse = null;
 		try {
+      final boolean isSeeder = peer != null && peer.isCompleted();
+      boolean mustReturnEmptyPeers = (peer == null || isSeeder);
 			announceResponse = HTTPAnnounceResponseMessage.craft(
-				myAnnounceInterval,
+				isSeeder ? SEEDER_ANNOUNCE_INTERVAL : myAnnounceInterval,
         torrent.seeders(),
 				torrent.leechers(),
-        peer == null ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),
+        mustReturnEmptyPeers ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),
         torrent.getHexInfoHash());
       requestHandler.serveResponse(Status.OK.getCode(), Status.OK.getDescription(), announceResponse.getData());
 		} catch (Exception e) {
@@ -250,8 +256,7 @@ public class TrackerRequestProcessor {
 				Torrent.BYTE_ENCODING));
 		}
 
-
-		return HTTPAnnounceRequestMessage.parse(BEncoder.bencode(params));
+		return HTTPAnnounceRequestMessage.parse(new BEValue(params));
 	}
 
 	private void recordParam(Map<String, BEValue> params, String key, String value) {

@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.common.TorrentInfo;
 
 import java.nio.ByteBuffer;
@@ -592,15 +593,18 @@ public abstract class PeerMessage {
 		}
 
 		public static PieceMessage craft(int piece, int offset,
-				ByteBuffer block) {
-			ByteBuffer buffer = ByteBuffer.allocate(
-				MESSAGE_LENGTH_FIELD_SIZE + PieceMessage.BASE_SIZE + block.capacity());
-			buffer.putInt(PieceMessage.BASE_SIZE + block.capacity());
-			buffer.put(PeerMessage.Type.PIECE.getTypeByte());
-			buffer.putInt(piece);
-			buffer.putInt(offset);
-			buffer.put(block);
-			return new PieceMessage(buffer, piece, offset, block);
+				ByteBuffer buffer) {
+			return new PieceMessage(buffer, piece, offset, Constants.EMPTY_BUFFER);
+		}
+
+		public static ByteBuffer createBufferWithHeaderForMessage(int piece, int offset, int blockSize) {
+			ByteBuffer result = ByteBuffer.allocate(
+							MESSAGE_LENGTH_FIELD_SIZE + PieceMessage.BASE_SIZE + blockSize);
+			result.putInt(PieceMessage.BASE_SIZE + blockSize);
+			result.put(PeerMessage.Type.PIECE.getTypeByte());
+			result.putInt(piece);
+			result.putInt(offset);
+			return result;
 		}
 
 		public String toString() {

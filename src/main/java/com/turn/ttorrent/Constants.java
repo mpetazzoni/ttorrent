@@ -16,6 +16,8 @@
 
 package com.turn.ttorrent;
 
+import java.nio.ByteBuffer;
+
 /**
  * @author Sergey.Pak
  *         Date: 9/19/13
@@ -32,5 +34,6 @@ public class Constants {
 
   public static final int DEFAULT_MAX_CONNECTION_COUNT = 10;
 
+  public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
 }

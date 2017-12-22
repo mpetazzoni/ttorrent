@@ -18,9 +18,9 @@ package com.turn.ttorrent.common.protocol.http;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import org.apache.commons.codec.binary.Hex;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -36,30 +36,21 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
 		super(type, data);
 	}
 
-	public static HTTPTrackerMessage parse(ByteBuffer data)
+	public static HTTPTrackerMessage parse(InputStream data)
 		throws IOException, MessageValidationException {
 		BEValue decoded = BDecoder.bdecode(data);
     if (decoded == null) {
-      StringBuilder msg = new StringBuilder();
-      try {
-        final byte[] array = data.array();
-        if (array != null && array.length > 0) {
-          msg.append("decoded hex message: " + Hex.encodeHexString(array));
-        } else {
-          msg.append("message is null");
-        }
-      } catch (Throwable t){}
-			throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: " + msg.toString());
+			throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: ");
 		}
 
 		Map<String, BEValue> params = decoded.getMap();
 
 		if (params.containsKey("info_hash")) {
-			return HTTPAnnounceRequestMessage.parse(data);
+			return HTTPAnnounceRequestMessage.parse(decoded);
 		} else if (params.containsKey("peers")) {
-			return HTTPAnnounceResponseMessage.parse(data);
+			return HTTPAnnounceResponseMessage.parse(decoded);
 		} else if (params.containsKey("failure reason")) {
-			return HTTPTrackerErrorMessage.parse(data);
+			return HTTPTrackerErrorMessage.parse(decoded);
 		}
 
 		throw new MessageValidationException("Unknown HTTP tracker message!");
