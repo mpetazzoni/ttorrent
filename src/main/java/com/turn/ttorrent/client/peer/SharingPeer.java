@@ -642,8 +642,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
           rp.read(request.getOffset(), request.getLength(), bufferForMessage);
 
-          bufferForMessage.limit(bufferForMessage.capacity());
-
           this.send(PeerMessage.PieceMessage.craft(request.getPiece(),
                   request.getOffset(), bufferForMessage));
           this.upload.add(request.getLength());

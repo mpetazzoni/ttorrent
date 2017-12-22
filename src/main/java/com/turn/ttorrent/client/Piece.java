@@ -204,9 +204,10 @@ public class Piece implements Comparable<Piece> {
 
 		// TODO: remove cast to int when large ByteBuffer support is
 		// implemented in Java.
+    int position = buffer.position();
 		int bytes = this.bucket.read(buffer, this.offset + offset);
 		buffer.rewind();
-		buffer.limit(bytes >= 0 ? bytes : 0);
+		buffer.limit((bytes >= 0 ? bytes : 0) + position);
 		return buffer;
 	}
 
