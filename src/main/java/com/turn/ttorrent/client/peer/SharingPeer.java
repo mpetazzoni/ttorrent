@@ -15,13 +15,11 @@
  */
 package com.turn.ttorrent.client.peer;
 
-import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.network.WriteListener;
 import com.turn.ttorrent.client.network.WriteTask;
-import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -638,11 +636,17 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         // At this point we agree to send the requested piece block to
         // the remote peer, so let's queue a message with that block
         try {
-          ByteBuffer block = rp.read(request.getOffset(),
-            request.getLength());
+
+          ByteBuffer bufferForMessage = PeerMessage.PieceMessage.createBufferWithHeaderForMessage(
+                  request.getPiece(), request.getOffset(), request.getLength());
+
+          rp.read(request.getOffset(), request.getLength(), bufferForMessage);
+
+          bufferForMessage.limit(bufferForMessage.capacity());
+
           this.send(PeerMessage.PieceMessage.craft(request.getPiece(),
-            request.getOffset(), block));
-          this.upload.add(block.capacity());
+                  request.getOffset(), bufferForMessage));
+          this.upload.add(request.getLength());
 
           if (request.getOffset() + request.getLength() == rp.size()) {
             this.firePieceSent(rp);

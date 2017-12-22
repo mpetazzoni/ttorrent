@@ -164,7 +164,8 @@ public class Piece implements Comparable<Piece> {
 		try {
 			// TODO: remove cast to int when large ByteBuffer support is
 			// implemented in Java.
-			ByteBuffer buffer = this._read(0, this.length);
+			ByteBuffer buffer = ByteBuffer.allocate((int)this.length);
+			this._read(0, this.length, buffer);
 			byte[] data = new byte[(int)this.length];
 			buffer.get(data);
       final byte[] calculatedHash = Torrent.hash(data);
@@ -194,7 +195,7 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	private ByteBuffer _read(long offset, long length) throws IOException {
+	private ByteBuffer _read(long offset, long length, ByteBuffer buffer) throws IOException {
 		if (offset + length > this.length) {
 			throw new IllegalArgumentException("Piece#" + this.index +
 				" overrun (" + offset + " + " + length + " > " +
@@ -203,7 +204,6 @@ public class Piece implements Comparable<Piece> {
 
 		// TODO: remove cast to int when large ByteBuffer support is
 		// implemented in Java.
-		ByteBuffer buffer = ByteBuffer.allocate((int)length);
 		int bytes = this.bucket.read(buffer, this.offset + offset);
 		buffer.rewind();
 		buffer.limit(bytes >= 0 ? bytes : 0);
@@ -230,14 +230,14 @@ public class Piece implements Comparable<Piece> {
 	 * @throws IOException If the read can't be completed (I/O error, or EOF
 	 * reached, which can happen if the piece is not complete).
 	 */
-	public ByteBuffer read(long offset, int length)
+	public ByteBuffer read(long offset, int length, ByteBuffer block)
 		throws IllegalArgumentException, IllegalStateException, IOException {
 		if (!this.valid) {
 			throw new IllegalStateException("Attempting to read an " +
 					"known-to-be invalid piece!");
 		}
 
-		return this._read(offset, length);
+		return this._read(offset, length, block);
 	}
 
 	/**

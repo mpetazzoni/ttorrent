@@ -84,7 +84,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 		for (FileOffset fo : this.select(offset, requested)) {
 			// TODO: remove cast to int when large ByteBuffer support is
 			// implemented in Java.
-			buffer.limit((int)(bytes + fo.length));
+			buffer.limit((int)(buffer.position() + fo.length));
 			bytes += fo.file.read(buffer, fo.offset);
 		}
 
