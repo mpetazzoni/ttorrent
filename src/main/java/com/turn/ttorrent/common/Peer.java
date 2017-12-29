@@ -213,12 +213,17 @@ public class Peer {
 
 		Peer peer = (Peer) o;
 
+		if (hexPeerId == null && peer.hexPeerId == null) return super.equals(o);
+
 		if (hexPeerId != null ? !hexPeerId.equals(peer.hexPeerId) : peer.hexPeerId != null) return false;
 		return hexInfoHash != null ? hexInfoHash.equals(peer.hexInfoHash) : peer.hexInfoHash == null;
 	}
 
 	@Override
 	public int hashCode() {
+
+		if (hexPeerId == null) return super.hashCode();
+
 		int result = hexPeerId != null ? hexPeerId.hashCode() : 0;
 		result = 31 * result + (hexInfoHash != null ? hexInfoHash.hashCode() : 0);
 		return result;

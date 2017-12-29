@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
  *         Time: 2:57 PM
  */
 public class Constants {
-  public static final int DEFAULT_ANNOUNCE_INTERVAL_SEC =60;
+  public static final int DEFAULT_ANNOUNCE_INTERVAL_SEC =10;
   public static final int DEFAULT_FILESIZE_THRESHOLD_MB =10;
 
   public final static int DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS = 100000;

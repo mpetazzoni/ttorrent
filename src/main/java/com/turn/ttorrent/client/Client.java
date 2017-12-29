@@ -148,7 +148,7 @@ public class Client implements Runnable,
     torrent.setTorrentStateListener(this);
 
     this.announce.addTorrent(torrent, this);
-    logger.info(String.format("Started seeding %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+    logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
@@ -650,10 +650,8 @@ public class Client implements Runnable,
     for (SharingPeer peer : bound) {
       if (downloaders < Client.MAX_DOWNLOADERS_UNCHOKE) {
         // Unchoke up to MAX_DOWNLOADERS_UNCHOKE interested peers
-        if (peer.isChoking()) {
-          if (peer.isInterested()) {
-            downloaders++;
-          }
+        if (peer.isInterested()) {
+          downloaders++;
           peer.unchoke();
         }
         continue;

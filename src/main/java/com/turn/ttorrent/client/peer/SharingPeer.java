@@ -200,11 +200,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * </p>
    */
   public void unchoke() {
-    if (this.choking) {
-      logger.trace("Unchoking {}", this);
-      this.send(PeerMessage.UnchokeMessage.craft());
-      this.choking = false;
-    }
+    logger.trace("Unchoking {}", this);
+    this.send(PeerMessage.UnchokeMessage.craft());
+    this.choking = false;
   }
 
   public boolean isChoking() {
