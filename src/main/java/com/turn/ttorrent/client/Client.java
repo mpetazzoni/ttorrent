@@ -148,7 +148,7 @@ public class Client implements Runnable,
     torrent.setTorrentStateListener(this);
 
     this.announce.addTorrent(torrent, this);
-    logger.info(String.format("Started seeding %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+    logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
