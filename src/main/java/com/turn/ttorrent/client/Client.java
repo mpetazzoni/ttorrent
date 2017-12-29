@@ -650,10 +650,8 @@ public class Client implements Runnable,
     for (SharingPeer peer : bound) {
       if (downloaders < Client.MAX_DOWNLOADERS_UNCHOKE) {
         // Unchoke up to MAX_DOWNLOADERS_UNCHOKE interested peers
-        if (peer.isChoking()) {
-          if (peer.isInterested()) {
-            downloaders++;
-          }
+        if (peer.isInterested()) {
+          downloaders++;
           peer.unchoke();
         }
         continue;
