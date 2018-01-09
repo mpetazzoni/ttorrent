@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -227,7 +228,7 @@ public class Client implements Runnable,
     start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
 
-  public Peer[] getSelfPeers(final InetAddress[] bindAddresses) {
+  public Peer[] getSelfPeers(final InetAddress[] bindAddresses) throws UnsupportedEncodingException {
     Peer self = this.peersStorageProvider.getPeersStorage().getSelf();
 
     if (self == null) {
@@ -239,7 +240,14 @@ public class Client implements Runnable,
       final InetAddress bindAddress = bindAddresses[i];
       final Peer peer = new Peer(new InetSocketAddress(bindAddress.getHostAddress(), self.getPort()));
       peer.setTorrentHash(self.getHexInfoHash());
-      peer.setPeerId(self.getPeerId());
+      //if we have more, that one bind address, then only for first set self peer id. For other generate it
+      if (i == 0) {
+        peer.setPeerId(self.getPeerId());
+      } else {
+        final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+        byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+        peer.setPeerId(ByteBuffer.wrap(idBytes));
+      }
       result[i] = peer;
     }
     return result;

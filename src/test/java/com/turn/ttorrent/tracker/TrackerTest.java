@@ -16,10 +16,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.Socket;
+import java.net.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.zip.CRC32;
@@ -74,6 +71,50 @@ public class TrackerTest {
       }
 
     }
+  }
+
+  public void testPeerWithManyInterfaces() throws Exception {
+    List<InetAddress> selfAddresses = new ArrayList<InetAddress>();
+    final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+    while (networkInterfaces.hasMoreElements()) {
+      NetworkInterface ni = networkInterfaces.nextElement();
+      final Enumeration<InetAddress> inetAddresses = ni.getInetAddresses();
+      while (inetAddresses.hasMoreElements()) {
+        InetAddress inetAddress = inetAddresses.nextElement();
+        if (inetAddress instanceof Inet6Address) continue;// ignore IPv6 addresses
+
+        selfAddresses.add(inetAddress);
+      }
+    }
+
+    final InetAddress[] inetAddresses = selfAddresses.toArray(new InetAddress[selfAddresses.size()]);
+    Client seeder = createClient();
+    final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
+    seeder.addTorrent(torrent);
+    seeder.start(inetAddresses);
+    final WaitFor waitFor = new WaitFor(10000) {
+      @Override
+      protected boolean condition() {
+        return tracker.getTrackedTorrent(torrent.getHexInfoHash()) != null;
+      }
+    };
+
+    assertTrue(waitFor.isMyResult());
+
+    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+
+    Set<String> expectedIps = new HashSet<String>();
+    for (InetAddress inetAddress : inetAddresses) {
+      expectedIps.add(inetAddress.getHostAddress());
+    }
+    Set<String> actualIps = new HashSet<String>();
+    for (TrackedPeer peer : trackedTorrent.getPeers().values()) {
+      actualIps.add(peer.getIp());
+    }
+
+    assertEquals(actualIps, expectedIps);
+    assertEquals(inetAddresses.length, actualIps.size());
+
   }
 
   public void test_share_and_download() throws IOException, NoSuchAlgorithmException, InterruptedException {
