@@ -10,24 +10,22 @@ import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.*;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,8 +34,6 @@ import java.util.zip.Checksum;
 
 import static com.turn.ttorrent.ClientFactory.DEFAULT_POOL_SIZE;
 import static org.testng.Assert.*;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
 /**
  * @author Sergey.Pak
@@ -479,6 +475,82 @@ public class ClientTest {
     for(int i=0; i<5; i++) {
       downloadAndStop(torrent, 250*1000, createClient());
       Thread.sleep(3*1000);
+    }
+  }
+
+  public void testConnectToAllDiscoveredPeers() throws Exception {
+    tracker.setAcceptForeignTorrents(true);
+
+    final ExecutorService executorService = Executors.newFixedThreadPool(8);
+    Client leecher = new Client(executorService);
+    leecher.setMaxInConnectionsCount(10);
+    leecher.setMaxOutConnectionsCount(10);
+
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
+    final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final SharedTorrent sharedTorrent = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
+
+    final String hexInfoHash = sharedTorrent.getHexInfoHash();
+    leecher.addTorrent(sharedTorrent);
+    final List<ServerSocket> serverSockets = new ArrayList<ServerSocket>();
+
+    String[] peerIds = new String[]{"id1", "id2"};
+    final ExecutorService es = Executors.newSingleThreadExecutor();
+    try {
+      leecher.start(InetAddress.getLocalHost());
+
+      WaitFor waitFor = new WaitFor(5000) {
+        @Override
+        protected boolean condition() {
+          return tracker.getTrackedTorrent(hexInfoHash) != null;
+        }
+      };
+
+      assertTrue(waitFor.isMyResult());
+
+      final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(hexInfoHash);
+      Map<String, TrackedPeer> trackedPeerMap = new HashMap<String, TrackedPeer>();
+      int port = 6885;
+      for (String id : peerIds) {
+        trackedPeerMap.put(id, new TrackedPeer(trackedTorrent, "127.0.0.1", port, ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING))));
+        serverSockets.add(new ServerSocket(port));
+        port++;
+      }
+
+      trackedTorrent.getPeers().putAll(trackedPeerMap);
+
+      //wait until all server sockets accept connection from leecher
+      for (final ServerSocket ss : serverSockets) {
+        final Future<?> future = es.submit(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              final Socket socket = ss.accept();
+              socket.close();
+            } catch (IOException e) {
+              throw new RuntimeException("can not accept connection");
+            }
+          }
+        });
+        try {
+          future.get(5, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+          fail("get execution exception on accept connection", e);
+        } catch (TimeoutException e) {
+          fail("not received connection from leecher in specified timeout", e);
+        }
+      }
+
+    } finally {
+      for (ServerSocket ss : serverSockets) {
+        try {
+          ss.close();
+        } catch (IOException e) {
+          fail("can not close server socket", e);
+        }
+      }
+      es.shutdown();
+      leecher.stop();
     }
   }
 
