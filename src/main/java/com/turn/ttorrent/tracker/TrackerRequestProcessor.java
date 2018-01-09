@@ -30,7 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.URLDecoder;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,7 +49,7 @@ import java.util.concurrent.ConcurrentMap;
  * </p>
  *
  * <p>
- * The list of torrents {@link #myTorrentsMap} is a map of torrent hashes to their
+ * The list of torrents {@see #requestHandler.getTorrentsMap()} is a map of torrent hashes to their
  * corresponding Torrent objects, and is maintained by the {@link Tracker} this
  * service is part of. The TrackerRequestProcessor only has a reference to this map, and
  * does not modify it.
@@ -141,6 +143,11 @@ public class TrackerRequestProcessor {
 			event = AnnounceRequestMessage.RequestEvent.STARTED;
 		}
 
+		if (event == AnnounceRequestMessage.RequestEvent.STARTED && isIncorrectAddress(announceRequest.getIp())) {
+			writeAnnounceResponse(torrent, null, requestHandler);
+			return;
+		}
+
     if (event != null && torrent.getPeer(peerId) == null &&
   			AnnounceRequestMessage.RequestEvent.STOPPED.equals(event)) {
       writeAnnounceResponse(torrent, null, requestHandler);
@@ -179,7 +186,21 @@ public class TrackerRequestProcessor {
     writeAnnounceResponse(torrent, peer, requestHandler);
 	}
 
-  public void setAnnounceInterval(int announceInterval) {
+	/**
+	 * @param ip specified address
+	 * @return true if is incorrect ip (for example any interface link) or unknown host
+	 */
+	private boolean isIncorrectAddress(String ip) {
+		InetAddress inetAddress;
+		try {
+			inetAddress = InetAddress.getByName(ip);
+		} catch (UnknownHostException e) {
+			return true;
+		}
+		return inetAddress.isAnyLocalAddress();
+	}
+
+	public void setAnnounceInterval(int announceInterval) {
     myAnnounceInterval = announceInterval;
   }
 
@@ -281,8 +302,6 @@ public class TrackerRequestProcessor {
 	 * Write a {@link HTTPTrackerErrorMessage} to the response with the given
 	 * HTTP status code.
 	 *
-	 * @param response The HTTP response object.
-	 * @param body The response output stream to write to.
 	 * @param status The HTTP status code to return.
 	 * @param error The error reported by the tracker.
 	 */
@@ -293,8 +312,6 @@ public class TrackerRequestProcessor {
 	/**
 	 * Write an error message to the response with the given HTTP status code.
 	 *
-	 * @param response The HTTP response object.
-	 * @param body The response output stream to write to.
 	 * @param status The HTTP status code to return.
 	 * @param error The error message reported by the tracker.
 	 */
@@ -310,8 +327,6 @@ public class TrackerRequestProcessor {
 	 * Write a tracker failure reason code to the response with the given HTTP
 	 * status code.
 	 *
-	 * @param response The HTTP response object.
-	 * @param body The response output stream to write to.
 	 * @param status The HTTP status code to return.
 	 * @param reason The failure reason reported by the tracker.
 	 */

@@ -227,12 +227,22 @@ public class Client implements Runnable,
     start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
   }
 
-  public Peer[] getSelfPeers() {
+  public Peer[] getSelfPeers(final InetAddress[] bindAddresses) {
     Peer self = this.peersStorageProvider.getPeersStorage().getSelf();
+
     if (self == null) {
       return new Peer[0];
     }
-    return new Peer[]{self};
+
+    Peer[] result = new Peer[bindAddresses.length];
+    for (int i = 0; i < bindAddresses.length; i++) {
+      final InetAddress bindAddress = bindAddresses[i];
+      final Peer peer = new Peer(new InetSocketAddress(bindAddress.getHostAddress(), self.getPort()));
+      peer.setTorrentHash(self.getHexInfoHash());
+      peer.setPeerId(self.getPeerId());
+      result[i] = peer;
+    }
+    return result;
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
@@ -257,7 +267,7 @@ public class Client implements Runnable,
     }
     final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
     byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
-    Peer self = new Peer(this.myConnectionManager.getBindAddress(), ByteBuffer.wrap(idBytes));
+    Peer self = new Peer(new InetSocketAddress(myConnectionManager.getBindPort()), ByteBuffer.wrap(idBytes));
     peersStorageProvider.getPeersStorage().setSelf(self);
     logger.info("BitTorrent client [{}] started and " +
                     "listening at {}:{}...",
@@ -267,7 +277,7 @@ public class Client implements Runnable,
                     self.getPort()
             });
 
-    announce.start(defaultTrackerURI, this, getSelfPeers(), announceIntervalSec);
+    announce.start(defaultTrackerURI, this, getSelfPeers(bindAddresses), announceIntervalSec);
     this.stop.set(false);
 
     if (this.thread == null || !this.thread.isAlive()) {

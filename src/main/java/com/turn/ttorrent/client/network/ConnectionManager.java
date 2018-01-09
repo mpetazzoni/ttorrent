@@ -34,7 +34,7 @@ public class ConnectionManager {
   private final ChannelListenerFactory channelListenerFactory;
   private final TimeService myTimeService;
   private volatile ConnectionWorker myConnectionWorker;
-  private InetSocketAddress myBindAddress;
+  private int myBindPort;
   private volatile ServerSocketChannel myServerSocketChannel;
   private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
@@ -68,20 +68,21 @@ public class ConnectionManager {
 
     myServerSocketChannel = selector.provider().openServerSocketChannel();
     myServerSocketChannel.configureBlocking(false);
-    myBindAddress = null;
+    myBindPort = -1;
     for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
       try {
-        InetSocketAddress tryAddress = new InetSocketAddress(inetAddress, port);
+        InetSocketAddress tryAddress = new InetSocketAddress(port);
         myServerSocketChannel.socket().bind(tryAddress);
         myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(channelListenerFactory));
-        myBindAddress = tryAddress;
+        myBindPort = tryAddress.getPort();
         break;
       } catch (IOException e) {
         //try next port
+        myBindPort = -1;
         logger.debug("Could not bind to port {}, trying next port...", port);
       }
     }
-    if (myBindAddress == null) {
+    if (myBindPort == -1) {
       throw new IOException("No available port for the BitTorrent client!");
     }
     String serverName = myServerSocketChannel.socket().toString();
@@ -112,8 +113,8 @@ public class ConnectionManager {
   }
 
 
-  public InetSocketAddress getBindAddress() {
-    return myBindAddress;
+  public int getBindPort() {
+    return myBindPort;
   }
 
   public void close(int timeout, TimeUnit timeUnit) {
