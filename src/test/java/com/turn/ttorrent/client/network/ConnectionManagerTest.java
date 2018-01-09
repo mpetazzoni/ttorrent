@@ -48,8 +48,7 @@ public class ConnectionManagerTest {
     };
     NewConnectionAllower newConnectionAllower = mock(NewConnectionAllower.class);
     when(newConnectionAllower.isNewConnectionAllowed()).thenReturn(true);
-    myConnectionManager = new ConnectionManager(InetAddress.getByName("127.0.0.1"),
-            channelListenerFactory,
+    myConnectionManager = new ConnectionManager(channelListenerFactory,
             myExecutorService,
             new MockTimeService(),
             newConnectionAllower,

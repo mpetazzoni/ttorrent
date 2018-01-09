@@ -30,7 +30,6 @@ public class ConnectionManager {
   public static final int PORT_RANGE_END = 6889;
 
   private final Selector selector;
-  private final InetAddress inetAddress;
   private final ChannelListenerFactory channelListenerFactory;
   private final TimeService myTimeService;
   private volatile ConnectionWorker myConnectionWorker;
@@ -43,15 +42,13 @@ public class ConnectionManager {
   private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
   private final AtomicBoolean alreadyInit = new AtomicBoolean(false);
 
-  public ConnectionManager(InetAddress inetAddress,
-                           ChannelListenerFactory channelListenerFactory,
+  public ConnectionManager(ChannelListenerFactory channelListenerFactory,
                            ExecutorService executorService,
                            TimeService timeService,
                            NewConnectionAllower newIncomingConnectionAllower,
                            NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
     this.myExecutorService = executorService;
     this.selector = Selector.open();
-    this.inetAddress = inetAddress;
     this.channelListenerFactory = channelListenerFactory;
     this.myTimeService = timeService;
     this.myIncomingConnectionAllower = newIncomingConnectionAllower;
