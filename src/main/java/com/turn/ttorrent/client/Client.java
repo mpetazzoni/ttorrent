@@ -741,10 +741,8 @@ public class Client implements Runnable,
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
-
-    // TODO: 11/14/17 check that peers list contains torrent hash
 
     Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
     Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
@@ -807,7 +805,7 @@ public class Client implements Runnable,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort()),
               myExecutorService);
 
-      logger.trace("trying to connect to the peer {}", sharingPeer);
+      logger.debug("trying to connect to the peer {}", sharingPeer);
 
       boolean connectTaskAdded = this.myConnectionManager.offerConnect(
               new ConnectTask(sharingPeer.getIp(),
