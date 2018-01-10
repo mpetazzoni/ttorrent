@@ -390,7 +390,7 @@ public class Client implements Runnable,
       removeAndDeleteTorrent(torrent);
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime) {
-        errorMsg = String.format("Timed out (%d seconds elapsed)", idleTimeoutSec);
+        errorMsg = String.format("No pieces has been downloaded in %d seconds", idleTimeoutSec);
       } else if (seedersCount < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
       } else if (torrent.getClientState() == ClientState.ERROR) {
