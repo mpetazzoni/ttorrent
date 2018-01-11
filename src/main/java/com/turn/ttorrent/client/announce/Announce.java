@@ -179,6 +179,7 @@ public class Announce implements Runnable {
    */
   public void stop() {
     this.stop = true;
+    this.myPeers.clear();
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
