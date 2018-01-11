@@ -255,7 +255,7 @@ public class TrackedTorrent implements TorrentHash {
 		int count = 0;
 		for (TrackedPeer candidate : candidates) {
 			// Don't include the requesting peer in the answer.
-			if (peer.looksLike(candidate)) {
+			if (peer != null && peer.looksLike(candidate)) {
 				continue;
 			}
 
