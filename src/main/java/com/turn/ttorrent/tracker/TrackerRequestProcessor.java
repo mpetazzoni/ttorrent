@@ -76,13 +76,25 @@ public class TrackerRequestProcessor {
 
   private boolean myAcceptForeignTorrents=true; //default to true
   private int myAnnounceInterval = 60; //default value
+	private final AddressChecker myAddressChecker;
 
 
 	/**
 	 * Create a new TrackerRequestProcessor serving the given torrents.
 	 *
 	 */
-	public TrackerRequestProcessor() {}
+	public TrackerRequestProcessor() {
+		this(new AddressChecker() {
+			@Override
+			public boolean isBadAddress(String ip) {
+				return false;
+			}
+		});
+	}
+
+	public TrackerRequestProcessor(AddressChecker addressChecker) {
+		myAddressChecker = addressChecker;
+	}
 
 	/**
 	 * Process the announce request.
@@ -143,7 +155,7 @@ public class TrackerRequestProcessor {
 			event = AnnounceRequestMessage.RequestEvent.STARTED;
 		}
 
-		if (event == AnnounceRequestMessage.RequestEvent.STARTED && isIncorrectAddress(announceRequest.getIp())) {
+		if (myAddressChecker.isBadAddress(announceRequest.getIp())) {
 			writeAnnounceResponse(torrent, null, requestHandler);
 			return;
 		}
@@ -184,20 +196,6 @@ public class TrackerRequestProcessor {
 
 		// Craft and output the answer
     writeAnnounceResponse(torrent, peer, requestHandler);
-	}
-
-	/**
-	 * @param ip specified address
-	 * @return true if is incorrect ip (for example any interface link) or unknown host
-	 */
-	private boolean isIncorrectAddress(String ip) {
-		InetAddress inetAddress;
-		try {
-			inetAddress = InetAddress.getByName(ip);
-		} catch (UnknownHostException e) {
-			return true;
-		}
-		return inetAddress.isAnyLocalAddress();
 	}
 
 	public void setAnnounceInterval(int announceInterval) {
