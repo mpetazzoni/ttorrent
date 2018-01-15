@@ -321,7 +321,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param force Force unbind without sending cancel requests.
    */
-  public synchronized void unbind(boolean force) {
+  public void unbind(boolean force) {
     if (isStopped)
       return;
     isStopped = true;
