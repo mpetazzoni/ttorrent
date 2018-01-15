@@ -95,7 +95,8 @@ public class TrackerTest {
     final WaitFor waitFor = new WaitFor(10000) {
       @Override
       protected boolean condition() {
-        return tracker.getTrackedTorrent(torrent.getHexInfoHash()) != null;
+        final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+        return trackedTorrent != null && trackedTorrent.getPeers().size() >= inetAddresses.length;
       }
     };
 
