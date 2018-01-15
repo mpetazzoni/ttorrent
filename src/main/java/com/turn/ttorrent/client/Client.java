@@ -402,14 +402,6 @@ public class Client implements Runnable,
     }
   }
 
-  private void pingPeers(final SharedTorrent torrent) {
-    for (SharingPeer sharingPeer : peersStorage.getSharingPeers()) {
-      if (sharingPeer.getTorrent().getHexInfoHash().equals(torrent.getHexInfoHash())) {
-        torrent.handlePeerReady(sharingPeer);
-      }
-    }
-  }
-
   /**
    * Main client loop.
    * <p/>
@@ -1021,7 +1013,7 @@ public class Client implements Runnable,
                     getConnectedPeers().size(),
                     this.peersStorage.getSharingPeers().size()
             });
-    pingPeers(peerTorrent);
+    //pingPeers(peerTorrent);
   }
 
   @Override
