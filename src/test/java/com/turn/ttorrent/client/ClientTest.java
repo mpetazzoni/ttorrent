@@ -716,7 +716,7 @@ public class ClientTest {
     leecher.setAnnounceInterval(5);
     final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     final ExecutorService service = Executors.newFixedThreadPool(1);
-    service.submit(new Runnable() {
+    final Future<?> future = service.submit(new Runnable() {
       @Override
       public void run() {
         try {
@@ -734,18 +734,12 @@ public class ClientTest {
         }
       }
     });
-    leecher.downloadUninterruptibly(st, 60);
-
-/*
-    seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
-    Client leecher = createClient();
-    leecher.start(InetAddress.getLocalHost());
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
-    leecher.downloadUninterruptibly(st, 10);
-
-    assertTrue(st.getClientState()==ClientState.SEEDING);
-*/
+    try {
+      leecher.downloadUninterruptibly(st, 60);
+    } finally {
+      future.cancel(true);
+      service.shutdown();
+    }
   }
 
   public void interrupt_download() throws IOException, InterruptedException, NoSuchAlgorithmException {
