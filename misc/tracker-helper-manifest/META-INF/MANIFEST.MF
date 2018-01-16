@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: commons-io-2.1.jar simple-4.1.21.jar junit-3.8.1.jar slf4j
- -api-1.6.4.jar slf4j-log4j12-1.6.4.jar testng-6.1.1.jar log4j-1.2.16.
- jar
-Main-Class: com.turn.ttorrent.tracker.TrackerHelper
-

@@ -81,7 +81,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final ConcurrentMap<Piece, Integer> myRequestedPieces;
-//  private int lastRequestedOffset;
 
   private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
@@ -260,18 +259,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   }
 
   /**
-   * Tells whether this peer is a seed.
-   *
-   * @return Returns <em>true</em> if the peer has all of the torrent's pieces
-   * available.
-   */
-  public synchronized boolean isSeed() {
-    return this.torrent.getPieceCount() > 0 &&
-      this.getAvailablePieces().cardinality() ==
-        this.torrent.getPieceCount();
-  }
-
-  /**
    * Bind a connected socket to this peer.
    * <p/>
    * <p>
@@ -411,10 +398,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.requestNextBlocksForPiece(piece);
   }
 
-  public boolean isPieceDownloading(final Piece piece){
-    return myRequestedPieces.get(piece) != null;
-  }
-
   public synchronized boolean isDownloading() {
     return this.downloading;
   }
@@ -446,7 +429,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
           unbind(false);
           return;
         }
-//        logger.debug("---------Queue size: " + myRequests.size());
         this.send(request);
         myRequestedPieces.put(piece, request.getLength() + lastRequestedOffset);
       }

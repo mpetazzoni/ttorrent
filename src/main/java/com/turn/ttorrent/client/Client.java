@@ -63,7 +63,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILL
  * @author mpetazzoni
  */
 public class Client implements Runnable,
-        AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
+        AnnounceResponseListener, PeerActivityListener, TorrentStateListener {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -818,90 +818,6 @@ public class Client implements Runnable,
     return sharingPeer;
   }
 
-  /** CommunicationListener handler(s). ********************************/
-
-  /**
-   * Handle a new peer connection.
-   * <p/>
-   * <p>
-   * This handler is called once the connection has been successfully
-   * established and the handshake exchange made. This generally simply means
-   * binding the peer to the socket, which will put in place the communication
-   * thread and logic with this peer.
-   * </p>
-   *
-   * @param channel The connected socket to the remote peer. Note that if the peer
-   *               somehow rejected our handshake reply, this socket might very soon get
-   *               closed, but this is handled down the road.
-   * @param peerId The byte-encoded peerId extracted from the peer's
-   *               handshake, after validation.
-   * @see com.turn.ttorrent.client.peer.SharingPeer
-   */
-  @Override
-  public void handleNewPeerConnection(SocketChannel channel, byte[] peerId, String hexInfoHash) {
-    Peer search = new Peer(
-            channel.socket().getInetAddress().getHostAddress(),
-            channel.socket().getPort(),
-            (peerId != null
-                    ? ByteBuffer.wrap(peerId)
-                    : null));
-
-    logger.debug("Handling new peer connection with {}...", search);
-    search.setTorrentHash(hexInfoHash);
-    final SharingPeer peer = this.getOrCreatePeer(search, hexInfoHash);
-
-    try {
-      synchronized (peer) {
-        if (peer.isConnected()) {
-          logger.debug("Already connected with {}, ignoring.", peer);
-          return;
-        }
-
-        PeerUID peerUID = new PeerUID(search.getStringPeerId(), hexInfoHash);
-
-        SharingPeer old = peersStorage.putIfAbsent(peerUID, peer);
-
-        if (old != null) {
-          logger.debug("Already connected with {}, ignoring.", peer);
-          return;
-        }
-
-        peer.register(peer.getTorrent());
-        peer.register(this);
-        peer.bind(channel);
-
-      }
-
-      logger.debug("New peer connection with {} [{}/{}].",
-              new Object[]{
-                      peer,
-                      getConnectedPeers().size(),
-                      this.peersStorage.getSharingPeers().size()
-              });
-    } catch (Exception e) {
-      logger.info("Could not handle new peer connection " +
-              "with {}: {}", peer, e.getMessage());
-    }
-  }
-
-  /**
-   * Handle a failed peer connection.
-   * <p/>
-   * <p>
-   * If an outbound connection failed (could not connect, invalid handshake,
-   * etc.), remove the peer from our known peers.
-   * </p>
-   *
-   * @param peer  The peer we were trying to connect with.
-   * @param cause The exception encountered when connecting with the peer.
-   */
-  @Override
-  public void handleFailedConnection(Peer peer, Throwable cause) {
-    logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
-    PeerUID peerUID = new PeerUID(peer.getStringPeerId(), peer.getHexInfoHash());
-    peersStorage.removeSharingPeer(peerUID);
-  }
-
   /**
    * PeerActivityListener handler(s). *************************************
    */
@@ -1034,15 +950,6 @@ public class Client implements Runnable,
       removeTorrent(torrent);
     }
   }
-
-  @Override
-  public void handleNewConnection(SocketChannel s, String hexInfoHash) { /* Do nothing */}
-
-  @Override
-  public void handleReturnedHandshake(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
-
-  @Override
-  public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
 
   public ConnectionManager getConnectionManager() throws IllegalStateException {
     ConnectionManager connectionManager = this.myConnectionManager;
