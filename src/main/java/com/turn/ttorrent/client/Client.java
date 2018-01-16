@@ -813,7 +813,7 @@ public class Client implements Runnable,
 
   private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent, String hexInfoHash) {
     SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(),
-            peer.getPeerId(), torrent, this.getConnectionManager());
+            peer.getPeerId(), torrent, this.getConnectionManager(), this);
     sharingPeer.setTorrentHash(hexInfoHash);
     return sharingPeer;
   }

@@ -1,6 +1,7 @@
 package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -32,7 +33,7 @@ public class PeersStorageTest {
   }
 
   public void testThatPeersStorageReturnNewCollection() {
-    SharingPeer sharingPeer = new SharingPeer("1", 1, null, mock(SharedTorrent.class), null);
+    SharingPeer sharingPeer = getMockSharingPeer(null);
     myPeersStorage.putIfAbsent(new PeerUID("", ""), sharingPeer);
     Collection<SharingPeer> sharingPeers = myPeersStorage.getSharingPeers();
 
@@ -45,8 +46,12 @@ public class PeersStorageTest {
     assertEquals(2, sharingPeers.size());
   }
 
+  private SharingPeer getMockSharingPeer(ByteBuffer id) {
+    return new SharingPeer("1", 1, id, mock(SharedTorrent.class), null, mock(PeerActivityListener.class));
+  }
+
   public void getAndRemoveSharingPeersTest() {
-    SharingPeer sharingPeer = new SharingPeer("1", 1, null, mock(SharedTorrent.class), null);
+    SharingPeer sharingPeer = getMockSharingPeer(null);
     PeerUID peerUid = new PeerUID("", "");
     SharingPeer oldPeer = myPeersStorage.putIfAbsent(peerUid, sharingPeer);
 
@@ -60,7 +65,7 @@ public class PeersStorageTest {
   public void mappingIdTest() throws UnsupportedEncodingException {
     byte[] peerId = {1, 2, 3};
     String peerIdString = new String(peerId, Torrent.BYTE_ENCODING);
-    SharingPeer sharingPeer = new SharingPeer("1", 1, ByteBuffer.wrap(peerId), mock(SharedTorrent.class), null);
+    SharingPeer sharingPeer = getMockSharingPeer(ByteBuffer.wrap(peerId));
     PeerUID peerUid = new PeerUID(peerIdString, "");
     myPeersStorage.putIfAbsent(peerUid, sharingPeer, false);
 

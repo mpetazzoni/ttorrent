@@ -87,7 +87,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   private Rate download;
   private Rate upload;
-  private Set<PeerActivityListener> listeners;
+  private final Set<PeerActivityListener> listeners;
 
   private final Object requestsLock, exchangeLock;
 
@@ -105,11 +105,16 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, ConnectionManager connectionManager) {
+  public SharingPeer(String ip,
+                     int port,
+                     ByteBuffer peerId,
+                     SharedTorrent torrent,
+                     ConnectionManager connectionManager,
+                     PeerActivityListener client) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
-    this.listeners = new HashSet<PeerActivityListener>();
+    this.listeners = new HashSet<PeerActivityListener>(Arrays.asList(client, torrent));
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
 
@@ -185,8 +190,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
                                               PeerActivityListener peerActivityListener) throws SocketException{
     this.setTorrentHash(torrent.getHexInfoHash());
 
-    this.register(torrent);
-    this.register(peerActivityListener);
     this.bind(channel);
   }
 
