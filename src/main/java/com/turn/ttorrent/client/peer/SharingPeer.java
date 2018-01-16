@@ -648,7 +648,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             this.firePieceSent(rp);
           }
         } catch (IOException ioe) {
-          logger.error("error", ioe);
+          logger.debug("error", ioe);
           this.fireIOException(new IOException(
             "Error while sending piece block request!", ioe));
         }
