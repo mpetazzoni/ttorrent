@@ -253,7 +253,7 @@ public class Piece implements Comparable<Piece> {
 	 */
 	public synchronized void record(ByteBuffer block, int offset)
 		throws IOException {
-		if (this.data == null || offset == 0) {
+		if (this.data == null) {
 			// TODO: remove cast to int when large ByteBuffer support is
 			// implemented in Java.
 			this.data = ByteBuffer.allocate((int)this.length);
