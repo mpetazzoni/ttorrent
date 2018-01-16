@@ -3,7 +3,9 @@ package com.turn.ttorrent;
 import org.apache.commons.io.FileUtils;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * @author Pavel.Sher
@@ -74,21 +76,21 @@ public class TempFiles {
   public final File createTempFile(int size) throws IOException {
     File tempFile = createTempFile();
     int bufLen = Math.min(8 * 1024, size);
+    final Random random = new Random();
     if (bufLen == 0) return tempFile;
     final OutputStream fos = new BufferedOutputStream(new FileOutputStream(tempFile));
     try {
       byte[] buf = new byte[bufLen];
-      for (int i=0; i < buf.length; i++) {
-        buf[i] = (byte)Math.round(Math.random()*128);
-      }
 
       int numWritten = 0;
-      for (int i=0; i<size / buf.length; i++) {
+      for (int i = 0; i < size / buf.length; i++) {
+        random.nextBytes(buf);
         fos.write(buf);
         numWritten += buf.length;
       }
 
       if (size > numWritten) {
+        random.nextBytes(buf);
         fos.write(buf, 0, size - numWritten);
       }
     } finally {
