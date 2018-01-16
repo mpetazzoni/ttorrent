@@ -119,6 +119,8 @@ public class HandshakeReceiver implements DataProcessor {
       }
     }
 
+    logger.info("setup new connection with {}", sharingPeer);
+
     mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
 
     return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider, executorService);

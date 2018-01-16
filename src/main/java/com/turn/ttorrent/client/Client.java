@@ -978,7 +978,7 @@ public class Client implements Runnable,
         }
 
       } else {
-        logger.debug("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
+        logger.info("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
         peer.getPoorlyAvailablePieces().set(piece.getIndex());
       }
 
