@@ -27,13 +27,11 @@ public class HandshakeReceiver implements DataProcessor {
   private final boolean myIsOutgoingConnection;
   private ByteBuffer messageBytes;
   private int pstrLength;
-  private final SharingPeerRegister mySharingPeerRegister;
 
   public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
                            ExecutorService executorService,
                            SharingPeerFactory sharingPeerFactory,
-                           SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
                            int port,
                            boolean isOutgoingListener) {
@@ -41,7 +39,6 @@ public class HandshakeReceiver implements DataProcessor {
     this.torrentsStorageProvider = torrentsStorageProvider;
     this.executorService = executorService;
     this.sharingPeerFactory = sharingPeerFactory;
-    this.mySharingPeerRegister = sharingPeerRegister;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;

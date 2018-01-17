@@ -62,7 +62,6 @@ public class HandshakeReceiverTest {
             torrentsStorageProviderImpl,
             mock(ExecutorService.class),
             mySharingPeerFactory,
-            mock(SharingPeerRegister.class),
             "127.0.0.1",
             45664,
             false);

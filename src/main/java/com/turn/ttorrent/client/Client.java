@@ -255,7 +255,6 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
-            new SharingPeerRegisterImpl(),
             myExecutorService,
             new SharingPeerFactoryImpl(this));
     this.myConnectionManager = new ConnectionManager(channelListenerFactory,
@@ -727,7 +726,6 @@ public class Client implements Runnable,
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
-              new SharingPeerRegisterImpl(),
               new SharingPeerFactoryImpl(this), torrent,
               new InetSocketAddress(peer.getIp(), peer.getPort()),
               myExecutorService);

@@ -12,7 +12,6 @@ public class OutgoingConnectionListener implements ConnectionListener {
   private DataProcessor myNext;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
-  private final SharingPeerRegister mySharingPeerRegister;
   private final SharingPeerFactory mySharingPeerFactory;
   private final TorrentHash torrentHash;
   private final InetSocketAddress mySendAddress;
@@ -20,14 +19,12 @@ public class OutgoingConnectionListener implements ConnectionListener {
 
   public OutgoingConnectionListener(PeersStorageProvider myPeersStorageProvider,
                                     TorrentsStorageProvider myTorrentsStorageProvider,
-                                    SharingPeerRegister sharingPeerRegister,
                                     SharingPeerFactory mySharingPeerFactory,
                                     TorrentHash torrentHash,
                                     InetSocketAddress sendAddress,
                                     ExecutorService myExecutorService) {
     this.myPeersStorageProvider = myPeersStorageProvider;
     this.myTorrentsStorageProvider = myTorrentsStorageProvider;
-    this.mySharingPeerRegister = sharingPeerRegister;
     this.mySharingPeerFactory = mySharingPeerFactory;
     this.torrentHash = torrentHash;
     this.mySendAddress = sendAddress;
@@ -45,7 +42,6 @@ public class OutgoingConnectionListener implements ConnectionListener {
             torrentHash,
             myPeersStorageProvider,
             myTorrentsStorageProvider,
-            mySharingPeerRegister,
             mySendAddress,
             mySharingPeerFactory,
             myExecutorService);
