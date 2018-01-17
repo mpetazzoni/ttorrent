@@ -91,7 +91,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private Rate upload;
   private final Set<PeerActivityListener> listeners;
 
-  private final Object requestsLock, exchangeLock;
+  private final Object requestsLock;
 
   private volatile Future connectTask;
   private final AtomicBoolean isStopped;
@@ -122,7 +122,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
 
     this.requestsLock = new Object();
-    this.exchangeLock = new Object();
     this.socketChannel = channel;
     this.isStopped = new AtomicBoolean(false);
     this.availablePiecesLock = new Object();
@@ -183,11 +182,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   public synchronized void onConnectionEstablished() {
     firePeerConnected();
-    synchronized (this.exchangeLock) {
-      BitSet pieces = this.torrent.getCompletedPieces();
-      if (pieces.cardinality() > 0) {
-        this.send(PeerMessage.BitfieldMessage.craft(pieces));
-      }
+    BitSet pieces = this.torrent.getCompletedPieces();
+    if (pieces.cardinality() > 0) {
+      this.send(PeerMessage.BitfieldMessage.craft(pieces));
     }
     resetRates();
   }
@@ -272,12 +269,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   public synchronized void bind(ByteChannel channel) throws SocketException {
     firePeerConnected();
-    synchronized (this.exchangeLock) {
-      //this.socketChannel = channel;
-      BitSet pieces = this.torrent.getCompletedPieces();
-      if (pieces.cardinality() > 0) {
-        this.send(PeerMessage.BitfieldMessage.craft(pieces));
-      }
+    BitSet pieces = this.torrent.getCompletedPieces();
+    if (pieces.cardinality() > 0) {
+      this.send(PeerMessage.BitfieldMessage.craft(pieces));
     }
     resetRates();
   }
@@ -294,9 +288,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * Tells whether this peer as an active connection through a peer exchange.
    */
   public boolean isConnected() {
-    synchronized (this.exchangeLock) {
-      return this.socketChannel != null && this.socketChannel.isOpen();
-    }
+    return this.socketChannel.isOpen();
   }
 
   /**
@@ -316,14 +308,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.downloading = myRequests.size() > 0;
     myRequests.clear();
 
-    synchronized (this.exchangeLock) {
-      try {
-        if (socketChannel != null) {
-          connectionManager.closeChannel(socketChannel);
-        }
-      } catch (IOException e) {
-        LoggerUtils.errorAndDebugDetails(logger, "cannot close socket channel. Peer {}", this, e);
-      }
+    try {
+      connectionManager.closeChannel(socketChannel);
+    } catch (IOException e) {
+      LoggerUtils.errorAndDebugDetails(logger, "cannot close socket channel. Peer {}", this, e);
     }
 
     this.firePeerDisconnected();
