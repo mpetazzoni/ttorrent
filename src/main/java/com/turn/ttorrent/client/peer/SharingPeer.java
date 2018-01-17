@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -92,7 +93,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final Object requestsLock, exchangeLock;
 
   private volatile Future connectTask;
-  private volatile boolean isStopped = false;
+  private final AtomicBoolean isStopped;
 
   private final ConnectionManager connectionManager;
   private final ByteChannel socketChannel;
@@ -122,6 +123,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.requestsLock = new Object();
     this.exchangeLock = new Object();
     this.socketChannel = channel;
+    this.isStopped = new AtomicBoolean(false);
     this.availablePiecesLock = new Object();
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
@@ -308,9 +310,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param force Force unbind without sending cancel requests.
    */
   public void unbind(boolean force) {
-    if (isStopped)
+    if (isStopped.getAndSet(true))
       return;
-    isStopped = true;
     if (!force) {
       // Cancel all outgoing requests, and send a NOT_INTERESTED message to
       // the peer.
@@ -520,7 +521,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public synchronized void handleMessage(PeerMessage msg) {
 //    logger.trace("Received msg {} from {}", msg.getType(), this);
-    if (isStopped)
+    if (isStopped.get())
       return;
     switch (msg.getType()) {
       case KEEP_ALIVE:
