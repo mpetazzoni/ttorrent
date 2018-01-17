@@ -176,10 +176,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public void registerListenersAndBindChannel(ByteChannel channel) throws SocketException{
-    this.bind(channel);
-  }
-
   public synchronized void onConnectionEstablished() {
     firePeerConnected();
     BitSet pieces = this.torrent.getCompletedPieces();
@@ -255,25 +251,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   public Set<Piece> getRequestedPieces() {
     return myRequestedPieces.keySet();
-  }
-
-  /**
-   * Bind a connected socket to this peer.
-   * <p/>
-   * <p>
-   * This will create a new peer exchange with this peer using the given
-   * socket, and register the peer as a message listener.
-   * </p>
-   *
-   * @param channel The connected socket channel for this peer.
-   */
-  public synchronized void bind(ByteChannel channel) throws SocketException {
-    firePeerConnected();
-    BitSet pieces = this.torrent.getCompletedPieces();
-    if (pieces.cardinality() > 0) {
-      this.send(PeerMessage.BitfieldMessage.craft(pieces));
-    }
-    resetRates();
   }
 
   public synchronized void resetRates() {
