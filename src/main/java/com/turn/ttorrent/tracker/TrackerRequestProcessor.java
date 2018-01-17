@@ -210,12 +210,11 @@ public class TrackerRequestProcessor {
 		HTTPAnnounceResponseMessage announceResponse = null;
 		try {
       final boolean isSeeder = peer != null && peer.isCompleted();
-      boolean mustReturnEmptyPeers = (peer == null || isSeeder);
 			announceResponse = HTTPAnnounceResponseMessage.craft(
 				isSeeder ? SEEDER_ANNOUNCE_INTERVAL : myAnnounceInterval,
         torrent.seeders(),
 				torrent.leechers(),
-        mustReturnEmptyPeers ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),
+        isSeeder ? Collections.<Peer>emptyList() : torrent.getSomePeers(peer),
         torrent.getHexInfoHash());
       requestHandler.serveResponse(Status.OK.getCode(), Status.OK.getDescription(), announceResponse.getData());
 		} catch (Exception e) {
