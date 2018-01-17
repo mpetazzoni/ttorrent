@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.util.Collection;
 
 import static org.mockito.Mockito.mock;
@@ -47,7 +48,13 @@ public class PeersStorageTest {
   }
 
   private SharingPeer getMockSharingPeer(ByteBuffer id) {
-    return new SharingPeer("1", 1, id, mock(SharedTorrent.class), null, mock(PeerActivityListener.class));
+    return new SharingPeer("1",
+            1,
+            id,
+            mock(SharedTorrent.class),
+            null,
+            mock(PeerActivityListener.class),
+            mock(ByteChannel.class));
   }
 
   public void getAndRemoveSharingPeersTest() {

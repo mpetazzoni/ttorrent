@@ -100,7 +100,8 @@ public class HandshakeReceiver implements DataProcessor {
 
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
 
-    SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
+    SharingPeer sharingPeer =
+            sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
 
     SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myIsOutgoingConnection);
@@ -121,7 +122,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.info("setup new connection with {}", sharingPeer);
 
-    mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
+    sharingPeer.onConnectionEstablished();
 
     return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider, executorService);
   }

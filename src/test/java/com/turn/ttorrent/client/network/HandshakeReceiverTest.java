@@ -4,6 +4,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import org.apache.log4j.*;
@@ -17,12 +18,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 @Test
 public class HandshakeReceiverTest {
@@ -31,7 +36,7 @@ public class HandshakeReceiverTest {
   private PeersStorage myPeersStorage;
   private TorrentsStorage myTorrentsStorage;
   private byte[] mySelfId;
-  private SharingPeerRegister mySharingPeerRegister;
+  private SharingPeerFactory mySharingPeerFactory;
 
   public HandshakeReceiverTest() {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
@@ -41,7 +46,6 @@ public class HandshakeReceiverTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
-    mySharingPeerRegister = mock(SharingPeerRegister.class);
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
     PeersStorageProviderImpl peersStorageProviderImpl = new PeersStorageProviderImpl();
     TorrentsStorageProviderImpl torrentsStorageProviderImpl = new TorrentsStorageProviderImpl();
@@ -52,12 +56,13 @@ public class HandshakeReceiverTest {
     myTorrentsStorage = torrentsStorageProviderImpl.getTorrentsStorage();
     Client client = mock(Client.class);
     when(client.getConnectionManager()).thenReturn(mock(ConnectionManager.class));
+    mySharingPeerFactory = mock(SharingPeerFactory.class);
     myHandshakeReceiver = new HandshakeReceiver(
             peersStorageProviderImpl,
             torrentsStorageProviderImpl,
             mock(ExecutorService.class),
-            new SharingPeerFactoryImpl(client),
-            mySharingPeerRegister,
+            mySharingPeerFactory,
+            mock(SharingPeerRegister.class),
             "127.0.0.1",
             45664,
             false);
@@ -74,11 +79,34 @@ public class HandshakeReceiverTest {
     byte[] peerId = peerIdStr.getBytes();
     byte[] torrentHash = torrentHashStr.getBytes();
     Handshake hs = Handshake.craft(torrentHash, peerId);
+
+    if (hs == null) {
+      fail("Handshake instance is null");
+    }
+
     ByteBuffer byteBuffer = hs.getData();
     client.write(byteBuffer);
     String torrentPath = "src" + File.separator + "test" + File.separator + "resources" + File.separator + "torrents" + File.separator + "file1.jar.torrent";
     final File torrent = new File(torrentPath);
-    myTorrentsStorage.put(torrentHashHex, new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false));
+    final SharedTorrent sharedTorrent = new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false);
+    myTorrentsStorage.put(torrentHashHex, sharedTorrent);
+
+    final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
+
+    when(mySharingPeerFactory.createSharingPeer(any(String.class),
+            anyInt(),
+            any(ByteBuffer.class),
+            any(SharedTorrent.class),
+            any(ByteChannel.class)))
+            .thenReturn(new SharingPeer("127.0.0.1", 6881, ByteBuffer.wrap(peerId), sharedTorrent, null,
+                    mock(PeerActivityListener.class), server) {
+              @Override
+              public void onConnectionEstablished() {
+                onConnectionEstablishedInvoker.set(true);
+              }
+            });
+
+
     assertEquals(myPeersStorage.getSharingPeers().size(), 0);
     myHandshakeReceiver.processAndGetNext(server);
     assertEquals(myPeersStorage.getSharingPeers().size(), 1);
@@ -87,7 +115,7 @@ public class HandshakeReceiverTest {
     answer.rewind();
     Handshake answerHs = Handshake.parse(answer);
     assertEquals(answerHs.getPeerId(), mySelfId);
-    verify(mySharingPeerRegister).registerPeer(any(SharingPeer.class), any(SharedTorrent.class), any(ByteChannel.class));
+    assertTrue(onConnectionEstablishedInvoker.get());
   }
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc

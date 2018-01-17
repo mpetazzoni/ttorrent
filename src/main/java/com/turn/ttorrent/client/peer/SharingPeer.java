@@ -95,7 +95,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile boolean isStopped = false;
 
   private final ConnectionManager connectionManager;
-  private volatile ByteChannel socketChannel;
+  private final ByteChannel socketChannel;
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -110,7 +110,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
                      ByteBuffer peerId,
                      SharedTorrent torrent,
                      ConnectionManager connectionManager,
-                     PeerActivityListener client) {
+                     PeerActivityListener client,
+                     ByteChannel channel) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
@@ -120,6 +121,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     this.requestsLock = new Object();
     this.exchangeLock = new Object();
+    this.socketChannel = channel;
     this.availablePiecesLock = new Object();
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
@@ -154,10 +156,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.myRequests.clear();
       this.downloading = false;
     }
-
-    synchronized (this.exchangeLock) {
-      this.socketChannel = null;
-    }
   }
 
   /**
@@ -178,6 +176,17 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   public void registerListenersAndBindChannel(ByteChannel channel) throws SocketException{
     this.bind(channel);
+  }
+
+  public synchronized void onConnectionEstablished() {
+    firePeerConnected();
+    synchronized (this.exchangeLock) {
+      BitSet pieces = this.torrent.getCompletedPieces();
+      if (pieces.cardinality() > 0) {
+        this.send(PeerMessage.BitfieldMessage.craft(pieces));
+      }
+    }
+    resetRates();
   }
 
   /**
@@ -261,7 +270,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   public synchronized void bind(ByteChannel channel) throws SocketException {
     firePeerConnected();
     synchronized (this.exchangeLock) {
-      this.socketChannel = channel;
+      //this.socketChannel = channel;
       BitSet pieces = this.torrent.getCompletedPieces();
       if (pieces.cardinality() > 0) {
         this.send(PeerMessage.BitfieldMessage.craft(pieces));
