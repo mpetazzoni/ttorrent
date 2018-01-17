@@ -313,14 +313,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   public void unbind(boolean force) {
     if (isStopped.getAndSet(true))
       return;
-    if (!force) {
-      // Cancel all outgoing requests, and send a NOT_INTERESTED message to
-      // the peer.
-      try {
-        this.send(PeerMessage.NotInterestedMessage.craft());
-      } catch (Exception ex) {
-      }
-    }
     this.downloading = myRequests.size() > 0;
     myRequests.clear();
 
