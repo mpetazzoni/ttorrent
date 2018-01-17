@@ -35,7 +35,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -256,7 +255,7 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
-            new SharingPeerRegisterImpl(this),
+            new SharingPeerRegisterImpl(),
             myExecutorService,
             new SharingPeerFactoryImpl(this));
     this.myConnectionManager = new ConnectionManager(channelListenerFactory,
@@ -792,7 +791,7 @@ public class Client implements Runnable,
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
-              new SharingPeerRegisterImpl(this),
+              new SharingPeerRegisterImpl(),
               new SharingPeerFactoryImpl(this), torrent,
               new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort()),
               myExecutorService);
@@ -929,7 +928,6 @@ public class Client implements Runnable,
                     getConnectedPeers().size(),
                     this.peersStorage.getSharingPeers().size()
             });
-    //pingPeers(peerTorrent);
   }
 
   @Override

@@ -124,17 +124,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
     this.connectionManager = connectionManager;
+    this.setTorrentHash(torrent.getHexInfoHash());
     this.reset();
-  }
-
-  /**
-   * Register a new peer activity listener.
-   *
-   * @param listener The activity listener that wants to receive events from
-   *                 this peer's activity.
-   */
-  public void register(PeerActivityListener listener) {
-    this.listeners.add(listener);
   }
 
   public Rate getDLRate() {
@@ -185,11 +176,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public void registerListenersAndBindChannel(ByteChannel channel,
-                                              SharedTorrent torrent,
-                                              PeerActivityListener peerActivityListener) throws SocketException{
-    this.setTorrentHash(torrent.getHexInfoHash());
-
+  public void registerListenersAndBindChannel(ByteChannel channel) throws SocketException{
     this.bind(channel);
   }
 
