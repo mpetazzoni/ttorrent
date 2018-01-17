@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.network.WriteListener;
 import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -329,7 +330,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
           connectionManager.closeChannel(socketChannel);
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        LoggerUtils.errorAndDebugDetails(logger, "cannot close socket channel. Peer {}", this, e);
       }
     }
 
