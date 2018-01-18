@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 
 public class StateChannelListener implements ConnectionListener {
 
-  private DataProcessor next;
+  private volatile DataProcessor next;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final ExecutorService myExecutorService;
@@ -23,6 +23,7 @@ public class StateChannelListener implements ConnectionListener {
     this.myTorrentsStorageProvider = torrentsStorageProvider;
     this.myPeersStorageProvider = peersStorageProvider;
     this.myExecutorService = executorService;
+    this.next = new ShutdownProcessor();
     this.mySharingPeerFactory = sharingPeerFactory;
   }
 

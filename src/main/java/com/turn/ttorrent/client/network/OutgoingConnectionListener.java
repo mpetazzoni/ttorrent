@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutorService;
 
 public class OutgoingConnectionListener implements ConnectionListener {
 
-  private DataProcessor myNext;
+  private volatile DataProcessor myNext;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final SharingPeerFactory mySharingPeerFactory;
@@ -28,6 +28,7 @@ public class OutgoingConnectionListener implements ConnectionListener {
     this.mySharingPeerFactory = mySharingPeerFactory;
     this.torrentHash = torrentHash;
     this.mySendAddress = sendAddress;
+    this.myNext = new ShutdownProcessor();
     this.myExecutorService = myExecutorService;
   }
 
