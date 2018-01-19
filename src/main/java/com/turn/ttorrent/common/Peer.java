@@ -192,10 +192,7 @@ public class Peer {
 			return false;
 		}
 
-		return this.hostId.equals(other.hostId) &&
-			(this.hasPeerId()
-				 ? this.hexPeerId.equals(other.hexPeerId)
-				 : true);
+		return this.hostId.equals(other.hostId) && this.getPort() == other.getPort();
 	}
 
 	public void setTorrentHash(String hexInfoHash) {
