@@ -388,16 +388,33 @@ public class Client implements Runnable,
       removeAndDeleteTorrent(torrent);
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime) {
-        errorMsg = String.format("No pieces has been downloaded in %d seconds", idleTimeoutSec);
+
+        int connectedPeersForTorrent = getPeersForTorrent(torrent.getHexInfoHash()).size();
+        int completedPieces = torrent.getCompletedPieces().cardinality();
+        int totalPieces = torrent.getPieceCount();
+        errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
+                , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
       } else if (seedersCount < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
       } else if (torrent.getClientState() == ClientState.ERROR) {
-        errorMsg = String.format("Torrent state is ERROR");
+        errorMsg = "Torrent state is ERROR";
       } else {
         errorMsg = "Unknown error";
       }
       throw new IOException("Unable to download torrent completely - " + errorMsg);
     }
+  }
+
+  public List<SharingPeer> getPeersForTorrent(String torrentHash) {
+    if (torrentHash == null) return new ArrayList<SharingPeer>();
+
+    List<SharingPeer> result = new ArrayList<SharingPeer>();
+    for (SharingPeer sharingPeer : peersStorage.getSharingPeers()) {
+      if (torrentHash.equals(sharingPeer.getHexInfoHash())) {
+        result.add(sharingPeer);
+      }
+    }
+    return result;
   }
 
   /**
