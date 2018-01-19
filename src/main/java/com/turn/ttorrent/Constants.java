@@ -32,7 +32,7 @@ public class Constants {
   public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MILLIS = 10000;
 
-  public static final int DEFAULT_MAX_CONNECTION_COUNT = 10;
+  public static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
 
   public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
