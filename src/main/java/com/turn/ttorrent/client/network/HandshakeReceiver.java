@@ -55,7 +55,7 @@ public class HandshakeReceiver implements DataProcessor {
       } catch (IOException ignored) {
       }
       if (readBytes == -1) {
-        return new ShutdownProcessor();
+        return new ShutdownProcessor().processAndGetNext(socketChannel);
       }
       if (readBytes == 0) {
         return this;
@@ -73,7 +73,7 @@ public class HandshakeReceiver implements DataProcessor {
       LoggerUtils.warnAndDebugDetails(logger, "unable to read data from {}", socketChannel, e);
     }
     if (readBytes == -1) {
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
     if (messageBytes.remaining() != 0) {
       return this;
@@ -81,7 +81,7 @@ public class HandshakeReceiver implements DataProcessor {
     Handshake hs = parseHandshake(socketChannel.toString());
 
     if (hs == null) {
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
@@ -90,7 +90,7 @@ public class HandshakeReceiver implements DataProcessor {
       logger.debug("peer {} tries to download unknown torrent {}",
               Arrays.toString(hs.getPeerId()),
               hs.getHexInfoHash());
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
@@ -104,7 +104,7 @@ public class HandshakeReceiver implements DataProcessor {
     SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myIsOutgoingConnection);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     if (!myIsOutgoingConnection) {
