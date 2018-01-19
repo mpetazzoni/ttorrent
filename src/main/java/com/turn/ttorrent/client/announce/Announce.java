@@ -164,7 +164,7 @@ public class Announce implements Runnable {
       return;
     }
 
-    logger.info("Setting announce interval to {}s per tracker request.",
+    logger.debug("Setting announce interval to {}s per tracker request.",
             announceInterval);
     this.myAnnounceInterval = announceInterval;
   }

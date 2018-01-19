@@ -27,13 +27,11 @@ public class HandshakeReceiver implements DataProcessor {
   private final boolean myIsOutgoingConnection;
   private ByteBuffer messageBytes;
   private int pstrLength;
-  private final SharingPeerRegister mySharingPeerRegister;
 
   public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
                            TorrentsStorageProvider torrentsStorageProvider,
                            ExecutorService executorService,
                            SharingPeerFactory sharingPeerFactory,
-                           SharingPeerRegister sharingPeerRegister,
                            String hostAddress,
                            int port,
                            boolean isOutgoingListener) {
@@ -41,7 +39,6 @@ public class HandshakeReceiver implements DataProcessor {
     this.torrentsStorageProvider = torrentsStorageProvider;
     this.executorService = executorService;
     this.sharingPeerFactory = sharingPeerFactory;
-    this.mySharingPeerRegister = sharingPeerRegister;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
@@ -58,7 +55,7 @@ public class HandshakeReceiver implements DataProcessor {
       } catch (IOException ignored) {
       }
       if (readBytes == -1) {
-        return new ShutdownProcessor();
+        return new ShutdownProcessor().processAndGetNext(socketChannel);
       }
       if (readBytes == 0) {
         return this;
@@ -76,7 +73,7 @@ public class HandshakeReceiver implements DataProcessor {
       LoggerUtils.warnAndDebugDetails(logger, "unable to read data from {}", socketChannel, e);
     }
     if (readBytes == -1) {
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
     if (messageBytes.remaining() != 0) {
       return this;
@@ -84,7 +81,7 @@ public class HandshakeReceiver implements DataProcessor {
     Handshake hs = parseHandshake(socketChannel.toString());
 
     if (hs == null) {
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
@@ -93,20 +90,21 @@ public class HandshakeReceiver implements DataProcessor {
       logger.debug("peer {} tries to download unknown torrent {}",
               Arrays.toString(hs.getPeerId()),
               hs.getHexInfoHash());
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     final String peerId = new String(hs.getPeerId(), Torrent.BYTE_ENCODING);
 
-    SharingPeer sharingPeer = sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent);
+    SharingPeer sharingPeer =
+            sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
     PeerUID peerUID = new PeerUID(peerId, hs.getHexInfoHash());
 
     SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer, myIsOutgoingConnection);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
-      return new ShutdownProcessor();
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     if (!myIsOutgoingConnection) {
@@ -121,7 +119,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.info("setup new connection with {}", sharingPeer);
 
-    mySharingPeerRegister.registerPeer(sharingPeer, torrent, socketChannel);
+    sharingPeer.onConnectionEstablished();
 
     return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider, executorService);
   }

@@ -35,7 +35,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -63,7 +62,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILL
  * @author mpetazzoni
  */
 public class Client implements Runnable,
-        AnnounceResponseListener, CommunicationListener, PeerActivityListener, TorrentStateListener {
+        AnnounceResponseListener, PeerActivityListener, TorrentStateListener {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -256,7 +255,6 @@ public class Client implements Runnable,
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
     ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
             torrentsStorageProvider,
-            new SharingPeerRegisterImpl(this),
             myExecutorService,
             new SharingPeerFactoryImpl(this));
     this.myConnectionManager = new ConnectionManager(channelListenerFactory,
@@ -390,16 +388,33 @@ public class Client implements Runnable,
       removeAndDeleteTorrent(torrent);
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime) {
-        errorMsg = String.format("No pieces has been downloaded in %d seconds", idleTimeoutSec);
+
+        int connectedPeersForTorrent = getPeersForTorrent(torrent.getHexInfoHash()).size();
+        int completedPieces = torrent.getCompletedPieces().cardinality();
+        int totalPieces = torrent.getPieceCount();
+        errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
+                , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
       } else if (seedersCount < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
       } else if (torrent.getClientState() == ClientState.ERROR) {
-        errorMsg = String.format("Torrent state is ERROR");
+        errorMsg = "Torrent state is ERROR";
       } else {
         errorMsg = "Unknown error";
       }
       throw new IOException("Unable to download torrent completely - " + errorMsg);
     }
+  }
+
+  public List<SharingPeer> getPeersForTorrent(String torrentHash) {
+    if (torrentHash == null) return new ArrayList<SharingPeer>();
+
+    List<SharingPeer> result = new ArrayList<SharingPeer>();
+    for (SharingPeer sharingPeer : peersStorage.getSharingPeers()) {
+      if (torrentHash.equals(sharingPeer.getHexInfoHash())) {
+        result.add(sharingPeer);
+      }
+    }
+    return result;
   }
 
   /**
@@ -557,33 +572,6 @@ public class Client implements Runnable,
   }
 
   /**
-   * Retrieve a SharingPeer object from the given peer specification.
-   * <p/>
-   * <p>
-   * This function tries to retrieve an existing peer object based on the
-   * provided peer specification or otherwise instantiates a new one and adds
-   * it to our peer repository.
-   * </p>
-   *
-   * @param search      The {@link com.turn.ttorrent.common.Peer} specification.
-   * @param hexInfoHash
-   */
-  private SharingPeer getOrCreatePeer(Peer search, String hexInfoHash) {
-
-    SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
-
-    PeerUID peerUID = new PeerUID(search.getStringPeerId(), hexInfoHash);
-
-    SharingPeer sharingPeerOld = peersStorage.getSharingPeer(peerUID);
-    if (sharingPeerOld != null) {
-      logger.trace("Found peer: {}.", sharingPeerOld);
-      return sharingPeerOld;
-    }
-
-    return createSharingPeer(search, torrent, hexInfoHash);
-  }
-
-  /**
    * Retrieve a peer comparator.
    * <p/>
    * <p>
@@ -736,170 +724,41 @@ public class Client implements Runnable,
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
-    Set<SharingPeer> foundPeers = new HashSet<SharingPeer>();
-    Map<Peer, SharingPeer> addedPeers = new HashMap<Peer, SharingPeer>();
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
+
     for (Peer peer : peers) {
-      SharingPeer match = createSharingPeer(peer, torrent, hexInfoHash);
-      foundPeers.add(match);
-
-      // Attempt to connect to the peer if and only if:
-      //   - We're not already connected to it;
-      //   - We're not a seeder (we leave the responsibility
-      //	   of connecting to peers that need to download
-      //     something), or we are a seeder but we're still
-      //     willing to initiate some out bound connections.
-      if (match.isConnected() || this.isSeed(hexInfoHash) || match.getTorrent().isFinished()) {
-        continue;
-      }
-
-      addedPeers.put(peer, match);
-    }
-
-    List<SharingPeer> toRemove = new ArrayList<SharingPeer>();
-    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
-      if (peer.getTorrentHexInfoHash().equals(hexInfoHash) && foundPeers.contains(peer) && !peer.isConnected()) {
-        logger.info("removing non connected {}", peer);
-        toRemove.add(peer);
-      }
-    }
-    for (SharingPeer peer : toRemove) {
-      this.peersStorage.removeSharingPeer(peer);
-    }
-    for (SharingPeer peer : toRemove) {
-      peer.unbind(true);
-    }
-    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
-      e.getValue().setTorrentHash(hexInfoHash);
-      e.getKey().setTorrentHash(hexInfoHash);
-    }
-
-    for (Map.Entry<Peer, SharingPeer> e : addedPeers.entrySet()) {
-      SharingPeer sharingPeer = e.getValue();
 
       boolean alreadyConnectedToThisPeer = false;
-      String peerId = peersStorage.getPeerIdByAddress(sharingPeer.getIp(), sharingPeer.getPort());
+      String peerId = peersStorage.getPeerIdByAddress(peer.getIp(), peer.getPort());
       if (peerId != null) {
         PeerUID peerUID = new PeerUID(peerId, hexInfoHash);
         alreadyConnectedToThisPeer = peersStorage.getSharingPeer(peerUID) != null;
       }
 
       if (alreadyConnectedToThisPeer) {
-        logger.debug("skipping peer {}, because we already connected to this peer", sharingPeer);
+        logger.debug("skipping peer {}, because we already connected to this peer", peer);
         continue;
       }
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               peersStorageProvider,
               torrentsStorageProvider,
-              new SharingPeerRegisterImpl(this),
               new SharingPeerFactoryImpl(this), torrent,
-              new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort()),
+              new InetSocketAddress(peer.getIp(), peer.getPort()),
               myExecutorService);
 
-      logger.debug("trying to connect to the peer {}", sharingPeer);
+      logger.debug("trying to connect to the peer {}", peer);
 
       boolean connectTaskAdded = this.myConnectionManager.offerConnect(
-              new ConnectTask(sharingPeer.getIp(),
-                      sharingPeer.getPort(),
+              new ConnectTask(peer.getIp(),
+                      peer.getPort(),
                       connectionListener,
                       new SystemTimeService().now(),
                       Constants.DEFAULT_CONNECTION_TIMEOUT_MILLIS), 1, TimeUnit.SECONDS);
       if (!connectTaskAdded) {
-        logger.info("can not connect to peer {}. Unable to add connect task to connection manager", sharingPeer);
+        logger.info("can not connect to peer {}. Unable to add connect task to connection manager", peer);
       }
     }
-  }
-
-  private SharingPeer createSharingPeer(Peer peer, SharedTorrent torrent, String hexInfoHash) {
-    SharingPeer sharingPeer = new SharingPeer(peer.getIp(), peer.getPort(),
-            peer.getPeerId(), torrent, this.getConnectionManager());
-    sharingPeer.setTorrentHash(hexInfoHash);
-    return sharingPeer;
-  }
-
-  /** CommunicationListener handler(s). ********************************/
-
-  /**
-   * Handle a new peer connection.
-   * <p/>
-   * <p>
-   * This handler is called once the connection has been successfully
-   * established and the handshake exchange made. This generally simply means
-   * binding the peer to the socket, which will put in place the communication
-   * thread and logic with this peer.
-   * </p>
-   *
-   * @param channel The connected socket to the remote peer. Note that if the peer
-   *               somehow rejected our handshake reply, this socket might very soon get
-   *               closed, but this is handled down the road.
-   * @param peerId The byte-encoded peerId extracted from the peer's
-   *               handshake, after validation.
-   * @see com.turn.ttorrent.client.peer.SharingPeer
-   */
-  @Override
-  public void handleNewPeerConnection(SocketChannel channel, byte[] peerId, String hexInfoHash) {
-    Peer search = new Peer(
-            channel.socket().getInetAddress().getHostAddress(),
-            channel.socket().getPort(),
-            (peerId != null
-                    ? ByteBuffer.wrap(peerId)
-                    : null));
-
-    logger.debug("Handling new peer connection with {}...", search);
-    search.setTorrentHash(hexInfoHash);
-    final SharingPeer peer = this.getOrCreatePeer(search, hexInfoHash);
-
-    try {
-      synchronized (peer) {
-        if (peer.isConnected()) {
-          logger.debug("Already connected with {}, ignoring.", peer);
-          return;
-        }
-
-        PeerUID peerUID = new PeerUID(search.getStringPeerId(), hexInfoHash);
-
-        SharingPeer old = peersStorage.putIfAbsent(peerUID, peer);
-
-        if (old != null) {
-          logger.debug("Already connected with {}, ignoring.", peer);
-          return;
-        }
-
-        peer.register(peer.getTorrent());
-        peer.register(this);
-        peer.bind(channel);
-
-      }
-
-      logger.debug("New peer connection with {} [{}/{}].",
-              new Object[]{
-                      peer,
-                      getConnectedPeers().size(),
-                      this.peersStorage.getSharingPeers().size()
-              });
-    } catch (Exception e) {
-      logger.info("Could not handle new peer connection " +
-              "with {}: {}", peer, e.getMessage());
-    }
-  }
-
-  /**
-   * Handle a failed peer connection.
-   * <p/>
-   * <p>
-   * If an outbound connection failed (could not connect, invalid handshake,
-   * etc.), remove the peer from our known peers.
-   * </p>
-   *
-   * @param peer  The peer we were trying to connect with.
-   * @param cause The exception encountered when connecting with the peer.
-   */
-  @Override
-  public void handleFailedConnection(Peer peer, Throwable cause) {
-    logger.debug("Could not connect to {}: {}.", peer, cause.getMessage());
-    PeerUID peerUID = new PeerUID(peer.getStringPeerId(), peer.getHexInfoHash());
-    peersStorage.removeSharingPeer(peerUID);
   }
 
   /**
@@ -1013,7 +872,6 @@ public class Client implements Runnable,
                     getConnectedPeers().size(),
                     this.peersStorage.getSharingPeers().size()
             });
-    //pingPeers(peerTorrent);
   }
 
   @Override
@@ -1034,15 +892,6 @@ public class Client implements Runnable,
       removeTorrent(torrent);
     }
   }
-
-  @Override
-  public void handleNewConnection(SocketChannel s, String hexInfoHash) { /* Do nothing */}
-
-  @Override
-  public void handleReturnedHandshake(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
-
-  @Override
-  public void handleNewData(SocketChannel s, List<ByteBuffer> data) { /* Do nothing */ }
 
   public ConnectionManager getConnectionManager() throws IllegalStateException {
     ConnectionManager connectionManager = this.myConnectionManager;

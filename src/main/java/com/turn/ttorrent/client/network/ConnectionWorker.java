@@ -84,7 +84,7 @@ public class ConnectionWorker implements Runnable {
             cleanup();
           }
         } catch (Throwable e) {
-          LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys", e);
+          LoggerUtils.warnAndDebugDetails(logger, "unable to select channel keys. Error message {}", e.getMessage(), e);
         }
       }
     } catch (Throwable e) {
@@ -182,7 +182,7 @@ public class ConnectionWorker implements Runnable {
       try {
         processSelectedKey(key);
       } catch (Exception e) {
-        LoggerUtils.warnAndDebugDetails(logger, "error in processing key. Close channel for this key...", e);
+        LoggerUtils.warnAndDebugDetails(logger, "error {} in processing key. Close channel for this key", e.getMessage(), e);
         try {
           key.channel().close();
         } catch (IOException ioe) {

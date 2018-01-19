@@ -20,6 +20,7 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.network.ConnectionManager;
 import com.turn.ttorrent.client.network.WriteListener;
 import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -33,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
@@ -81,22 +83,21 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final ConcurrentMap<Piece, Integer> myRequestedPieces;
-//  private int lastRequestedOffset;
 
   private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
 
   private Rate download;
   private Rate upload;
-  private Set<PeerActivityListener> listeners;
+  private final Set<PeerActivityListener> listeners;
 
-  private final Object requestsLock, exchangeLock;
+  private final Object requestsLock;
 
   private volatile Future connectTask;
-  private volatile boolean isStopped = false;
+  private final AtomicBoolean isStopped;
 
   private final ConnectionManager connectionManager;
-  private volatile ByteChannel socketChannel;
+  private final ByteChannel socketChannel;
 
   /**
    * Create a new sharing peer on a given torrent.
@@ -106,31 +107,29 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
    */
-  public SharingPeer(String ip, int port, ByteBuffer peerId, SharedTorrent torrent, ConnectionManager connectionManager) {
+  public SharingPeer(String ip,
+                     int port,
+                     ByteBuffer peerId,
+                     SharedTorrent torrent,
+                     ConnectionManager connectionManager,
+                     PeerActivityListener client,
+                     ByteChannel channel) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
-    this.listeners = new HashSet<PeerActivityListener>();
+    this.listeners = new HashSet<PeerActivityListener>(Arrays.asList(client, torrent));
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
 
     this.requestsLock = new Object();
-    this.exchangeLock = new Object();
+    this.socketChannel = channel;
+    this.isStopped = new AtomicBoolean(false);
     this.availablePiecesLock = new Object();
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
     this.connectionManager = connectionManager;
+    this.setTorrentHash(torrent.getHexInfoHash());
     this.reset();
-  }
-
-  /**
-   * Register a new peer activity listener.
-   *
-   * @param listener The activity listener that wants to receive events from
-   *                 this peer's activity.
-   */
-  public void register(PeerActivityListener listener) {
-    this.listeners.add(listener);
   }
 
   public Rate getDLRate() {
@@ -159,10 +158,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.myRequests.clear();
       this.downloading = false;
     }
-
-    synchronized (this.exchangeLock) {
-      this.socketChannel = null;
-    }
   }
 
   /**
@@ -181,14 +176,13 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public void registerListenersAndBindChannel(ByteChannel channel,
-                                              SharedTorrent torrent,
-                                              PeerActivityListener peerActivityListener) throws SocketException{
-    this.setTorrentHash(torrent.getHexInfoHash());
-
-    this.register(torrent);
-    this.register(peerActivityListener);
-    this.bind(channel);
+  public synchronized void onConnectionEstablished() {
+    firePeerConnected();
+    BitSet pieces = this.torrent.getCompletedPieces();
+    if (pieces.cardinality() > 0) {
+      this.send(PeerMessage.BitfieldMessage.craft(pieces));
+    }
+    resetRates();
   }
 
   /**
@@ -259,40 +253,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return myRequestedPieces.keySet();
   }
 
-  /**
-   * Tells whether this peer is a seed.
-   *
-   * @return Returns <em>true</em> if the peer has all of the torrent's pieces
-   * available.
-   */
-  public synchronized boolean isSeed() {
-    return this.torrent.getPieceCount() > 0 &&
-      this.getAvailablePieces().cardinality() ==
-        this.torrent.getPieceCount();
-  }
-
-  /**
-   * Bind a connected socket to this peer.
-   * <p/>
-   * <p>
-   * This will create a new peer exchange with this peer using the given
-   * socket, and register the peer as a message listener.
-   * </p>
-   *
-   * @param channel The connected socket channel for this peer.
-   */
-  public synchronized void bind(ByteChannel channel) throws SocketException {
-    firePeerConnected();
-    synchronized (this.exchangeLock) {
-      this.socketChannel = channel;
-      BitSet pieces = this.torrent.getCompletedPieces();
-      if (pieces.cardinality() > 0) {
-        this.send(PeerMessage.BitfieldMessage.craft(pieces));
-      }
-    }
-    resetRates();
-  }
-
   public synchronized void resetRates() {
     this.download = new Rate();
     this.download.reset();
@@ -305,9 +265,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * Tells whether this peer as an active connection through a peer exchange.
    */
   public boolean isConnected() {
-    synchronized (this.exchangeLock) {
-      return this.socketChannel != null && this.socketChannel.isOpen();
-    }
+    return this.socketChannel.isOpen();
   }
 
   /**
@@ -322,28 +280,15 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @param force Force unbind without sending cancel requests.
    */
   public void unbind(boolean force) {
-    if (isStopped)
+    if (isStopped.getAndSet(true))
       return;
-    isStopped = true;
-    if (!force) {
-      // Cancel all outgoing requests, and send a NOT_INTERESTED message to
-      // the peer.
-      try {
-        this.send(PeerMessage.NotInterestedMessage.craft());
-      } catch (Exception ex) {
-      }
-    }
     this.downloading = myRequests.size() > 0;
     myRequests.clear();
 
-    synchronized (this.exchangeLock) {
-      try {
-        if (socketChannel != null) {
-          connectionManager.closeChannel(socketChannel);
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    try {
+      connectionManager.closeChannel(socketChannel);
+    } catch (IOException e) {
+      LoggerUtils.errorAndDebugDetails(logger, "cannot close socket channel. Peer {}", this, e);
     }
 
     this.firePeerDisconnected();
@@ -411,10 +356,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.requestNextBlocksForPiece(piece);
   }
 
-  public boolean isPieceDownloading(final Piece piece){
-    return myRequestedPieces.get(piece) != null;
-  }
-
   public synchronized boolean isDownloading() {
     return this.downloading;
   }
@@ -446,7 +387,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
           unbind(false);
           return;
         }
-//        logger.debug("---------Queue size: " + myRequests.size());
         this.send(request);
         myRequestedPieces.put(piece, request.getLength() + lastRequestedOffset);
       }
@@ -539,7 +479,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   @Override
   public synchronized void handleMessage(PeerMessage msg) {
 //    logger.trace("Received msg {} from {}", msg.getType(), this);
-    if (isStopped)
+    if (isStopped.get())
       return;
     switch (msg.getType()) {
       case KEEP_ALIVE:

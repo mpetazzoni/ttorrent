@@ -67,9 +67,8 @@ public abstract class TrackerClient {
     try {
       announce(event, inhibitEvent, torrent, myPeers);
     } catch (AnnounceException e) {
-      throw new AnnounceException(String.format("Unable to announce event %s for torrent %s and peers %s", new Object[]{
-              event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myPeers.toArray())
-      }));
+      throw new AnnounceException(String.format("Unable to announce event %s for torrent %s and peers %s. Reason %s",
+							event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myPeers.toArray()), e.getMessage()), e);
     }
   }
 

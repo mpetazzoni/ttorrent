@@ -19,7 +19,6 @@ public class HandshakeSender implements DataProcessor {
   private final TorrentHash myTorrentHash;
   private final PeersStorageProvider myPeersStorageProvider;
   private final TorrentsStorageProvider myTorrentsStorageProvider;
-  private final SharingPeerRegister mySharingPeerRegister;
   private final InetSocketAddress mySendAddress;
   private final SharingPeerFactory mySharingPeerFactory;
   private final ExecutorService myExecutorService;
@@ -27,14 +26,12 @@ public class HandshakeSender implements DataProcessor {
   public HandshakeSender(TorrentHash torrentHash,
                          PeersStorageProvider peersStorageProvider,
                          TorrentsStorageProvider torrentsStorageProvider,
-                         SharingPeerRegister sharingPeerRegister,
                          InetSocketAddress sendAddress,
                          SharingPeerFactory sharingPeerFactory,
                          ExecutorService executorService) {
     this.myTorrentHash = torrentHash;
     this.myPeersStorageProvider = peersStorageProvider;
     this.myTorrentsStorageProvider = torrentsStorageProvider;
-    this.mySharingPeerRegister = sharingPeerRegister;
     this.mySendAddress = sendAddress;
     this.mySharingPeerFactory = sharingPeerFactory;
     this.myExecutorService = executorService;
@@ -61,7 +58,6 @@ public class HandshakeSender implements DataProcessor {
             myTorrentsStorageProvider,
             myExecutorService,
             mySharingPeerFactory,
-            mySharingPeerRegister,
             mySendAddress.getHostName(),
             mySendAddress.getPort(),
             true);

@@ -17,25 +17,19 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
-import com.turn.ttorrent.common.protocol.http.*;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.nio.ByteBuffer;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Announcer for HTTP trackers.
@@ -108,9 +102,7 @@ public class HTTPTrackerClient extends TrackerClient {
     HttpURLConnection conn = null;
     InputStream in = null;
     try {
-      conn = (HttpURLConnection)url.openConnection();
-      conn.setConnectTimeout(10000);
-      conn.setReadTimeout(10000);
+      conn = (HttpURLConnection)openConnectionCheckRedirects(url);
       in = conn.getInputStream();
     } catch (IOException ioe) {
       if (conn != null) {
@@ -154,6 +146,46 @@ public class HTTPTrackerClient extends TrackerClient {
         }
       }
     }
+  }
+
+  private URLConnection openConnectionCheckRedirects(URL url) throws IOException {
+    boolean needRedirect;
+    int redirects = 0;
+    URLConnection connection = url.openConnection();
+    do {
+      needRedirect = false;
+      connection.setConnectTimeout(10000);
+      connection.setReadTimeout(10000);
+      HttpURLConnection http = null;
+      if (connection instanceof HttpURLConnection) {
+        http = (HttpURLConnection) connection;
+        http.setInstanceFollowRedirects(false);
+      }
+      if (http != null) {
+        int stat = http.getResponseCode();
+        if (stat >= 300 && stat <= 307 && stat != 306 &&
+                stat != HttpURLConnection.HTTP_NOT_MODIFIED) {
+          URL base = http.getURL();
+          String newLocation = http.getHeaderField("Location");
+          URL target = newLocation == null ? null : new URL(base, newLocation);
+          http.disconnect();
+          // Redirection should be allowed only for HTTP and HTTPS
+          // and should be limited to 5 redirections at most.
+          if (redirects >= 5) {
+            throw new IOException("too many redirects");
+          }
+          if (target == null || !(target.getProtocol().equals("http")
+                  || target.getProtocol().equals("https"))) {
+            throw new IOException("illegal URL redirect or protocol");
+          }
+          needRedirect = true;
+          connection = target.openConnection();
+          redirects++;
+        }
+      }
+    }
+    while (needRedirect);
+    return connection;
   }
 
 	/**
