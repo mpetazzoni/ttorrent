@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
@@ -105,6 +106,7 @@ public class HTTPTrackerClient extends TrackerClient {
       conn = (HttpURLConnection)openConnectionCheckRedirects(url);
       in = conn.getInputStream();
     } catch (IOException ioe) {
+      LoggerUtils.warnAndDebugDetails(logger, "announce message is not sent. Announce URl is {}", url, ioe);
       if (conn != null) {
         in = conn.getErrorStream();
       }
