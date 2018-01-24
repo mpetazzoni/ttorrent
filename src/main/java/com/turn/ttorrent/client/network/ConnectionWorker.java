@@ -110,7 +110,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   private boolean needRunCleanup() {
-    return (myTimeService.now() - lastCleanupTime) < myCleanupTimeoutMillis;
+    return (myTimeService.now() - lastCleanupTime) > myCleanupTimeoutMillis;
   }
 
   private void processWriteTasks() {
