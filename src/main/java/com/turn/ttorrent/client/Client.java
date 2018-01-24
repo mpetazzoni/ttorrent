@@ -810,6 +810,14 @@ public class Client implements Runnable,
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
     final String torrentHash = torrent.getHexInfoHash();
+    if (piece.isValid()) {
+      // Send a HAVE message to all connected peers
+      PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
+      for (SharingPeer remote : getConnectedPeers()) {
+        if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
+          remote.send(have);
+      }
+    }
     synchronized (torrent) {
       if (piece.isValid()) {
         // Make sure the piece is marked as completed in the torrent
@@ -853,13 +861,6 @@ public class Client implements Runnable,
         }
 
       }
-    }
-
-    // Send a HAVE message to all connected peers
-    PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
-    for (SharingPeer remote : getConnectedPeers()) {
-      if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
-        remote.send(have);
     }
   }
 
