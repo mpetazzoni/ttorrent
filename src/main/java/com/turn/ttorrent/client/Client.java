@@ -809,9 +809,8 @@ public class Client implements Runnable,
   public void handlePieceCompleted(final SharingPeer peer, Piece piece)
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
-    final String torrentHash;
+    final String torrentHash = torrent.getHexInfoHash();
     synchronized (torrent) {
-      torrentHash = torrent.getHexInfoHash();
       if (piece.isValid()) {
         // Make sure the piece is marked as completed in the torrent
         // Note: this is required because the order the
