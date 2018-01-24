@@ -16,6 +16,7 @@ import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 public class WorkingReceiver implements DataProcessor {
 
@@ -86,30 +87,41 @@ public class WorkingReceiver implements DataProcessor {
 
     messageBytes.rewind();
     this.pstrLength = -1;
+
+    final SharingPeer peer = peersStorageProvider.getPeersStorage().getSharingPeer(myPeerUID);
+
+    SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
+    if (torrent == null) {
+      logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", peer.getHexInfoHash(), peer);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
+    }
+
+    logger.trace("try parse message from {}. Torrent {}", peer, torrent);
+    ByteBuffer bufferCopy = ByteBuffer.wrap(Arrays.copyOf(messageBytes.array(), messageBytes.limit()));
+
+    this.messageBytes.rewind();
+    final PeerMessage message;
+
     try {
+      message = PeerMessage.parse(bufferCopy, torrent);
+    } catch (ParseException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "incorrect message was received from peer {}", peer, e);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
+    }
 
-      final SharingPeer peer = peersStorageProvider.getPeersStorage().getSharingPeer(myPeerUID);
+    logger.trace("get message {} from {}", message, socketChannel);
 
-      SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
-      if (torrent == null) {
-        logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", peer.getHexInfoHash(), peer);
-        return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
-      }
-
-      logger.trace("try parse message from {}. Torrent {}", peer, torrent);
-      ByteBuffer bufferCopy = ByteBuffer.wrap(Arrays.copyOf(messageBytes.array(), messageBytes.limit()));
-      final PeerMessage message = PeerMessage.parse(bufferCopy, torrent);
-      logger.trace("get message {} from {}", message, socketChannel);
+    try {
       executorService.submit(new Runnable() {
         @Override
         public void run() {
           peer.handleMessage(message);
         }
       });
-    } catch (ParseException e) {
-      logger.debug("{}", e.getMessage());
+    } catch (RejectedExecutionException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "task submit is failed. Reason: {}", e.getMessage(), e);
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, peersStorageProvider).processAndGetNext(socketChannel);
     }
-    this.messageBytes.rewind();
     return this;
   }
 

@@ -205,7 +205,7 @@ public class FileStorage implements TorrentByteStorage {
 
 		FileUtils.deleteQuietly(this.partial);
         myIsOpen = false;
-		logger.info("Moved torrent data from {} to {}.",
+		logger.debug("Moved torrent data from {} to {}.",
 			this.partial.getName(),
 			this.target.getName());
       } finally {

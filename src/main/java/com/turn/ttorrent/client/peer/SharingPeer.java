@@ -79,7 +79,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private volatile boolean interesting;
   private volatile boolean choked;
   private volatile boolean interested;
-  private SharedTorrent torrent;
+  private final SharedTorrent torrent;
   private BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final ConcurrentMap<Piece, Integer> myRequestedPieces;

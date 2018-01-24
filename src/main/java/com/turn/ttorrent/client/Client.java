@@ -386,10 +386,15 @@ public class Client implements Runnable,
     }
     if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
       removeAndDeleteTorrent(torrent);
+
+      final List<SharingPeer> peersForTorrent = getPeersForTorrent(torrent.getHexInfoHash());
+      int connectedPeersForTorrent = peersForTorrent.size();
+      for (SharingPeer peer : peersForTorrent) {
+        peer.unbind(true);
+      }
+
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime) {
-
-        int connectedPeersForTorrent = getPeersForTorrent(torrent.getHexInfoHash()).size();
         int completedPieces = torrent.getCompletedPieces().cardinality();
         int totalPieces = torrent.getPieceCount();
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
@@ -804,6 +809,15 @@ public class Client implements Runnable,
   public void handlePieceCompleted(final SharingPeer peer, Piece piece)
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
+    final String torrentHash = torrent.getHexInfoHash();
+    if (piece.isValid()) {
+      // Send a HAVE message to all connected peers
+      PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
+      for (SharingPeer remote : getConnectedPeers()) {
+        if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
+          remote.send(have);
+      }
+    }
     synchronized (torrent) {
       if (piece.isValid()) {
         // Make sure the piece is marked as completed in the torrent
@@ -819,14 +833,6 @@ public class Client implements Runnable,
                         torrent.getCompletedPieces().cardinality(),
                         torrent.getPieceCount()
                 });
-
-        // Send a HAVE message to all connected peers
-        PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
-        final String torrentHash = torrent.getHexInfoHash();
-        for (SharingPeer remote : getConnectedPeers()) {
-          if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
-            remote.send(have);
-        }
 
         BitSet completed = new BitSet();
         completed.or(torrent.getCompletedPieces());

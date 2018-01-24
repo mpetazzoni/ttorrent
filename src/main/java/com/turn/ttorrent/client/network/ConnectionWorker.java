@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class ConnectionWorker implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionWorker.class);
+  private static final String SELECTOR_THREAD_NAME = "Torrent channels manager thread";
   private volatile boolean stop = false;
   private final Selector selector;
   private final BlockingQueue<ConnectTask> myConnectQueue;
@@ -63,7 +64,12 @@ public class ConnectionWorker implements Runnable {
       return;
     }
 
+    final String oldName = Thread.currentThread().getName();
+
     try {
+
+      Thread.currentThread().setName(SELECTOR_THREAD_NAME);
+
       while (!stop && (!Thread.currentThread().isInterrupted())) {
         try {
           logger.trace("try select keys from selector");
@@ -76,10 +82,9 @@ public class ConnectionWorker implements Runnable {
           connectToPeersFromQueue();
           processWriteTasks();
           logger.trace("select keys from selector. Keys count is " + selected);
-          if (selected == 0) {
-            continue;
+          if (selected != 0) {
+            processSelectedKeys();
           }
-          processSelectedKeys();
           if (needRunCleanup()) {
             cleanup();
           }
@@ -90,6 +95,7 @@ public class ConnectionWorker implements Runnable {
     } catch (Throwable e) {
       LoggerUtils.errorAndDebugDetails(logger, "exception on cycle iteration", e);
     } finally {
+      Thread.currentThread().setName(oldName);
       mySemaphore.release();
     }
   }
@@ -103,7 +109,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   private boolean needRunCleanup() {
-    return (myTimeService.now() - lastCleanupTime) < myCleanupTimeoutMillis;
+    return (myTimeService.now() - lastCleanupTime) > myCleanupTimeoutMillis;
   }
 
   private void processWriteTasks() {
