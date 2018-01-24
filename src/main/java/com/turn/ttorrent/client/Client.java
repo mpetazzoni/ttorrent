@@ -386,10 +386,15 @@ public class Client implements Runnable,
     }
     if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
       removeAndDeleteTorrent(torrent);
+
+      final List<SharingPeer> peersForTorrent = getPeersForTorrent(torrent.getHexInfoHash());
+      int connectedPeersForTorrent = peersForTorrent.size();
+      for (SharingPeer peer : peersForTorrent) {
+        peer.unbind(true);
+      }
+
       final String errorMsg;
       if (System.currentTimeMillis() > maxIdleTime) {
-
-        int connectedPeersForTorrent = getPeersForTorrent(torrent.getHexInfoHash()).size();
         int completedPieces = torrent.getCompletedPieces().cardinality();
         int totalPieces = torrent.getPieceCount();
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
