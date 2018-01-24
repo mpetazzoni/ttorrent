@@ -82,10 +82,9 @@ public class ConnectionWorker implements Runnable {
           connectToPeersFromQueue();
           processWriteTasks();
           logger.trace("select keys from selector. Keys count is " + selected);
-          if (selected == 0) {
-            continue;
+          if (selected != 0) {
+            processSelectedKeys();
           }
-          processSelectedKeys();
           if (needRunCleanup()) {
             cleanup();
           }
