@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -48,6 +49,10 @@ public class ConnectableKeyProcessor implements KeyProcessor {
        isConnectFinished = socketChannel.finishConnect();
     } catch (NoRouteToHostException e) {
       logger.info("Could not connect to {}:{}, received NoRouteToHostException", connectTask.getHost(), connectTask.getPort());
+      connectionListener.onError(socketChannel, e);
+      return;
+    } catch (ConnectException e) {
+      logger.info("Could not connect to {}:{}, received ConnectException", connectTask.getHost(), connectTask.getPort());
       connectionListener.onError(socketChannel, e);
       return;
     }
