@@ -4,6 +4,8 @@ import com.turn.ttorrent.client.network.TimeoutAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.Socket;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -28,5 +30,15 @@ public class KeyProcessorUtil {
     }
     logger.error("unable to cast channel {} to specified type");
     return null;
+  }
+
+  public static void setBuffersSizeIfNecessary(SocketChannel socketChannel, int sendBufferSize, int receiveBufferSize) throws IOException {
+    final Socket socket = socketChannel.socket();
+    if (sendBufferSize > 0) {
+      socket.setSendBufferSize(sendBufferSize);
+    }
+    if (receiveBufferSize > 0) {
+      socket.setReceiveBufferSize(receiveBufferSize);
+    }
   }
 }

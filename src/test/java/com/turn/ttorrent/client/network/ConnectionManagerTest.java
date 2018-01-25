@@ -9,7 +9,6 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -52,7 +51,9 @@ public class ConnectionManagerTest {
             myExecutorService,
             new MockTimeService(),
             newConnectionAllower,
-            newConnectionAllower);
+            newConnectionAllower,
+            new AtomicInteger(),
+            new AtomicInteger());
   }
 
   @Test(expectedExceptions = IllegalStateException.class)

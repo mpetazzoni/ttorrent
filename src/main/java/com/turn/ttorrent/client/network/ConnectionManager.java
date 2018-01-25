@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
@@ -18,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.turn.ttorrent.Constants.DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS;
 import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS;
@@ -41,13 +41,19 @@ public class ConnectionManager {
   private final NewConnectionAllower myOutgoingConnectionAllower;
   private final TimeoutStorage socketTimeoutStorage = new TimeoutStorageImpl();
   private final AtomicBoolean alreadyInit = new AtomicBoolean(false);
+  private final AtomicInteger mySendBufferSize;
+  private final AtomicInteger myReceiveBufferSize;
 
   public ConnectionManager(ChannelListenerFactory channelListenerFactory,
                            ExecutorService executorService,
                            TimeService timeService,
                            NewConnectionAllower newIncomingConnectionAllower,
-                           NewConnectionAllower newOutgoingConnectionAllower) throws IOException {
+                           NewConnectionAllower newOutgoingConnectionAllower,
+                           AtomicInteger mySendBufferSize,
+                           AtomicInteger myReceiveBufferSize) throws IOException {
     this.myExecutorService = executorService;
+    this.mySendBufferSize = mySendBufferSize;
+    this.myReceiveBufferSize = myReceiveBufferSize;
     this.selector = Selector.open();
     this.channelListenerFactory = channelListenerFactory;
     this.myTimeService = timeService;
@@ -85,8 +91,10 @@ public class ConnectionManager {
     String serverName = myServerSocketChannel.socket().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
             new InvalidKeyProcessor(),
-            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage),
-            new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage),
+            new AcceptableKeyProcessor(selector, serverName, myTimeService, myIncomingConnectionAllower, socketTimeoutStorage,
+                    mySendBufferSize, myReceiveBufferSize),
+            new ConnectableKeyProcessor(selector, myTimeService, socketTimeoutStorage,
+                    mySendBufferSize, myReceiveBufferSize),
             new ReadableKeyProcessor(serverName),
             new WritableKeyProcessor()), DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS, DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS,
             myTimeService,
