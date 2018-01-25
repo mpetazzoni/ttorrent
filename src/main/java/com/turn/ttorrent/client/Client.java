@@ -39,6 +39,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS;
 
@@ -101,6 +102,8 @@ public class Client implements Runnable,
   private final TorrentsStorage torrentsStorage;
   private final CountLimitConnectionAllower myInConnectionAllower;
   private final CountLimitConnectionAllower myOutConnectionAllower;
+  private final AtomicInteger mySendBufferSize;
+  private final AtomicInteger myReceiveBufferSize;
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
   private final ExecutorService myExecutorService;
@@ -121,6 +124,8 @@ public class Client implements Runnable,
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
     this.myClientNameSuffix = name;
+    this.mySendBufferSize = new AtomicInteger();
+    this.myReceiveBufferSize = new AtomicInteger();
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myExecutorService = executorService;
@@ -215,6 +220,24 @@ public class Client implements Runnable,
     this.myInConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
   }
 
+  /**
+   * set ups new receive buffer size, that will be applied to all new connections.
+   * If value is equal or less, than zero, then method doesn't have effect
+   * @param newSize new size
+   */
+  public void setReceiveBufferSize(int newSize) {
+    myReceiveBufferSize.set(newSize);
+  }
+
+  /**
+   * set ups new send buffer size, that will be applied to all new connections.
+   * If value is equal or less, than zero, then method doesn't have effect
+   * @param newSize new size
+   */
+  public void setSendBufferSize(int newSize) {
+    mySendBufferSize.set(newSize);
+  }
+
   public void setMaxOutConnectionsCount(int maxConnectionsCount) {
     this.myOutConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
   }
@@ -261,7 +284,9 @@ public class Client implements Runnable,
             myExecutorService,
             new SystemTimeService(),
             myInConnectionAllower,
-            myOutConnectionAllower);
+            myOutConnectionAllower,
+            mySendBufferSize,
+            myReceiveBufferSize);
     this.setSocketConnectionTimeout(DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
       this.myConnectionManager.initAndRunWorker();

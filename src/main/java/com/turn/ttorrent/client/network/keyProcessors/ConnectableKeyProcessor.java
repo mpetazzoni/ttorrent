@@ -6,11 +6,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectableKeyProcessor implements KeyProcessor {
 
@@ -19,11 +21,19 @@ public class ConnectableKeyProcessor implements KeyProcessor {
   private final Selector mySelector;
   private final TimeService myTimeService;
   private final TimeoutStorage myTimeoutStorage;
+  private final AtomicInteger mySendBufferSize;
+  private final AtomicInteger myReceiveBufferSize;
 
-  public ConnectableKeyProcessor(Selector selector, TimeService timeService, TimeoutStorage timeoutStorage) {
+  public ConnectableKeyProcessor(Selector selector,
+                                 TimeService timeService,
+                                 TimeoutStorage timeoutStorage,
+                                 AtomicInteger sendBufferSize,
+                                 AtomicInteger receiveBufferSize) {
     this.mySelector = selector;
     this.myTimeService = timeService;
     this.myTimeoutStorage = timeoutStorage;
+    this.mySendBufferSize = sendBufferSize;
+    this.myReceiveBufferSize = receiveBufferSize;
   }
 
   @Override
@@ -50,6 +60,10 @@ public class ConnectableKeyProcessor implements KeyProcessor {
       logger.info("Could not connect to {}:{}, received NoRouteToHostException", connectTask.getHost(), connectTask.getPort());
       connectionListener.onError(socketChannel, e);
       return;
+    } catch (ConnectException e) {
+      logger.info("Could not connect to {}:{}, received ConnectException", connectTask.getHost(), connectTask.getPort());
+      connectionListener.onError(socketChannel, e);
+      return;
     }
     if (!isConnectFinished) {
       logger.info("Could not connect to {}:{}", connectTask.getHost(), connectTask.getPort());
@@ -57,6 +71,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
       return;
     }
     socketChannel.configureBlocking(false);
+    KeyProcessorUtil.setBuffersSizeIfNecessary(socketChannel, mySendBufferSize.get(), myReceiveBufferSize.get());
     ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
     connectionListener.onConnectionEstablished(socketChannel);

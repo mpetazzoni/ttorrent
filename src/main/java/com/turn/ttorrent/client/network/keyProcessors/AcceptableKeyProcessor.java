@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AcceptableKeyProcessor implements KeyProcessor {
 
@@ -17,17 +18,23 @@ public class AcceptableKeyProcessor implements KeyProcessor {
   private final TimeService myTimeService;
   private final NewConnectionAllower myNewConnectionAllower;
   private final TimeoutStorage myTimeoutStorage;
+  private final AtomicInteger mySendBufferSize;
+  private final AtomicInteger myReceiveBufferSize;
 
   public AcceptableKeyProcessor(Selector selector,
                                 String serverSocketLocalAddress,
                                 TimeService timeService,
                                 NewConnectionAllower newConnectionAllower,
-                                TimeoutStorage timeoutStorage) {
+                                TimeoutStorage timeoutStorage,
+                                AtomicInteger sendBufferSize,
+                                AtomicInteger receiveBufferSize) {
     this.mySelector = selector;
     this.myServerSocketLocalAddress = serverSocketLocalAddress;
     this.myTimeService = timeService;
     this.myNewConnectionAllower = newConnectionAllower;
     this.myTimeoutStorage = timeoutStorage;
+    this.mySendBufferSize = sendBufferSize;
+    this.myReceiveBufferSize = receiveBufferSize;
   }
 
   @Override
@@ -58,6 +65,7 @@ public class AcceptableKeyProcessor implements KeyProcessor {
     ConnectionListener stateConnectionListener = channelListenerFactory.newChannelListener();
     stateConnectionListener.onConnectionEstablished(socketChannel);
     socketChannel.configureBlocking(false);
+    KeyProcessorUtil.setBuffersSizeIfNecessary(socketChannel, mySendBufferSize.get(), myReceiveBufferSize.get());
     ReadWriteAttachment keyAttachment = new ReadWriteAttachment(stateConnectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
   }
