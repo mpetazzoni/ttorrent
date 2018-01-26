@@ -117,7 +117,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     super(ip, port, peerId);
 
     this.torrent = torrent;
-    this.listeners = new HashSet<PeerActivityListener>(Arrays.asList(client, torrent));
+    this.listeners = Collections.unmodifiableSet(new HashSet<PeerActivityListener>(Arrays.asList(client, torrent)));
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
 
