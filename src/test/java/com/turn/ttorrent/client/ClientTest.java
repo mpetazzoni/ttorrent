@@ -768,7 +768,7 @@ public class ClientTest {
       }
     };
     th.start();
-    Thread.sleep(1000);
+    Thread.sleep(10);
     th.interrupt();
     new WaitFor(10*1000){
       @Override

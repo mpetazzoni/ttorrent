@@ -497,6 +497,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         break;
       case INTERESTED:
         this.interested = true;
+        if (this.choking) {
+          unchoke();
+        }
         break;
       case NOT_INTERESTED:
         this.interested = false;

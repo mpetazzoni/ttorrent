@@ -13,7 +13,7 @@ public class ClientFactory {
 
   public Client getClient(String name) {
     final ExecutorService executorService = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    return new Client(name, executorService) {
+    return new Client(executorService) {
       @Override
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);

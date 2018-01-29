@@ -62,8 +62,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILL
  *
  * @author mpetazzoni
  */
-public class Client implements Runnable,
-        AnnounceResponseListener, PeerActivityListener, TorrentStateListener {
+public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -89,14 +88,12 @@ public class Client implements Runnable,
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
-  private Thread thread;
   private AtomicBoolean stop = new AtomicBoolean(false);
 
   private Announce announce;
 
   private Random random;
-  private boolean myStarted = false;
-  private final String myClientNameSuffix;
+  private volatile boolean myStarted = false;
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
   private final TorrentsStorage torrentsStorage;
@@ -108,22 +105,16 @@ public class Client implements Runnable,
   private volatile ConnectionManager myConnectionManager;
   private final ExecutorService myExecutorService;
 
-  public Client(ExecutorService executorService) {
-    this("", executorService);
-  }
-
   /**
-   * @param name client thread name
    * @param executorService executor service for run connection worker and process incoming data. Must have a pool size at least 2
    */
-  public Client(String name, ExecutorService executorService) {
+  public Client(ExecutorService executorService) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce();
     this.peersStorageProvider = new PeersStorageProviderImpl();
     this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
-    this.myClientNameSuffix = name;
     this.mySendBufferSize = new AtomicInteger();
     this.myReceiveBufferSize = new AtomicInteger();
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
@@ -310,11 +301,6 @@ public class Client implements Runnable,
     announce.start(defaultTrackerURI, this, getSelfPeers(bindAddresses), announceIntervalSec);
     this.stop.set(false);
 
-    if (this.thread == null || !this.thread.isAlive()) {
-      this.thread = new Thread(this);
-      this.thread.setName("bt-client " + myClientNameSuffix);
-      this.thread.start();
-    }
     myStarted = true;
   }
 
@@ -332,16 +318,30 @@ public class Client implements Runnable,
     if (!myStarted)
       return;
 
-    boolean wait = timeout != 0;
     this.myConnectionManager.close();
 
-    if (this.thread != null && this.thread.isAlive()) {
-      this.thread.interrupt();
-      if (wait) {
-        this.waitForCompletion();
+    logger.trace("try stop announce thread...");
+
+    this.announce.stop();
+
+    logger.trace("announce thread is stopped");
+
+    for (SharedTorrent torrent : this.torrentsStorage.values()) {
+      logger.trace("try close torrent {}", torrent);
+      torrent.close();
+      if (torrent.isFinished()) {
+        torrent.setClientState(ClientState.DONE);
+      } else {
+        torrent.setClientState(ClientState.ERROR);
       }
     }
-    this.thread = null;
+
+    logger.debug("Closing all remaining peer connections...");
+    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
+      peer.unbind(true);
+    }
+
+    logger.info("BitTorrent client signing off.");
   }
 
   public void setCleanupTimeout(int timeout, TimeUnit timeUnit) throws IllegalStateException {
@@ -358,20 +358,6 @@ public class Client implements Runnable,
       throw new IllegalStateException("connection manager is null");
     }
     connectionManager.setSocketConnectionTimeout(timeUnit.toMillis(timeout));
-  }
-
-
-  /**
-   * Wait for downloading (and seeding, if requested) to complete.
-   */
-  public void waitForCompletion() {
-    if (this.thread != null && this.thread.isAlive()) {
-      try {
-        this.thread.join();
-      } catch (InterruptedException ie) {
-        logger.error(ie.getMessage(), ie);
-      }
-    }
   }
 
   /**
@@ -447,97 +433,8 @@ public class Client implements Runnable,
     return result;
   }
 
-  /**
-   * Main client loop.
-   * <p/>
-   * <p>
-   * The main client download loop is very simple: it starts the announce
-   * request thread, the incoming connection handler service, and loops
-   * unchoking peers every UNCHOKING_FREQUENCY seconds until told to stop.
-   * Every OPTIMISTIC_UNCHOKE_ITERATIONS, an optimistic unchoke will be
-   * attempted to try out other peers.
-   * </p>
-   * <p/>
-   * <p>
-   * Once done, it stops the announce and connection services, and returns.
-   * </p>
-   */
-  @Override
-  public void run() {
-    // Detect early stop
-    if (this.stop.get()) {
-      logger.info("Early stop detected. Stopping...");
-      this.finish();
-      return;
-    }
-
-    int optimisticIterations = 0;
-    int rateComputationIterations = 0;
-
-    while (!this.stop.get()) {
-      optimisticIterations =
-              (optimisticIterations == 0 ?
-                      Client.OPTIMISTIC_UNCHOKE_ITERATIONS :
-                      optimisticIterations - 1);
-
-      rateComputationIterations =
-              (rateComputationIterations == 0 ?
-                      Client.RATE_COMPUTATION_ITERATIONS :
-                      rateComputationIterations - 1);
-
-      try {
-        this.unchokePeers(optimisticIterations == 0);
-        this.info();
-        if (rateComputationIterations == 0) {
-          this.resetPeerRates();
-        }
-      } catch (Exception e) {
-        logger.error("An exception occurred during the BitTorrent " +
-                "client main loop execution!", e);
-      }
-
-      try {
-        Thread.sleep(Client.UNCHOKING_FREQUENCY * 1000);
-      } catch (InterruptedException ie) {
-        logger.trace("BitTorrent main loop interrupted.");
-        break;
-      }
-    }
-
-    // Close all peer connections
-    logger.debug("Closing all remaining peer connections...");
-    for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
-      peer.unbind(true);
-    }
-
-    this.finish();
-  }
-
   public boolean isRunning() {
-    return this.thread != null && this.thread.isAlive();
-  }
-
-  /**
-   * Close torrent and set final client state before signing off.
-   */
-  private void finish() {
-    logger.trace("try stop announce thread...");
-
-    this.announce.stop();
-
-    logger.trace("announce thread is stopped");
-
-    for (SharedTorrent torrent : this.torrentsStorage.values()) {
-      logger.trace("try close torrent {}", torrent);
-      torrent.close();
-      if (torrent.isFinished()) {
-        torrent.setClientState(ClientState.DONE);
-      } else {
-        torrent.setClientState(ClientState.ERROR);
-      }
-    }
-
-    logger.info("BitTorrent client signing off.");
+    return myStarted;
   }
 
   /**
