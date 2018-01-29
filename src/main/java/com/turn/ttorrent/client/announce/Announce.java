@@ -146,7 +146,7 @@ public class Announce implements Runnable {
 
     if (this.thread == null || !this.thread.isAlive()) {
       this.thread = new Thread(this);
-      this.thread.setName("bt-announce");
+      this.thread.setName("torrent tracker announce thread");
       this.thread.start();
     }
   }
