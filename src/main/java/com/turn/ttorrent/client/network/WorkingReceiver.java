@@ -115,7 +115,11 @@ public class WorkingReceiver implements DataProcessor {
       executorService.submit(new Runnable() {
         @Override
         public void run() {
+          final Thread currentThread = Thread.currentThread();
+          final String oldName = currentThread.getName();
+          currentThread.setName(oldName + " handle message for torrent " + myPeerUID.getTorrentHash() + " peer: " + peer.getHostIdentifier());
           peer.handleMessage(message);
+          currentThread.setName(oldName);
         }
       });
     } catch (RejectedExecutionException e) {
