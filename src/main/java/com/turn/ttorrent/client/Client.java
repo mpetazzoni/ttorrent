@@ -653,14 +653,18 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
 
+    Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
     for (Peer peer : peers) {
+      final PeerUID peerUID = new PeerUID(peer.getAddress(), hexInfoHash);
+      if (uniquePeers.containsKey(peerUID)) continue;
+      uniquePeers.put(peerUID, peer);
+    }
 
-      boolean alreadyConnectedToThisPeer = false;
-      String peerId = peersStorage.getPeerIdByAddress(peer.getIp(), peer.getPort());
-      if (peerId != null) {
-        PeerUID peerUID = new PeerUID(peerId, hexInfoHash);
-        alreadyConnectedToThisPeer = peersStorage.getSharingPeer(peerUID) != null;
-      }
+    for (Map.Entry<PeerUID, Peer> e : uniquePeers.entrySet()) {
+
+      PeerUID peerUID = e.getKey();
+      Peer peer = e.getValue();
+      boolean alreadyConnectedToThisPeer = peersStorage.getSharingPeer(peerUID) != null;
 
       if (alreadyConnectedToThisPeer) {
         logger.debug("skipping peer {}, because we already connected to this peer", peer);
@@ -792,7 +796,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     Peer p = new Peer(peer.getIp(), peer.getPort());
     p.setPeerId(peer.getPeerId());
     p.setTorrentHash(peer.getHexInfoHash());
-    PeerUID peerUID = new PeerUID(p.getStringPeerId(), p.getHexInfoHash());
+    PeerUID peerUID = new PeerUID(p.getAddress(), p.getHexInfoHash());
     SharingPeer sharingPeer = this.peersStorage.removeSharingPeer(peerUID);
     logger.debug("Peer {} disconnected, [{}/{}].",
             new Object[]{

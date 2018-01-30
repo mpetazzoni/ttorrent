@@ -14,14 +14,10 @@ public class PeersStorage {
 
   private volatile Peer self = null;
   private final ReadWriteLock myLock = new ReentrantReadWriteLock();
-  //collections contains all connected peers. String key is peer id
   private final ConcurrentHashMap<PeerUID, SharingPeer> connectedSharingPeers;
-
-  private final ConcurrentHashMap<InetSocketAddress, String> addressPeerIdMapping;
 
   public PeersStorage() {
     this.connectedSharingPeers = new ConcurrentHashMap<PeerUID, SharingPeer>();
-    this.addressPeerIdMapping = new ConcurrentHashMap<InetSocketAddress, String>();
   }
 
   public Peer getSelf() {
@@ -32,78 +28,23 @@ public class PeersStorage {
     this.self = self;
   }
 
-  public SharingPeer putIfAbsent(PeerUID peerId, SharingPeer sharingPeer, boolean needSavePeerIdMapping) {
-    Lock writeLock = myLock.writeLock();
-    try {
-      writeLock.lock();
-      SharingPeer result = connectedSharingPeers.putIfAbsent(peerId, sharingPeer);
-      if (result == null && needSavePeerIdMapping) {
-        addressPeerIdMapping.put(new InetSocketAddress(sharingPeer.getIp(), sharingPeer.getPort()), peerId.getPeerId());
-      }
-      return result;
-    } finally {
-      writeLock.unlock();
-    }
-  }
-
   public SharingPeer putIfAbsent(PeerUID peerId, SharingPeer sharingPeer) {
-    return putIfAbsent(peerId, sharingPeer, false);
-  }
-
-  public String getPeerIdByAddress(String ip, int port) {
-    Lock readLock = myLock.readLock();
-    try {
-      readLock.lock();
-      return addressPeerIdMapping.get(new InetSocketAddress(ip, port));
-    } finally {
-      readLock.unlock();
-    }
+    return connectedSharingPeers.putIfAbsent(peerId, sharingPeer);
   }
 
   public SharingPeer removeSharingPeer(PeerUID peerId) {
-    Lock writeLock = myLock.writeLock();
-    try {
-      writeLock.lock();
-      SharingPeer result = connectedSharingPeers.remove(peerId);
-      if (result != null) {
-        addressPeerIdMapping.remove(new InetSocketAddress(result.getIp(), result.getPort()));
-      }
-      return result;
-    } finally {
-      writeLock.unlock();
-    }
+    return connectedSharingPeers.remove(peerId);
   }
 
   public SharingPeer getSharingPeer(PeerUID peerId) {
-    Lock readLock = myLock.readLock();
-    try {
-      readLock.lock();
-      return connectedSharingPeers.get(peerId);
-    } finally {
-      readLock.unlock();
-    }
+    return connectedSharingPeers.get(peerId);
   }
 
   public void removeSharingPeer(SharingPeer peer) {
-    Lock writeLock = myLock.writeLock();
-    try {
-      writeLock.lock();
-      boolean removed = connectedSharingPeers.values().remove(peer);
-      if (removed) {
-        addressPeerIdMapping.remove(new InetSocketAddress(peer.getIp(), peer.getPort()));
-      }
-    } finally {
-      writeLock.unlock();
-    }
+    connectedSharingPeers.values().remove(peer);
   }
 
   public Collection<SharingPeer> getSharingPeers() {
-    Lock readLock = myLock.readLock();
-    try {
-      readLock.lock();
-      return new ArrayList<SharingPeer>(connectedSharingPeers.values());
-    } finally {
-      readLock.unlock();
-    }
+    return new ArrayList<SharingPeer>(connectedSharingPeers.values());
   }
 }

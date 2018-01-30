@@ -7,6 +7,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Collection;
@@ -34,8 +35,8 @@ public class PeersStorageTest {
   }
 
   public void testThatPeersStorageReturnNewCollection() {
-    SharingPeer sharingPeer = getMockSharingPeer(null);
-    myPeersStorage.putIfAbsent(new PeerUID("", ""), sharingPeer);
+    SharingPeer sharingPeer = getMockSharingPeer();
+    myPeersStorage.putIfAbsent(new PeerUID(new InetSocketAddress("127.0.0.1", 6881), ""), sharingPeer);
     Collection<SharingPeer> sharingPeers = myPeersStorage.getSharingPeers();
 
     assertEquals(1, myPeersStorage.getSharingPeers().size());
@@ -47,10 +48,10 @@ public class PeersStorageTest {
     assertEquals(2, sharingPeers.size());
   }
 
-  private SharingPeer getMockSharingPeer(ByteBuffer id) {
+  private SharingPeer getMockSharingPeer() {
     return new SharingPeer("1",
             1,
-            id,
+            null,
             mock(SharedTorrent.class),
             null,
             mock(PeerActivityListener.class),
@@ -58,8 +59,8 @@ public class PeersStorageTest {
   }
 
   public void getAndRemoveSharingPeersTest() {
-    SharingPeer sharingPeer = getMockSharingPeer(null);
-    PeerUID peerUid = new PeerUID("", "");
+    SharingPeer sharingPeer = getMockSharingPeer();
+    PeerUID peerUid = new PeerUID(new InetSocketAddress("127.0.0.1", 6881), "");
     SharingPeer oldPeer = myPeersStorage.putIfAbsent(peerUid, sharingPeer);
 
     assertNull(oldPeer);
@@ -67,28 +68,5 @@ public class PeersStorageTest {
 
     assertEquals(myPeersStorage.removeSharingPeer(peerUid), sharingPeer);
     assertNull(myPeersStorage.removeSharingPeer(peerUid));
-  }
-
-  public void mappingIdTest() throws UnsupportedEncodingException {
-    byte[] peerId = {1, 2, 3};
-    String peerIdString = new String(peerId, Torrent.BYTE_ENCODING);
-    SharingPeer sharingPeer = getMockSharingPeer(ByteBuffer.wrap(peerId));
-    PeerUID peerUid = new PeerUID(peerIdString, "");
-    myPeersStorage.putIfAbsent(peerUid, sharingPeer, false);
-
-    assertNull(myPeersStorage.getPeerIdByAddress("1", 1));
-
-    myPeersStorage.putIfAbsent(peerUid, sharingPeer, true);
-
-    assertNull(myPeersStorage.getPeerIdByAddress("1", 1));
-
-    myPeersStorage.removeSharingPeer(peerUid);
-    myPeersStorage.putIfAbsent(peerUid, sharingPeer, true);
-
-    assertEquals(myPeersStorage.getPeerIdByAddress("1", 1), peerIdString);
-
-    assertNull(myPeersStorage.getPeerIdByAddress("2", 1));
-    assertNull(myPeersStorage.getPeerIdByAddress("1", 2));
-
   }
 }
