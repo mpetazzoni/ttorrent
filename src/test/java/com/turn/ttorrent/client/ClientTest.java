@@ -5,15 +5,13 @@ import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.apache.log4j.*;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -494,7 +492,13 @@ public class ClientTest {
     leecher.addTorrent(sharedTorrent);
     final List<ServerSocket> serverSockets = new ArrayList<ServerSocket>();
 
-    String[] peerIds = new String[]{"id1", "id2"};
+    final int startPort = 6885;
+    int port = startPort;
+    PeerUID[] peerUids = new PeerUID[]{
+            new PeerUID(new InetSocketAddress("127.0.0.1", port++), hexInfoHash),
+            new PeerUID(new InetSocketAddress("127.0.0.1", port++), hexInfoHash),
+            new PeerUID(new InetSocketAddress("127.0.0.1", port), hexInfoHash)
+    };
     final ExecutorService es = Executors.newSingleThreadExecutor();
     try {
       leecher.start(InetAddress.getLocalHost());
@@ -509,10 +513,11 @@ public class ClientTest {
       assertTrue(waitFor.isMyResult());
 
       final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(hexInfoHash);
-      Map<String, TrackedPeer> trackedPeerMap = new HashMap<String, TrackedPeer>();
-      int port = 6885;
-      for (String id : peerIds) {
-        trackedPeerMap.put(id, new TrackedPeer(trackedTorrent, "127.0.0.1", port, ByteBuffer.wrap(id.getBytes(Torrent.BYTE_ENCODING))));
+      Map<PeerUID, TrackedPeer> trackedPeerMap = new HashMap<PeerUID, TrackedPeer>();
+
+      port = startPort;
+      for (PeerUID uid : peerUids) {
+        trackedPeerMap.put(uid, new TrackedPeer(trackedTorrent, "127.0.0.1", port, ByteBuffer.wrap("id".getBytes(Torrent.BYTE_ENCODING))));
         serverSockets.add(new ServerSocket(port));
         port++;
       }

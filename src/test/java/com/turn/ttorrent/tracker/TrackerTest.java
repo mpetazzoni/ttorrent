@@ -7,6 +7,7 @@ import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.*;
@@ -158,7 +159,7 @@ public class TrackerTest {
       assertEquals(1, trackedTorrents.size());
 
       TrackedTorrent trackedTorrent = trackedTorrents.iterator().next();
-      Map<String, TrackedPeer> peers = trackedTorrent.getPeers();
+      Map<PeerUID, TrackedPeer> peers = trackedTorrent.getPeers();
       assertEquals(1, peers.size());
       assertTrue(peers.values().iterator().next().isCompleted()); // seed
       assertEquals(1, trackedTorrent.seeders());
@@ -184,7 +185,7 @@ public class TrackerTest {
       assertEquals(1, trackedTorrents.size());
 
       TrackedTorrent trackedTorrent = trackedTorrents.iterator().next();
-      Map<String, TrackedPeer> peers = trackedTorrent.getPeers();
+      Map<PeerUID, TrackedPeer> peers = trackedTorrent.getPeers();
       assertEquals(1, peers.size());
       assertFalse(peers.values().iterator().next().isCompleted()); // leech
       assertEquals(0, trackedTorrent.seeders());

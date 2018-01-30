@@ -16,6 +16,7 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
@@ -68,7 +69,7 @@ public class TrackedTorrent implements TorrentHash {
     private final byte[] info_hash;
 
 	/** Peers currently exchanging on this torrent. */
-	private ConcurrentMap<String, TrackedPeer> peers;
+	private ConcurrentMap<PeerUID, TrackedPeer> peers;
 
 	/**
 	 * Create a new tracked torrent from meta-info binary data.
@@ -80,7 +81,7 @@ public class TrackedTorrent implements TorrentHash {
 	public TrackedTorrent(byte[] info_hash) {
 		this.info_hash = info_hash;
 
-		this.peers = new ConcurrentHashMap<String, TrackedPeer>();
+		this.peers = new ConcurrentHashMap<PeerUID, TrackedPeer>();
 		this.answerPeers = TrackedTorrent.DEFAULT_ANSWER_NUM_PEERS;
 		this.announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
 	}
@@ -93,7 +94,7 @@ public class TrackedTorrent implements TorrentHash {
 	/**
 	 * Returns the map of all peers currently exchanging on this torrent.
 	 */
-	public Map<String, TrackedPeer> getPeers() {
+	public Map<PeerUID, TrackedPeer> getPeers() {
 		return this.peers;
 	}
 
@@ -103,7 +104,7 @@ public class TrackedTorrent implements TorrentHash {
 	 * @param peer The new Peer involved with this torrent.
 	 */
 	public void addPeer(TrackedPeer peer) {
-		this.peers.put(peer.getHexPeerId(), peer);
+		this.peers.put(new PeerUID(peer.getAddress(), this.getHexInfoHash()), peer);
 	}
 
 	/**
