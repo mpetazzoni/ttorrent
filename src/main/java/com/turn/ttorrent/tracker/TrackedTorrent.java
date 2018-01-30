@@ -163,7 +163,7 @@ public class TrackedTorrent implements TorrentHash {
 	public void collectUnfreshPeers(int expireTimeoutSec) {
 		for (TrackedPeer peer : this.peers.values()) {
 			if (!peer.isFresh(expireTimeoutSec)) {
-				this.peers.remove(peer.getHexPeerId());
+				this.peers.remove(new PeerUID(peer.getAddress(), this.getHexInfoHash()));
 			}
 		}
 	}
