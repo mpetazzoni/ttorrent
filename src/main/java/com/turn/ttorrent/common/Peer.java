@@ -234,7 +234,6 @@ public class Peer {
 		return "Peer{" +
 						"address=" + address +
 						", hostId='" + hostId + '\'' +
-						", peerId=" + peerId +
 						", hexPeerId='" + hexPeerId + '\'' +
 						", hexInfoHash='" + hexInfoHash + '\'' +
 						'}';
