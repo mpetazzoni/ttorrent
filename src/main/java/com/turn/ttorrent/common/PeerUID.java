@@ -1,21 +1,23 @@
 package com.turn.ttorrent.common;
 
+import java.net.InetSocketAddress;
+
 public class PeerUID {
 
-  private final String peerId;
-  private final String torrentHash;
+  private final InetSocketAddress myAddress;
+  private final String myTorrentHash;
 
-  public PeerUID(String peerId, String torrentHash) {
-    this.peerId = peerId;
-    this.torrentHash = torrentHash;
+  public PeerUID(InetSocketAddress address, String torrentHash) {
+    myAddress = address;
+    myTorrentHash = torrentHash;
   }
 
   public String getTorrentHash() {
-    return torrentHash;
+    return myTorrentHash;
   }
 
-  public String getPeerId() {
-    return peerId;
+  public InetSocketAddress getAddress() {
+    return myAddress;
   }
 
   @Override
@@ -25,22 +27,14 @@ public class PeerUID {
 
     PeerUID peerUID = (PeerUID) o;
 
-    if (!peerId.equals(peerUID.peerId)) return false;
-    return torrentHash.equals(peerUID.torrentHash);
+    if (!myAddress.equals(peerUID.myAddress)) return false;
+    return myTorrentHash.equals(peerUID.myTorrentHash);
   }
 
   @Override
   public int hashCode() {
-    int result = peerId.hashCode();
-    result = 31 * result + torrentHash.hashCode();
+    int result = myAddress.hashCode();
+    result = 31 * result + myTorrentHash.hashCode();
     return result;
-  }
-
-  @Override
-  public String toString() {
-    return "PeerUID{" +
-            "peerId='" + peerId + '\'' +
-            ", torrentHash='" + torrentHash + '\'' +
-            '}';
   }
 }

@@ -274,7 +274,7 @@ public class UDPTrackerClient extends TrackerClient {
       torrent.getUploaded(),
       torrent.getLeft(),
 			event,
-			peer.getAddress(),
+			peer.getAddress().getAddress(),
 			0,
 			TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
 			peer.getPort());

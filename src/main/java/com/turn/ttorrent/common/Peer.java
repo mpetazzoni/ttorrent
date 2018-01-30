@@ -157,8 +157,8 @@ public class Peer {
 	/**
 	 * Returns this peer's InetAddress.
 	 */
-	public InetAddress getAddress() {
-		return this.address.getAddress();
+	public InetSocketAddress getAddress() {
+		return this.address;
 	}
 
 	/**
@@ -234,7 +234,6 @@ public class Peer {
 		return "Peer{" +
 						"address=" + address +
 						", hostId='" + hostId + '\'' +
-						", peerId=" + peerId +
 						", hexPeerId='" + hexPeerId + '\'' +
 						", hexInfoHash='" + hexInfoHash + '\'' +
 						'}';
