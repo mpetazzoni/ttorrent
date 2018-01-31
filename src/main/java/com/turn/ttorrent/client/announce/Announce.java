@@ -24,11 +24,10 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.net.UnknownServiceException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -113,13 +112,7 @@ public class Announce implements Runnable {
     for (SharedTorrent st : this.torrents) {
       if (st.getHexInfoHash().equals(torrent.getHexInfoHash())) {
         toRemove.add(st);
-        try {
-          final URI uri = st.getAnnounce();
-          TrackerClient client = this.clients.get(uri.toString());
-          client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, st);
-        } catch (Exception ex){
-          logger.debug("Unable to announce stop on tracker");
-        }
+        sendStopEvent(st);
       }
     }
     this.torrents.removeAll(toRemove);
@@ -169,6 +162,16 @@ public class Announce implements Runnable {
     this.myAnnounceInterval = announceInterval;
   }
 
+  private void sendStopEvent(SharedTorrent torrent) {
+    try {
+      final URI uri = torrent.getAnnounce();
+      TrackerClient client = this.clients.get(uri.toString());
+      client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
+    } catch (Exception ex) {
+      logger.debug("Unable to announce stop on tracker");
+    }
+  }
+
   /**
    * Stop the announce thread.
    * <p/>
@@ -178,6 +181,13 @@ public class Announce implements Runnable {
    * </p>
    */
   public void stop() {
+
+    Iterator<SharedTorrent> iterator = torrents.iterator();
+    while (iterator.hasNext()) {
+      sendStopEvent(iterator.next());
+    }
+    this.torrents.clear();
+
     this.stop = true;
     this.myPeers.clear();
 

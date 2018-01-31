@@ -14,7 +14,7 @@ public class PeerCollectorThread extends Thread {
 
   public static final int COLLECTION_FREQUENCY=10;
   private ConcurrentMap<String, TrackedTorrent> myTorrents;
-  private int myTorrentExpireTimeoutSec = 60;
+  private volatile int myTorrentExpireTimeoutSec = 60;
 
   public PeerCollectorThread(final ConcurrentMap<String, TrackedTorrent> torrents) {
     myTorrents = torrents;

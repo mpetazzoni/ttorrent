@@ -208,32 +208,44 @@ public class TrackerTest {
     c2.addTorrent(completeTorrent("file1.jar.torrent"));
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
-    assertTrackedTorrentContainPeers(tt, c1.getPeers());
-    assertTrackedTorrentContainPeers(tt, c2.getPeers());
+
+    new WaitFor(10*1000) {
+      @Override
+      protected boolean condition() {
+        return tt.getPeers().size() == 2;
+      }
+    };
+
+    final InetSocketAddress c1Address = new InetSocketAddress(InetAddress.getLocalHost(), c1.getConnectionManager().getBindPort());
+    final InetSocketAddress c2Address = new InetSocketAddress(InetAddress.getLocalHost(), c2.getConnectionManager().getBindPort());
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c1Address, tt.getHexInfoHash())));
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c2Address, tt.getHexInfoHash())));
 
     c2.stop();
     new WaitFor(30 * 1000) {
 
       @Override
       protected boolean condition() {
-        return tt.getPeers().size() == c1.getPeers().size();
+        return tt.getPeers().size() == 1;
       }
     };
-    assertTrackedTorrentContainPeers(tt, c1.getPeers());
-    assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c1Address, tt.getHexInfoHash())));
+    assertFalse(tt.getPeers().containsKey(new PeerUID(c2Address, tt.getHexInfoHash())));
   }
 
   public void tracker_removes_peer_after_timeout() throws IOException, NoSuchAlgorithmException, InterruptedException {
     tracker.setAcceptForeignTorrents(true);
-    tracker.setPeerCollectorExpireTimeout(10);
     tracker.stop();
     tracker.start(true);
     final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
+    tracker.setPeerCollectorExpireTimeout(5);
 
     final Client c1 = createClient();
     c1.setAnnounceInterval(2);
     c1.start(InetAddress.getLocalHost());
     c1.addTorrent(torrent);
+
+    final String announceUrlC1 = "http://localhost:6969/announce?info_hash=%B9-8%04lv%D79H%E1LB%DF%99%2C%AF%25H%9D%08&peer_id=-TO0042-97ec308c9637&port=6881&uploaded=0&downloaded=0&left=0&compact=1&no_peer_id=0&ip=127.0.1.1";
 
     final Client c2 = createClient();
     c2.setAnnounceInterval(120);
@@ -241,18 +253,35 @@ public class TrackerTest {
     c2.addTorrent(completeTorrent("file1.jar.torrent"));
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
-    assertTrackedTorrentContainPeers(tt, c1.getPeers());
-    assertTrackedTorrentContainPeers(tt, c2.getPeers());
+    new WaitFor(10*1000) {
+      @Override
+      protected boolean condition() {
+
+        return tt.getPeers().size() == 2;
+      }
+    };
+
+    final InetSocketAddress c1Address = new InetSocketAddress(InetAddress.getLocalHost(), c1.getConnectionManager().getBindPort());
+    final InetSocketAddress c2Address = new InetSocketAddress(InetAddress.getLocalHost(), c2.getConnectionManager().getBindPort());
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c1Address, tt.getHexInfoHash())));
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c2Address, tt.getHexInfoHash())));
 
     new WaitFor(30 * 1000) {
 
       @Override
       protected boolean condition() {
-        return tt.getPeers().size() == c1.getPeers().size();
+        try {
+          final URLConnection connection = new URL(announceUrlC1).openConnection();
+          connection.getInputStream().close();
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+        return tt.getPeers().size() == 1;
       }
     };
-    assertTrackedTorrentContainPeers(tt, c1.getPeers());
-    assertTrackedTorrentNotContainPeers(tt, c2.getPeers());
+    assertEquals(tt.getPeers().size(), 1);
+    assertTrue(tt.getPeers().containsKey(new PeerUID(c1Address, tt.getHexInfoHash())));
+    assertFalse(tt.getPeers().containsKey(new PeerUID(c2Address, tt.getHexInfoHash())));
   }
 
   //  @Test(invocationCount = 50)
@@ -361,19 +390,5 @@ public class TrackerTest {
     Checksum c1 = FileUtils.checksum(f1, new CRC32());
     Checksum c2 = FileUtils.checksum(f2, new CRC32());
     assertEquals(c1.getValue(), c2.getValue());
-  }
-
-  private void assertTrackedTorrentContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers) {
-    for (SharingPeer peer : peers) {
-      assertNotNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
-              String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
-    }
-  }
-
-  private void assertTrackedTorrentNotContainPeers(TrackedTorrent trackedTorrent, Set<SharingPeer> peers) {
-    for (SharingPeer peer : peers) {
-      assertNull(trackedTorrent.getPeer(peer.getShortHexPeerId()),
-              String.format("Peer %s is not available for torrent %s", peer.toString(), trackedTorrent.toString()));
-    }
   }
 }
