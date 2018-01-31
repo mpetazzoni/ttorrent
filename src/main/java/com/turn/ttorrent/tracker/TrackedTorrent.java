@@ -24,6 +24,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.R
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import java.security.NoSuchAlgorithmException;
@@ -107,22 +108,12 @@ public class TrackedTorrent implements TorrentHash {
 		this.peers.put(new PeerUID(peer.getAddress(), this.getHexInfoHash()), peer);
 	}
 
-	/**
-	 * Retrieve a peer exchanging on this torrent.
-	 *
-	 * @param peerId The hexadecimal representation of the peer's ID.
-	 */
-	public TrackedPeer getPeer(String peerId) {
-		return this.peers.get(peerId);
+	public TrackedPeer getPeer(PeerUID peerUID) {
+		return this.peers.get(peerUID);
 	}
 
-	/**
-	 * Remove a peer from this torrent's swarm.
-	 *
-	 * @param peerId The hexadecimal representation of the peer's ID.
-	 */
-	public TrackedPeer removePeer(String peerId) {
-		return this.peers.remove(peerId);
+	public TrackedPeer removePeer(PeerUID peerUID) {
+		return this.peers.remove(peerUID);
 	}
 
 	/**
@@ -163,7 +154,7 @@ public class TrackedTorrent implements TorrentHash {
 	public void collectUnfreshPeers(int expireTimeoutSec) {
 		for (TrackedPeer peer : this.peers.values()) {
 			if (!peer.isFresh(expireTimeoutSec)) {
-				this.peers.remove(peer.getHexPeerId());
+				this.peers.remove(new PeerUID(peer.getAddress(), this.getHexInfoHash()));
 			}
 		}
 	}
@@ -214,16 +205,17 @@ public class TrackedTorrent implements TorrentHash {
 		TrackedPeer peer = null;
 		TrackedPeer.PeerState state = TrackedPeer.PeerState.UNKNOWN;
 
+		PeerUID peerUID = new PeerUID(new InetSocketAddress(ip, port), getHexInfoHash());
 		if (RequestEvent.STARTED.equals(event)) {
 			state = TrackedPeer.PeerState.STARTED;
 		} else if (RequestEvent.STOPPED.equals(event)) {
-			peer = this.removePeer(hexPeerId);
+			peer = this.removePeer(peerUID);
 			state = TrackedPeer.PeerState.STOPPED;
 		} else if (RequestEvent.COMPLETED.equals(event)) {
-			peer = this.getPeer(hexPeerId);
+			peer = this.getPeer(peerUID);
 			state = TrackedPeer.PeerState.COMPLETED;
 		} else if (RequestEvent.NONE.equals(event)) {
-			peer = this.getPeer(hexPeerId);
+			peer = this.getPeer(peerUID);
 			state = TrackedPeer.PeerState.STARTED;
 		} else {
 			throw new IllegalArgumentException("Unexpected announce event type!");

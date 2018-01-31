@@ -370,16 +370,18 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   public void downloadUninterruptibly(final SharedTorrent torrent,
                                       final long downloadTimeoutSeconds) throws IOException, InterruptedException {
-    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1, new AtomicBoolean(false));
+    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
   }
 
   public void downloadUninterruptibly(final SharedTorrent torrent,
                                       final long idleTimeoutSec,
                                       final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted) throws IOException, InterruptedException {
+                                      final AtomicBoolean isInterrupted,
+                                      final long maxTimeForConnectMs) throws IOException, InterruptedException {
     addTorrent(torrent);
     // we must ensure that at every moment we are downloading a piece of that torrent
     int seedersCount = torrent.getSeedersCount();
+    final long startDownloadAt = System.currentTimeMillis();
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
     long currentLeft = torrent.getLeft();
 
@@ -392,6 +394,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       if (currentLeft > torrent.getLeft()) {
         currentLeft = torrent.getLeft();
         maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
+      }
+      if (System.currentTimeMillis() - startDownloadAt > maxTimeForConnectMs) {
+        if (getPeersForTorrent(torrent.getHexInfoHash()).size() < minSeedersCount) {
+          break;
+        }
       }
       Thread.sleep(100);
     }
@@ -410,7 +417,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
         int totalPieces = torrent.getPieceCount();
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
                 , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
-      } else if (seedersCount < minSeedersCount) {
+      } else if (connectedPeersForTorrent < minSeedersCount) {
         errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
       } else if (torrent.getClientState() == ClientState.ERROR) {
         errorMsg = "Torrent state is ERROR";

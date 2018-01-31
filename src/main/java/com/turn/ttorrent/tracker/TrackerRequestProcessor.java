@@ -17,6 +17,7 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -143,7 +145,7 @@ public class TrackerRequestProcessor {
     }
 
 		AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
-		String peerId = announceRequest.getHexPeerId();
+		PeerUID peerUID = new PeerUID(new InetSocketAddress(announceRequest.getIp(), announceRequest.getPort()), announceRequest.getHexInfoHash());
 
 		// When no event is specified, it's a periodic update while the client
 		// is operating. If we don't have a peer for this announce, it means
@@ -151,7 +153,7 @@ public class TrackerRequestProcessor {
 		// announce request as a 'started' event.
 		if ((event == null ||
 				AnnounceRequestMessage.RequestEvent.NONE.equals(event)) &&
-			torrent.getPeer(peerId) == null) {
+			torrent.getPeer(peerUID) == null) {
 			event = AnnounceRequestMessage.RequestEvent.STARTED;
 		}
 
@@ -160,7 +162,7 @@ public class TrackerRequestProcessor {
 			return;
 		}
 
-    if (event != null && torrent.getPeer(peerId) == null &&
+    if (event != null && torrent.getPeer(peerUID) == null &&
   			AnnounceRequestMessage.RequestEvent.STOPPED.equals(event)) {
       writeAnnounceResponse(torrent, null, requestHandler);
       return;
@@ -171,7 +173,7 @@ public class TrackerRequestProcessor {
 		// previous 'started' announce request should have been made by the
 		// client that would have had us register that peer on the torrent this
 		// request refers to.
-		if (event != null && torrent.getPeer(peerId) == null &&
+		if (event != null && torrent.getPeer(peerUID) == null &&
 			!(AnnounceRequestMessage.RequestEvent.STARTED.equals(event) ||
         AnnounceRequestMessage.RequestEvent.COMPLETED.equals(event))) {
       serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
