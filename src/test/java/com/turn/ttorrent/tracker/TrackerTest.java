@@ -6,11 +6,13 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.*;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -240,12 +242,17 @@ public class TrackerTest {
     final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
     tracker.setPeerCollectorExpireTimeout(5);
 
-    final Client c1 = createClient();
-    c1.setAnnounceInterval(2);
-    c1.start(InetAddress.getLocalHost());
-    c1.addTorrent(torrent);
+    int peerPort = 6885;
+    String peerHost = InetAddress.getLocalHost().getHostAddress();
+    final String announceUrlC1 = "http://localhost:6969/announce?info_hash=%B9-8%04lv%D79H%E1LB%DF%99%2C%AF%25H%9D%08&peer_id=-TO0042-97ec308c9637&" +
+            "port=" + peerPort + "&uploaded=0&downloaded=0&left=0&compact=1&no_peer_id=0&ip=" + peerHost;
 
-    final String announceUrlC1 = "http://localhost:6969/announce?info_hash=%B9-8%04lv%D79H%E1LB%DF%99%2C%AF%25H%9D%08&peer_id=-TO0042-97ec308c9637&port=6881&uploaded=0&downloaded=0&left=0&compact=1&no_peer_id=0&ip=127.0.1.1";
+    try {
+      final URLConnection connection = new URL(announceUrlC1).openConnection();
+      connection.getInputStream().close();
+    } catch (Exception e) {
+      fail("", e);
+    }
 
     final Client c2 = createClient();
     c2.setAnnounceInterval(120);
@@ -261,7 +268,7 @@ public class TrackerTest {
       }
     };
 
-    final InetSocketAddress c1Address = new InetSocketAddress(InetAddress.getLocalHost(), c1.getConnectionManager().getBindPort());
+    final InetSocketAddress c1Address = new InetSocketAddress(peerHost, peerPort);
     final InetSocketAddress c2Address = new InetSocketAddress(InetAddress.getLocalHost(), c2.getConnectionManager().getBindPort());
     assertTrue(tt.getPeers().containsKey(new PeerUID(c1Address, tt.getHexInfoHash())));
     assertTrue(tt.getPeers().containsKey(new PeerUID(c2Address, tt.getHexInfoHash())));
