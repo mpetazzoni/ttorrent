@@ -255,27 +255,6 @@ public class Announce implements Runnable {
     }
 
     logger.info("Exited announce loop.");
-
-    if (!this.forceStop) {
-      // Send the final 'stopped' event to the tracker after a little
-      // while.
-      try {
-        Thread.sleep(500);
-      } catch (InterruptedException ie) {
-        // Ignore
-        return;
-      }
-
-      try {
-        for (SharedTorrent torrent : this.torrents) {
-            this.getCurrentTrackerClient(torrent).announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
-        }
-      } catch (AnnounceException e) {
-        logger.info("Can't announce stop: " + e.getMessage());
-        logger.debug("Can't announce stop", e);
-        // don't try to announce all. Stop after first error, assuming tracker is already unavailable
-      }
-    }
   }
 
   /**
