@@ -81,7 +81,7 @@ public class ConnectionWorker implements Runnable {
           }
           connectToPeersFromQueue();
           processWriteTasks();
-          logger.trace("select keys from selector. Keys count is " + selected);
+          logger.debug("select keys from selector. Keys count is " + selected);
           if (selected != 0) {
             processSelectedKeys();
           }
@@ -200,7 +200,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {
-    logger.trace("try process key for channel {}", key.channel());
+    logger.debug("try process key for channel {}", key.channel());
     myCleanupProcessor.processSelected(key);
     for (KeyProcessor keyProcessor : myKeyProcessors) {
       if (keyProcessor.accept(key)) {
