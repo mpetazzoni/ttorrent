@@ -17,6 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
@@ -81,7 +82,7 @@ public class HTTPTrackerClient extends TrackerClient {
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
     for (final Peer peer : peers) {
       URL target = getTargetUrl(event, torrentInfo, peer);
-      sendAnnounce(target, "", "GET", new ResponseParser() {
+      sendAnnounce(target, "GET", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
           trackerResponses.add(HTTPTrackerMessage.parse(inputStream));
@@ -96,7 +97,7 @@ public class HTTPTrackerClient extends TrackerClient {
   }
 
   @Override
-  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<TorrentInfo> torrents, List<Peer> peers) throws AnnounceException {
+  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<SharedTorrent> torrents, List<Peer> peers) throws AnnounceException {
     List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
 
     for (final Peer peer : peers) {
@@ -146,6 +147,10 @@ public class HTTPTrackerClient extends TrackerClient {
               ioe.getMessage() + ")", ioe);
     }
     return result;
+  }
+
+  private void sendAnnounce(final URL url,final String method, ResponseParser parser) throws AnnounceException {
+	  sendAnnounce(url, "", method, parser);
   }
 
   private void sendAnnounce(final URL url, final String body, final String method, ResponseParser parser) throws AnnounceException {

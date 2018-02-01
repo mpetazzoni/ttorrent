@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
@@ -97,7 +98,7 @@ public abstract class TrackerClient {
                                 boolean inhibitEvent, final TorrentInfo torrent, final List<Peer> peer) throws AnnounceException;
 
 	protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
-																	 boolean inhibitEvent, final List<TorrentInfo> torrents, final List<Peer> peer) throws AnnounceException;
+                                        boolean inhibitEvent, final List<SharedTorrent> torrents, final List<Peer> peer) throws AnnounceException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {

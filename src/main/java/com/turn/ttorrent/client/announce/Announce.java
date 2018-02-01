@@ -239,8 +239,8 @@ public class Announce implements Runnable {
     logger.info("Exited announce loop.");
   }
 
-  private void defaultAnnounce() {
-    for (SharedTorrent torrent : this.torrents) {
+  private void defaultAnnounce(List<SharedTorrent> torrents) {
+    for (SharedTorrent torrent : torrents) {
       if (this.stop || Thread.currentThread().isInterrupted()){
         break;
       }
@@ -261,39 +261,36 @@ public class Announce implements Runnable {
   private void announceAllTorrentsEventNone() {
 
     logger.debug("Started multi announce");
-    final Map<String, List<TorrentInfo>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<TorrentInfo>>();
+    final Map<String, List<SharedTorrent>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<SharedTorrent>>();
 
     for (SharedTorrent torrent : this.torrents) {
       final URI uriForTorrent = getURIForTorrent(torrent);
       if (uriForTorrent == null) continue;
       String torrentURI = uriForTorrent.toString();
-      List<TorrentInfo> sharedTorrents = torrentsGroupingByAnnounceUrl.get(torrentURI);
+      List<SharedTorrent> sharedTorrents = torrentsGroupingByAnnounceUrl.get(torrentURI);
       if (sharedTorrents == null) {
-        sharedTorrents = new ArrayList<TorrentInfo>();
+        sharedTorrents = new ArrayList<SharedTorrent>();
         torrentsGroupingByAnnounceUrl.put(torrentURI, sharedTorrents);
       }
       sharedTorrents.add(torrent);
     }
 
-    boolean multiAnnounceFailed = false;
-    for (Map.Entry<String, List<TorrentInfo>> e : torrentsGroupingByAnnounceUrl.entrySet()) {
+    List<SharedTorrent> unannouncedTorrents = new ArrayList<SharedTorrent>();
+    for (Map.Entry<String, List<SharedTorrent>> e : torrentsGroupingByAnnounceUrl.entrySet()) {
       TrackerClient trackerClient = this.clients.get(e.getKey());
       if (trackerClient != null) {
         try {
           trackerClient.multiAnnounce(AnnounceRequestMessage.RequestEvent.NONE, false, e.getValue(), myPeers);
         } catch (AnnounceException t) {
           LoggerUtils.warnAndDebugDetails(logger, "problem in multi announce {}", t.getMessage(), t);
-          multiAnnounceFailed = true;
-          break;
+          unannouncedTorrents.addAll(e.getValue());
         }
       } else {
         logger.warn("Tracker client for {} is null. Torrents is not announced on tracker", e.getKey());
-        multiAnnounceFailed = true;
-        break;
       }
     }
-    if (multiAnnounceFailed) {
-      defaultAnnounce();
+    if (unannouncedTorrents.size() > 0) {
+      defaultAnnounce(unannouncedTorrents);
     }
   }
 
