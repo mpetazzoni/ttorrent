@@ -2,11 +2,12 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
+import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
-import org.apache.commons.io.IOUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
@@ -20,7 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -75,24 +75,14 @@ public class MultiAnnounceRequestProcessorTest {
     connection.getOutputStream().write(requestString.toString().getBytes("UTF-8"));
 
     final InputStream inputStream = connection.getInputStream();
-    byte[] responseArray = IOUtils.toByteArray(inputStream);
 
-    List<HTTPTrackerMessage> messages = new ArrayList<HTTPTrackerMessage>();
-    int startMessageIdx = 0;
+    final BEValue bdecode = BDecoder.bdecode(inputStream);
 
-    for (int i = 0; i < responseArray.length; i++) {
-      if (responseArray[i] == 0) {
-        parseMessageAndAdd(messages, responseArray, startMessageIdx, i);
-        startMessageIdx = i + 1;
-      }
-    }
+    assertEquals(bdecode.getList().size(), 5);
 
-    parseMessageAndAdd(messages, responseArray, startMessageIdx, responseArray.length);
+    for (BEValue beValue : bdecode.getList()) {
 
-    assertEquals(messages.size(), 5);
-
-    for (HTTPTrackerMessage message : messages) {
-      final HTTPAnnounceResponseMessage responseMessage = (HTTPAnnounceResponseMessage) message;
+      final HTTPAnnounceResponseMessage responseMessage = HTTPAnnounceResponseMessage.parse(beValue);
       assertTrue(responseMessage.getPeers().isEmpty());
       assertEquals(1, responseMessage.getComplete());
       assertEquals(0, responseMessage.getIncomplete());
