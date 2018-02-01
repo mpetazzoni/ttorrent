@@ -660,6 +660,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
 
+    if (torrent.isFinished()) return;
+
     Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
     for (Peer peer : peers) {
       final PeerUID peerUID = new PeerUID(peer.getAddress(), hexInfoHash);

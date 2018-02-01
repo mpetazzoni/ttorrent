@@ -42,7 +42,10 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
     if (decoded == null) {
 			throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: ");
 		}
+		return parse(decoded);
+	}
 
+	public static HTTPTrackerMessage parse(BEValue decoded) throws IOException, MessageValidationException {
 		Map<String, BEValue> params = decoded.getMap();
 
 		if (params.containsKey("info_hash")) {
@@ -55,4 +58,5 @@ public abstract class HTTPTrackerMessage extends TrackerMessage {
 
 		throw new MessageValidationException("Unknown HTTP tracker message!");
 	}
+
 }

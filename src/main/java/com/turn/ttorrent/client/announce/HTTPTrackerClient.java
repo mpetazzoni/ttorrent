@@ -15,12 +15,15 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.bcodec.BDecoder;
+import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,22 +78,15 @@ public class HTTPTrackerClient extends TrackerClient {
                        boolean inhibitEvents, final TorrentInfo torrentInfo, final List<Peer> peers) throws AnnounceException {
     logAnnounceRequest(event, torrentInfo);
 
-    List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
+    final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
     for (final Peer peer : peers) {
-      try {
-        HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
-        URL target = request.buildAnnounceURL(this.tracker.toURL());
-        trackerResponses.add(sendAnnounce(target));
-      } catch (MalformedURLException mue) {
-        throw new AnnounceException("Invalid announce URL (" +
-                mue.getMessage() + ")", mue);
-      } catch (MessageValidationException mve) {
-        throw new AnnounceException("Announce request creation violated " +
-                "expected protocol (" + mve.getMessage() + ")", mve);
-      } catch (IOException ioe) {
-        throw new AnnounceException("Error building announce request (" +
-                ioe.getMessage() + ")", ioe);
-      }
+      URL target = getTargetUrl(event, torrentInfo, peer);
+      sendAnnounce(target, "", "GET", new ResponseParser() {
+        @Override
+        public void parse(InputStream inputStream) throws IOException, MessageValidationException {
+          trackerResponses.add(HTTPTrackerMessage.parse(inputStream));
+        }
+      });
     }
     // we process only first request:
     if (trackerResponses.size() > 0) {
@@ -99,11 +95,64 @@ public class HTTPTrackerClient extends TrackerClient {
     }
   }
 
-  private HTTPTrackerMessage sendAnnounce(final URL url) throws AnnounceException {
+  @Override
+  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<TorrentInfo> torrents, List<Peer> peers) throws AnnounceException {
+    List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
+
+    for (final Peer peer : peers) {
+      StringBuilder body = new StringBuilder();
+      URL target = null;
+      for (final TorrentInfo torrentInfo : torrents) {
+        target = getTargetUrl(event, torrentInfo, peer);
+
+        body.append(target).append("\n");
+      }
+      final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
+      String bodyStr = body.toString().substring(0, body.length() - 1);
+      sendAnnounce(target, bodyStr, "POST", new ResponseParser() {
+        @Override
+        public void parse(InputStream inputStream) throws IOException, MessageValidationException {
+          final List<BEValue> list = BDecoder.bdecode(inputStream).getList();
+          for (BEValue value : list) {
+            responsesForCurrentIp.add(HTTPTrackerMessage.parse(value));
+          }
+        }
+      });
+      trackerResponses.add(responsesForCurrentIp);
+    }
+    // we process only first request:
+    if (trackerResponses.size() > 0) {
+      final List<HTTPTrackerMessage> messages = trackerResponses.get(0);
+      for (HTTPTrackerMessage message : messages) {
+        final String hexInfoHash = message instanceof HTTPAnnounceResponseMessage ? ((HTTPAnnounceResponseMessage)message).getHexInfoHash() : "";
+        this.handleTrackerAnnounceResponse(message, inhibitEvent, hexInfoHash);
+      }
+    }
+  }
+
+  private URL getTargetUrl(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer) throws AnnounceException{
+	  URL result;
+    try {
+      HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
+      result = request.buildAnnounceURL(this.tracker.toURL());
+    } catch (MalformedURLException mue) {
+      throw new AnnounceException("Invalid announce URL (" +
+              mue.getMessage() + ")", mue);
+    } catch (MessageValidationException mve) {
+      throw new AnnounceException("Announce request creation violated " +
+              "expected protocol (" + mve.getMessage() + ")", mve);
+    } catch (IOException ioe) {
+      throw new AnnounceException("Error building announce request (" +
+              ioe.getMessage() + ")", ioe);
+    }
+    return result;
+  }
+
+  private void sendAnnounce(final URL url, final String body, final String method, ResponseParser parser) throws AnnounceException {
     HttpURLConnection conn = null;
     InputStream in = null;
     try {
-      conn = (HttpURLConnection)openConnectionCheckRedirects(url);
+      conn = (HttpURLConnection)openConnectionCheckRedirects(url, body, method);
       in = conn.getInputStream();
     } catch (IOException ioe) {
       LoggerUtils.warnAndDebugDetails(logger, "announce message is not sent. Announce URl is {}", url, ioe);
@@ -120,8 +169,7 @@ public class HTTPTrackerClient extends TrackerClient {
     }
 
     try {
-      // Parse and handle the response
-      return HTTPTrackerMessage.parse(in);
+      parser.parse(in);
     } catch (IOException ioe) {
       throw new AnnounceException("Error reading tracker response!", ioe);
     } catch (MessageValidationException mve) {
@@ -150,10 +198,11 @@ public class HTTPTrackerClient extends TrackerClient {
     }
   }
 
-  private URLConnection openConnectionCheckRedirects(URL url) throws IOException {
+  private URLConnection openConnectionCheckRedirects(URL url, String body, String method) throws IOException {
     boolean needRedirect;
     int redirects = 0;
     URLConnection connection = url.openConnection();
+    boolean firstIteration = true;
     do {
       needRedirect = false;
       connection.setConnectTimeout(10000);
@@ -164,6 +213,17 @@ public class HTTPTrackerClient extends TrackerClient {
         http.setInstanceFollowRedirects(false);
       }
       if (http != null) {
+
+        if (firstIteration) {
+          firstIteration = false;
+          http.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
+          http.setRequestMethod(method);
+          if (!body.isEmpty()) {
+            connection.setDoOutput(true);
+            connection.getOutputStream().write(body.getBytes("UTF-8"));
+          }
+        }
+
         int stat = http.getResponseCode();
         if (stat >= 300 && stat <= 307 && stat != 306 &&
                 stat != HttpURLConnection.HTTP_NOT_MODIFIED) {
@@ -200,24 +260,31 @@ public class HTTPTrackerClient extends TrackerClient {
 	 * @throws UnsupportedEncodingException
 	 * @throws IOException
 	 * @throws MessageValidationException
-	 */
-	private HTTPAnnounceRequestMessage buildAnnounceRequest(
-    AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer)
-		throws IOException,
-			MessageValidationException {
-		// Build announce request message
-      final long uploaded = torrentInfo.getUploaded();
-      final long downloaded = torrentInfo.getDownloaded();
-      final long left = torrentInfo.getLeft();
-      return HTTPAnnounceRequestMessage.craft(
-      torrentInfo.getInfoHash(),
-          peer.getPeerIdArray(),
-          peer.getPort(),
-          uploaded,
-          downloaded,
-          left,
-          true, false, event,
-          peer.getIp(),
-          AnnounceRequestMessage.DEFAULT_NUM_WANT);
-    }
+   */
+  private HTTPAnnounceRequestMessage buildAnnounceRequest(
+          AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer)
+          throws IOException,
+          MessageValidationException {
+    // Build announce request message
+    final long uploaded = torrentInfo.getUploaded();
+    final long downloaded = torrentInfo.getDownloaded();
+    final long left = torrentInfo.getLeft();
+    return HTTPAnnounceRequestMessage.craft(
+            torrentInfo.getInfoHash(),
+            peer.getPeerIdArray(),
+            peer.getPort(),
+            uploaded,
+            downloaded,
+            left,
+            true, false, event,
+            peer.getIp(),
+            AnnounceRequestMessage.DEFAULT_NUM_WANT);
+  }
+
+  private interface ResponseParser {
+
+    void parse(InputStream inputStream) throws IOException, MessageValidationException;
+
+  }
+
 }

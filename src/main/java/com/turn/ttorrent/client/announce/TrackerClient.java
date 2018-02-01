@@ -15,18 +15,20 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public abstract class TrackerClient {
 
@@ -93,6 +95,9 @@ public abstract class TrackerClient {
      */
 	protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
                                 boolean inhibitEvent, final TorrentInfo torrent, final List<Peer> peer) throws AnnounceException;
+
+	protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
+																	 boolean inhibitEvent, final List<TorrentInfo> torrents, final List<Peer> peer) throws AnnounceException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
