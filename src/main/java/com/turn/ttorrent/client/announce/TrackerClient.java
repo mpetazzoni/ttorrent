@@ -40,12 +40,12 @@ public abstract class TrackerClient {
     /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
-	protected final List<Peer> myPeers;
+	protected final List<Peer> myAddress;
 	protected final URI tracker;
 
   public TrackerClient(final List<Peer> peers, final URI tracker) {
 		this.listeners = new HashSet<AnnounceResponseListener>();
-    myPeers = peers;
+    myAddress = peers;
 		this.tracker = tracker;
 	}
 
@@ -68,10 +68,10 @@ public abstract class TrackerClient {
   public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
                                     boolean inhibitEvent, final TorrentInfo torrent) throws AnnounceException {
     try {
-      announce(event, inhibitEvent, torrent, myPeers);
+      announce(event, inhibitEvent, torrent, myAddress);
     } catch (AnnounceException e) {
       throw new AnnounceException(String.format("Unable to announce tracker %s event %s for torrent %s and peers %s. Reason %s",
-							getTrackerURI(), event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myPeers.toArray()), e.getMessage()), e);
+							getTrackerURI(), event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myAddress.toArray()), e.getMessage()), e);
     }
   }
 

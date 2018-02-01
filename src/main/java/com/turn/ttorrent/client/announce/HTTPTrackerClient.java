@@ -76,12 +76,12 @@ public class HTTPTrackerClient extends TrackerClient {
      * @param torrentInfo
      */
 	public void announce(final AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, final TorrentInfo torrentInfo, final List<Peer> peers) throws AnnounceException {
+                       boolean inhibitEvents, final TorrentInfo torrentInfo, final List<Peer> adresses) throws AnnounceException {
     logAnnounceRequest(event, torrentInfo);
 
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
-    for (final Peer peer : peers) {
-      URL target = getTargetUrl(event, torrentInfo, peer);
+    for (final Peer address : adresses) {
+      URL target = getTargetUrl(event, torrentInfo, address);
       sendAnnounce(target, "GET", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
@@ -97,14 +97,14 @@ public class HTTPTrackerClient extends TrackerClient {
   }
 
   @Override
-  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<SharedTorrent> torrents, List<Peer> peers) throws AnnounceException {
+  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<SharedTorrent> torrents, List<Peer> addresses) throws AnnounceException {
     List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
 
-    for (final Peer peer : peers) {
+    for (final Peer address : addresses) {
       StringBuilder body = new StringBuilder();
       URL target = null;
       for (final TorrentInfo torrentInfo : torrents) {
-        target = getTargetUrl(event, torrentInfo, peer);
+        target = getTargetUrl(event, torrentInfo, address);
 
         body.append(target).append("\n");
       }
