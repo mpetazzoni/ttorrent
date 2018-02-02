@@ -24,11 +24,13 @@ public class TrackerServiceContainer implements Container {
           LoggerFactory.getLogger(TrackerRequestProcessor.class);
 
   private TrackerRequestProcessor myRequestProcessor;
+  private final MultiAnnounceRequestProcessor myMultiAnnounceRequestProcessor;
   private ConcurrentMap<String, TrackedTorrent> myTorrents;
 
   public TrackerServiceContainer(final TrackerRequestProcessor requestProcessor,
                                  final ConcurrentMap<String, TrackedTorrent> torrents) {
     myRequestProcessor = requestProcessor;
+    myMultiAnnounceRequestProcessor = new MultiAnnounceRequestProcessor(requestProcessor);
     myTorrents = torrents;
   }
 
@@ -60,25 +62,15 @@ public class TrackerServiceContainer implements Container {
       response.set("Content-Type", "text/plain");
       response.set("Server", "");
       response.setDate("Date", System.currentTimeMillis());
-      myRequestProcessor.process(request.getAddress().toString(), request.getClientAddress().getAddress().getHostAddress(),
-              new TrackerRequestProcessor.RequestHandler() {
-                @Override
-                public void serveResponse(int code, String description, ByteBuffer responseData) {
-                  response.setCode(code);
-                  response.setText(description);
-                  try {
-                    final WritableByteChannel channel = Channels.newChannel(response.getOutputStream());
-                    channel.write(responseData);
-                  } catch (IOException e) {
-                    e.printStackTrace();
-                  }
-                }
 
-                @Override
-                public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-                  return myTorrents;
-                }
-              });
+      if ("GET".equalsIgnoreCase(request.getMethod())) {
+
+        myRequestProcessor.process(request.getAddress().toString(), request.getClientAddress().getAddress().getHostAddress(),
+                getRequestHandler(response));
+      } else {
+        myMultiAnnounceRequestProcessor.process(request.getContent(), request.getAddress().toString(),
+                request.getClientAddress().getAddress().getHostAddress(), getRequestHandler(response));
+      }
       body.flush();
     } catch (IOException ioe) {
       logger.info("Error while writing response: {}!", ioe.getMessage());
@@ -92,6 +84,28 @@ public class TrackerServiceContainer implements Container {
       }
     }
 
+  }
+
+  private TrackerRequestProcessor.RequestHandler getRequestHandler(final Response response) {
+    return new TrackerRequestProcessor.RequestHandler() {
+      @Override
+      public void serveResponse(int code, String description, ByteBuffer responseData) {
+        response.setCode(code);
+        response.setText(description);
+        try {
+          responseData.rewind();
+          final WritableByteChannel channel = Channels.newChannel(response.getOutputStream());
+          channel.write(responseData);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+
+      @Override
+      public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
+        return myTorrents;
+      }
+    };
   }
 
   public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {

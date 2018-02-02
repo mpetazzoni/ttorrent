@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
+import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
@@ -135,6 +136,11 @@ public class UDPTrackerClient extends TrackerClient {
 		this.random = new Random();
 		this.connectionExpiration = null;
 		this.stop = false;
+	}
+
+	@Override
+	protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, List<SharedTorrent> torrents, List<Peer> peer) throws AnnounceException {
+		throw new RuntimeException("Not implemented");
 	}
 
 	@Override

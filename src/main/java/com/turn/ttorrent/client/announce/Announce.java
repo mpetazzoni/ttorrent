@@ -17,9 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.ClientState;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -230,23 +228,7 @@ public class Announce implements Runnable {
 
     while (!this.stop && !Thread.currentThread().isInterrupted()) {
       logger.debug("Starting announce for {} torrents", torrents.size());
-      for (SharedTorrent torrent : this.torrents) {
-        if (this.stop || Thread.currentThread().isInterrupted()){
-          break;
-        }
-        try {
-          TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
-          if (trackerClient != null) {
-            trackerClient.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.NONE, torrent.isFinished(), torrent);
-          } else {
-            logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
-          }
-        } catch (Exception e) {
-          logger.info(e.getMessage());
-          logger.debug(e.getMessage(), e);
-        }
-      }
-
+      announceAllTorrentsEventNone();
       try {
         Thread.sleep(this.myAnnounceInterval * 1000);
       } catch (InterruptedException ie) {
@@ -255,26 +237,60 @@ public class Announce implements Runnable {
     }
 
     logger.info("Exited announce loop.");
+  }
 
-    if (!this.forceStop) {
-      // Send the final 'stopped' event to the tracker after a little
-      // while.
-      try {
-        Thread.sleep(500);
-      } catch (InterruptedException ie) {
-        // Ignore
-        return;
+  private void defaultAnnounce(List<SharedTorrent> torrents) {
+    for (SharedTorrent torrent : torrents) {
+      if (this.stop || Thread.currentThread().isInterrupted()){
+        break;
       }
-
       try {
-        for (SharedTorrent torrent : this.torrents) {
-            this.getCurrentTrackerClient(torrent).announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
+        TrackerClient trackerClient = this.getCurrentTrackerClient(torrent);
+        if (trackerClient != null) {
+          trackerClient.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.NONE, torrent.isFinished(), torrent);
+        } else {
+          logger.warn("Tracker client for {} is null. Torrent is not announced on tracker", torrent.getName());
         }
-      } catch (AnnounceException e) {
-        logger.info("Can't announce stop: " + e.getMessage());
-        logger.debug("Can't announce stop", e);
-        // don't try to announce all. Stop after first error, assuming tracker is already unavailable
+      } catch (Exception e) {
+        logger.info(e.getMessage());
+        logger.debug(e.getMessage(), e);
       }
+    }
+  }
+
+  private void announceAllTorrentsEventNone() {
+
+    logger.debug("Started multi announce");
+    final Map<String, List<SharedTorrent>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<SharedTorrent>>();
+
+    for (SharedTorrent torrent : this.torrents) {
+      final URI uriForTorrent = getURIForTorrent(torrent);
+      if (uriForTorrent == null) continue;
+      String torrentURI = uriForTorrent.toString();
+      List<SharedTorrent> sharedTorrents = torrentsGroupingByAnnounceUrl.get(torrentURI);
+      if (sharedTorrents == null) {
+        sharedTorrents = new ArrayList<SharedTorrent>();
+        torrentsGroupingByAnnounceUrl.put(torrentURI, sharedTorrents);
+      }
+      sharedTorrents.add(torrent);
+    }
+
+    List<SharedTorrent> unannouncedTorrents = new ArrayList<SharedTorrent>();
+    for (Map.Entry<String, List<SharedTorrent>> e : torrentsGroupingByAnnounceUrl.entrySet()) {
+      TrackerClient trackerClient = this.clients.get(e.getKey());
+      if (trackerClient != null) {
+        try {
+          trackerClient.multiAnnounce(AnnounceRequestMessage.RequestEvent.NONE, false, e.getValue(), myPeers);
+        } catch (AnnounceException t) {
+          LoggerUtils.warnAndDebugDetails(logger, "problem in multi announce {}", t.getMessage(), t);
+          unannouncedTorrents.addAll(e.getValue());
+        }
+      } else {
+        logger.warn("Tracker client for {} is null. Torrents are not announced on tracker", e.getKey());
+      }
+    }
+    if (unannouncedTorrents.size() > 0) {
+      defaultAnnounce(unannouncedTorrents);
     }
   }
 
@@ -303,11 +319,17 @@ public class Announce implements Runnable {
    * Returns the current tracker client used for announces.
    */
   public TrackerClient getCurrentTrackerClient(Torrent torrent) {
+    final URI uri = getURIForTorrent(torrent);
+    if (uri == null) return null;
+    return this.clients.get(uri.toString());
+  }
+
+  private URI getURIForTorrent(Torrent torrent) {
     List<List<URI>> announceList = torrent.getAnnounceList();
     if (announceList.size() == 0) return null;
     List<URI> uris = announceList.get(0);
     if (uris.size() == 0) return null;
-    return this.clients.get(uris.get(0).toString());
+    return uris.get(0);
   }
 
   public URI getDefaultTrackerURI(){

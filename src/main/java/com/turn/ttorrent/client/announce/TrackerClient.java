@@ -17,16 +17,19 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.*;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public abstract class TrackerClient {
 
@@ -37,12 +40,12 @@ public abstract class TrackerClient {
     /** The set of listeners to announce request answers. */
 	private final Set<AnnounceResponseListener> listeners;
 
-	protected final List<Peer> myPeers;
+	protected final List<Peer> myAddress;
 	protected final URI tracker;
 
   public TrackerClient(final List<Peer> peers, final URI tracker) {
 		this.listeners = new HashSet<AnnounceResponseListener>();
-    myPeers = peers;
+    myAddress = peers;
 		this.tracker = tracker;
 	}
 
@@ -65,10 +68,10 @@ public abstract class TrackerClient {
   public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
                                     boolean inhibitEvent, final TorrentInfo torrent) throws AnnounceException {
     try {
-      announce(event, inhibitEvent, torrent, myPeers);
+      announce(event, inhibitEvent, torrent, myAddress);
     } catch (AnnounceException e) {
       throw new AnnounceException(String.format("Unable to announce tracker %s event %s for torrent %s and peers %s. Reason %s",
-							getTrackerURI(), event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myPeers.toArray()), e.getMessage()), e);
+							getTrackerURI(), event.getEventName(), torrent.getHexInfoHash(), Arrays.toString(myAddress.toArray()), e.getMessage()), e);
     }
   }
 
@@ -93,6 +96,9 @@ public abstract class TrackerClient {
      */
 	protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
                                 boolean inhibitEvent, final TorrentInfo torrent, final List<Peer> peer) throws AnnounceException;
+
+	protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
+                                        boolean inhibitEvent, final List<SharedTorrent> torrents, final List<Peer> peer) throws AnnounceException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {

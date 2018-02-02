@@ -655,10 +655,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    */
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
-    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
-            Arrays.toString(peers.toArray()), hexInfoHash});
 
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
+
+    if (torrent.isFinished()) return;
+
+    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+            Arrays.toString(peers.toArray()), hexInfoHash});
 
     Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
     for (Peer peer : peers) {
