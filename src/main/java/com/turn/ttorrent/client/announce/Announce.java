@@ -239,8 +239,8 @@ public class Announce implements Runnable {
     logger.info("Exited announce loop.");
   }
 
-  private void defaultAnnounce(List<SharedTorrent> torrents) {
-    for (SharedTorrent torrent : torrents) {
+  private void defaultAnnounce(List<SharedTorrent> torrentsForAnnounce) {
+    for (SharedTorrent torrent : torrentsForAnnounce) {
       if (this.stop || Thread.currentThread().isInterrupted()){
         break;
       }

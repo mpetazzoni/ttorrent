@@ -140,7 +140,7 @@ public class UDPTrackerClient extends TrackerClient {
 
 	@Override
 	protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, List<SharedTorrent> torrents, List<Peer> peer) throws AnnounceException {
-		throw new RuntimeException("Not implemented");
+		throw new AnnounceException("Not implemented");
 	}
 
 	@Override

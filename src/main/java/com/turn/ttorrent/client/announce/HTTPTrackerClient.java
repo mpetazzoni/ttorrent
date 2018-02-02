@@ -81,7 +81,7 @@ public class HTTPTrackerClient extends TrackerClient {
 
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
     for (final Peer address : adresses) {
-      URL target = getTargetUrl(event, torrentInfo, address);
+      URL target = encodeAnnounceToURL(event, torrentInfo, address);
       sendAnnounce(target, "GET", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
@@ -100,17 +100,21 @@ public class HTTPTrackerClient extends TrackerClient {
   protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<SharedTorrent> torrents, List<Peer> addresses) throws AnnounceException {
     List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
 
+    URL trackerUrl;
+    try {
+      trackerUrl = this.tracker.toURL();
+    } catch (MalformedURLException e) {
+      throw new AnnounceException("Invalid tracker URL " + this.tracker, e);
+    }
+
     for (final Peer address : addresses) {
       StringBuilder body = new StringBuilder();
-      URL target = null;
       for (final TorrentInfo torrentInfo : torrents) {
-        target = getTargetUrl(event, torrentInfo, address);
-
-        body.append(target).append("\n");
+        body.append(encodeAnnounceToURL(event, torrentInfo, address)).append("\n");
       }
       final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
       String bodyStr = body.toString().substring(0, body.length() - 1);
-      sendAnnounce(target, bodyStr, "POST", new ResponseParser() {
+      sendAnnounce(trackerUrl, bodyStr, "POST", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
           final List<BEValue> list = BDecoder.bdecode(inputStream).getList();
@@ -125,13 +129,23 @@ public class HTTPTrackerClient extends TrackerClient {
     if (trackerResponses.size() > 0) {
       final List<HTTPTrackerMessage> messages = trackerResponses.get(0);
       for (HTTPTrackerMessage message : messages) {
-        final String hexInfoHash = message instanceof HTTPAnnounceResponseMessage ? ((HTTPAnnounceResponseMessage)message).getHexInfoHash() : "";
-        this.handleTrackerAnnounceResponse(message, inhibitEvent, hexInfoHash);
+
+        if (!(message instanceof HTTPAnnounceResponseMessage)) {
+          logger.info("Incorrect instance of message {}. Skipping...", message);
+          continue;
+        }
+
+        final String hexInfoHash =  ((HTTPAnnounceResponseMessage)message).getHexInfoHash();
+        try {
+          this.handleTrackerAnnounceResponse(message, inhibitEvent, hexInfoHash);
+        } catch (AnnounceException e) {
+          LoggerUtils.errorAndDebugDetails(logger, "Unable to process tracker response {}", message, e);
+        }
       }
     }
   }
 
-  private URL getTargetUrl(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer) throws AnnounceException{
+  private URL encodeAnnounceToURL(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrentInfo, Peer peer) throws AnnounceException{
 	  URL result;
     try {
       HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
