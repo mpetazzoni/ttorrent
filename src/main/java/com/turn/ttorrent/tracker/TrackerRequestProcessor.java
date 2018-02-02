@@ -16,6 +16,7 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
@@ -123,6 +124,7 @@ public class TrackerRequestProcessor {
 		try {
 			announceRequest = this.parseQuery(uri, hostAddress);
 		} catch (MessageValidationException mve) {
+			LoggerUtils.warnAndDebugDetails(logger, "Unable to parse request message. Request url is ", uri, mve);
       serveError(Status.BAD_REQUEST, mve.getMessage(), requestHandler);
 			return;
 		}
@@ -192,6 +194,7 @@ public class TrackerRequestProcessor {
 				announceRequest.getDownloaded(),
 				announceRequest.getLeft());
 		} catch (IllegalArgumentException iae) {
+			LoggerUtils.warnAndDebugDetails(logger, "Unable to update peer torrent. Request url is {}", uri, iae);
       serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
 			return;
 		}
