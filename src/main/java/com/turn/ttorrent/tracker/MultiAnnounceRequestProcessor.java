@@ -24,8 +24,8 @@ public class MultiAnnounceRequestProcessor {
   private static final Logger logger =
           LoggerFactory.getLogger(MultiAnnounceRequestProcessor.class);
 
-  public MultiAnnounceRequestProcessor(TrackerRequestProcessor myTrackerRequestProcessor) {
-    this.myTrackerRequestProcessor = myTrackerRequestProcessor;
+  public MultiAnnounceRequestProcessor(TrackerRequestProcessor trackerRequestProcessor) {
+    this.myTrackerRequestProcessor = trackerRequestProcessor;
   }
 
   public void process(final String body, final String url, final String hostAddress, final TrackerRequestProcessor.RequestHandler requestHandler) throws IOException {
