@@ -25,4 +25,9 @@ public interface AnnounceableTorrent extends TorrentHash {
    */
   List<List<String>> getAnnounceUrls();
 
+  /**
+   * @return main announce url for tracker
+   */
+  String getAnnounce();
+
 }

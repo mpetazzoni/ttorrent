@@ -9,15 +9,18 @@ public class AnnounceableTorrentImpl implements AnnounceableTorrent {
   private final String myHexInfoHash;
   private final byte[] myInfoHash;
   private final List<List<String>> myAnnounceUrls;
+  private final String myAnnounce;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
                                  String hexInfoHash,
                                  byte[] infoHash,
-                                 List<List<String>> announceUrls) {
+                                 List<List<String>> announceUrls,
+                                 String announce) {
     myTorrentStatistic = torrentStatistic;
     myHexInfoHash = hexInfoHash;
     myInfoHash = infoHash;
     myAnnounceUrls = Collections.unmodifiableList(announceUrls);
+    myAnnounce = announce;
   }
 
   @Override
@@ -48,5 +51,10 @@ public class AnnounceableTorrentImpl implements AnnounceableTorrent {
   @Override
   public String getHexInfoHash() {
     return myHexInfoHash;
+  }
+
+  @Override
+  public String getAnnounce() {
+    return myAnnounce;
   }
 }
