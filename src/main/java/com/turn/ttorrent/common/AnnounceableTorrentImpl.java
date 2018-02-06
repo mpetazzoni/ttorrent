@@ -39,7 +39,7 @@ public class AnnounceableTorrentImpl implements AnnounceableTorrent {
   }
 
   @Override
-  public List<List<String>> getAnnounceUrls() {
+  public List<List<String>> getAnnounceList() {
     return myAnnounceUrls;
   }
 

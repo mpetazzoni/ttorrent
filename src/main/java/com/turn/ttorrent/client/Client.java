@@ -136,14 +136,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.torrentsStorage.put(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
-    if (torrent.isFinished()) {
+    final boolean finished = torrent.isFinished();
+    if (finished) {
       torrent.setClientState(ClientState.SEEDING);
     } else {
       torrent.setClientState(ClientState.SHARING);
     }
     torrent.setTorrentStateListener(this);
 
-    this.announce.addTorrent(torrent, this);
+    this.announce.addTorrent(torrent, this, finished);
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 

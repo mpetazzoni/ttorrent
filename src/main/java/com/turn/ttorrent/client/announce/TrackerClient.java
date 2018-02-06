@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
@@ -66,7 +67,7 @@ public abstract class TrackerClient {
 	}
 
   public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
-                                    boolean inhibitEvent, final TorrentInfo torrent) throws AnnounceException {
+                                    boolean inhibitEvent, final AnnounceableTorrent torrent) throws AnnounceException {
     try {
       announce(event, inhibitEvent, torrent, myAddress);
     } catch (AnnounceException e) {
@@ -95,12 +96,12 @@ public abstract class TrackerClient {
      * @param torrent
      */
 	protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
-                                boolean inhibitEvent, final TorrentInfo torrent, final List<Peer> peer) throws AnnounceException;
+                                boolean inhibitEvent, final AnnounceableTorrent torrent, final List<Peer> peer) throws AnnounceException;
 
 	protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
-                                        boolean inhibitEvent, final List<SharedTorrent> torrents, final List<Peer> peer) throws AnnounceException;
+                                        boolean inhibitEvent, final List<? extends AnnounceableTorrent> torrents, final List<Peer> peer) throws AnnounceException;
 
-  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, TorrentInfo torrent){
+  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrent){
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
       logger.debug("Announcing {} to tracker with {}U/{}D/{}L bytes...",
           new Object[]{
