@@ -15,9 +15,9 @@ public class AnnounceableTorrentImpl implements AnnounceableTorrent {
                                  byte[] infoHash,
                                  List<List<String>> announceUrls) {
     myTorrentStatistic = torrentStatistic;
-    this.myHexInfoHash = hexInfoHash;
-    this.myInfoHash = infoHash;
-    this.myAnnounceUrls = Collections.unmodifiableList(announceUrls);
+    myHexInfoHash = hexInfoHash;
+    myInfoHash = infoHash;
+    myAnnounceUrls = Collections.unmodifiableList(announceUrls);
   }
 
   @Override
