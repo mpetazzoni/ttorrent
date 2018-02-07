@@ -35,6 +35,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +63,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILL
  *
  * @author mpetazzoni
  */
-public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener {
+public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 
@@ -268,11 +269,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    ChannelListenerFactoryImpl channelListenerFactory = new ChannelListenerFactoryImpl(peersStorageProvider,
-            torrentsStorageProvider,
-            myExecutorService,
-            new SharingPeerFactoryImpl(this));
-    this.myConnectionManager = new ConnectionManager(channelListenerFactory,
+    this.myConnectionManager = new ConnectionManager(this,
             myExecutorService,
             new SystemTimeService(),
             myInConnectionAllower,
@@ -629,6 +626,32 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return torrentsStorage.hasTorrent(hash);
   }
 
+  @Override
+  public PeersStorage getPeersStorage() {
+    return peersStorage;
+  }
+
+  @Override
+  public TorrentsStorage getTorrentsStorage() {
+    return torrentsStorage;
+  }
+
+  @Override
+  public ExecutorService getExecutor() {
+    return myExecutorService;
+  }
+
+  @Override
+  public ConnectionListener newChannelListener() {
+    return new StateChannelListener(this);
+  }
+
+  @Override
+  public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
+    return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel);
+  }
+
+
   /** AnnounceResponseListener handler(s). **********************************/
 
   /**
@@ -683,11 +706,9 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       }
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
-              peersStorageProvider,
-              torrentsStorageProvider,
-              new SharingPeerFactoryImpl(this), torrent,
-              new InetSocketAddress(peer.getIp(), peer.getPort()),
-              myExecutorService);
+              this,
+              torrent,
+              new InetSocketAddress(peer.getIp(), peer.getPort()));
 
       logger.debug("trying to connect to the peer {}", peer);
 

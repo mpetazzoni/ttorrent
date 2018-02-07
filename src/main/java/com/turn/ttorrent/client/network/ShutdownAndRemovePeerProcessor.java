@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.PeersStorage;
@@ -15,11 +16,11 @@ public class ShutdownAndRemovePeerProcessor implements DataProcessor {
   private static final Logger logger = LoggerFactory.getLogger(ShutdownAndRemovePeerProcessor.class);
 
   private final PeerUID myPeerUID;
-  private final PeersStorageProvider peersStorageProvider;
+  private final Context myContext;
 
-  public ShutdownAndRemovePeerProcessor(PeerUID peerId, PeersStorageProvider peersStorageProvider) {
-    this.myPeerUID = peerId;
-    this.peersStorageProvider = peersStorageProvider;
+  public ShutdownAndRemovePeerProcessor(PeerUID peerId, Context context) {
+    myPeerUID = peerId;
+    myContext = context;
   }
 
   @Override
@@ -31,7 +32,7 @@ public class ShutdownAndRemovePeerProcessor implements DataProcessor {
   }
 
   private void removePeer() {
-    PeersStorage peersStorage = peersStorageProvider.getPeersStorage();
+    PeersStorage peersStorage = myContext.getPeersStorage();
     SharingPeer removedPeer = peersStorage.removeSharingPeer(myPeerUID);
     if (removedPeer == null) {
       logger.info("try to shutdown peer with id {}, but it is not found in storage", myPeerUID);

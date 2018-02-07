@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
@@ -18,27 +19,18 @@ public class HandshakeReceiver implements DataProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(HandshakeReceiver.class);
 
-  private final PeersStorageProvider peersStorageProvider;
-  private final TorrentsStorageProvider torrentsStorageProvider;
-  private final ExecutorService executorService;
-  private final SharingPeerFactory sharingPeerFactory;
+  private final Context myContext;
   private final String myHostAddress;
   private final int myPort;
   private final boolean myIsOutgoingConnection;
   private ByteBuffer messageBytes;
   private int pstrLength;
 
-  public HandshakeReceiver(PeersStorageProvider peersStorageProvider,
-                           TorrentsStorageProvider torrentsStorageProvider,
-                           ExecutorService executorService,
-                           SharingPeerFactory sharingPeerFactory,
+  public HandshakeReceiver(Context context,
                            String hostAddress,
                            int port,
                            boolean isOutgoingListener) {
-    this.peersStorageProvider = peersStorageProvider;
-    this.torrentsStorageProvider = torrentsStorageProvider;
-    this.executorService = executorService;
-    this.sharingPeerFactory = sharingPeerFactory;
+    myContext = context;
     myHostAddress = hostAddress;
     myPort = port;
     this.pstrLength = -1;
@@ -84,7 +76,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    SharedTorrent torrent = torrentsStorageProvider.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
+    SharedTorrent torrent = myContext.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
 
     if (torrent == null) {
       logger.debug("peer {} tries to download unknown torrent {}",
@@ -96,10 +88,10 @@ public class HandshakeReceiver implements DataProcessor {
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     SharingPeer sharingPeer =
-            sharingPeerFactory.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
+            myContext.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
     PeerUID peerUID = new PeerUID(sharingPeer.getAddress(), hs.getHexInfoHash());
 
-    SharingPeer old = peersStorageProvider.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
+    SharingPeer old = myContext.getPeersStorage().putIfAbsent(peerUID, sharingPeer);
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
       return new ShutdownProcessor().processAndGetNext(socketChannel);
@@ -108,10 +100,10 @@ public class HandshakeReceiver implements DataProcessor {
     if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
-        ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), peersStorageProvider.getPeersStorage().getSelf().getPeerIdArray());
+        ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), myContext.getPeersStorage().getSelf().getPeerIdArray());
       } catch (IOException e) {
         LoggerUtils.warnAndDebugDetails(logger, "error in sending handshake to {}", socketChannel, e);
-        return new ShutdownAndRemovePeerProcessor(peerUID, peersStorageProvider);
+        return new ShutdownAndRemovePeerProcessor(peerUID, myContext);
       }
     }
 
@@ -119,7 +111,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     sharingPeer.onConnectionEstablished();
 
-    return new WorkingReceiver(peerUID, peersStorageProvider, torrentsStorageProvider, executorService);
+    return new WorkingReceiver(peerUID, myContext);
   }
 
   private Handshake parseHandshake(String socketChannelForLog) throws IOException {

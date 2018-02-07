@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
@@ -17,30 +18,21 @@ public class HandshakeSender implements DataProcessor {
   private static final Logger logger = LoggerFactory.getLogger(HandshakeSender.class);
 
   private final TorrentHash myTorrentHash;
-  private final PeersStorageProvider myPeersStorageProvider;
-  private final TorrentsStorageProvider myTorrentsStorageProvider;
   private final InetSocketAddress mySendAddress;
-  private final SharingPeerFactory mySharingPeerFactory;
-  private final ExecutorService myExecutorService;
+  private final Context myContext;
 
   public HandshakeSender(TorrentHash torrentHash,
-                         PeersStorageProvider peersStorageProvider,
-                         TorrentsStorageProvider torrentsStorageProvider,
                          InetSocketAddress sendAddress,
-                         SharingPeerFactory sharingPeerFactory,
-                         ExecutorService executorService) {
-    this.myTorrentHash = torrentHash;
-    this.myPeersStorageProvider = peersStorageProvider;
-    this.myTorrentsStorageProvider = torrentsStorageProvider;
-    this.mySendAddress = sendAddress;
-    this.mySharingPeerFactory = sharingPeerFactory;
-    this.myExecutorService = executorService;
+                         Context context) {
+    myTorrentHash = torrentHash;
+    mySendAddress = sendAddress;
+    myContext = context;
   }
 
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
 
-    Peer self = myPeersStorageProvider.getPeersStorage().getSelf();
+    Peer self = myContext.getPeersStorage().getSelf();
     Handshake handshake = Handshake.craft(myTorrentHash.getInfoHash(), self.getPeerIdArray());
     if (handshake == null) {
       logger.warn("can not craft handshake message. Self peer id is {}, torrent hash is {}",
@@ -54,10 +46,7 @@ public class HandshakeSender implements DataProcessor {
       socketChannel.write(messageToSend);
     }
     return new HandshakeReceiver(
-            myPeersStorageProvider,
-            myTorrentsStorageProvider,
-            myExecutorService,
-            mySharingPeerFactory,
+            myContext,
             mySendAddress.getHostName(),
             mySendAddress.getPort(),
             true);
