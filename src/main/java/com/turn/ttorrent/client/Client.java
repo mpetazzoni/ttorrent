@@ -271,8 +271,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
-    this.myConnectionManager = new ConnectionManager(this,
-            myExecutorService,
+    this.myConnectionManager = new ConnectionManager(
+            this,
             new SystemTimeService(),
             myInConnectionAllower,
             myOutConnectionAllower,
