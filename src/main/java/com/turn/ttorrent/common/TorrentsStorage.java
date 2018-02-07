@@ -2,69 +2,90 @@ package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.client.SharedTorrent;
 
-import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TorrentsStorage {
 
   private final ReadWriteLock myReadWriteLock;
-  private final ConcurrentMap<String, SharedTorrent> myActiveTorrents;
-  private final ConcurrentMap<String, AnnounceableTorrent> myAnnounceableTorrents;
-  private final ConcurrentMap<String, String> myPathToTorrentMetadataFile;
-  private final ConcurrentMap<String, String> myPathToReallyFile;
+  private final Map<String, SharedTorrent> myActiveTorrents;
+  private final Map<String, AnnounceableFileTorrent> myAnnounceableTorrents;
 
   public TorrentsStorage() {
     myReadWriteLock = new ReentrantReadWriteLock();
-    myActiveTorrents = new ConcurrentHashMap<String, SharedTorrent>();
-    myAnnounceableTorrents = new ConcurrentHashMap<String, AnnounceableTorrent>();
-    myPathToTorrentMetadataFile = new ConcurrentHashMap<String, String>();
-    myPathToReallyFile = new ConcurrentHashMap<String, String>();
+    myActiveTorrents = new HashMap<String, SharedTorrent>();
+    myAnnounceableTorrents = new HashMap<String, AnnounceableFileTorrent>();
   }
 
   public boolean hasTorrent(String hash) {
-    return myAnnounceableTorrents.containsKey(hash);
+    try {
+      myReadWriteLock.readLock().lock();
+      return myAnnounceableTorrents.containsKey(hash);
+    } finally {
+      myReadWriteLock.readLock().unlock();
+    }
   }
 
   public SharedTorrent getTorrent(String hash) {
-    return myActiveTorrents.get(hash);
+    try {
+      myReadWriteLock.readLock().lock();
+      return myActiveTorrents.get(hash);
+    } finally {
+      myReadWriteLock.readLock().unlock();
+    }
   }
 
-  public void addAnnounceableTorrent(String hash, AnnounceableTorrent torrent, String torrentFilePath, String reallyFilePath) {
+  public void addAnnounceableTorrent(String hash, AnnounceableFileTorrent torrent, String torrentFilePath, String reallyFilePath) {
     try {
       myReadWriteLock.writeLock().lock();
       myAnnounceableTorrents.put(hash, torrent);
-      myPathToReallyFile.put(hash, reallyFilePath);
-      myPathToTorrentMetadataFile.put(hash, torrentFilePath);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
   }
 
   public SharedTorrent putIfAbsentActiveTorrent(String hash, SharedTorrent torrent) {
-    return myActiveTorrents.putIfAbsent(hash, torrent);
+    try {
+      myReadWriteLock.writeLock().lock();
+      final SharedTorrent old = myActiveTorrents.get(hash);
+      if (old != null) return old;
+
+      return myActiveTorrents.put(hash, torrent);
+    } finally {
+      myReadWriteLock.writeLock().unlock();
+    }
+
   }
 
   public SharedTorrent remove(String hash) {
     try {
       myReadWriteLock.writeLock().lock();
       myAnnounceableTorrents.remove(hash);
-      myPathToReallyFile.remove(hash);
-      myPathToTorrentMetadataFile.remove(hash);
       return myActiveTorrents.remove(hash);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
   }
 
-  public Collection<SharedTorrent> activeTorrents() {
-    return myActiveTorrents.values();
+  public List<SharedTorrent> activeTorrents() {
+    try {
+      myReadWriteLock.readLock().lock();
+      return new ArrayList<SharedTorrent>(myActiveTorrents.values());
+    } finally {
+      myReadWriteLock.readLock().unlock();
+    }
   }
 
-  public Collection<AnnounceableTorrent> announceableTorrents() {
-    return myAnnounceableTorrents.values();
+  public List<AnnounceableTorrent> announceableTorrents() {
+    try {
+      myReadWriteLock.readLock().lock();
+      return new ArrayList<AnnounceableTorrent>(myAnnounceableTorrents.values());
+    } finally {
+      myReadWriteLock.readLock().unlock();
+    }
   }
-
 }
