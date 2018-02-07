@@ -86,7 +86,7 @@ public class HandshakeReceiverTest {
     String torrentPath = "src" + File.separator + "test" + File.separator + "resources" + File.separator + "torrents" + File.separator + "file1.jar.torrent";
     final File torrent = new File(torrentPath);
     final SharedTorrent sharedTorrent = new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false);
-    myContext.getTorrentsStorage().put(torrentHashHex, sharedTorrent);
+    myContext.getTorrentsStorage().putIfAbsentActiveTorrent(torrentHashHex, sharedTorrent);
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 

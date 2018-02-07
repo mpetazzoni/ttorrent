@@ -134,7 +134,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       return;
     }
 
-    this.torrentsStorage.put(torrent.getHexInfoHash(), torrent);
+    this.torrentsStorage.putIfAbsentActiveTorrent(torrent.getHexInfoHash(), torrent);
 
     // Initial completion test
     final boolean finished = torrent.isFinished();
@@ -180,12 +180,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    * Return the torrent this client is exchanging on.
    */
   public Collection<SharedTorrent> getTorrents() {
-    return this.torrentsStorage.values();
+    return this.torrentsStorage.activeTorrents();
   }
 
   public SharedTorrent getTorrentByFilePath(File file) {
     String path = file.getAbsolutePath();
-    for (SharedTorrent torrent : torrentsStorage.values()) {
+    for (SharedTorrent torrent : torrentsStorage.activeTorrents()) {
       File parentFile = torrent.getParentFile();
       final List<String> filenames = torrent.getFilenames();
       for (String filename : filenames) {
@@ -326,7 +326,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     logger.trace("announce thread is stopped");
 
-    for (SharedTorrent torrent : this.torrentsStorage.values()) {
+    for (SharedTorrent torrent : this.torrentsStorage.activeTorrents()) {
       logger.trace("try close torrent {}", torrent);
       torrent.close();
       if (torrent.isFinished()) {
