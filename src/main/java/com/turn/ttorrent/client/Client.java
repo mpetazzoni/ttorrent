@@ -216,6 +216,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   /**
    * set ups new receive buffer size, that will be applied to all new connections.
    * If value is equal or less, than zero, then method doesn't have effect
+   *
    * @param newSize new size
    */
   public void setReceiveBufferSize(int newSize) {
@@ -225,6 +226,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   /**
    * set ups new send buffer size, that will be applied to all new connections.
    * If value is equal or less, than zero, then method doesn't have effect
+   *
    * @param newSize new size
    */
   public void setSendBufferSize(int newSize) {
@@ -514,7 +516,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    * </p>
    *
    * @return A SharingPeer comparator that can be used to sort peers based on
-   *         the download or upload rate we get from them.
+   * the download or upload rate we get from them.
    */
   private Comparator<SharingPeer> getPeerRateComparator() {
 /*

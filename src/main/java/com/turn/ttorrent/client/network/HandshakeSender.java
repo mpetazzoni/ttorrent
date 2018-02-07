@@ -2,7 +2,8 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +12,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
 
 public class HandshakeSender implements DataProcessor {
 

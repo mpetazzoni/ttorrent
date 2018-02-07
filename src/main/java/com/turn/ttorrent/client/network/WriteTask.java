@@ -2,7 +2,6 @@ package com.turn.ttorrent.client.network;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.SocketChannel;
 
 public class WriteTask {
 

@@ -4,7 +4,6 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.PeersStorage;
-import com.turn.ttorrent.common.PeersStorageProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

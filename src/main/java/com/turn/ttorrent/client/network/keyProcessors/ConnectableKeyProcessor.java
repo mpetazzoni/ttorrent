@@ -1,6 +1,9 @@
 package com.turn.ttorrent.client.network.keyProcessors;
 
-import com.turn.ttorrent.client.network.*;
+import com.turn.ttorrent.client.network.ConnectTask;
+import com.turn.ttorrent.client.network.ConnectionListener;
+import com.turn.ttorrent.client.network.ReadWriteAttachment;
+import com.turn.ttorrent.client.network.TimeoutStorage;
 import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +58,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
     final ConnectionListener connectionListener = connectTask.getConnectionListener();
     final boolean isConnectFinished;
     try {
-       isConnectFinished = socketChannel.finishConnect();
+      isConnectFinished = socketChannel.finishConnect();
     } catch (NoRouteToHostException e) {
       logger.info("Could not connect to {}:{}, received NoRouteToHostException", connectTask.getHost(), connectTask.getPort());
       connectionListener.onError(socketChannel, e);

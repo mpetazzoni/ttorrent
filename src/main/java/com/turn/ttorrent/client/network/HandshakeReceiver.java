@@ -4,7 +4,9 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.ConnectionUtils;
+import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.PeerUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
 
 public class HandshakeReceiver implements DataProcessor {
 

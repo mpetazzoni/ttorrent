@@ -1,12 +1,11 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Context;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.TorrentHash;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.ExecutorService;
 
 public class OutgoingConnectionListener implements ConnectionListener {
 

@@ -5,8 +5,6 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
-import com.turn.ttorrent.common.PeersStorageProvider;
-import com.turn.ttorrent.common.TorrentsStorageProvider;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
 public class WorkingReceiver implements DataProcessor {

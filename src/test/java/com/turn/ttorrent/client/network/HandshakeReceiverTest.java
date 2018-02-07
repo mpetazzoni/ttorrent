@@ -7,8 +7,14 @@ import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.*;
-import org.apache.log4j.*;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeersStorage;
+import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentsStorage;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -18,17 +24,13 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.fail;
+import static org.testng.Assert.*;
 
 @Test
 public class HandshakeReceiverTest {

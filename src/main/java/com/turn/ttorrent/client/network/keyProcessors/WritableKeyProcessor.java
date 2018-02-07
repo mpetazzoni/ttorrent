@@ -2,7 +2,6 @@ package com.turn.ttorrent.client.network.keyProcessors;
 
 import com.turn.ttorrent.client.network.WriteAttachment;
 import com.turn.ttorrent.client.network.WriteTask;
-import com.turn.ttorrent.common.LoggerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
