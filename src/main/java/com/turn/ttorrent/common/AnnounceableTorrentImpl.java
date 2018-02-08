@@ -10,7 +10,7 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   private final byte[] myInfoHash;
   private final List<List<String>> myAnnounceUrls;
   private final String myAnnounce;
-  private final String myRealFilePath;
+  private final String myDownloadDirPath;
   private final String myDotTorrentFilePath;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
@@ -18,7 +18,7 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
                                  byte[] infoHash,
                                  List<List<String>> announceUrls,
                                  String announce,
-                                 String realFilePath,
+                                 String downloadDirPath,
                                  String dotTorrentFilePath) {
     myTorrentStatistic = torrentStatistic;
     myHexInfoHash = hexInfoHash;
@@ -26,12 +26,12 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
     myAnnounceUrls = Collections.unmodifiableList(announceUrls);
     myAnnounce = announce;
     myDotTorrentFilePath = dotTorrentFilePath;
-    myRealFilePath = realFilePath;
+    myDownloadDirPath = downloadDirPath;
   }
 
   @Override
   public String getDownloadDirPath() {
-    return myRealFilePath;
+    return myDownloadDirPath;
   }
 
   @Override
