@@ -73,4 +73,9 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   public String getAnnounce() {
     return myAnnounce;
   }
+
+  @Override
+  public TorrentStatistic getTorrentStatistic() {
+    return myTorrentStatistic;
+  }
 }
