@@ -30,7 +30,7 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   }
 
   @Override
-  public String getRealFilePath() {
+  public String getDownloadDirPath() {
     return myRealFilePath;
   }
 
