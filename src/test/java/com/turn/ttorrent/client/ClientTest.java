@@ -11,7 +11,10 @@ import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.*;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -19,6 +22,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -375,6 +379,75 @@ public class ClientTest {
         client.stop();
       }
     }
+  }
+
+  public void testThatTorrentsHaveLazyInitAndRemovingAfterDownload()
+          throws IOException, InterruptedException, NoSuchAlgorithmException, URISyntaxException {
+    Client seeder = createClient();
+    File tempFile = tempFiles.createTempFile(100 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+
+    Torrent torrent = Torrent.create(tempFile, announceURI, "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    torrent.save(torrentFile);
+    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParentFile().getAbsolutePath());
+    final ExecutorService es = Executors.newFixedThreadPool(8);
+    final AtomicBoolean newPeerIsCreated = new AtomicBoolean(false);
+    final AtomicBoolean peerIsDisconnected = new AtomicBoolean(false);
+    Client leecher = new Client(es) {
+      @Override
+      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
+        newPeerIsCreated.set(true);
+        return super.createSharingPeer(host, port, peerId, torrent, channel);
+      }
+
+      @Override
+      public void handlePeerDisconnected(SharingPeer peer) {
+        super.handlePeerDisconnected(peer);
+        peerIsDisconnected.set(true);
+      }
+
+      @Override
+      public void stop() {
+        super.stop();
+        es.shutdown();
+      }
+    };
+    File downloadDir = tempFiles.createTempDir();
+    leecher.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
+    seeder.start(InetAddress.getLocalHost());
+    assertEquals(1, seeder.getTorrentsStorage().announceableTorrents().size());
+    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
+
+    leecher.start(InetAddress.getLocalHost());
+
+    new WaitFor(10*1000) {
+
+      @Override
+      protected boolean condition() {
+        return newPeerIsCreated.get();
+      }
+    };
+
+    assertEquals(1, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(1, leecher.getTorrentsStorage().activeTorrents().size());
+
+    waitForFileInDir(downloadDir, tempFile.getName());
+    assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
+
+    new WaitFor(10*1000) {
+
+      @Override
+      protected boolean condition() {
+        return peerIsDisconnected.get();
+      }
+    };
+
+//    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
+//    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
+
   }
 
   public void corrupted_seeder()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {

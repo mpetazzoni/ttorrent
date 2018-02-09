@@ -138,4 +138,7 @@ public interface PeerActivityListener extends EventListener {
 
 
   public void handleNewPeerConnected(SharingPeer peer);
+
+  public void afterPeerRemoved(SharingPeer peer);
+
 }

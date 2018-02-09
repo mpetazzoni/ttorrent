@@ -857,6 +857,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       });
   }
 
+  public int getDownloadersCount() {
+    return myDownloaders.size();
+  }
+
+  @Override
+  public void afterPeerRemoved(SharingPeer peer) {
+
+  }
+
   /**
    * Piece upload completion handler.
    * <p/>

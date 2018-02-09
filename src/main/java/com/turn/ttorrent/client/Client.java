@@ -910,6 +910,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   @Override
+  public void afterPeerRemoved(SharingPeer peer) {
+    //torrentsStorage.peerDisconnected(peer.getHexInfoHash());
+  }
+
+  @Override
   public void handleIOException(SharingPeer peer, IOException ioe) {
     logger.debug("I/O problem occured when reading or writing piece data for peer {}: {}.", peer, ioe.getMessage());
 

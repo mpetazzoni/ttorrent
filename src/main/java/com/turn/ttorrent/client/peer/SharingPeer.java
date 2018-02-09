@@ -292,6 +292,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     this.firePeerDisconnected();
     reset();
+    this.afterPeerDisconnected();
   }
 
   /**
@@ -758,6 +759,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private void firePeerDisconnected() {
     for (PeerActivityListener listener : this.listeners) {
       listener.handlePeerDisconnected(this);
+    }
+  }
+
+  private void afterPeerDisconnected() {
+    for (PeerActivityListener listener : this.listeners) {
+      listener.afterPeerRemoved(this);
     }
   }
 
