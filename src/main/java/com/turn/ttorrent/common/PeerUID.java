@@ -37,4 +37,12 @@ public class PeerUID {
     result = 31 * result + myTorrentHash.hashCode();
     return result;
   }
+
+  @Override
+  public String toString() {
+    return "PeerUID{" +
+            "address=" + myAddress +
+            ", torrent hash='" + myTorrentHash + '\'' +
+            '}';
+  }
 }
