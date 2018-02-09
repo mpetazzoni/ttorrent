@@ -24,4 +24,9 @@ public interface Context extends SharingPeerFactory, ChannelListenerFactory {
    */
   ExecutorService getExecutor();
 
+  /**
+   * @return single instance for load torrents
+   */
+  TorrentLoader getTorrentLoader();
+
 }

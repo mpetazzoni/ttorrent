@@ -30,6 +30,15 @@ public class TorrentsStorage {
     }
   }
 
+  public AnnounceableFileTorrent getAnnounceableTorrent(String hash) {
+    try {
+      myReadWriteLock.readLock().lock();
+      return myAnnounceableTorrents.get(hash);
+    } finally {
+      myReadWriteLock.readLock().unlock();
+    }
+  }
+
   public SharedTorrent getTorrent(String hash) {
     try {
       myReadWriteLock.readLock().lock();
@@ -39,7 +48,7 @@ public class TorrentsStorage {
     }
   }
 
-  public void addAnnounceableTorrent(String hash, AnnounceableFileTorrent torrent, String torrentFilePath, String reallyFilePath) {
+  public void addAnnounceableTorrent(String hash, AnnounceableFileTorrent torrent) {
     try {
       myReadWriteLock.writeLock().lock();
       myAnnounceableTorrents.put(hash, torrent);
@@ -71,6 +80,15 @@ public class TorrentsStorage {
     }
   }
 
+  public void removeAnnounceable(String hash) {
+    try {
+      myReadWriteLock.writeLock().lock();
+      myAnnounceableTorrents.remove(hash);
+    } finally {
+      myReadWriteLock.writeLock().unlock();
+    }
+  }
+
   public List<SharedTorrent> activeTorrents() {
     try {
       myReadWriteLock.readLock().lock();
@@ -86,6 +104,16 @@ public class TorrentsStorage {
       return new ArrayList<AnnounceableTorrent>(myAnnounceableTorrents.values());
     } finally {
       myReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public void clear() {
+    try {
+      myReadWriteLock.writeLock().lock();
+      myAnnounceableTorrents.clear();
+      myActiveTorrents.clear();
+    } finally {
+      myReadWriteLock.writeLock().unlock();
     }
   }
 }

@@ -1,16 +1,10 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.Utils;
-import com.turn.ttorrent.client.Client;
-import com.turn.ttorrent.client.Context;
-import com.turn.ttorrent.client.Handshake;
-import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeersStorage;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentsStorage;
+import com.turn.ttorrent.common.*;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
@@ -24,12 +18,13 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
 @Test
@@ -72,7 +67,6 @@ public class HandshakeReceiverTest {
     ByteChannel server = new ByteSourceChannel(p2.source(), p1.sink());
     String peerIdStr = "peerIdpeerIdpeerId22";
     String torrentHashStr = "torrenttorrenttorren";
-    String torrentHashHex = "746F7272656E74746F7272656E74746F7272656E";
     byte[] peerId = peerIdStr.getBytes();
     byte[] torrentHash = torrentHashStr.getBytes();
     Handshake hs = Handshake.craft(torrentHash, peerId);
@@ -86,7 +80,13 @@ public class HandshakeReceiverTest {
     String torrentPath = "src" + File.separator + "test" + File.separator + "resources" + File.separator + "torrents" + File.separator + "file1.jar.torrent";
     final File torrent = new File(torrentPath);
     final SharedTorrent sharedTorrent = new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false);
-    myContext.getTorrentsStorage().putIfAbsentActiveTorrent(torrentHashHex, sharedTorrent);
+    final AnnounceableFileTorrent announceableFileTorrent = mock(AnnounceableFileTorrent.class);
+    TorrentLoader torrentsLoader = mock(TorrentLoader.class);
+    when(torrentsLoader.loadTorrent(announceableFileTorrent)).thenReturn(sharedTorrent);
+    when(myContext.getTorrentLoader()).thenReturn(torrentsLoader);
+    final ExecutorService executorService = Executors.newFixedThreadPool(1);
+    when(myContext.getExecutor()).thenReturn(executorService);
+    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), announceableFileTorrent);
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 
@@ -104,6 +104,7 @@ public class HandshakeReceiverTest {
             });
 
     PeersStorage peersStorage = myContext.getPeersStorage();
+    assertEquals(0, myContext.getTorrentsStorage().activeTorrents().size());
     assertEquals(peersStorage.getSharingPeers().size(), 0);
     myHandshakeReceiver.processAndGetNext(server);
     assertEquals(peersStorage.getSharingPeers().size(), 1);
@@ -113,6 +114,7 @@ public class HandshakeReceiverTest {
     Handshake answerHs = Handshake.parse(answer);
     assertEquals(answerHs.getPeerId(), mySelfId);
     assertTrue(onConnectionEstablishedInvoker.get());
+    executorService.shutdown();
   }
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc

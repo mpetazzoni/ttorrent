@@ -4,6 +4,7 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.AnnounceableFileTorrent;
 import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
@@ -77,7 +78,14 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    SharedTorrent torrent = myContext.getTorrentsStorage().getTorrent(hs.getHexInfoHash());
+    final AnnounceableFileTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
+    SharedTorrent torrent;
+    try {
+      torrent = myContext.getTorrentLoader().loadTorrent(announceableTorrent);
+    } catch (Exception e) {
+      LoggerUtils.warnAndDebugDetails(logger, "cannot load torrent {}", hs.getHexInfoHash(), e);
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
+    }
 
     if (torrent == null) {
       logger.debug("peer {} tries to download unknown torrent {}",
@@ -88,7 +96,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
-    SharingPeer sharingPeer =
+    final SharingPeer sharingPeer =
             myContext.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
     PeerUID peerUID = new PeerUID(sharingPeer.getAddress(), hs.getHexInfoHash());
 
@@ -110,7 +118,12 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.info("setup new connection with {}", sharingPeer);
 
-    sharingPeer.onConnectionEstablished();
+    myContext.getExecutor().submit(new Runnable() {
+      @Override
+      public void run() {
+        sharingPeer.onConnectionEstablished();
+      }
+    });
 
     return new WorkingReceiver(peerUID, myContext);
   }

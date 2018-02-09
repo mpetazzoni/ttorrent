@@ -24,18 +24,16 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.URI;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent.*;
 
 /**
  * A pure-java BitTorrent client.
@@ -97,6 +96,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   private volatile boolean myStarted = false;
   private final PeersStorageProvider peersStorageProvider;
   private final TorrentsStorageProvider torrentsStorageProvider;
+  private final TorrentLoader myTorrentLoader;
   private final TorrentsStorage torrentsStorage;
   private final CountLimitConnectionAllower myInConnectionAllower;
   private final CountLimitConnectionAllower myOutConnectionAllower;
@@ -111,18 +111,20 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    */
   public Client(ExecutorService executorService) {
     this.random = new Random(System.currentTimeMillis());
-    this.announce = new Announce();
+    this.announce = new Announce(this );
     this.peersStorageProvider = new PeersStorageProviderImpl();
     this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
     this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
     this.peersStorage = this.peersStorageProvider.getPeersStorage();
     this.mySendBufferSize = new AtomicInteger();
+    this.myTorrentLoader = new TorrentLoaderImpl(this.torrentsStorage);
     this.myReceiveBufferSize = new AtomicInteger();
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myExecutorService = executorService;
   }
 
+  @Deprecated
   public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
     if (torrent.getSize() == 0) {
       // we don't seed zero-size files
@@ -135,23 +137,32 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     }
 
     this.torrentsStorage.putIfAbsentActiveTorrent(torrent.getHexInfoHash(), torrent);
+    final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
+            new TorrentStatistic(),
+            torrent.getHexInfoHash(),
+            torrent.getInfoHash(),
+            torrent.getAnnounceList(),
+            torrent.getAnnounce(),
+            "", "");
+    this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
 
     // Initial completion test
     final boolean finished = torrent.isFinished();
     if (finished) {
       torrent.setClientState(ClientState.SEEDING);
     } else {
+      announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
       torrent.setClientState(ClientState.SHARING);
     }
     torrent.setTorrentStateListener(this);
 
-    this.announce.addTorrent(torrent, this, finished);
+    this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
     logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
-    this.announce.removeTorrent(torrentHash);
+    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash.getHexInfoHash());
 
     SharedTorrent torrent = this.torrentsStorage.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
@@ -160,15 +171,24 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     } else {
       logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
+    try {
+      this.announce.forceAnnounce(announceableTorrent, this, STOPPED);
+    } catch (IOException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash.getHexInfoHash(), e);
+    }
   }
 
   public void removeAndDeleteTorrent(TorrentHash torrentHash) {
-    this.announce.removeTorrent(torrentHash);
-
-    SharedTorrent torrent = this.torrentsStorage.remove(torrentHash.getHexInfoHash());
+    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash.getHexInfoHash());
+    SharedTorrent torrent = torrentsStorage.remove(torrentHash.getHexInfoHash());
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.delete();
+    }
+    try {
+      this.announce.forceAnnounce(announceableTorrent, this, STOPPED);
+    } catch (IOException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash.getHexInfoHash(), e);
     }
   }
 
@@ -322,6 +342,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     logger.trace("try stop announce thread...");
 
+    final List<AnnounceableTorrent> announceableTorrents = torrentsStorage.announceableTorrents();
+    for (AnnounceableTorrent torrent : announceableTorrents) {
+      try {
+        announce.forceAnnounce(torrent, this, STOPPED);
+      } catch (IOException e) {
+        LoggerUtils.warnAndDebugDetails(logger, "can not send stop event to tracker on stop client", e);
+      }
+    }
+
     this.announce.stop();
 
     logger.trace("announce thread is stopped");
@@ -341,6 +370,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       peer.unbind(true);
     }
 
+    torrentsStorage.clear();
     logger.info("BitTorrent client signing off.");
   }
 
@@ -653,6 +683,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel);
   }
 
+  @Override
+  public TorrentLoader getTorrentLoader() {
+    return myTorrentLoader;
+  }
+
 
   /** AnnounceResponseListener handler(s). **********************************/
 
@@ -682,9 +717,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   @Override
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
 
+    if (peers.size() == 0) return;
+
     SharedTorrent torrent = torrentsStorage.getTorrent(hexInfoHash);
 
-    if (torrent.isFinished()) return;
+    if (torrent != null && torrent.isFinished()) return;
 
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
@@ -709,7 +746,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               this,
-              torrent,
+              torrentsStorage.getAnnounceableTorrent(hexInfoHash),
               new InetSocketAddress(peer.getIp(), peer.getPort()));
 
       logger.debug("trying to connect to the peer {}", peer);
@@ -815,7 +852,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
         try {
           this.announce.getCurrentTrackerClient(torrent)
-                  .announceAllInterfaces(TrackerMessage.AnnounceRequestMessage.RequestEvent.COMPLETED, true, torrent);
+                  .announceAllInterfaces(COMPLETED, true, torrent);
         } catch (AnnounceException e) {
           logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
         }

@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.client.ClientState;
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
@@ -58,7 +59,7 @@ public class Announce implements Runnable {
    * torrent.
    */
   private final ConcurrentMap<String, TrackerClient> clients;
-  private final Collection<AnnounceableTorrent> torrents;
+  private final Context myContext;
 
   /**
    * Announce thread and control.
@@ -77,15 +78,14 @@ public class Announce implements Runnable {
    * Initialize the base announce class members for the announcer.
    *
    */
-  public Announce() {
+  public Announce(Context context) {
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
-    this.torrents = new CopyOnWriteArrayList<AnnounceableTorrent>();
     this.thread = null;
+    myContext = context;
     myPeers = new CopyOnWriteArrayList<Peer>();
   }
 
-  public void addTorrent(AnnounceableTorrent torrent, AnnounceResponseListener listener, boolean isCompletedTorrent) throws UnknownServiceException, UnknownHostException {
-    this.torrents.add(torrent);
+  public void forceAnnounce(AnnounceableTorrent torrent, AnnounceResponseListener listener, AnnounceRequestMessage.RequestEvent event) throws UnknownServiceException, UnknownHostException {
     URI trackerUrl = URI.create(torrent.getAnnounce());
     TrackerClient client = this.clients.get(trackerUrl.toString());
     try {
@@ -94,26 +94,11 @@ public class Announce implements Runnable {
         client.register(listener);
         this.clients.put(trackerUrl.toString(), client);
       }
-      if (isCompletedTorrent){
-        client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.COMPLETED, true, torrent);
-      } else {
-        client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STARTED, false, torrent);
-      }
+      client.announceAllInterfaces(event, false, torrent);
     } catch (AnnounceException e) {
       logger.info(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getHexInfoHash(), String.valueOf(trackerUrl)));
       logger.debug(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getHexInfoHash(), String.valueOf(trackerUrl)), e );
     }
-  }
-
-  public void removeTorrent(TorrentHash torrent) {
-    List<AnnounceableTorrent> toRemove = new ArrayList<AnnounceableTorrent>();
-    for (AnnounceableTorrent st : this.torrents) {
-      if (st.getHexInfoHash().equals(torrent.getHexInfoHash())) {
-        toRemove.add(st);
-        sendStopEvent(st);
-      }
-    }
-    this.torrents.removeAll(toRemove);
   }
 
   /**
@@ -160,16 +145,6 @@ public class Announce implements Runnable {
     this.myAnnounceInterval = announceInterval;
   }
 
-  private void sendStopEvent(AnnounceableTorrent torrent) {
-    try {
-      final URI uri = URI.create(torrent.getAnnounce());
-      TrackerClient client = this.clients.get(uri.toString());
-      client.announceAllInterfaces(AnnounceRequestMessage.RequestEvent.STOPPED, true, torrent);
-    } catch (Exception ex) {
-      logger.debug("Unable to announce stop on tracker");
-    }
-  }
-
   /**
    * Stop the announce thread.
    * <p/>
@@ -179,12 +154,6 @@ public class Announce implements Runnable {
    * </p>
    */
   public void stop() {
-
-    Iterator<AnnounceableTorrent> iterator = torrents.iterator();
-    while (iterator.hasNext()) {
-      sendStopEvent(iterator.next());
-    }
-    this.torrents.clear();
 
     this.stop = true;
     this.myPeers.clear();
@@ -227,8 +196,10 @@ public class Announce implements Runnable {
 
 
     while (!this.stop && !Thread.currentThread().isInterrupted()) {
-      logger.debug("Starting announce for {} torrents", torrents.size());
-      announceAllTorrentsEventNone();
+
+      final List<AnnounceableTorrent> announceableTorrents = myContext.getTorrentsStorage().announceableTorrents();
+      logger.debug("Starting announce for {} torrents", announceableTorrents.size());
+      announceAllTorrentsEventNone(announceableTorrents);
       try {
         Thread.sleep(this.myAnnounceInterval * 1000);
       } catch (InterruptedException ie) {
@@ -258,12 +229,12 @@ public class Announce implements Runnable {
     }
   }
 
-  private void announceAllTorrentsEventNone() {
+  private void announceAllTorrentsEventNone(List<AnnounceableTorrent> announceableTorrents) {
 
     logger.debug("Started multi announce");
     final Map<String, List<AnnounceableTorrent>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<AnnounceableTorrent>>();
 
-    for (AnnounceableTorrent torrent : this.torrents) {
+    for (AnnounceableTorrent torrent : announceableTorrents) {
       final URI uriForTorrent = getURIForTorrent(torrent);
       if (uriForTorrent == null) continue;
       String torrentURI = uriForTorrent.toString();
