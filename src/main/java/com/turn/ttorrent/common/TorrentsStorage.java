@@ -47,6 +47,7 @@ public class TorrentsStorage {
 
       if (torrent.getDownloadersCount() == 0) {
         myActiveTorrents.remove(torrentHash);
+        torrent.close();
       }
     } finally {
       myReadWriteLock.writeLock().unlock();

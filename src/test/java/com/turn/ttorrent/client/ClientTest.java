@@ -384,8 +384,8 @@ public class ClientTest {
       }
     };
 
-//    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
-//    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
+    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
 
   }
 
@@ -865,29 +865,9 @@ public class ClientTest {
     leech.addTorrent(torrentFile.getAbsolutePath(), tempDir.getAbsolutePath());
     leech.start(InetAddress.getLocalHost());
 
-    new WaitFor(30*1000) {
-      @Override
-      protected boolean condition() {
-        return leech.getTorrents().size() >= 1;
-      }
-    };
-
-    final SharedTorrent leechTorrent = leech.getTorrents().iterator().next();
-
-    final WaitFor waitFor = new WaitFor(timeout) {
-      @Override
-      protected boolean condition() {
-        if (leech.isRunning()) {
-          return leechTorrent.getClientState() == ClientState.SEEDING;
-        } else {
-          return true;
-        }
-      }
-    };
+    waitForFileInDir(tempDir, torrent.getFilenames().get(0));
 
     leech.stop();
-
-    assertTrue(waitFor.isMyResult(), "File wasn't downloaded in time");
   }
 
   private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {

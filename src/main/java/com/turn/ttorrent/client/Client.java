@@ -182,17 +182,14 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     }
   }
 
-  public void removeAndDeleteTorrent(TorrentHash torrentHash) {
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash.getHexInfoHash());
-    SharedTorrent torrent = torrentsStorage.remove(torrentHash.getHexInfoHash());
-    if (torrent != null) {
-      torrent.setClientState(ClientState.DONE);
-      torrent.delete();
-    }
+  public void removeAndDeleteTorrent(SharedTorrent torrent) {
+    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrent.getHexInfoHash());
+    torrent.setClientState(ClientState.DONE);
+    torrent.delete();
     try {
       this.announce.forceAnnounce(announceableTorrent, this, STOPPED);
     } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash.getHexInfoHash(), e);
+      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrent.getHexInfoHash(), e);
     }
   }
 
@@ -421,8 +418,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     long start = System.currentTimeMillis();
 
     while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
-      System.out.println(Thread.currentThread().isInterrupted());
-      Thread.sleep(1000);
+      Thread.sleep(10);
     }
 
     if (torrent == null) {
@@ -898,7 +894,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   @Override
   public void afterPeerRemoved(SharingPeer peer) {
-    //torrentsStorage.peerDisconnected(peer.getHexInfoHash());
+    torrentsStorage.peerDisconnected(peer.getHexInfoHash());
   }
 
   @Override
