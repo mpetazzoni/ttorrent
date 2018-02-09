@@ -160,6 +160,38 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
   }
 
+  public void addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false);
+    if (torrent.getSize() == 0) {
+      // we don't seed zero-size files
+      return;
+    }
+    torrent.init();
+    if (!torrent.isInitialized()) {
+      torrent.close();
+      return;
+    }
+
+    final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
+            new TorrentStatistic(),
+            torrent.getHexInfoHash(),
+            torrent.getInfoHash(),
+            torrent.getAnnounceList(),
+            torrent.getAnnounce(),
+            downloadDirPath,
+            dotTorrentFilePath);
+    this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
+
+    // Initial completion test
+    final boolean finished = torrent.isFinished();
+    if (!finished) {
+      announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
+    }
+
+    this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
+    logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+  }
+
   public void removeTorrent(TorrentHash torrentHash) {
     logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
     final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash.getHexInfoHash());
