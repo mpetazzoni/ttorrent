@@ -181,7 +181,7 @@ public class TrackerTest {
     try {
       leech.start(InetAddress.getLocalHost());
 
-      waitForPeers(1);
+      Utils.waitForPeers(1, tracker.getTrackedTorrents());
 
       Collection<TrackedTorrent> trackedTorrents = this.tracker.getTrackedTorrents();
       assertEquals(1, trackedTorrents.size());
@@ -353,19 +353,6 @@ public class TrackerTest {
     };
 
     assertTrue(new File(downloadDir, fileName).isFile());
-  }
-
-  private void waitForPeers(final int numPeers) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.getPeers().size() == numPeers) return true;
-        }
-
-        return false;
-      }
-    };
   }
 
   private SharedTorrent completeTorrent(String name) throws IOException, NoSuchAlgorithmException {

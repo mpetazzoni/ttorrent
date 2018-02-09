@@ -202,7 +202,7 @@ public class ClientTest {
         client.start(InetAddress.getLocalHost());
       }
 
-      waitForPeers(numSeeders);
+      Utils.waitForPeers(numSeeders, tracker.getTrackedTorrents());
 
       Collection<TrackedTorrent> torrents = this.tracker.getTrackedTorrents();
       assertEquals(torrents.size(), 1);
@@ -912,19 +912,6 @@ public class ClientTest {
     DigestInputStream dIn = new DigestInputStream(new FileInputStream(file), digest);
     while (dIn.read() >= 0);
     return dIn.getMessageDigest().toString();
-  }
-
-  private void waitForPeers(final int numPeers) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.getPeers().size() == numPeers) return true;
-        }
-
-        return false;
-      }
-    };
   }
 
   private void waitForFileInDir(final File downloadDir, final String fileName) {
