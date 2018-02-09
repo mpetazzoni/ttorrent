@@ -30,7 +30,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.security.NoSuchAlgorithmException;
@@ -124,52 +126,20 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.myExecutorService = executorService;
   }
 
-  @Deprecated
-  public void addTorrent(SharedTorrent torrent) throws IOException, InterruptedException {
-    if (torrent.getSize() == 0) {
-      // we don't seed zero-size files
-      return;
-    }
-    torrent.init();
-    if (!torrent.isInitialized()) {
-      torrent.close();
-      return;
-    }
-
-    this.torrentsStorage.putIfAbsentActiveTorrent(torrent.getHexInfoHash(), torrent);
-    final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
-            new TorrentStatistic(),
-            torrent.getHexInfoHash(),
-            torrent.getInfoHash(),
-            torrent.getAnnounceList(),
-            torrent.getAnnounce(),
-            "", "");
-    this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
-
-    // Initial completion test
-    final boolean finished = torrent.isFinished();
-    if (finished) {
-      torrent.setClientState(ClientState.SEEDING);
-    } else {
-      announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
-      torrent.setClientState(ClientState.SHARING);
-    }
-    torrent.setTorrentStateListener(this);
-
-    this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
-    logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, false);
   }
 
-  public void addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false);
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder);
     if (torrent.getSize() == 0) {
       // we don't seed zero-size files
-      return;
+      return torrent.getHexInfoHash();
     }
     torrent.init();
     if (!torrent.isInitialized()) {
       torrent.close();
-      return;
+      return torrent.getHexInfoHash();
     }
 
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
@@ -179,7 +149,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
             torrent.getAnnounceList(),
             torrent.getAnnounce(),
             downloadDirPath,
-            dotTorrentFilePath);
+            dotTorrentFilePath,
+            seeder);
     this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
 
     // Initial completion test
@@ -190,6 +161,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+    return torrent.getHexInfoHash();
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
@@ -430,18 +402,33 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return t != null && t.isComplete();
   }
 
-  public void downloadUninterruptibly(final SharedTorrent torrent,
-                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException {
-    downloadUninterruptibly(torrent, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
+  public void downloadUninterruptibly(final String dotTorrentPath,
+                                      final String downloadDirPath,
+                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
   }
 
-  public void downloadUninterruptibly(final SharedTorrent torrent,
+  public void downloadUninterruptibly(final String dotTorrentPath,
+                                      final String downloadDirPath,
                                       final long idleTimeoutSec,
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs) throws IOException, InterruptedException {
-    addTorrent(torrent);
-    // we must ensure that at every moment we are downloading a piece of that torrent
+                                      final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    String hash = addTorrent(dotTorrentPath, downloadDirPath);
+
+    SharedTorrent torrent;
+    int timeoutForFoundPeersMs = 10000;
+    long start = System.currentTimeMillis();
+
+    while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
+      System.out.println(Thread.currentThread().isInterrupted());
+      Thread.sleep(1000);
+    }
+
+    if (torrent == null) {
+      throw new IOException("Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms");
+    }
+
     int seedersCount = torrent.getSeedersCount();
     final long startDownloadAt = System.currentTimeMillis();
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;

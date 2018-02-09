@@ -253,12 +253,17 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
+    return fromFile(source, parent, multiThreadHash, false);
+  }
+
+  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder)
+          throws IOException, NoSuchAlgorithmException {
     FileInputStream fis = new FileInputStream(source);
     byte[] data = new byte[(int) source.length()];
     fis.read(data);
     fis.close();
-    return new SharedTorrent(data, parent, multiThreadHash);
+    return new SharedTorrent(data, parent, multiThreadHash, seeder, DEFAULT_REQUEST_STRATEGY);
   }
 
   private synchronized void openFileChannelIfNecessary(){
