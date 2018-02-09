@@ -914,19 +914,6 @@ public class ClientTest {
     return dIn.getMessageDigest().toString();
   }
 
-  private void waitForSeeder(final byte[] torrentHash) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.seeders() == 1 && tt.getHexInfoHash().equals(Torrent.byteArrayToHexString(torrentHash))) return true;
-        }
-
-        return false;
-      }
-    };
-  }
-
   private void waitForPeers(final int numPeers) {
     new WaitFor() {
       @Override
