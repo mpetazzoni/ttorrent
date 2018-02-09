@@ -723,6 +723,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   @Override
   public synchronized void handlePeerReady(SharingPeer peer) {
+    initIfNecessary(peer);
     boolean endGameMode = false;
     int requestedPiecesCount = 0;
     final BitSet interesting = peer.getAvailablePieces();
@@ -775,6 +776,22 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       interesting.clear(chosen.getIndex());
       //stop requesting if in endGameMode
       if (endGameMode) return;
+    }
+  }
+
+  private synchronized void initIfNecessary(SharingPeer peer) {
+    if (!isInitialized()){
+      try {
+        init();
+      } catch (InterruptedException e) {
+        logger.info("Interrupted init", e);
+        peer.unbind(true);
+        return;
+      } catch (IOException e) {
+        logger.info("IOE during init", e);
+        peer.unbind(true);
+        return;
+      }
     }
   }
 
@@ -974,19 +991,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer){
-    if (!isInitialized()){
-      try {
-        init();
-      } catch (InterruptedException e) {
-        logger.info("Interrupted init", e);
-        peer.unbind(true);
-        return;
-      } catch (IOException e) {
-        logger.info("IOE during init", e);
-        peer.unbind(true);
-        return;
-      }
-    }
+    initIfNecessary(peer);
     openFileChannelIfNecessary();
     if (clientState != ClientState.ERROR) {
       myDownloaders.add(peer);
