@@ -121,7 +121,11 @@ public class HandshakeReceiver implements DataProcessor {
     myContext.getExecutor().submit(new Runnable() {
       @Override
       public void run() {
-        sharingPeer.onConnectionEstablished();
+        try {
+          sharingPeer.onConnectionEstablished();
+        } catch (Throwable e) {
+          LoggerUtils.warnAndDebugDetails(logger, "unhandled exception in executor task (onConnectionEstablished)", e);
+        }
       }
     });
 
