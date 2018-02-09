@@ -86,8 +86,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final BlockingQueue<PeerMessage.RequestMessage> myRequests;
   private volatile boolean downloading;
 
-  private Rate download;
-  private Rate upload;
+  private final Rate download;
+  private final Rate upload;
   private final Set<PeerActivityListener> listeners;
 
   private final Object requestsLock;
@@ -127,6 +127,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.myRequestedPieces = new ConcurrentHashMap<Piece, Integer>();
     myRequests = new LinkedBlockingQueue<PeerMessage.RequestMessage>(SharingPeer.MAX_PIPELINED_REQUESTS);
     this.connectionManager = connectionManager;
+    this.download = new Rate();
+    this.upload = new Rate();
     this.setTorrentHash(torrent.getHexInfoHash());
     this.reset();
   }
@@ -253,10 +255,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   }
 
   public synchronized void resetRates() {
-    this.download = new Rate();
     this.download.reset();
-
-    this.upload = new Rate();
     this.upload.reset();
   }
 
