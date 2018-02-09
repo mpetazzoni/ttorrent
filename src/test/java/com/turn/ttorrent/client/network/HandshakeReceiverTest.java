@@ -20,6 +20,8 @@ import java.nio.channels.ByteChannel;
 import java.nio.channels.Pipe;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -90,6 +92,7 @@ public class HandshakeReceiverTest {
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 
+    final Semaphore semaphore = new Semaphore(0);
     when(myContext.createSharingPeer(any(String.class),
             anyInt(),
             any(ByteBuffer.class),
@@ -100,6 +103,7 @@ public class HandshakeReceiverTest {
               @Override
               public void onConnectionEstablished() {
                 onConnectionEstablishedInvoker.set(true);
+                semaphore.release();
               }
             });
 
@@ -113,6 +117,7 @@ public class HandshakeReceiverTest {
     answer.rewind();
     Handshake answerHs = Handshake.parse(answer);
     assertEquals(answerHs.getPeerId(), mySelfId);
+    semaphore.tryAcquire(1, TimeUnit.SECONDS);
     assertTrue(onConnectionEstablishedInvoker.get());
     executorService.shutdown();
   }
