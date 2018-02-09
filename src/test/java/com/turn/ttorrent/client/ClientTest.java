@@ -845,6 +845,8 @@ public class ClientTest {
       }
     };
 
+    leech.stop();
+
     assertTrue(waitFor.isMyResult(), "File wasn't downloaded in time");
   }
 
