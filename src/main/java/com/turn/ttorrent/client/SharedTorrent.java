@@ -108,6 +108,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private boolean multiThreadHash;
 
   private File parentFile;
+  private final boolean isLeecher;
 
   private volatile long myLastClose = System.currentTimeMillis();
 
@@ -154,7 +155,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash, boolean seeder)
     throws IOException, NoSuchAlgorithmException {
-    this(torrent.getEncoded(), destDir, multiThreadHash, seeder, DEFAULT_REQUEST_STRATEGY);
+    this(torrent.getEncoded(), destDir, multiThreadHash, seeder, false, DEFAULT_REQUEST_STRATEGY);
   }
 
   /**
@@ -169,7 +170,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public SharedTorrent(byte[] torrent, File destDir, boolean multiThreadHash)
     throws IOException, NoSuchAlgorithmException {
-    this(torrent, destDir, multiThreadHash, false, DEFAULT_REQUEST_STRATEGY);
+    this(torrent, destDir, multiThreadHash, false, false, DEFAULT_REQUEST_STRATEGY);
   }
 
   /**
@@ -182,10 +183,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws IOException              If the torrent file cannot be read or decoded.
    * @throws NoSuchAlgorithmException
    */
-  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, RequestStrategy requestStrategy)
+  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy)
     throws IOException, NoSuchAlgorithmException {
     super(torrent, seeder);
 
+    this.isLeecher = leecher;
     this.parentFile = parent;
     this.myRequestStrategy = requestStrategy;
 
@@ -259,11 +261,16 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder)
           throws IOException, NoSuchAlgorithmException {
+    return fromFile(source, parent, multiThreadHash, seeder, false);
+  }
+
+  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher)
+          throws IOException, NoSuchAlgorithmException {
     FileInputStream fis = new FileInputStream(source);
     byte[] data = new byte[(int) source.length()];
     fis.read(data);
     fis.close();
-    return new SharedTorrent(data, parent, multiThreadHash, seeder, DEFAULT_REQUEST_STRATEGY);
+    return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY);
   }
 
   private synchronized void openFileChannelIfNecessary(){
@@ -430,7 +437,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder());
+        this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       results.add(executor.submit(hasher));
@@ -480,7 +487,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder());
+        this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       try {

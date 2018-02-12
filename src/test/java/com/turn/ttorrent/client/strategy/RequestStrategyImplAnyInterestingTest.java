@@ -18,7 +18,7 @@ public class RequestStrategyImplAnyInterestingTest {
   @BeforeClass
   public void init() {
     for (int i = 0; i < myPieces.length; i++) {
-      myPieces[i] = new Piece(null, i, 0, 0, new byte[0], false);
+      myPieces[i] = new Piece(null, i, 0, 0, new byte[0], false, false);
     }
   }
 

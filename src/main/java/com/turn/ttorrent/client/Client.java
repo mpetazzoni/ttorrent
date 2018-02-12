@@ -127,11 +127,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, false);
+    return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
   }
 
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder);
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder, leecher);
     if (torrent.getSize() == 0) {
       // we don't seed zero-size files
       return torrent.getHexInfoHash();
@@ -411,7 +411,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath);
+    String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
     SharedTorrent torrent;
     int timeoutForFoundPeersMs = 10000;
