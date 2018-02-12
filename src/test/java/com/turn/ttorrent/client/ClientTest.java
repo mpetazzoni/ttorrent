@@ -846,7 +846,7 @@ public class ClientTest {
 
     File torrentFile = tempFiles.createTempFile();
     torrent.save(torrentFile);
-    seeder.addTorrent(torrentFile.getAbsolutePath(), srcFile.getParent(), true);
+    seeder.addTorrent(torrentFile.getAbsolutePath(), srcFile.getParent(), true, false);
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
