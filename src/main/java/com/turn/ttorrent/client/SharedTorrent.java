@@ -437,7 +437,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder());
+        this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       results.add(executor.submit(hasher));
@@ -487,7 +487,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder());
+        this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       try {

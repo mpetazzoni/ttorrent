@@ -19,8 +19,6 @@ import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
@@ -60,6 +58,7 @@ public class Piece implements Comparable<Piece> {
 	private final long length;
 	private final byte[] hash;
 	private final boolean seeder;
+	private final boolean leecher;
 
 	private volatile boolean valid;
 	private int seen;
@@ -67,23 +66,23 @@ public class Piece implements Comparable<Piece> {
 
 	/**
 	 * Initialize a new piece in the byte bucket.
-	 *
-	 * @param bucket The underlying byte storage bucket.
+	 *  @param bucket The underlying byte storage bucket.
 	 * @param index This piece index in the torrent.
 	 * @param offset This piece offset, in bytes, in the storage.
 	 * @param length This piece length, in bytes.
 	 * @param hash This piece 20-byte SHA1 hash sum.
 	 * @param seeder Whether we're seeding this torrent or not (disables piece
-	 * validation).
+	 * @param leecher
 	 */
 	public Piece(TorrentByteStorage bucket, int index, long offset,
-		long length, byte[] hash, boolean seeder) {
+							 long length, byte[] hash, boolean seeder, boolean leecher) {
 		this.bucket = bucket;
 		this.index = index;
 		this.offset = offset;
 		this.length = length;
 		this.hash = hash;
 		this.seeder = seeder;
+		this.leecher = leecher;
 
 		// Piece is considered invalid until first check.
 		this.valid = false;
@@ -158,8 +157,13 @@ public class Piece implements Comparable<Piece> {
 			return true;
 		}
 
-		logger.trace("Validating {}...", this);
 		this.valid = false;
+
+		if (this.leecher) {
+			return this.isValid();
+		}
+
+		logger.trace("Validating {}...", this);
 
 		try {
 			// TODO: remove cast to int when large ByteBuffer support is
