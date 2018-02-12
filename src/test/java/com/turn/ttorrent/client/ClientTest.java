@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client;
 
+import com.sun.org.apache.xpath.internal.SourceTree;
 import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
@@ -19,6 +20,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -97,15 +99,13 @@ public class ClientTest {
 
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
-        SharedTorrent st1 = SharedTorrent.fromFile(torrentFile, f.getParentFile(), true);
-        seeder.addTorrent(st1);
+        seeder.addTorrent(torrentFile.getAbsolutePath(), f.getParent());
       }
       leech = createClient("leecher");
       leech.start(new InetAddress[]{InetAddress.getLocalHost()}, 5, null);
       for (File f : filesToShare) {
         File torrentFile = new File(f.getParentFile(), f.getName() + ".torrent");
-        SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir, true);
-        leech.addTorrent(st2);
+        leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
       }
 
       new WaitFor(60 * 1000) {
@@ -160,11 +160,11 @@ public class ClientTest {
     torrent.save(torrentFile);
 
     Client seeder = createClient();
-    seeder.addTorrent(SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent());
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
-    leech.addTorrent(SharedTorrent.fromFile(torrentFile, downloadDir, true));
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -198,11 +198,11 @@ public class ClientTest {
 
       for (int i = 0; i < numSeeders; i++) {
         Client client = seeders.get(i);
-        client.addTorrent(SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false));
+        client.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent());
         client.start(InetAddress.getLocalHost());
       }
 
-      waitForPeers(numSeeders);
+      Utils.waitForPeers(numSeeders, tracker.getTrackedTorrents());
 
       Collection<TrackedTorrent> torrents = this.tracker.getTrackedTorrents();
       assertEquals(torrents.size(), 1);
@@ -239,63 +239,6 @@ public class ClientTest {
       for (Client client : clientsList) {
         client.stop();
       }
-    }
-  }
-
-  public void testDelete() throws IOException, InterruptedException, NoSuchAlgorithmException, URISyntaxException {
-    this.tracker.setAcceptForeignTorrents(true);
-
-    final File srcDir = tempFiles.createTempDir();
-    final File downloadDir = tempFiles.createTempDir();
-    final File downloadDir2 = tempFiles.createTempDir();
-
-    Client seeder = createClient();
-    seeder.start(InetAddress.getLocalHost());
-
-
-    URL announce = new URL("http://127.0.0.1:6969/announce");
-    URI announceURI = announce.toURI();
-    final Set<String> names = new HashSet<String>();
-    File tempFile = tempFiles.createTempFile(513 * 1024);
-    final File srcFile = new File(srcDir, tempFile.getName());
-    assertTrue(tempFile.renameTo(srcFile));
-
-    Torrent torrent = Torrent.create(srcFile, announceURI, "Test");
-    File torrentFile = new File(srcFile.getParentFile(), srcFile.getName() + ".torrent");
-    torrent.save(torrentFile);
-    names.add(srcFile.getName());
-    seeder.addTorrent(new SharedTorrent(torrent, srcFile.getParentFile(), false));
-
-
-    Client leech1 = createClient();
-    leech1.start(InetAddress.getLocalHost());
-    SharedTorrent sharedTorrent = SharedTorrent.fromFile(torrentFile, downloadDir, true);
-    leech1.addTorrent(sharedTorrent);
-
-    new WaitFor(15 * 1000) {
-      @Override
-      protected boolean condition() {
-        return listFileNames(downloadDir).contains(srcFile.getName());
-      }
-    };
-
-    assertTrue(listFileNames(downloadDir).contains(srcFile.getName()));
-
-    leech1.stop();
-    leech1=null;
-
-    assertTrue(srcFile.delete());
-
-    Client leech2 = createClient();
-    leech2.start(InetAddress.getLocalHost());
-    SharedTorrent st2 = SharedTorrent.fromFile(torrentFile, downloadDir2, true);
-    leech2.addTorrent(st2);
-
-    Thread.sleep(10 * 1000); // the file no longer exists. Stop seeding and announce that to tracker
-    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
-    assertEquals(0, seeder.getTorrents().size());
-    for (SharingPeer peer : seeder.getPeers()) {
-      assertFalse(trackedTorrent.getPeers().keySet().contains(peer.getTorrentHexInfoHash()));
     }
   }
 
@@ -377,6 +320,76 @@ public class ClientTest {
     }
   }
 
+  public void testThatTorrentsHaveLazyInitAndRemovingAfterDownload()
+          throws IOException, InterruptedException, NoSuchAlgorithmException, URISyntaxException {
+    Client seeder = createClient();
+    File tempFile = tempFiles.createTempFile(100 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+
+    Torrent torrent = Torrent.create(tempFile, announceURI, "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    torrent.save(torrentFile);
+    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParentFile().getAbsolutePath());
+    final ExecutorService es = Executors.newFixedThreadPool(8);
+    final AtomicBoolean newPeerIsCreated = new AtomicBoolean(false);
+    final AtomicBoolean peerIsDisconnected = new AtomicBoolean(false);
+    Client leecher = new Client(es) {
+      @Override
+      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
+        newPeerIsCreated.set(true);
+        return super.createSharingPeer(host, port, peerId, torrent, channel);
+      }
+
+      @Override
+      public void handlePeerDisconnected(SharingPeer peer) {
+        super.handlePeerDisconnected(peer);
+        peerIsDisconnected.set(true);
+      }
+
+      @Override
+      public void stop() {
+        super.stop();
+        es.shutdown();
+      }
+    };
+    clientList.add(leecher);
+    File downloadDir = tempFiles.createTempDir();
+    leecher.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
+    seeder.start(InetAddress.getLocalHost());
+    assertEquals(1, seeder.getTorrentsStorage().announceableTorrents().size());
+    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
+
+    leecher.start(InetAddress.getLocalHost());
+
+    new WaitFor(10*1000) {
+
+      @Override
+      protected boolean condition() {
+        return newPeerIsCreated.get();
+      }
+    };
+
+    assertEquals(1, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(1, leecher.getTorrentsStorage().activeTorrents().size());
+
+    waitForFileInDir(downloadDir, tempFile.getName());
+    assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
+
+    new WaitFor(10*1000) {
+
+      @Override
+      protected boolean condition() {
+        return peerIsDisconnected.get();
+      }
+    };
+
+    assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
+    assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
+
+  }
+
   public void corrupted_seeder()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
 
@@ -398,7 +411,10 @@ public class ClientTest {
       FileUtils.copyFile(badFile, client2File);
 
       final Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
-      client2.addTorrent(new SharedTorrent(torrent, client2Dir, false, true));
+      final File torrentFile = tempFiles.createTempFile();
+      torrent.save(torrentFile);
+
+      client2.addTorrent(torrentFile.getAbsolutePath(), client2Dir.getAbsolutePath());
 
       final String baseMD5 = getFileMD5(baseFile, md5);
 
@@ -409,7 +425,7 @@ public class ClientTest {
         @Override
         public void run() {
           try {
-            leech.downloadUninterruptibly(new SharedTorrent(torrent, leechDestDir, false), 7);
+            leech.downloadUninterruptibly(torrentFile.getAbsolutePath(), leechDestDir.getAbsolutePath(), 7);
           } catch (Exception e) {
             thrownException.set(e);
             throw new RuntimeException(e);
@@ -449,8 +465,10 @@ public class ClientTest {
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 7);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
 
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
     downloadAndStop(torrent, 15*1000, createClient());
@@ -466,8 +484,10 @@ public class ClientTest {
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 7);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
 
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
     for(int i=0; i<5; i++) {
@@ -486,10 +506,12 @@ public class ClientTest {
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
     final SharedTorrent sharedTorrent = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
 
     final String hexInfoHash = sharedTorrent.getHexInfoHash();
-    leecher.addTorrent(sharedTorrent);
+    leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
     final List<ServerSocket> serverSockets = new ArrayList<ServerSocket>();
 
     final int startPort = 6885;
@@ -565,8 +587,10 @@ public class ClientTest {
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
 
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
       final AtomicInteger interrupts = new AtomicInteger(0);
@@ -598,14 +622,13 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
-    leecher.downloadUninterruptibly(st, 10);
-
-    assertTrue(st.getClientState()==ClientState.SEEDING);
+    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
   }
 
   public void download_uninterruptibly_negative() throws InterruptedException, NoSuchAlgorithmException, IOException {
@@ -616,8 +639,10 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     final Client leecher = new Client(es){
       @Override
@@ -637,12 +662,10 @@ public class ClientTest {
     clientList.add(leecher);
     leecher.start(InetAddress.getLocalHost());
     final File destDir = tempFiles.createTempDir();
-    final SharedTorrent st = new SharedTorrent(torrent, destDir, true);
     try {
-      leecher.downloadUninterruptibly(st, 5);
+      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), destDir.getAbsolutePath(), 5);
       fail("Must fail, because file wasn't downloaded completely");
     } catch (IOException ex){
-      assertEquals(st.getClientState(),ClientState.DONE);
       // ensure .part was deleted:
       assertEquals(0, destDir.list().length);
     }
@@ -655,8 +678,10 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final AtomicInteger piecesDownloaded = new AtomicInteger(0);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     Client leecher = new Client(es){
@@ -678,12 +703,10 @@ public class ClientTest {
     };
     clientList.add(leecher);
     leecher.start(InetAddress.getLocalHost());
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     try {
-      leecher.downloadUninterruptibly(st, 5);
+      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 5);
       fail("Must fail, because file wasn't downloaded completely");
     } catch (IOException ex){
-      assertEquals(st.getClientState(),ClientState.DONE);
     }
   }
 
@@ -709,17 +732,18 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 240);
     final Torrent torrent = Torrent.create(dwnlFile, tracker.getAnnounceURI(), "Test");
 
-    seed1.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true, true));
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
+    seed1.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seed1.start(InetAddress.getLocalHost());
     seed1.setAnnounceInterval(5);
-    seed2.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true, true));
+    seed2.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seed2.start(InetAddress.getLocalHost());
     seed2.setAnnounceInterval(5);
 
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
     leecher.setAnnounceInterval(5);
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     final ExecutorService service = Executors.newFixedThreadPool(1);
     final Future<?> future = service.submit(new Runnable() {
       @Override
@@ -728,7 +752,7 @@ public class ClientTest {
           Thread.sleep(5 * 1000);
           seed1.removeTorrent(torrent);
           Thread.sleep(3*1000);
-          seed1.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true, true));
+          seed1.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
           seed2.removeTorrent(torrent);
         } catch (InterruptedException e) {
           e.printStackTrace();
@@ -740,7 +764,7 @@ public class ClientTest {
       }
     });
     try {
-      leecher.downloadUninterruptibly(st, 60);
+      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 60);
     } finally {
       future.cancel(true);
       service.shutdown();
@@ -753,27 +777,31 @@ public class ClientTest {
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 60);
     final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(new SharedTorrent(torrent, dwnlFile.getParentFile(), true));
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
-    final SharedTorrent st = new SharedTorrent(torrent, tempFiles.createTempDir(), true);
     final AtomicBoolean interrupted = new AtomicBoolean();
     final Thread th = new Thread(){
       @Override
       public void run() {
         try {
-          leecher.downloadUninterruptibly(st, 30);
+          leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 30);
         } catch (IOException e) {
           e.printStackTrace();
         } catch (InterruptedException e) {
           interrupted.set(true);
           return;
+        } catch (NoSuchAlgorithmException e) {
+          e.printStackTrace();
+          return;
         }
       }
     };
     th.start();
-    Thread.sleep(10);
+    Thread.sleep(400);
     th.interrupt();
     new WaitFor(10*1000){
       @Override
@@ -782,7 +810,6 @@ public class ClientTest {
       }
     };
 
-    assertTrue(st.getClientState() != ClientState.SEEDING);
     assertTrue(interrupted.get());
   }
 
@@ -800,16 +827,11 @@ public class ClientTest {
       random.nextBytes(data);
       announce.addPeer(new TrackedPeer(tt, "my_unknown_and_unreachablehost" + i, 6881, ByteBuffer.wrap(data)));
     }
-    seeder.addTorrent(completeTorrent("file1.jar.torrent"));
-    final SharedTorrent incompleteTorrent = incompleteTorrent("file1.jar.torrent", leechFolder);
-    leecher.addTorrent(incompleteTorrent);
-    new WaitFor(10*1000){
-
-      @Override
-      protected boolean condition() {
-        return incompleteTorrent.isComplete();
-      }
-    };
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    leecher.addTorrent(torrentFile.getAbsolutePath(), leechFolder.getAbsolutePath());
+    waitForFileInDir(leechFolder, "file1.jar");
   }
 
   public void test_seeding_does_not_change_file_modification_date() throws IOException, InterruptedException, NoSuchAlgorithmException {
@@ -822,30 +844,31 @@ public class ClientTest {
 
     final Torrent torrent = Torrent.create(srcFile, null, tracker.getAnnounceURI(), "Test");
 
-    final SharedTorrent sharedTorrent = new SharedTorrent(torrent, srcFile.getParentFile(), true, true);
-    seeder.addTorrent(sharedTorrent);
+    File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
+    seeder.addTorrent(torrentFile.getAbsolutePath(), srcFile.getParent(), true);
+
+    final File downloadDir = tempFiles.createTempDir();
+    Client leech = createClient();
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
+
+    leech.start(InetAddress.getLocalHost());
+
+    waitForFileInDir(downloadDir, srcFile.getName());
 
     assertEquals(time, srcFile.lastModified());
   }
 
   private void downloadAndStop(Torrent torrent, long timeout, final Client leech) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final File tempDir = tempFiles.createTempDir();
-    leech.addTorrent(new SharedTorrent(torrent, tempDir, false));
+    File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
+    leech.addTorrent(torrentFile.getAbsolutePath(), tempDir.getAbsolutePath());
     leech.start(InetAddress.getLocalHost());
 
-    final WaitFor waitFor = new WaitFor(timeout) {
-      @Override
-      protected boolean condition() {
-        final SharedTorrent leechTorrent = leech.getTorrents().iterator().next();
-        if (leech.isRunning()) {
-          return leechTorrent.getClientState() == ClientState.SEEDING;
-        } else {
-          return true;
-        }
-      }
-    };
+    waitForFileInDir(tempDir, torrent.getFilenames().get(0));
 
-    assertTrue(waitFor.isMyResult(), "File wasn't downloaded in time");
+    leech.stop();
   }
 
   private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
@@ -901,7 +924,7 @@ public class ClientTest {
       }
       Client client = createClient(" client idx " + i);
       clientList.add(client);
-      client.addTorrent(new SharedTorrent(torrent, baseDir, false));
+      client.addTorrent(torrentFile.getAbsolutePath(), baseDir.getAbsolutePath());
       client.start(InetAddress.getLocalHost());
     }
   }
@@ -910,32 +933,6 @@ public class ClientTest {
     DigestInputStream dIn = new DigestInputStream(new FileInputStream(file), digest);
     while (dIn.read() >= 0);
     return dIn.getMessageDigest().toString();
-  }
-
-  private void waitForSeeder(final byte[] torrentHash) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.seeders() == 1 && tt.getHexInfoHash().equals(Torrent.byteArrayToHexString(torrentHash))) return true;
-        }
-
-        return false;
-      }
-    };
-  }
-
-  private void waitForPeers(final int numPeers) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.getPeers().size() == numPeers) return true;
-        }
-
-        return false;
-      }
-    };
   }
 
   private void waitForFileInDir(final File downloadDir, final String fileName) {

@@ -92,20 +92,21 @@ public class TrackerTest {
 
     final InetAddress[] inetAddresses = selfAddresses.toArray(new InetAddress[selfAddresses.size()]);
     Client seeder = createClient();
-    final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
-    seeder.addTorrent(torrent);
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    final String hexInfoHash = seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
     seeder.start(inetAddresses);
     final WaitFor waitFor = new WaitFor(10000) {
       @Override
       protected boolean condition() {
-        final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+        final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(hexInfoHash);
         return trackedTorrent != null && trackedTorrent.getPeers().size() >= inetAddresses.length;
       }
     };
 
     assertTrue(waitFor.isMyResult());
 
-    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(hexInfoHash);
 
     Set<String> expectedIps = new HashSet<String>();
     for (InetAddress inetAddress : inetAddresses) {
@@ -126,13 +127,15 @@ public class TrackerTest {
     assertEquals(0, tt.getPeers().size());
 
     Client seeder = createClient();
-    seeder.addTorrent(completeTorrent("file1.jar.torrent"));
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
-    assertEquals(tt.getHexInfoHash(), seeder.getTorrents().iterator().next().getHexInfoHash());
+    assertEquals(tt.getHexInfoHash(), seeder.getTorrentsStorage().announceableTorrents().iterator().next().getHexInfoHash());
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
-    leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -150,12 +153,14 @@ public class TrackerTest {
   public void tracker_accepts_torrent_from_seeder() throws IOException, NoSuchAlgorithmException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
-    seeder.addTorrent(completeTorrent("file1.jar.torrent"));
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
 
-      waitForSeeder(seeder.getTorrents().iterator().next().getInfoHash());
+      waitForSeeder(seeder.getTorrentsStorage().announceableTorrents().iterator().next().getInfoHash());
 
       Collection<TrackedTorrent> trackedTorrents = this.tracker.getTrackedTorrents();
       assertEquals(1, trackedTorrents.size());
@@ -176,12 +181,13 @@ public class TrackerTest {
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
-    leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
       leech.start(InetAddress.getLocalHost());
 
-      waitForPeers(1);
+      Utils.waitForPeers(1, tracker.getTrackedTorrents());
 
       Collection<TrackedTorrent> trackedTorrents = this.tracker.getTrackedTorrents();
       assertEquals(1, trackedTorrents.size());
@@ -199,17 +205,18 @@ public class TrackerTest {
 
   public void tracker_removes_peer_after_peer_shutdown() throws IOException, NoSuchAlgorithmException, InterruptedException {
     tracker.setAcceptForeignTorrents(true);
-    final SharedTorrent torrent = completeTorrent("file1.jar.torrent");
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
 
     final Client c1 = createClient();
     c1.start(InetAddress.getLocalHost());
-    c1.addTorrent(torrent);
+    String hexInfoHash = c1.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final Client c2 = createClient();
     c2.start(InetAddress.getLocalHost());
-    c2.addTorrent(completeTorrent("file1.jar.torrent"));
+    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
-    final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
+    final TrackedTorrent tt = tracker.getTrackedTorrent(hexInfoHash);
 
     new WaitFor(10*1000) {
       @Override
@@ -257,7 +264,9 @@ public class TrackerTest {
     final Client c2 = createClient();
     c2.setAnnounceInterval(120);
     c2.start(InetAddress.getLocalHost());
-    c2.addTorrent(completeTorrent("file1.jar.torrent"));
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
     new WaitFor(10*1000) {
@@ -297,11 +306,13 @@ public class TrackerTest {
     assertEquals(0, this.tracker.getTrackedTorrents().size());
 
     Client seeder = createClient();
-    seeder.addTorrent(completeTorrent("file1.jar.torrent"));
+    File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
+    File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
-    leech.addTorrent(incompleteTorrent("file1.jar.torrent", downloadDir));
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -353,19 +364,6 @@ public class TrackerTest {
     };
 
     assertTrue(new File(downloadDir, fileName).isFile());
-  }
-
-  private void waitForPeers(final int numPeers) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.getPeers().size() == numPeers) return true;
-        }
-
-        return false;
-      }
-    };
   }
 
   private SharedTorrent completeTorrent(String name) throws IOException, NoSuchAlgorithmException {

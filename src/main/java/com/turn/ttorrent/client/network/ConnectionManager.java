@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.network.keyProcessors.*;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
@@ -30,12 +31,11 @@ public class ConnectionManager {
   public static final int PORT_RANGE_END = 6889;
 
   private final Selector selector;
-  private final ChannelListenerFactory channelListenerFactory;
   private final TimeService myTimeService;
   private volatile ConnectionWorker myConnectionWorker;
   private int myBindPort;
+  private final Context myContext;
   private volatile ServerSocketChannel myServerSocketChannel;
-  private final ExecutorService myExecutorService;
   private volatile Future<?> myWorkerFuture;
   private final NewConnectionAllower myIncomingConnectionAllower;
   private final NewConnectionAllower myOutgoingConnectionAllower;
@@ -44,19 +44,17 @@ public class ConnectionManager {
   private final AtomicInteger mySendBufferSize;
   private final AtomicInteger myReceiveBufferSize;
 
-  public ConnectionManager(ChannelListenerFactory channelListenerFactory,
-                           ExecutorService executorService,
+  public ConnectionManager(Context context,
                            TimeService timeService,
                            NewConnectionAllower newIncomingConnectionAllower,
                            NewConnectionAllower newOutgoingConnectionAllower,
                            AtomicInteger mySendBufferSize,
                            AtomicInteger myReceiveBufferSize) throws IOException {
-    this.myExecutorService = executorService;
     this.mySendBufferSize = mySendBufferSize;
     this.myReceiveBufferSize = myReceiveBufferSize;
     this.selector = Selector.open();
-    this.channelListenerFactory = channelListenerFactory;
     this.myTimeService = timeService;
+    myContext = context;
     this.myIncomingConnectionAllower = newIncomingConnectionAllower;
     this.myOutgoingConnectionAllower = newOutgoingConnectionAllower;
   }
@@ -76,7 +74,7 @@ public class ConnectionManager {
       try {
         InetSocketAddress tryAddress = new InetSocketAddress(port);
         myServerSocketChannel.socket().bind(tryAddress);
-        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(channelListenerFactory));
+        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(myContext));
         myBindPort = tryAddress.getPort();
         break;
       } catch (IOException e) {
@@ -100,7 +98,7 @@ public class ConnectionManager {
             myTimeService,
             new CleanupKeyProcessor(myTimeService),
             myOutgoingConnectionAllower);
-    myWorkerFuture = myExecutorService.submit(myConnectionWorker);
+    myWorkerFuture = myContext.getExecutor().submit(myConnectionWorker);
   }
 
   public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {

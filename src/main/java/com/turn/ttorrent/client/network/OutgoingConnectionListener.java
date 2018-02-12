@@ -1,35 +1,26 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.client.Context;
+import com.turn.ttorrent.common.TorrentHash;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.ExecutorService;
 
 public class OutgoingConnectionListener implements ConnectionListener {
 
   private volatile DataProcessor myNext;
-  private final PeersStorageProvider myPeersStorageProvider;
-  private final TorrentsStorageProvider myTorrentsStorageProvider;
-  private final SharingPeerFactory mySharingPeerFactory;
   private final TorrentHash torrentHash;
   private final InetSocketAddress mySendAddress;
-  private final ExecutorService myExecutorService;
+  private final Context myContext;
 
-  public OutgoingConnectionListener(PeersStorageProvider myPeersStorageProvider,
-                                    TorrentsStorageProvider myTorrentsStorageProvider,
-                                    SharingPeerFactory mySharingPeerFactory,
+  public OutgoingConnectionListener(Context context,
                                     TorrentHash torrentHash,
-                                    InetSocketAddress sendAddress,
-                                    ExecutorService myExecutorService) {
-    this.myPeersStorageProvider = myPeersStorageProvider;
-    this.myTorrentsStorageProvider = myTorrentsStorageProvider;
-    this.mySharingPeerFactory = mySharingPeerFactory;
+                                    InetSocketAddress sendAddress) {
     this.torrentHash = torrentHash;
     this.mySendAddress = sendAddress;
     this.myNext = new ShutdownProcessor();
-    this.myExecutorService = myExecutorService;
+    myContext = context;
   }
 
   @Override
@@ -41,11 +32,8 @@ public class OutgoingConnectionListener implements ConnectionListener {
   public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
     HandshakeSender handshakeSender = new HandshakeSender(
             torrentHash,
-            myPeersStorageProvider,
-            myTorrentsStorageProvider,
             mySendAddress,
-            mySharingPeerFactory,
-            myExecutorService);
+            myContext);
     this.myNext = handshakeSender.processAndGetNext(socketChannel);
   }
 

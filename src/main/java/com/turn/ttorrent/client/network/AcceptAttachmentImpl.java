@@ -3,7 +3,7 @@ package com.turn.ttorrent.client.network;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-public class AcceptAttachmentImpl implements AcceptAttachment, TimeoutAttachment{
+public class AcceptAttachmentImpl implements AcceptAttachment, TimeoutAttachment {
 
   private final ChannelListenerFactory myChannelListenerFactory;
 

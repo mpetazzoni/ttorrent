@@ -253,12 +253,17 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
+    return fromFile(source, parent, multiThreadHash, false);
+  }
+
+  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder)
+          throws IOException, NoSuchAlgorithmException {
     FileInputStream fis = new FileInputStream(source);
     byte[] data = new byte[(int) source.length()];
     fis.read(data);
     fis.close();
-    return new SharedTorrent(data, parent, multiThreadHash);
+    return new SharedTorrent(data, parent, multiThreadHash, seeder, DEFAULT_REQUEST_STRATEGY);
   }
 
   private synchronized void openFileChannelIfNecessary(){
@@ -718,6 +723,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   @Override
   public synchronized void handlePeerReady(SharingPeer peer) {
+    initIfNecessary(peer);
     boolean endGameMode = false;
     int requestedPiecesCount = 0;
     final BitSet interesting = peer.getAvailablePieces();
@@ -770,6 +776,22 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       interesting.clear(chosen.getIndex());
       //stop requesting if in endGameMode
       if (endGameMode) return;
+    }
+  }
+
+  private synchronized void initIfNecessary(SharingPeer peer) {
+    if (!isInitialized()){
+      try {
+        init();
+      } catch (InterruptedException e) {
+        logger.info("Interrupted init", e);
+        peer.unbind(true);
+        return;
+      } catch (IOException e) {
+        logger.info("IOE during init", e);
+        peer.unbind(true);
+        return;
+      }
     }
   }
 
@@ -855,6 +877,15 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         this.getAvailablePieces().cardinality(),
         this.pieces.length
       });
+  }
+
+  public int getDownloadersCount() {
+    return myDownloaders.size();
+  }
+
+  @Override
+  public void afterPeerRemoved(SharingPeer peer) {
+
   }
 
   /**
@@ -960,19 +991,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer){
-    if (!isInitialized()){
-      try {
-        init();
-      } catch (InterruptedException e) {
-        logger.info("Interrupted init", e);
-        peer.unbind(true);
-        return;
-      } catch (IOException e) {
-        logger.info("IOE during init", e);
-        peer.unbind(true);
-        return;
-      }
-    }
+    initIfNecessary(peer);
     openFileChannelIfNecessary();
     if (clientState != ClientState.ERROR) {
       myDownloaders.add(peer);

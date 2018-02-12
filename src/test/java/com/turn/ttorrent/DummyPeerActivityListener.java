@@ -21,6 +21,11 @@ public class DummyPeerActivityListener implements PeerActivityListener {
   }
 
   @Override
+  public void afterPeerRemoved(SharingPeer peer) {
+
+  }
+
+  @Override
   public void handlePieceAvailability(SharingPeer peer, Piece piece) {
 
   }

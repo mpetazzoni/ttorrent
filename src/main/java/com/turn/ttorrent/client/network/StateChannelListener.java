@@ -1,44 +1,29 @@
 package com.turn.ttorrent.client.network;
 
-import com.turn.ttorrent.common.PeersStorageProvider;
-import com.turn.ttorrent.common.SharingPeerFactory;
-import com.turn.ttorrent.common.TorrentsStorageProvider;
+import com.turn.ttorrent.client.Context;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.ExecutorService;
 
 public class StateChannelListener implements ConnectionListener {
 
-  private volatile DataProcessor next;
-  private final PeersStorageProvider myPeersStorageProvider;
-  private final TorrentsStorageProvider myTorrentsStorageProvider;
-  private final ExecutorService myExecutorService;
-  private final SharingPeerFactory mySharingPeerFactory;
+  private volatile DataProcessor myNext;
+  private final Context myContext;
 
-  public StateChannelListener(PeersStorageProvider peersStorageProvider,
-                              TorrentsStorageProvider torrentsStorageProvider,
-                              ExecutorService executorService,
-                              SharingPeerFactory sharingPeerFactory) {
-    this.myTorrentsStorageProvider = torrentsStorageProvider;
-    this.myPeersStorageProvider = peersStorageProvider;
-    this.myExecutorService = executorService;
-    this.next = new ShutdownProcessor();
-    this.mySharingPeerFactory = sharingPeerFactory;
+  public StateChannelListener(Context context) {
+    myContext = context;
+    myNext = new ShutdownProcessor();
   }
 
   @Override
   public void onNewDataAvailable(SocketChannel socketChannel) throws IOException {
-    this.next = this.next.processAndGetNext(socketChannel);
+    this.myNext = this.myNext.processAndGetNext(socketChannel);
   }
 
   @Override
   public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
-    this.next = new HandshakeReceiver(
-            myPeersStorageProvider,
-            myTorrentsStorageProvider,
-            myExecutorService,
-            mySharingPeerFactory,
+    this.myNext = new HandshakeReceiver(
+            myContext,
             socketChannel.socket().getInetAddress().getHostAddress(),
             socketChannel.socket().getPort(),
             false);
@@ -46,6 +31,6 @@ public class StateChannelListener implements ConnectionListener {
 
   @Override
   public void onError(SocketChannel socketChannel, Throwable ex) throws IOException {
-    this.next = this.next.handleError(socketChannel, ex);
+    this.myNext = this.myNext.handleError(socketChannel, ex);
   }
 }

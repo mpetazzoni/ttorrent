@@ -24,8 +24,8 @@ public class MultiAnnounceRequestProcessor {
   private static final Logger logger =
           LoggerFactory.getLogger(MultiAnnounceRequestProcessor.class);
 
-  public MultiAnnounceRequestProcessor(TrackerRequestProcessor myTrackerRequestProcessor) {
-    this.myTrackerRequestProcessor = myTrackerRequestProcessor;
+  public MultiAnnounceRequestProcessor(TrackerRequestProcessor trackerRequestProcessor) {
+    this.myTrackerRequestProcessor = trackerRequestProcessor;
   }
 
   public void process(final String body, final String url, final String hostAddress, final TrackerRequestProcessor.RequestHandler requestHandler) throws IOException {
@@ -51,13 +51,18 @@ public class MultiAnnounceRequestProcessor {
       });
     }
     if (responseMessages.isEmpty()) {
-      ByteBuffer res = ByteBuffer.allocate(0);
+      ByteBuffer res;
+      Status status;
       try {
         res = HTTPTrackerErrorMessage.craft("").getData();
+        status = Status.BAD_REQUEST;
       } catch (TrackerMessage.MessageValidationException e) {
         logger.warn("Could not craft tracker error message!", e);
+        status = Status.INTERNAL_SERVER_ERROR;
+        res = ByteBuffer.allocate(0);
+
       }
-      requestHandler.serveResponse(Status.BAD_REQUEST.getCode(), "", res);
+      requestHandler.serveResponse(status.getCode(), "", res);
       return;
     }
     final ByteArrayOutputStream out = new ByteArrayOutputStream();

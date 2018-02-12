@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure">Torrent meta-info file structure specification</a>
  */
-public class Torrent extends Observable implements TorrentInfo {
+public class Torrent extends Observable implements TorrentInfo, AnnounceableTorrent {
 
 	private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
 
@@ -441,12 +441,20 @@ public class Torrent extends Observable implements TorrentInfo {
 	/**
 	 * Return the trackers for this torrent.
 	 */
-	public List<List<URI>> getAnnounceList() {
-		return this.trackers;
+	public List<List<String>> getAnnounceList() {
+		List<List<String>> result = new ArrayList<List<String>>();
+		for (List<URI> uris : trackers) {
+			List<String> list = new ArrayList<String>();
+			for (URI uri : uris) {
+				list.add(uri.toString());
+			}
+			result.add(list);
+		}
+		return result;
 	}
 
-  public URI getAnnounce(){
-    return trackers.get(0).get(0);
+  public String getAnnounce(){
+    return trackers.get(0).get(0).toString();
   }
 
 	/**

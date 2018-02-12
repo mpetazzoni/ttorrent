@@ -1,6 +1,7 @@
 package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.Utils;
+import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.common.MockTimeService;
 import org.apache.log4j.*;
 import org.testng.annotations.AfterMethod;
@@ -28,27 +29,25 @@ public class ConnectionManagerTest {
   private ConnectionManager myConnectionManager;
   private ExecutorService myExecutorService;
   private ConnectionListener connectionListener;
+  private Context myContext;
 
   public ConnectionManagerTest() {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
+    Logger.getRootLogger().setLevel(Level.ALL);
   }
 
   @BeforeMethod
   public void setUp() throws Exception {
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
+    myContext = mock(Context.class);
     myExecutorService = Executors.newSingleThreadExecutor();
-    ChannelListenerFactory channelListenerFactory = new ChannelListenerFactory() {
-      @Override
-      public ConnectionListener newChannelListener() {
-        return connectionListener;
-      }
-    };
+    when(myContext.getExecutor()).thenReturn(myExecutorService);
     NewConnectionAllower newConnectionAllower = mock(NewConnectionAllower.class);
     when(newConnectionAllower.isNewConnectionAllowed()).thenReturn(true);
-    myConnectionManager = new ConnectionManager(channelListenerFactory,
-            myExecutorService,
+    myConnectionManager = new ConnectionManager(
+            myContext,
             new MockTimeService(),
             newConnectionAllower,
             newConnectionAllower,
@@ -102,6 +101,8 @@ public class ConnectionManagerTest {
 
       }
     };
+
+    when(myContext.newChannelListener()).thenReturn(connectionListener);
 
     myConnectionManager.initAndRunWorker();
 
