@@ -353,6 +353,7 @@ public class ClientTest {
         es.shutdown();
       }
     };
+    clientList.add(leecher);
     File downloadDir = tempFiles.createTempDir();
     leecher.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
     seeder.start(InetAddress.getLocalHost());
