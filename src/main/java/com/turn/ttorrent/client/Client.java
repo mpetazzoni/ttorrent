@@ -399,11 +399,31 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return t != null && t.isComplete();
   }
 
-  public void downloadUninterruptibly(final SharedTorrent torrent,
+  public void downloadUninterruptibly(final String dotTorrentPath,
+                                      final String downloadDirPath,
+                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
+  }
+
+  public void downloadUninterruptibly(final String dotTorrentPath,
+                                      final String downloadDirPath,
                                       final long idleTimeoutSec,
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    String hash = addTorrent(dotTorrentPath, downloadDirPath);
+
+    SharedTorrent torrent;
+    int timeoutForFoundPeersMs = 10000;
+    long start = System.currentTimeMillis();
+
+    while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
+      Thread.sleep(10);
+    }
+
+    if (torrent == null) {
+      throw new IOException("Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms");
+    }
 
     int seedersCount = torrent.getSeedersCount();
     final long startDownloadAt = System.currentTimeMillis();
@@ -451,36 +471,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       }
       throw new IOException("Unable to download torrent completely - " + errorMsg);
     }
-
-  }
-
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
-  }
-
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long idleTimeoutSec,
-                                      final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath);
-
-    SharedTorrent torrent;
-    int timeoutForFoundPeersMs = 10000;
-    long start = System.currentTimeMillis();
-
-    while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
-      Thread.sleep(10);
-    }
-
-    if (torrent == null) {
-      throw new IOException("Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms");
-    }
-
-    downloadUninterruptibly(torrent, idleTimeoutSec, minSeedersCount, isInterrupted, maxTimeForConnectMs);
   }
 
   public List<SharingPeer> getPeersForTorrent(String torrentHash) {
