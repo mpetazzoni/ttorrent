@@ -124,7 +124,7 @@ public class TrackerRequestProcessor {
 		try {
 			announceRequest = this.parseQuery(uri, hostAddress);
 		} catch (MessageValidationException mve) {
-			LoggerUtils.warnAndDebugDetails(logger, "Unable to parse request message. Request url is ", uri, mve);
+			LoggerUtils.warnAndDebugDetails(logger, "Unable to parse request message. Request url is {}", uri, mve);
       serveError(Status.BAD_REQUEST, mve.getMessage(), requestHandler);
 			return;
 		}
