@@ -45,7 +45,7 @@ public class TorrentsRepository {
       lockFor(hexInfoHash).lock();
       TrackedTorrent oldTorrent = this.myTorrents.putIfAbsent(hexInfoHash, torrent);
       actualTorrent = oldTorrent == null ? torrent : oldTorrent;
-      torrent.update(event, peerId, hexPeerId, ip, port, uploaded, downloaded, left);
+      actualTorrent.update(event, peerId, hexPeerId, ip, port, uploaded, downloaded, left);
     } finally {
       lockFor(hexInfoHash).unlock();
     }
@@ -53,7 +53,7 @@ public class TorrentsRepository {
   }
 
   private ReentrantLock lockFor(String torrentHash) {
-    return myLocks[torrentHash.hashCode() % myLocks.length];
+    return myLocks[Math.abs(torrentHash.hashCode()) % myLocks.length];
   }
 
   public void cleanup(int torrentExpireTimeoutSec) {
