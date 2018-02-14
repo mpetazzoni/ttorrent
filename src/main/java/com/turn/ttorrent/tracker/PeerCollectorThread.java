@@ -1,7 +1,5 @@
 package com.turn.ttorrent.tracker;
 
-import java.util.concurrent.ConcurrentMap;
-
 /**
  * The unfresh peer collector thread.
  *
@@ -12,12 +10,12 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class PeerCollectorThread extends Thread {
 
-  public static final int COLLECTION_FREQUENCY=10;
-  private ConcurrentMap<String, TrackedTorrent> myTorrents;
+  public static final int COLLECTION_FREQUENCY = 10;
+  private final TorrentsRepository myTorrentsRepository;
   private volatile int myTorrentExpireTimeoutSec = 60;
 
-  public PeerCollectorThread(final ConcurrentMap<String, TrackedTorrent> torrents) {
-    myTorrents = torrents;
+  public PeerCollectorThread(TorrentsRepository torrentsRepository) {
+    myTorrentsRepository = torrentsRepository;
   }
 
   public void setTorrentExpireTimeoutSec(int torrentExpireTimeoutSec) {
@@ -27,12 +25,7 @@ public class PeerCollectorThread extends Thread {
   @Override
   public void run() {
     while (!isInterrupted()) {
-      for (TrackedTorrent torrent : myTorrents.values()) {
-        torrent.collectUnfreshPeers(myTorrentExpireTimeoutSec);
-        if (torrent.getPeers().size() == 0){
-          myTorrents.remove(torrent.getHexInfoHash());
-        }
-      }
+      myTorrentsRepository.cleanup(myTorrentExpireTimeoutSec);
       try {
         Thread.sleep(COLLECTION_FREQUENCY * 1000);
       } catch (InterruptedException ie) {

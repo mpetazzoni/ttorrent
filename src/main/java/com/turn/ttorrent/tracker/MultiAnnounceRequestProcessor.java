@@ -43,11 +43,6 @@ public class MultiAnnounceRequestProcessor {
             logger.warn("cannot decode message from byte buffer");
           }
         }
-
-        @Override
-        public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-          return requestHandler.getTorrentsMap();
-        }
       });
     }
     if (responseMessages.isEmpty()) {

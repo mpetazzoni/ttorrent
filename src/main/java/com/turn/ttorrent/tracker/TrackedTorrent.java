@@ -237,7 +237,7 @@ public class TrackedTorrent implements TorrentHash {
 	 * list of returned peers.
 	 * @return A list of peers we can include in an announce response.
 	 */
-	public List<Peer> getSomePeers(TrackedPeer peer) {
+	public List<Peer> getSomePeers(Peer peer) {
 		List<Peer> peers = new LinkedList<Peer>();
 
 		// Extract answerPeers random peers

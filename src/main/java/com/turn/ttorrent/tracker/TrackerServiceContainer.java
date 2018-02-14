@@ -11,7 +11,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author Sergey.Pak
@@ -25,13 +24,11 @@ public class TrackerServiceContainer implements Container {
 
   private TrackerRequestProcessor myRequestProcessor;
   private final MultiAnnounceRequestProcessor myMultiAnnounceRequestProcessor;
-  private ConcurrentMap<String, TrackedTorrent> myTorrents;
 
   public TrackerServiceContainer(final TrackerRequestProcessor requestProcessor,
-                                 final ConcurrentMap<String, TrackedTorrent> torrents) {
+                                 final MultiAnnounceRequestProcessor multiAnnounceRequestProcessor) {
     myRequestProcessor = requestProcessor;
-    myMultiAnnounceRequestProcessor = new MultiAnnounceRequestProcessor(requestProcessor);
-    myTorrents = torrents;
+    myMultiAnnounceRequestProcessor = multiAnnounceRequestProcessor;
   }
 
   /**
@@ -74,7 +71,10 @@ public class TrackerServiceContainer implements Container {
       body.flush();
     } catch (IOException ioe) {
       logger.info("Error while writing response: {}!", ioe.getMessage());
-    } finally {
+
+    } catch (Throwable t) {
+      t.printStackTrace();
+    } finally{
       if (body != null) {
         try {
           body.close();
@@ -99,11 +99,6 @@ public class TrackerServiceContainer implements Container {
         } catch (IOException e) {
           e.printStackTrace();
         }
-      }
-
-      @Override
-      public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-        return myTorrents;
       }
     };
   }

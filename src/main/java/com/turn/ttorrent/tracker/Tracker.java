@@ -58,7 +58,7 @@ public class Tracker {
 	private Connection connection;
 
 	/** The in-memory repository of torrents tracked. */
-	private final ConcurrentMap<String, TrackedTorrent> myTorrents;
+	private final TorrentsRepository myTorrentsRepository;
 
   private PeerCollectorThread myPeerCollectorThread;
 	private boolean stop;
@@ -80,15 +80,21 @@ public class Tracker {
       );
     }
 	public Tracker(int port, String announceURL) throws IOException {
-    this (port, announceURL, new TrackerRequestProcessor(), new ConcurrentHashMap<String, TrackedTorrent>());
-  }
-
-	public Tracker(int port, String announceURL, TrackerRequestProcessor requestProcessor, final ConcurrentMap<String, TrackedTorrent> torrents) throws IOException {
     this.myPort = port;
     this.myAnnounceUrl = announceURL;
-    myTorrents = torrents;
-    this.myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor, myTorrents);
-    myPeerCollectorThread = new PeerCollectorThread(myTorrents);
+    myTorrentsRepository = new TorrentsRepository(10);
+    final TrackerRequestProcessor requestProcessor = new TrackerRequestProcessor(myTorrentsRepository);
+    myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor,
+            new MultiAnnounceRequestProcessor(requestProcessor));
+    myPeerCollectorThread = new PeerCollectorThread(myTorrentsRepository);
+  }
+
+	public Tracker(int port, String announceURL, TrackerRequestProcessor requestProcessor, TorrentsRepository torrentsRepository) throws IOException {
+    this.myPort = port;
+    this.myAnnounceUrl = announceURL;
+    myTorrentsRepository = torrentsRepository;
+    myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor, new MultiAnnounceRequestProcessor(requestProcessor));
+    myPeerCollectorThread = new PeerCollectorThread(myTorrentsRepository);
   }
 
 	/**
@@ -162,7 +168,7 @@ public class Tracker {
     }
 		if (startPeerCleaningThread) {
       if (this.myPeerCollectorThread == null || !this.myPeerCollectorThread.isAlive() || myPeerCollectorThread.getState() != Thread.State.NEW){
-        myPeerCollectorThread = new PeerCollectorThread(myTorrents);
+        myPeerCollectorThread = new PeerCollectorThread(myTorrentsRepository);
       }
 
       this.myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
@@ -215,26 +221,17 @@ public class Tracker {
 	 * contained a torrent with the same hash.
 	 */
 	public synchronized TrackedTorrent announce(TrackedTorrent torrent) {
-		TrackedTorrent existing = this.myTorrents.get(torrent.getHexInfoHash());
+		TrackedTorrent existing = this.myTorrentsRepository.getTorrent(torrent.getHexInfoHash());
 
 		if (existing != null) {
 			logger.warn("Tracker already announced torrent with hash {}.", existing.getHexInfoHash());
 			return existing;
 		}
 
-		this.myTorrents.put(torrent.getHexInfoHash(), torrent);
+		this.myTorrentsRepository.putIfAbsent(torrent.getHexInfoHash(), torrent);
 		logger.info("Registered new torrent with hash {}.", torrent.getHexInfoHash());
 		return torrent;
     }
-
-    /**
-   * Stop announcing the torrent with given hash.
-   * @param info_hash torrent hash
-	 */
-	public synchronized boolean remove(byte[] info_hash) {
-    return info_hash != null &&
-           this.myTorrents.remove(Torrent.byteArrayToHexString(info_hash)) != null;
-  }
 
   /**
      * Set to true to allow this tracker to track external torrents (i.e. those that were not explicitly announced here).
@@ -248,11 +245,11 @@ public class Tracker {
    * @return all tracked torrents.
    */
   public Collection<TrackedTorrent> getTrackedTorrents() {
-    return Collections.unmodifiableCollection(this.myTorrents.values());
+    return Collections.unmodifiableCollection(this.myTorrentsRepository.getTorrents().values());
   }
 
   public TrackedTorrent getTrackedTorrent(String hash){
-    return myTorrents.get(hash);
+    return myTorrentsRepository.getTorrent(hash);
   }
 
   public void setAnnounceInterval(int announceInterval){

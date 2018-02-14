@@ -18,7 +18,6 @@ package com.turn.ttorrent.tracker;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
@@ -32,10 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.URLDecoder;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,14 +76,15 @@ public class TrackerRequestProcessor {
   private boolean myAcceptForeignTorrents=true; //default to true
   private int myAnnounceInterval = 60; //default value
 	private final AddressChecker myAddressChecker;
+	private final TorrentsRepository myTorrentsRepository;
 
 
 	/**
 	 * Create a new TrackerRequestProcessor serving the given torrents.
 	 *
 	 */
-	public TrackerRequestProcessor() {
-		this(new AddressChecker() {
+	public TrackerRequestProcessor(TorrentsRepository torrentsRepository) {
+		this(torrentsRepository, new AddressChecker() {
 			@Override
 			public boolean isBadAddress(String ip) {
 				return false;
@@ -95,7 +92,8 @@ public class TrackerRequestProcessor {
 		});
 	}
 
-	public TrackerRequestProcessor(AddressChecker addressChecker) {
+	public TrackerRequestProcessor(TorrentsRepository torrentsRepository, AddressChecker addressChecker) {
+		myTorrentsRepository = torrentsRepository;
 		myAddressChecker = addressChecker;
 	}
 
@@ -129,70 +127,43 @@ public class TrackerRequestProcessor {
 			return;
 		}
 
-    // The requested torrent must be announced by the tracker if and only if myAcceptForeignTorrents is false
-    final ConcurrentMap<String, TrackedTorrent> torrentsMap = requestHandler.getTorrentsMap();
-    TrackedTorrent torrent = torrentsMap.get(announceRequest.getHexInfoHash());
-    if (!this.myAcceptForeignTorrents && torrent == null) {
-      logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
-      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
-      return;
-    }
-
-    if (torrent == null) {
-      torrent = new TrackedTorrent(announceRequest.getInfoHash());
-      TrackedTorrent oldTorrent = requestHandler.getTorrentsMap().putIfAbsent(torrent.getHexInfoHash(), torrent);
-      if (oldTorrent != null) {
-        torrent = oldTorrent;
-      }
-    }
-
 		AnnounceRequestMessage.RequestEvent event = announceRequest.getEvent();
-		PeerUID peerUID = new PeerUID(new InetSocketAddress(announceRequest.getIp(), announceRequest.getPort()), announceRequest.getHexInfoHash());
 
-		// When no event is specified, it's a periodic update while the client
-		// is operating. If we don't have a peer for this announce, it means
-		// the tracker restarted while the client was running. Consider this
-		// announce request as a 'started' event.
-		if ((event == null ||
-				AnnounceRequestMessage.RequestEvent.NONE.equals(event)) &&
-			torrent.getPeer(peerUID) == null) {
-			event = AnnounceRequestMessage.RequestEvent.STARTED;
+		if (event == null) {
+			event = AnnounceRequestMessage.RequestEvent.NONE;
 		}
+		TrackedTorrent torrent = myTorrentsRepository.getTorrent(announceRequest.getHexInfoHash());
+
+		// The requested torrent must be announced by the tracker if and only if myAcceptForeignTorrents is false
+		if (!this.myAcceptForeignTorrents && torrent == null) {
+			logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
+			serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
+			return;
+		}
+
+		final boolean isSeeder = (event == AnnounceRequestMessage.RequestEvent.COMPLETED)
+						|| (announceRequest.getLeft() == 0);
 
 		if (myAddressChecker.isBadAddress(announceRequest.getIp())) {
-			writeAnnounceResponse(torrent, null, requestHandler);
+			if (torrent == null) {
+				writeEmptyResponse(announceRequest, requestHandler);
+			} else {
+				writeAnnounceResponse(torrent, null, isSeeder, requestHandler);
+			}
 			return;
 		}
 
-    if (event != null && torrent.getPeer(peerUID) == null &&
-  			AnnounceRequestMessage.RequestEvent.STOPPED.equals(event)) {
-      writeAnnounceResponse(torrent, null, requestHandler);
-      return;
-    }
+		final Peer peer = new Peer(announceRequest.getIp(), announceRequest.getPort());
 
-		// If an event other than 'started' is specified and we also haven't
-		// seen the peer on this torrent before, something went wrong. A
-		// previous 'started' announce request should have been made by the
-		// client that would have had us register that peer on the torrent this
-		// request refers to.
-		if (event != null && torrent.getPeer(peerUID) == null &&
-			!(AnnounceRequestMessage.RequestEvent.STARTED.equals(event) ||
-        AnnounceRequestMessage.RequestEvent.COMPLETED.equals(event))) {
-      serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
-			return;
-		}
-
-		// Update the torrent according to the announce event
-		TrackedPeer peer = null;
 		try {
-			peer = torrent.update(event,
-				ByteBuffer.wrap(announceRequest.getPeerId()),
-				announceRequest.getHexPeerId(),
-				announceRequest.getIp(),
-				announceRequest.getPort(),
-				announceRequest.getUploaded(),
-				announceRequest.getDownloaded(),
-				announceRequest.getLeft());
+			torrent = myTorrentsRepository.putIfAbsentAndUpdate(announceRequest.getHexInfoHash(), new TrackedTorrent(announceRequest.getInfoHash()),event,
+							ByteBuffer.wrap(announceRequest.getPeerId()),
+							announceRequest.getHexPeerId(),
+							announceRequest.getIp(),
+							announceRequest.getPort(),
+							announceRequest.getUploaded(),
+							announceRequest.getDownloaded(),
+							announceRequest.getLeft());
 		} catch (IllegalArgumentException iae) {
 			LoggerUtils.warnAndDebugDetails(logger, "Unable to update peer torrent. Request url is {}", uri, iae);
       serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.INVALID_EVENT, requestHandler);
@@ -200,7 +171,22 @@ public class TrackerRequestProcessor {
 		}
 
 		// Craft and output the answer
-    writeAnnounceResponse(torrent, peer, requestHandler);
+    writeAnnounceResponse(torrent, peer, isSeeder, requestHandler);
+	}
+
+	private void writeEmptyResponse(HTTPAnnounceRequestMessage announceRequest, RequestHandler requestHandler) throws IOException {
+		HTTPAnnounceResponseMessage announceResponse;
+		try {
+			announceResponse = HTTPAnnounceResponseMessage.craft(
+							myAnnounceInterval,
+							0,
+							0,
+							Collections.<Peer>emptyList(),
+							announceRequest.getHexInfoHash());
+			requestHandler.serveResponse(Status.OK.getCode(), Status.OK.getDescription(), announceResponse.getData());
+		} catch (Exception e) {
+			serveError(Status.INTERNAL_SERVER_ERROR, e.getMessage(), requestHandler);
+		}
 	}
 
 	public void setAnnounceInterval(int announceInterval) {
@@ -211,10 +197,9 @@ public class TrackerRequestProcessor {
     return myAnnounceInterval;
   }
 
-  private void writeAnnounceResponse(TrackedTorrent torrent, TrackedPeer peer, RequestHandler requestHandler) throws IOException {
+  private void writeAnnounceResponse(TrackedTorrent torrent, Peer peer, boolean isSeeder, RequestHandler requestHandler) throws IOException {
 		HTTPAnnounceResponseMessage announceResponse = null;
 		try {
-      final boolean isSeeder = peer != null && peer.isCompleted();
 			announceResponse = HTTPAnnounceResponseMessage.craft(
 				isSeeder ? SEEDER_ANNOUNCE_INTERVAL : myAnnounceInterval,
         torrent.seeders(),
@@ -342,7 +327,5 @@ public class TrackerRequestProcessor {
 
   public interface RequestHandler {
     void serveResponse(int code, String description, ByteBuffer responseData);
-
-    ConcurrentMap<String, TrackedTorrent> getTorrentsMap();
   }
 }
