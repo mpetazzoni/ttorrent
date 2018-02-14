@@ -13,18 +13,4 @@ public class Utils {
     final String levelStr = System.getProperty(LOG_PROPERTY_KEY);
     return Level.toLevel(levelStr, Level.INFO);
   }
-
-  public static void waitForPeers(final int numPeers, final Collection<TrackedTorrent> torrents) {
-    new WaitFor() {
-      @Override
-      protected boolean condition() {
-        for (TrackedTorrent tt : torrents) {
-          if (tt.getPeers().size() == numPeers) return true;
-        }
-
-        return false;
-      }
-    };
-  }
-
 }
