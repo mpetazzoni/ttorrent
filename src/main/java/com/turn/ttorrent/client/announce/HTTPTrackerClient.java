@@ -114,7 +114,7 @@ public class HTTPTrackerClient extends TrackerClient {
         body.append(encodeAnnounceToURL(event, torrentInfo, address)).append("\n");
       }
       final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
-      String bodyStr = body.toString().substring(0, body.length() - 1);
+      String bodyStr = body.substring(0, body.length() - 1);
       sendAnnounce(trackerUrl, bodyStr, "POST", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
