@@ -86,8 +86,8 @@ public class Tracker {
   }
 
   public Tracker(int port, String announceURL) throws IOException {
-    this.myPort = port;
-    this.myAnnounceUrl = announceURL;
+    myPort = port;
+    myAnnounceUrl = announceURL;
     myTorrentsRepository = new TorrentsRepository(10);
     final TrackerRequestProcessor requestProcessor = new TrackerRequestProcessor(myTorrentsRepository);
     myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor,
@@ -96,8 +96,8 @@ public class Tracker {
   }
 
   public Tracker(int port, String announceURL, TrackerRequestProcessor requestProcessor, TorrentsRepository torrentsRepository) throws IOException {
-    this.myPort = port;
-    this.myAnnounceUrl = announceURL;
+    myPort = port;
+    myAnnounceUrl = announceURL;
     myTorrentsRepository = torrentsRepository;
     myTrackerServiceContainer = new TrackerServiceContainer(requestProcessor, new MultiAnnounceRequestProcessor(requestProcessor));
     myPeerCollectorThread = new PeerCollectorThread(myTorrentsRepository);
@@ -182,12 +182,12 @@ public class Tracker {
       return;
     }
     if (startPeerCleaningThread) {
-      if (this.myPeerCollectorThread == null || !this.myPeerCollectorThread.isAlive() || myPeerCollectorThread.getState() != Thread.State.NEW) {
+      if (myPeerCollectorThread == null || !myPeerCollectorThread.isAlive() || myPeerCollectorThread.getState() != Thread.State.NEW) {
         myPeerCollectorThread = new PeerCollectorThread(myTorrentsRepository);
       }
 
-      this.myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
-      this.myPeerCollectorThread.start();
+      myPeerCollectorThread.setName("peer-peerCollectorThread:" + myPort);
+      myPeerCollectorThread.start();
     }
   }
 
@@ -209,10 +209,10 @@ public class Tracker {
       logger.error("Could not stop the tracker: {}!", ioe.getMessage());
     }
 
-    if (this.myPeerCollectorThread != null && this.myPeerCollectorThread.isAlive()) {
-      this.myPeerCollectorThread.interrupt();
+    if (myPeerCollectorThread != null && myPeerCollectorThread.isAlive()) {
+      myPeerCollectorThread.interrupt();
       try {
-        this.myPeerCollectorThread.join();
+        myPeerCollectorThread.join();
       } catch (InterruptedException e) {
         //
       }
@@ -236,14 +236,14 @@ public class Tracker {
    * contained a torrent with the same hash.
    */
   public synchronized TrackedTorrent announce(TrackedTorrent torrent) {
-    TrackedTorrent existing = this.myTorrentsRepository.getTorrent(torrent.getHexInfoHash());
+    TrackedTorrent existing = myTorrentsRepository.getTorrent(torrent.getHexInfoHash());
 
     if (existing != null) {
       logger.warn("Tracker already announced torrent with hash {}.", existing.getHexInfoHash());
       return existing;
     }
 
-    this.myTorrentsRepository.putIfAbsent(torrent.getHexInfoHash(), torrent);
+    myTorrentsRepository.putIfAbsent(torrent.getHexInfoHash(), torrent);
     logger.info("Registered new torrent with hash {}.", torrent.getHexInfoHash());
     return torrent;
   }
@@ -254,14 +254,14 @@ public class Tracker {
    * @param acceptForeignTorrents true to accept foreign torrents (false otherwise)
    */
   public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {
-    this.myTrackerServiceContainer.setAcceptForeignTorrents(acceptForeignTorrents);
+    myTrackerServiceContainer.setAcceptForeignTorrents(acceptForeignTorrents);
   }
 
   /**
    * @return all tracked torrents.
    */
   public Collection<TrackedTorrent> getTrackedTorrents() {
-    return Collections.unmodifiableCollection(this.myTorrentsRepository.getTorrents().values());
+    return Collections.unmodifiableCollection(myTorrentsRepository.getTorrents().values());
   }
 
   public TrackedTorrent getTrackedTorrent(String hash) {

@@ -132,7 +132,7 @@ public class TrackerRequestProcessor {
     TrackedTorrent torrent = myTorrentsRepository.getTorrent(announceRequest.getHexInfoHash());
 
     // The requested torrent must be announced by the tracker if and only if myAcceptForeignTorrents is false
-    if (!this.myAcceptForeignTorrents && torrent == null) {
+    if (!myAcceptForeignTorrents && torrent == null) {
       logger.warn("Requested torrent hash was: {}", announceRequest.getHexInfoHash());
       serveError(Status.BAD_REQUEST, ErrorMessage.FailureReason.UNKNOWN_TORRENT, requestHandler);
       return;
@@ -319,7 +319,7 @@ public class TrackerRequestProcessor {
   }
 
   public void setAcceptForeignTorrents(boolean acceptForeignTorrents) {
-    this.myAcceptForeignTorrents = acceptForeignTorrents;
+    myAcceptForeignTorrents = acceptForeignTorrents;
   }
 
   public interface RequestHandler {

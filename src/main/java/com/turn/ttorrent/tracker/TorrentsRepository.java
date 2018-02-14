@@ -25,7 +25,7 @@ public class TorrentsRepository {
     for (int i = 0; i < myLocks.length; i++) {
       myLocks[i] = new ReentrantLock();
     }
-    this.myTorrents = new ConcurrentHashMap<String, TrackedTorrent>();
+    myTorrents = new ConcurrentHashMap<String, TrackedTorrent>();
   }
 
   public TrackedTorrent getTorrent(String hexInfoHash) {
@@ -43,7 +43,7 @@ public class TorrentsRepository {
     TrackedTorrent actualTorrent;
     try {
       lockFor(hexInfoHash).lock();
-      TrackedTorrent oldTorrent = this.myTorrents.putIfAbsent(hexInfoHash, torrent);
+      TrackedTorrent oldTorrent = myTorrents.putIfAbsent(hexInfoHash, torrent);
       actualTorrent = oldTorrent == null ? torrent : oldTorrent;
       actualTorrent.update(event, peerId, hexPeerId, ip, port, uploaded, downloaded, left);
     } finally {
