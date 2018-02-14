@@ -183,7 +183,7 @@ public class ClientTest {
     this.tracker.setAcceptForeignTorrents(true);
     assertEquals(0, this.tracker.getTrackedTorrents().size());
 
-    int numSeeders = 5;
+    final int numSeeders = 5;
     List<Client> seeders = new ArrayList<Client>();
     for (int i = 0; i < numSeeders; i++) {
       seeders.add(createClient());
@@ -202,7 +202,16 @@ public class ClientTest {
         client.start(InetAddress.getLocalHost());
       }
 
-      Utils.waitForPeers(numSeeders, tracker.getTrackedTorrents());
+      new WaitFor() {
+        @Override
+        protected boolean condition() {
+          for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
+            if (tt.getPeers().size() == numSeeders) return true;
+          }
+
+          return false;
+        }
+      };
 
       Collection<TrackedTorrent> torrents = this.tracker.getTrackedTorrents();
       assertEquals(torrents.size(), 1);
@@ -260,7 +269,15 @@ public class ClientTest {
 
       createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
       String baseMD5 = getFileMD5(baseFile, md5);
-      Client firstClient = clientsList.get(0);
+      final Client firstClient = clientsList.get(0);
+
+      new WaitFor(10*1000) {
+        @Override
+        protected boolean condition() {
+          return firstClient.getTorrentsStorage().activeTorrents().size() >= 1;
+        }
+      };
+
       final SharedTorrent torrent = firstClient.getTorrents().iterator().next();
       final File file = new File(torrent.getParentFile(), torrent.getFilenames().get(0));
       final int oldByte;
