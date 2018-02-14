@@ -59,7 +59,7 @@ public class MultiAnnounceRequestProcessorTest {
             "&port={port}" +
             "&downloaded=1234" +
             "&left=0" +
-            "&event=completed";
+            "&event=started";
 
     final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
     StringBuilder requestString = new StringBuilder();
@@ -78,6 +78,7 @@ public class MultiAnnounceRequestProcessorTest {
 
     final BEValue bdecode = BDecoder.bdecode(inputStream);
 
+    assertEquals(tracker.getTrackedTorrents().size(), 5);
     assertEquals(bdecode.getList().size(), 5);
 
     for (BEValue beValue : bdecode.getList()) {
