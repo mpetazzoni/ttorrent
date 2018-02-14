@@ -17,13 +17,14 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.SystemTimeService;
+import com.turn.ttorrent.common.TimeService;
 import com.turn.ttorrent.common.Torrent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,8 +51,7 @@ public class TrackedPeer extends Peer {
   private static final Logger logger =
           LoggerFactory.getLogger(TrackedPeer.class);
 
-  private static final int FRESH_TIME_SECONDS = 120;
-
+  private final TimeService myTimeService;
   private long uploaded;
   private long downloaded;
   private long left;
@@ -89,7 +89,7 @@ public class TrackedPeer extends Peer {
   }
 
   private PeerState state;
-  private Date lastAnnounce;
+  private long lastAnnounce;
 
   /**
    * Instantiate a new tracked peer for the given torrent.
@@ -99,14 +99,19 @@ public class TrackedPeer extends Peer {
    * @param port    The peer's port.
    * @param peerId  The byte-encoded peer ID.
    */
-  public TrackedPeer(TrackedTorrent torrent, String ip, int port,
-                     ByteBuffer peerId) {
+  public TrackedPeer(TrackedTorrent torrent, String ip, int port, ByteBuffer peerId) {
+    this(torrent, ip, port, peerId, new SystemTimeService());
+  }
+
+  TrackedPeer(TrackedTorrent torrent, String ip, int port,
+              ByteBuffer peerId, TimeService timeService) {
     super(ip, port, peerId);
+    myTimeService = timeService;
     this.torrent = torrent;
 
     // Instantiated peers start in the UNKNOWN state.
     this.state = PeerState.UNKNOWN;
-    this.lastAnnounce = null;
+    this.lastAnnounce = myTimeService.now();
 
     this.uploaded = 0;
     this.downloaded = 0;
@@ -142,7 +147,7 @@ public class TrackedPeer extends Peer {
     }
 
     this.state = state;
-    this.lastAnnounce = new Date();
+    this.lastAnnounce = myTimeService.now();
     this.uploaded = uploaded;
     this.downloaded = downloaded;
     this.left = left;
@@ -187,9 +192,7 @@ public class TrackedPeer extends Peer {
    * </p>
    */
   public boolean isFresh(int expireTimeoutSec) {
-    return (this.lastAnnounce != null &&
-            (this.lastAnnounce.getTime() + (expireTimeoutSec * 1000) >
-                    new Date().getTime()));
+    return this.lastAnnounce + expireTimeoutSec * 1000 > myTimeService.now();
   }
 
   /**
