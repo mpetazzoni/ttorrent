@@ -2,7 +2,7 @@ package com.turn.ttorrent.tracker;
 
 /**
  * The unfresh peer collector thread.
- *
+ * <p>
  * <p>
  * Every PEER_COLLECTION_FREQUENCY_SECONDS, this thread will collect
  * unfresh peers from all announced torrents.

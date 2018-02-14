@@ -15,8 +15,8 @@ import java.nio.channels.WritableByteChannel;
 
 /**
  * @author Sergey.Pak
- *         Date: 8/12/13
- *         Time: 8:25 PM
+ * Date: 8/12/13
+ * Time: 8:25 PM
  */
 public class TrackerServiceContainer implements Container {
 
@@ -74,7 +74,7 @@ public class TrackerServiceContainer implements Container {
       logger.info("Error while writing response: {}!", ioe.getMessage());
     } catch (Throwable t) {
       LoggerUtils.errorAndDebugDetails(logger, "error in processing request {}", request, t);
-    } finally{
+    } finally {
       if (body != null) {
         try {
           body.close();
@@ -107,7 +107,7 @@ public class TrackerServiceContainer implements Container {
     myRequestProcessor.setAcceptForeignTorrents(acceptForeignTorrents);
   }
 
-  public void setAnnounceInterval(int announceInterval){
+  public void setAnnounceInterval(int announceInterval) {
     myRequestProcessor.setAnnounceInterval(announceInterval);
   }
 }
