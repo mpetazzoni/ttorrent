@@ -90,12 +90,6 @@ public class MultiAnnounceRequestProcessorTest {
     }
   }
 
-  private void parseMessageAndAdd(List<HTTPTrackerMessage> messages, byte[] originArray, int from, int to) throws IOException, TrackerMessage.MessageValidationException {
-    final byte[] buf = Arrays.copyOfRange(originArray, from, to);
-    ByteArrayInputStream bais = new ByteArrayInputStream(buf);
-    messages.add(HTTPTrackerMessage.parse(bais));
-  }
-
   private String getUrlFromTemplate(String template, String hash, String ip, int port) {
     return template.replace("{hash}", hash).replace("{ip}", ip).replace("{port}", String.valueOf(port));
   }
