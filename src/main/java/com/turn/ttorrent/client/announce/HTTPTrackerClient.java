@@ -114,17 +114,25 @@ public class HTTPTrackerClient extends TrackerClient {
         body.append(encodeAnnounceToURL(event, torrentInfo, address)).append("\n");
       }
       final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
-      String bodyStr = body.substring(0, body.length() - 1);
+      final String bodyStr = body.substring(0, body.length() - 1);
       sendAnnounce(trackerUrl, bodyStr, "POST", new ResponseParser() {
         @Override
         public void parse(InputStream inputStream) throws IOException, MessageValidationException {
-          final List<BEValue> list = BDecoder.bdecode(inputStream).getList();
+          final BEValue bdecode = BDecoder.bdecode(inputStream);
+          if (bdecode == null) {
+            logger.info("tracker send bad response for multi announce message. POST body is:");
+            logger.info(bodyStr);
+            return;
+          }
+          final List<BEValue> list = bdecode.getList();
           for (BEValue value : list) {
             responsesForCurrentIp.add(HTTPTrackerMessage.parse(value));
           }
         }
       });
-      trackerResponses.add(responsesForCurrentIp);
+      if (!responsesForCurrentIp.isEmpty()) {
+        trackerResponses.add(responsesForCurrentIp);
+      }
     }
     // we process only first request:
     if (trackerResponses.size() > 0) {
