@@ -24,6 +24,7 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,9 +160,19 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
     }
 
-    this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
+    forceAnnounceAndLogError(torrent, finished ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
+  }
+
+  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, TrackerMessage.AnnounceRequestMessage.RequestEvent event,
+                                        String dotTorrentFilePath) {
+    try {
+      this.announce.forceAnnounce(torrent, this, event);
+    } catch (IOException e) {
+      logger.warn("unable to force announce torrent {}. Dot torrent path is {}", torrent.getHexInfoHash(), dotTorrentFilePath);
+      logger.debug("", e);
+    }
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
@@ -175,15 +186,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     } else {
       logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
-    final AnnounceableFileTorrent announceableFileTorrent = torrentsPair.getAnnounceableFileTorrent();
-    if (announceableFileTorrent == null) {
-      logger.info("Announceable torrent {} not found in storage on removing torrent", torrentHash.getHexInfoHash());
-    }
-    try {
-      this.announce.forceAnnounce(announceableFileTorrent, this, STOPPED);
-    } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash.getHexInfoHash(), e);
-    }
+    sendStopEvent(torrentsPair.getAnnounceableFileTorrent(), torrentHash.getHexInfoHash());
   }
 
   public void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
@@ -193,16 +196,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       sharedTorrent.setClientState(ClientState.DONE);
       sharedTorrent.delete();
     }
-    final AnnounceableFileTorrent announceableFileTorrent = torrentsPair.getAnnounceableFileTorrent();
-    if (announceableFileTorrent != null) {
-      try {
-        this.announce.forceAnnounce(announceableFileTorrent, this, STOPPED);
-      } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash, e);
-      }
-    } else {
+    sendStopEvent(torrentsPair.getAnnounceableFileTorrent(), torrentHash);
+  }
+
+  private void sendStopEvent(AnnounceableFileTorrent announceableFileTorrent, String torrentHash) {
+    if (announceableFileTorrent == null) {
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
+      return;
     }
+    forceAnnounceAndLogError(announceableFileTorrent, STOPPED, announceableFileTorrent.getDotTorrentFilePath());
   }
 
   public void setAnnounceInterval(final int announceInterval) {
