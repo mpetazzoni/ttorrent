@@ -130,7 +130,13 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     this.download = new Rate();
     this.upload = new Rate();
     this.setTorrentHash(torrent.getHexInfoHash());
-    this.reset();
+    this.choking = true;
+    this.interesting = false;
+    this.choked = true;
+    this.interested = false;
+    this.myRequestedPieces.clear();
+    this.myRequests.clear();
+    this.downloading = false;
   }
 
   public Rate getDLRate() {
@@ -139,26 +145,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   public Rate getULRate() {
     return this.upload;
-  }
-
-  /**
-   * Reset the peer state.
-   * <p/>
-   * <p>
-   * Initially, peers are considered choked, choking, and neither interested
-   * nor interesting.
-   * </p>
-   */
-  public void reset() {
-    synchronized (this) {
-      this.choking = true;
-      this.interesting = false;
-      this.choked = true;
-      this.interested = false;
-      this.myRequestedPieces.clear();
-      this.myRequests.clear();
-      this.downloading = false;
-    }
   }
 
   /**
@@ -290,7 +276,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
 
     this.firePeerDisconnected();
-    reset();
     this.afterPeerDisconnected();
   }
 
