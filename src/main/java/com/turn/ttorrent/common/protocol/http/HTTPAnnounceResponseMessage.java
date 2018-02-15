@@ -29,10 +29,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 /**
@@ -215,7 +212,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
       data.put(ip);
       data.putShort((short) peer.getPort());
     }
-    response.put("peers", new BEValue(data.array()));
+    response.put("peers", new BEValue(Arrays.copyOf(data.array(), data.position())));
 
     return new HTTPAnnounceResponseMessage(
             BEncoder.bencode(response),
