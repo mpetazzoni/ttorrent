@@ -59,7 +59,7 @@ public class MultiAnnounceRequestProcessorTest {
             "&port={port}" +
             "&downloaded=1234" +
             "&left=0" +
-            "&event=completed";
+            "&event=started";
 
     final HttpURLConnection connection = (HttpURLConnection) url.openConnection();
     StringBuilder requestString = new StringBuilder();
@@ -78,6 +78,7 @@ public class MultiAnnounceRequestProcessorTest {
 
     final BEValue bdecode = BDecoder.bdecode(inputStream);
 
+    assertEquals(tracker.getTrackedTorrents().size(), 5);
     assertEquals(bdecode.getList().size(), 5);
 
     for (BEValue beValue : bdecode.getList()) {
@@ -87,12 +88,6 @@ public class MultiAnnounceRequestProcessorTest {
       assertEquals(1, responseMessage.getComplete());
       assertEquals(0, responseMessage.getIncomplete());
     }
-  }
-
-  private void parseMessageAndAdd(List<HTTPTrackerMessage> messages, byte[] originArray, int from, int to) throws IOException, TrackerMessage.MessageValidationException {
-    final byte[] buf = Arrays.copyOfRange(originArray, from, to);
-    ByteArrayInputStream bais = new ByteArrayInputStream(buf);
-    messages.add(HTTPTrackerMessage.parse(bais));
   }
 
   private String getUrlFromTemplate(String template, String hash, String ip, int port) {

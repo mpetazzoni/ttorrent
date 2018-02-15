@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MultiAnnounceRequestProcessor {
@@ -25,7 +24,7 @@ public class MultiAnnounceRequestProcessor {
           LoggerFactory.getLogger(MultiAnnounceRequestProcessor.class);
 
   public MultiAnnounceRequestProcessor(TrackerRequestProcessor trackerRequestProcessor) {
-    this.myTrackerRequestProcessor = trackerRequestProcessor;
+    myTrackerRequestProcessor = trackerRequestProcessor;
   }
 
   public void process(final String body, final String url, final String hostAddress, final TrackerRequestProcessor.RequestHandler requestHandler) throws IOException {
@@ -42,11 +41,6 @@ public class MultiAnnounceRequestProcessor {
           } catch (IOException e) {
             logger.warn("cannot decode message from byte buffer");
           }
-        }
-
-        @Override
-        public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-          return requestHandler.getTorrentsMap();
         }
       });
     }

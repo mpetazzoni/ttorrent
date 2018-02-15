@@ -82,10 +82,14 @@ public class HTTPTrackerClient extends TrackerClient {
 
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
     for (final Peer address : adresses) {
-      URL target = encodeAnnounceToURL(event, torrentInfo, address);
+      final URL target = encodeAnnounceToURL(event, torrentInfo, address);
       sendAnnounce(target, "GET", new ResponseParser() {
         @Override
-        public void parse(InputStream inputStream) throws IOException, MessageValidationException {
+        public void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException {
+          if (responseCode != 200) {
+            logger.info("received not http 200 code from tracker for request " + target);
+            return;
+          }
           trackerResponses.add(HTTPTrackerMessage.parse(inputStream));
         }
       });
@@ -114,17 +118,32 @@ public class HTTPTrackerClient extends TrackerClient {
         body.append(encodeAnnounceToURL(event, torrentInfo, address)).append("\n");
       }
       final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
-      String bodyStr = body.toString().substring(0, body.length() - 1);
+      final String bodyStr = body.substring(0, body.length() - 1);
       sendAnnounce(trackerUrl, bodyStr, "POST", new ResponseParser() {
         @Override
-        public void parse(InputStream inputStream) throws IOException, MessageValidationException {
-          final List<BEValue> list = BDecoder.bdecode(inputStream).getList();
+        public void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException {
+
+          if (responseCode != 200) {
+            logger.info("received not 200 code from tracker for multi announce request. POST body is:");
+            logger.info(bodyStr);
+            return;
+          }
+
+          final BEValue bdecode = BDecoder.bdecode(inputStream);
+          if (bdecode == null) {
+            logger.info("tracker send bad response for multi announce message. POST body is:");
+            logger.info(bodyStr);
+            return;
+          }
+          final List<BEValue> list = bdecode.getList();
           for (BEValue value : list) {
             responsesForCurrentIp.add(HTTPTrackerMessage.parse(value));
           }
         }
       });
-      trackerResponses.add(responsesForCurrentIp);
+      if (!responsesForCurrentIp.isEmpty()) {
+        trackerResponses.add(responsesForCurrentIp);
+      }
     }
     // we process only first request:
     if (trackerResponses.size() > 0) {
@@ -189,7 +208,7 @@ public class HTTPTrackerClient extends TrackerClient {
     }
 
     try {
-      parser.parse(in);
+      parser.parse(in, conn.getResponseCode());
     } catch (IOException ioe) {
       throw new AnnounceException("Error reading tracker response!", ioe);
     } catch (MessageValidationException mve) {
@@ -303,7 +322,7 @@ public class HTTPTrackerClient extends TrackerClient {
 
   private interface ResponseParser {
 
-    void parse(InputStream inputStream) throws IOException, MessageValidationException;
+    void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException;
 
   }
 

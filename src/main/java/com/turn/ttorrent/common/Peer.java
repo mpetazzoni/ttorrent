@@ -179,7 +179,9 @@ public class Peer {
 	 * Returns a binary representation of the peer's IP.
 	 */
 	public byte[] getRawIp() {
-		return this.address.getAddress().getAddress();
+		final InetAddress address = this.address.getAddress();
+		if (address == null) return null;
+		return address.getAddress();
 	}
 
 

@@ -1,5 +1,6 @@
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.common.LoggerUtils;
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
 import org.simpleframework.http.core.Container;
@@ -11,12 +12,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author Sergey.Pak
- *         Date: 8/12/13
- *         Time: 8:25 PM
+ * Date: 8/12/13
+ * Time: 8:25 PM
  */
 public class TrackerServiceContainer implements Container {
 
@@ -25,13 +25,11 @@ public class TrackerServiceContainer implements Container {
 
   private TrackerRequestProcessor myRequestProcessor;
   private final MultiAnnounceRequestProcessor myMultiAnnounceRequestProcessor;
-  private ConcurrentMap<String, TrackedTorrent> myTorrents;
 
   public TrackerServiceContainer(final TrackerRequestProcessor requestProcessor,
-                                 final ConcurrentMap<String, TrackedTorrent> torrents) {
+                                 final MultiAnnounceRequestProcessor multiAnnounceRequestProcessor) {
     myRequestProcessor = requestProcessor;
-    myMultiAnnounceRequestProcessor = new MultiAnnounceRequestProcessor(requestProcessor);
-    myTorrents = torrents;
+    myMultiAnnounceRequestProcessor = multiAnnounceRequestProcessor;
   }
 
   /**
@@ -74,6 +72,8 @@ public class TrackerServiceContainer implements Container {
       body.flush();
     } catch (IOException ioe) {
       logger.info("Error while writing response: {}!", ioe.getMessage());
+    } catch (Throwable t) {
+      LoggerUtils.errorAndDebugDetails(logger, "error in processing request {}", request, t);
     } finally {
       if (body != null) {
         try {
@@ -100,11 +100,6 @@ public class TrackerServiceContainer implements Container {
           e.printStackTrace();
         }
       }
-
-      @Override
-      public ConcurrentMap<String, TrackedTorrent> getTorrentsMap() {
-        return myTorrents;
-      }
     };
   }
 
@@ -112,7 +107,7 @@ public class TrackerServiceContainer implements Container {
     myRequestProcessor.setAcceptForeignTorrents(acceptForeignTorrents);
   }
 
-  public void setAnnounceInterval(int announceInterval){
+  public void setAnnounceInterval(int announceInterval) {
     myRequestProcessor.setAnnounceInterval(announceInterval);
   }
 }

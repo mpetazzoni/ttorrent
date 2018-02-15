@@ -187,7 +187,16 @@ public class TrackerTest {
     try {
       leech.start(InetAddress.getLocalHost());
 
-      Utils.waitForPeers(1, tracker.getTrackedTorrents());
+      new WaitFor() {
+        @Override
+        protected boolean condition() {
+          for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
+            if (tt.getPeers().size() == 1) return true;
+          }
+
+          return false;
+        }
+      };
 
       Collection<TrackedTorrent> trackedTorrents = this.tracker.getTrackedTorrents();
       assertEquals(1, trackedTorrents.size());

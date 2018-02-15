@@ -24,6 +24,7 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,38 +160,51 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
     }
 
-    this.announce.forceAnnounce(torrent, this, finished ? COMPLETED : STARTED);
+    forceAnnounceAndLogError(torrent, finished ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
 
+  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, TrackerMessage.AnnounceRequestMessage.RequestEvent event,
+                                        String dotTorrentFilePath) {
+    try {
+      this.announce.forceAnnounce(torrent, this, event);
+    } catch (IOException e) {
+      logger.warn("unable to force announce torrent {}. Dot torrent path is {}", torrent.getHexInfoHash(), dotTorrentFilePath);
+      logger.debug("", e);
+    }
+  }
+
   public void removeTorrent(TorrentHash torrentHash) {
     logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash.getHexInfoHash());
+    final TorrentsPair torrentsPair = torrentsStorage.removeActiveAndAnnounceableTorrent(torrentHash.getHexInfoHash());
 
-    SharedTorrent torrent = this.torrentsStorage.remove(torrentHash.getHexInfoHash());
+    SharedTorrent torrent = torrentsPair.getSharedTorrent();
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
     } else {
       logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
-    try {
-      this.announce.forceAnnounce(announceableTorrent, this, STOPPED);
-    } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrentHash.getHexInfoHash(), e);
-    }
+    sendStopEvent(torrentsPair.getAnnounceableFileTorrent(), torrentHash.getHexInfoHash());
   }
 
-  public void removeAndDeleteTorrent(SharedTorrent torrent) {
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrent.getHexInfoHash());
-    torrent.setClientState(ClientState.DONE);
-    torrent.delete();
-    try {
-      this.announce.forceAnnounce(announceableTorrent, this, STOPPED);
-    } catch (IOException e) {
-      LoggerUtils.warnAndDebugDetails(logger, "can not send force stop announce event on delete torrent {}", torrent.getHexInfoHash(), e);
+  public void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
+    final TorrentsPair torrentsPair = torrentsStorage.removeActiveAndAnnounceableTorrent(torrentHash);
+    final SharedTorrent sharedTorrent = torrentsPair.getSharedTorrent() == null ? torrent : torrentsPair.getSharedTorrent();
+    if (sharedTorrent != null) {
+      sharedTorrent.setClientState(ClientState.DONE);
+      sharedTorrent.delete();
     }
+    sendStopEvent(torrentsPair.getAnnounceableFileTorrent(), torrentHash);
+  }
+
+  private void sendStopEvent(AnnounceableFileTorrent announceableFileTorrent, String torrentHash) {
+    if (announceableFileTorrent == null) {
+      logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
+      return;
+    }
+    forceAnnounceAndLogError(announceableFileTorrent, STOPPED, announceableFileTorrent.getDotTorrentFilePath());
   }
 
   public void setAnnounceInterval(final int announceInterval) {
@@ -421,43 +435,45 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       Thread.sleep(10);
     }
 
-    if (torrent == null) {
-      throw new IOException("Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms");
-    }
-
-    int seedersCount = torrent.getSeedersCount();
-    final long startDownloadAt = System.currentTimeMillis();
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-    long currentLeft = torrent.getLeft();
+    int seedersCount = 0;
+    if (torrent != null) {
+      seedersCount = torrent.getSeedersCount();
+      final long startDownloadAt = System.currentTimeMillis();
+      long currentLeft = torrent.getLeft();
 
-    while (torrent.getClientState() != ClientState.SEEDING &&
-            torrent.getClientState() != ClientState.ERROR &&
-            ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
-            (System.currentTimeMillis() <= maxIdleTime)) {
-      if (Thread.currentThread().isInterrupted() || isInterrupted.get())
-        throw new InterruptedException("Download of " + torrent.getName() + " was interrupted");
-      if (currentLeft > torrent.getLeft()) {
-        currentLeft = torrent.getLeft();
-        maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-      }
-      if (System.currentTimeMillis() - startDownloadAt > maxTimeForConnectMs) {
-        if (getPeersForTorrent(torrent.getHexInfoHash()).size() < minSeedersCount) {
-          break;
+      while (torrent.getClientState() != ClientState.SEEDING &&
+              torrent.getClientState() != ClientState.ERROR &&
+              ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
+              (System.currentTimeMillis() <= maxIdleTime)) {
+        if (Thread.currentThread().isInterrupted() || isInterrupted.get())
+          throw new InterruptedException("Download of " + torrent.getName() + " was interrupted");
+        if (currentLeft > torrent.getLeft()) {
+          currentLeft = torrent.getLeft();
+          maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
         }
+        if (System.currentTimeMillis() - startDownloadAt > maxTimeForConnectMs) {
+          if (getPeersForTorrent(torrent.getHexInfoHash()).size() < minSeedersCount) {
+            break;
+          }
+        }
+        Thread.sleep(100);
       }
-      Thread.sleep(100);
     }
-    if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
-      removeAndDeleteTorrent(torrent);
 
-      final List<SharingPeer> peersForTorrent = getPeersForTorrent(torrent.getHexInfoHash());
+    if (torrent == null || !(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
+      removeAndDeleteTorrent(hash, torrent);
+
+      final List<SharingPeer> peersForTorrent = getPeersForTorrent(hash);
       int connectedPeersForTorrent = peersForTorrent.size();
       for (SharingPeer peer : peersForTorrent) {
         peer.unbind(true);
       }
 
       final String errorMsg;
-      if (System.currentTimeMillis() > maxIdleTime) {
+      if (torrent == null) {
+        errorMsg = "Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms";
+      } else if (System.currentTimeMillis() > maxIdleTime) {
         int completedPieces = torrent.getCompletedPieces().cardinality();
         int totalPieces = torrent.getPieceCount();
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
