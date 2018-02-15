@@ -56,6 +56,11 @@ public class TorrentsRepository {
     return myLocks[Math.abs(torrentHash.hashCode()) % myLocks.length];
   }
 
+  @SuppressWarnings("unused")
+  public void clear() {
+    myTorrents.clear();
+  }
+
   public void cleanup(int torrentExpireTimeoutSec) {
     for (TrackedTorrent trackedTorrent : myTorrents.values()) {
       try {
