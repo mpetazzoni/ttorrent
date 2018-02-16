@@ -272,8 +272,11 @@ public class Piece implements Comparable<Piece> {
     public synchronized void finish() throws IOException {
         this.data.rewind();
         logger.trace("Recording {}...", this);
-        this.bucket.write(this.data, this.offset);
-        this.data = null;
+        try {
+					this.bucket.write(this.data, this.offset);
+				} finally {
+					this.data = null;
+				}
     }
 
     /**
