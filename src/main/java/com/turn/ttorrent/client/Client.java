@@ -436,15 +436,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     }
 
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-    int seedersCount = 0;
     if (torrent != null) {
-      seedersCount = torrent.getSeedersCount();
       final long startDownloadAt = System.currentTimeMillis();
       long currentLeft = torrent.getLeft();
 
       while (torrent.getClientState() != ClientState.SEEDING &&
               torrent.getClientState() != ClientState.ERROR &&
-              ((seedersCount = torrent.getSeedersCount()) >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
+              (torrent.getSeedersCount() >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
               (System.currentTimeMillis() <= maxIdleTime)) {
         if (Thread.currentThread().isInterrupted() || isInterrupted.get())
           throw new InterruptedException("Download of " + torrent.getName() + " was interrupted");
@@ -479,7 +477,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
                 , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
       } else if (connectedPeersForTorrent < minSeedersCount) {
-        errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, seedersCount);
+        errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, connectedPeersForTorrent);
       } else if (torrent.getClientState() == ClientState.ERROR) {
         errorMsg = "Torrent state is ERROR";
       } else {
