@@ -752,6 +752,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     if (torrent != null && torrent.isFinished()) return;
 
+    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
+    if (announceableTorrent == null) {
+      logger.info("announceable torrent {} is not found in storage. Maybe it was removed", hexInfoHash);
+      return;
+    }
+
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
@@ -775,7 +781,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               this,
-              torrentsStorage.getAnnounceableTorrent(hexInfoHash),
+              announceableTorrent,
               new InetSocketAddress(peer.getIp(), peer.getPort()));
 
       logger.debug("trying to connect to the peer {}", peer);
