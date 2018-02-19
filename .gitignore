@@ -3,6 +3,7 @@
 
 # Ignore build output
 /build/*
+*/build
 
 # Ignore Javadoc output
 /doc/*
@@ -18,4 +19,7 @@
 *.bak
 *~
 *~
+
+#ignore idea workspace file and idea module files
+*.iml
 .idea/workspace.xml
