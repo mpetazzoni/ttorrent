@@ -26,6 +26,7 @@
 		<module>ttorrent-tracker</module>
 		<module>ttorrent-client</module>
 		<module>common</module>
+		<module>tests</module>
 	</modules>
 
 	<organization>
