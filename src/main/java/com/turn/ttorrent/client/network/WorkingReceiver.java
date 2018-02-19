@@ -82,9 +82,10 @@ public class WorkingReceiver implements DataProcessor {
 
     final SharingPeer peer = myContext.getPeersStorage().getSharingPeer(myPeerUID);
 
-    SharedTorrent torrent = myContext.getTorrentsStorage().getTorrent(peer.getHexInfoHash());
-    if (torrent == null) {
-      logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", peer.getHexInfoHash(), peer);
+    final String hexInfoHash = peer.getHexInfoHash();
+    SharedTorrent torrent = myContext.getTorrentsStorage().getTorrent(hexInfoHash);
+    if (torrent == null || !myContext.getTorrentsStorage().hasTorrent(hexInfoHash)) {
+      logger.debug("torrent with hash {} for peer {} doesn't found in storage. Maybe somebody deletes it manually", hexInfoHash, peer);
       return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
     }
 
