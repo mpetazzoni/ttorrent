@@ -106,6 +106,11 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
+    if (!myContext.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
+      logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
+      return new ShutdownAndRemovePeerProcessor(peerUID, myContext);
+    }
+
     if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
