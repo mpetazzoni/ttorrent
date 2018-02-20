@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
+    <option name="DEFAULT_COMPILER" value="Javac" />
+    <resourceExtensions />
     <wildcardResourcePatterns>
       <entry name="!?*.java" />
       <entry name="!?*.form" />
@@ -12,10 +14,14 @@
       <entry name="!?*.clj" />
     </wildcardResourcePatterns>
     <annotationProcessing>
-      <profile name="Annotation profile for Java BitTorrent library" enabled="true">
-        <sourceOutputDir name="build/generated-sources/annotations" />
-        <sourceTestOutputDir name="build/generated-test-sources/test-annotations" />
+      <profile default="true" name="Default" enabled="false">
+        <processorPath useClasspath="true" />
+      </profile>
+      <profile default="false" name="Annotation profile for ttorrent" enabled="true">
+        <sourceOutputDir name="build\generated-sources\annotations" />
+        <sourceTestOutputDir name="build\generated-test-sources\test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
         <module name="ttorrent" />
       </profile>
     </annotationProcessing>
@@ -24,3 +30,4 @@
     </bytecodeTargetLevel>
   </component>
 </project>
+
