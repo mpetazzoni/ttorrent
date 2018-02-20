@@ -563,7 +563,7 @@ public class ClientTest {
           }
         });
         try {
-          future.get(5, TimeUnit.SECONDS);
+          future.get(10, TimeUnit.SECONDS);
         } catch (ExecutionException e) {
           fail("get execution exception on accept connection", e);
         } catch (TimeoutException e) {
