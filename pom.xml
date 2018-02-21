@@ -18,7 +18,17 @@
 	<groupId>com.turn</groupId>
 	<artifactId>ttorrent</artifactId>
 	<version>1.2</version>
-	<packaging>jar</packaging>
+	<packaging>pom</packaging>
+
+	<modules>
+		<module>network</module>
+		<module>bencoding</module>
+		<module>ttorrent-tracker</module>
+		<module>ttorrent-client</module>
+		<module>common</module>
+		<module>tests</module>
+		<module>test-api</module>
+	</modules>
 
 	<organization>
 		<name>Turn, Inc.</name>
