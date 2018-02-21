@@ -9,27 +9,18 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <name>ttorrent/network</name>
+    <name>ttorrent/test-api</name>
     <url>http://turn.github.com/ttorrent/</url>
-    <artifactId>ttorrent-network</artifactId>
+    <artifactId>ttorrent-test-api</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
     <dependencies>
-        
         <dependency>
             <groupId>com.turn</groupId>
             <artifactId>ttorrent-common</artifactId>
             <version>1.2</version>
         </dependency>
-
-        <dependency>
-            <groupId>com.turn</groupId>
-            <artifactId>ttorrent-test-api</artifactId>
-            <version>1.0</version>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
 </project>

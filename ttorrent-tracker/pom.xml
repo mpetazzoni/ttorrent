@@ -28,6 +28,13 @@
             <version>1.2</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-test-api</artifactId>
+            <version>1.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
 </project>
