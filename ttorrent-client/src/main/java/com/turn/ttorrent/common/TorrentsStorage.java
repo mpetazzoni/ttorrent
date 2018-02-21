@@ -84,12 +84,12 @@ public class TorrentsStorage {
     }
   }
 
-  public TorrentsPair removeActiveAndAnnounceableTorrent(String hash) {
+  public Pair<SharedTorrent, AnnounceableFileTorrent> removeActiveAndAnnounceableTorrent(String hash) {
     try {
       myReadWriteLock.writeLock().lock();
       final SharedTorrent sharedTorrent = myActiveTorrents.remove(hash);
       final AnnounceableFileTorrent announceableFileTorrent = myAnnounceableTorrents.remove(hash);
-      return new TorrentsPair(sharedTorrent, announceableFileTorrent);
+      return new Pair<SharedTorrent, AnnounceableFileTorrent>(sharedTorrent, announceableFileTorrent);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
