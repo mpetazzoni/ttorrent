@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
@@ -10,6 +11,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -39,6 +41,7 @@ public class HandshakeReceiverTest {
   private HandshakeReceiver myHandshakeReceiver;
   private byte[] mySelfId;
   private Context myContext;
+  private TempFiles myTempFiles;
 
   public HandshakeReceiverTest() {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
@@ -48,6 +51,7 @@ public class HandshakeReceiverTest {
 
   @BeforeMethod
   public void setUp() throws Exception {
+    myTempFiles = new TempFiles();
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
     mySelfId = "selfId1selfId2selfId".getBytes();
     ByteBuffer selfId = ByteBuffer.wrap(mySelfId);
@@ -64,6 +68,11 @@ public class HandshakeReceiverTest {
             "127.0.0.1",
             45664,
             false);
+  }
+
+  @AfterMethod
+  public void tearDown() throws Exception {
+    myTempFiles.cleanup();
   }
 
   public void testReceiveHandshake() throws Exception {
@@ -83,9 +92,11 @@ public class HandshakeReceiverTest {
 
     ByteBuffer byteBuffer = hs.getData();
     client.write(byteBuffer);
-    String torrentPath = "src" + File.separator + "test" + File.separator + "resources" + File.separator + "torrents" + File.separator + "file1.jar.torrent";
-    final File torrent = new File(torrentPath);
-    final SharedTorrent sharedTorrent = new SharedTorrent(Torrent.create(torrent, URI.create(""), ""), torrent.getParentFile(), false);
+
+    final File tempFile = myTempFiles.createTempFile(1024 * 1024);
+    Torrent torrent = Torrent.create(tempFile, URI.create(""), "test");
+
+    final SharedTorrent sharedTorrent = new SharedTorrent(torrent, tempFile.getParentFile(), false);
     final AnnounceableFileTorrent announceableFileTorrent = mock(AnnounceableFileTorrent.class);
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
     when(torrentsLoader.loadTorrent(announceableFileTorrent)).thenReturn(sharedTorrent);
