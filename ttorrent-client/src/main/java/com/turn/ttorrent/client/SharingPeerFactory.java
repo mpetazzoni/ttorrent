@@ -1,4 +1,4 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
