@@ -183,26 +183,26 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   public void removeTorrent(TorrentHash torrentHash) {
     logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrentsPair = torrentsStorage.removeActiveAndAnnounceableTorrent(torrentHash.getHexInfoHash());
+    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash.getHexInfoHash());
 
-    SharedTorrent torrent = torrentsPair.first();
+    SharedTorrent torrent = torrents.first();
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
     } else {
       logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
     }
-    sendStopEvent(torrentsPair.second(), torrentHash.getHexInfoHash());
+    sendStopEvent(torrents.second(), torrentHash.getHexInfoHash());
   }
 
   public void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrentsPair = torrentsStorage.removeActiveAndAnnounceableTorrent(torrentHash);
-    final SharedTorrent sharedTorrent = torrentsPair.first() == null ? torrent : torrentsPair.first();
+    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash);
+    final SharedTorrent sharedTorrent = torrents.first() == null ? torrent : torrents.first();
     if (sharedTorrent != null) {
       sharedTorrent.setClientState(ClientState.DONE);
       sharedTorrent.delete();
     }
-    sendStopEvent(torrentsPair.second(), torrentHash);
+    sendStopEvent(torrents.second(), torrentHash);
   }
 
   private void sendStopEvent(AnnounceableFileTorrent announceableFileTorrent, String torrentHash) {
