@@ -147,8 +147,14 @@ public class UDPAnnounceRequestMessage
     return this.numWant;
   }
 
-  public int getKey() {
-    return this.key;
+  @Override
+  public String getKey() {
+    return "";
+  }
+
+  @Override
+  public String getTrackerId() {
+    return "";
   }
 
   public static UDPAnnounceRequestMessage parse(ByteBuffer data)

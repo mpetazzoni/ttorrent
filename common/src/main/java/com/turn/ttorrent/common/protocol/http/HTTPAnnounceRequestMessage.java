@@ -139,6 +139,16 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     return this.numWant;
   }
 
+  @Override
+  public String getKey() {
+    return "";
+  }
+
+  @Override
+  public String getTrackerId() {
+    return "";
+  }
+
   /**
    * Build the announce request URL for the given tracker announce URL.
    *

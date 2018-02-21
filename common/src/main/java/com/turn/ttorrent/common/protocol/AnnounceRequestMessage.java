@@ -151,4 +151,20 @@ public interface AnnounceRequestMessage {
    * @return count of peers which client want to get from tracker
    */
   int getNumWant();
+
+  /**
+   * Optional. Contains key of current client. Client can use this key for confirm for tracker that it's old client
+   * after change IP address
+   *
+   * @return key of current client.
+   */
+  String getKey();
+
+  /**
+   * Optional. If previous response from tracker contains tracker id field, then client must send this value here
+   *
+   * @return previous tracker id
+   */
+  String getTrackerId();
+
 }
