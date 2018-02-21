@@ -33,12 +33,12 @@ public class ConnectionWorker implements Runnable {
   private final List<KeyProcessor> myKeyProcessors;
   private final TimeService myTimeService;
   private long lastCleanupTime;
-  private final int mySelectorTimeoutMillis;
+  private volatile int mySelectorTimeoutMillis;
   private volatile long myCleanupTimeoutMillis;
   private final CleanupProcessor myCleanupProcessor;
   private final NewConnectionAllower myNewConnectionAllower;
 
-  public ConnectionWorker(Selector selector,
+  ConnectionWorker(Selector selector,
                           List<KeyProcessor> keyProcessors,
                           int selectorTimeoutMillis,
                           int cleanupTimeoutMillis,
@@ -242,7 +242,12 @@ public class ConnectionWorker implements Runnable {
     return false;
   }
 
-  public void setCleanupTimeout(long timeoutMillis) {
+  void setCleanupTimeout(long timeoutMillis) {
     this.myCleanupTimeoutMillis = timeoutMillis;
   }
+
+  void setSelectorSelectTimeout(int timeout) {
+    mySelectorTimeoutMillis = timeout;
+  }
+
 }

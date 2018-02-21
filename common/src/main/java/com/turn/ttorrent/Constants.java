@@ -34,4 +34,7 @@ public class Constants {
 
   public static final ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
+  public static final int DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS = 10000;
+  public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
+
 }

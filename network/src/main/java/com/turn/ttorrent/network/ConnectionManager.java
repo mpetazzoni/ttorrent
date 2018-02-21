@@ -18,14 +18,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.turn.ttorrent.Constants.DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS;
+import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS;
+
 public class ConnectionManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
 
   public static final int PORT_RANGE_START = 6881;
   public static final int PORT_RANGE_END = 6889;
-  public static final int DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS = 10000;
-  public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
 
   private final Selector selector;
   private final TimeService myTimeService;
@@ -98,6 +99,16 @@ public class ConnectionManager {
     myWorkerFuture = myContext.getExecutor().submit(myConnectionWorker);
   }
 
+  public void setSelectorSelectTimeout(int timeout) {
+    ConnectionWorker workerLocal = myConnectionWorker;
+    checkThatWorkerIsInit(workerLocal);
+    workerLocal.setSelectorSelectTimeout(timeout);
+  }
+
+  private void checkThatWorkerIsInit(ConnectionWorker worker) {
+    if (worker == null) throw new IllegalStateException("Connection manager is not initialized!");
+  }
+
   public boolean offerConnect(ConnectTask connectTask, int timeout, TimeUnit timeUnit) {
     if (myConnectionWorker == null) {
       return false;
@@ -168,9 +179,9 @@ public class ConnectionManager {
   }
 
   public void setCleanupTimeout(long timeoutMillis) {
-    if (myConnectionWorker != null) {
-      myConnectionWorker.setCleanupTimeout(timeoutMillis);
-    }
+    ConnectionWorker workerLocal = myConnectionWorker;
+    checkThatWorkerIsInit(workerLocal);
+    workerLocal.setCleanupTimeout(timeoutMillis);
   }
 
   public void setSocketConnectionTimeout(long timeoutMillis) {
