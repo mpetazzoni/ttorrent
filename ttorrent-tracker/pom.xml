@@ -14,4 +14,20 @@
     <artifactId>ttorrent-tracker</artifactId>
     <version>1.2</version>
     <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-common</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-bencoding</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+    </dependencies>
+
 </project>

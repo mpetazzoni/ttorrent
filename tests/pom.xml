@@ -14,4 +14,20 @@
     <artifactId>ttorrent-tests</artifactId>
     <version>1.2</version>
     <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-tracker</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-client</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+    </dependencies>
+
 </project>

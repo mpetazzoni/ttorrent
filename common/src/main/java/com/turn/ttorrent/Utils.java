@@ -1,9 +1,6 @@
 package com.turn.ttorrent;
 
-import com.turn.ttorrent.tracker.TrackedTorrent;
 import org.apache.log4j.Level;
-
-import java.util.Collection;
 
 public class Utils {
 
