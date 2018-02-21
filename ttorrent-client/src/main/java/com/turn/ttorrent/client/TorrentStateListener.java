@@ -23,5 +23,5 @@ package com.turn.ttorrent.client;
  */
 public interface TorrentStateListener {
 
-  public void torrentStateChanged(ClientState newState, SharedTorrent torrent);
+  void torrentStateChanged(ClientState newState, SharedTorrent torrent);
 }

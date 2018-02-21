@@ -11,7 +11,7 @@ import java.nio.channels.SocketChannel;
  */
 public interface TorrentConnectionListener {
 
-  public boolean hasTorrent(TorrentHash torrentHash);
+  boolean hasTorrent(TorrentHash torrentHash);
 
-  public void handleNewPeerConnection(SocketChannel s, byte[] peerId, String hexInfoHash);
+  void handleNewPeerConnection(SocketChannel s, byte[] peerId, String hexInfoHash);
 }

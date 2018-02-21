@@ -41,7 +41,7 @@ public interface PeerActivityListener extends EventListener {
    *
    * @param peer The peer that choked.
    */
-  public void handlePeerChoked(SharingPeer peer);
+  void handlePeerChoked(SharingPeer peer);
 
   /**
    * Peer ready handler.
@@ -53,7 +53,7 @@ public interface PeerActivityListener extends EventListener {
    *
    * @param peer The peer that became ready.
    */
-  public void handlePeerReady(SharingPeer peer);
+  void handlePeerReady(SharingPeer peer);
 
   /**
    * Piece availability handler.
@@ -66,7 +66,7 @@ public interface PeerActivityListener extends EventListener {
    * @param peer  The peer we got the update from.
    * @param piece The piece that became available from this peer.
    */
-  public void handlePieceAvailability(SharingPeer peer, Piece piece);
+  void handlePieceAvailability(SharingPeer peer, Piece piece);
 
   /**
    * Bit field availability handler.
@@ -79,8 +79,8 @@ public interface PeerActivityListener extends EventListener {
    * @param peer            The peer we got the update from.
    * @param availablePieces The pieces availability bit field of the peer.
    */
-  public void handleBitfieldAvailability(SharingPeer peer,
-                                         BitSet availablePieces);
+  void handleBitfieldAvailability(SharingPeer peer,
+                                  BitSet availablePieces);
 
   /**
    * Piece upload completion handler.
@@ -92,7 +92,7 @@ public interface PeerActivityListener extends EventListener {
    * @param peer  The peer the piece was sent to.
    * @param piece The piece in question.
    */
-  public void handlePieceSent(SharingPeer peer, Piece piece);
+  void handlePieceSent(SharingPeer peer, Piece piece);
 
   /**
    * Piece download completion handler.
@@ -111,7 +111,7 @@ public interface PeerActivityListener extends EventListener {
    * @param peer  The peer we got this piece from.
    * @param piece The piece in question.
    */
-  public void handlePieceCompleted(SharingPeer peer, Piece piece)
+  void handlePieceCompleted(SharingPeer peer, Piece piece)
           throws IOException;
 
   /**
@@ -124,7 +124,7 @@ public interface PeerActivityListener extends EventListener {
    *
    * @param peer The peer we got this piece from.
    */
-  public void handlePeerDisconnected(SharingPeer peer);
+  void handlePeerDisconnected(SharingPeer peer);
 
   /**
    * Handler for IOException during peer operation.
@@ -132,11 +132,11 @@ public interface PeerActivityListener extends EventListener {
    * @param peer The peer whose activity trigger the exception.
    * @param ioe  The IOException object, for reporting.
    */
-  public void handleIOException(SharingPeer peer, IOException ioe);
+  void handleIOException(SharingPeer peer, IOException ioe);
 
 
-  public void handleNewPeerConnected(SharingPeer peer);
+  void handleNewPeerConnected(SharingPeer peer);
 
-  public void afterPeerRemoved(SharingPeer peer);
+  void afterPeerRemoved(SharingPeer peer);
 
 }

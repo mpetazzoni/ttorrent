@@ -103,10 +103,8 @@ public class UDPTrackerClient extends TrackerClient {
 
   private enum State {
     CONNECT_REQUEST,
-    ANNOUNCE_REQUEST;
+    ANNOUNCE_REQUEST
   }
-
-  ;
 
   /**
    *

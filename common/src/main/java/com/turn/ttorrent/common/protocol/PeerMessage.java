@@ -87,8 +87,6 @@ public abstract class PeerMessage {
     }
   }
 
-  ;
-
   private final Type type;
   private final ByteBuffer data;
 

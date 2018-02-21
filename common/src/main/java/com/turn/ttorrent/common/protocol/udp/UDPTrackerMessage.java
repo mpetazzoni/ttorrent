@@ -70,8 +70,6 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
     }
   }
 
-  ;
-
   public static abstract class UDPTrackerResponseMessage
           extends UDPTrackerMessage {
 
@@ -108,5 +106,4 @@ public abstract class UDPTrackerMessage extends TrackerMessage {
     }
   }
 
-  ;
 }

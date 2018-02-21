@@ -28,5 +28,5 @@ import java.util.EventListener;
  */
 public interface MessageListener extends EventListener {
 
-  public void handleMessage(PeerMessage msg);
+  void handleMessage(PeerMessage msg);
 }

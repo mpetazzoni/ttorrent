@@ -98,8 +98,6 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     }
   }
 
-  ;
-
 
   protected final byte[] encoded;
 //	protected final byte[] encoded_info;

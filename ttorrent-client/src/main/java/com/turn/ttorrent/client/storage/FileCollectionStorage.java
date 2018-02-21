@@ -180,8 +180,6 @@ public class FileCollectionStorage implements TorrentByteStorage {
     }
   }
 
-  ;
-
   /**
    * Select the group of files impacted by an operation.
    *
