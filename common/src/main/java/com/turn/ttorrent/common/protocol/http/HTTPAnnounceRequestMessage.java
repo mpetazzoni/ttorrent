@@ -115,12 +115,12 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
   }
 
   @Override
-  public boolean getCompact() {
+  public boolean isCompact() {
     return this.compact;
   }
 
   @Override
-  public boolean getNoPeerIds() {
+  public boolean canOmitPeerId() {
     return this.noPeerId;
   }
 
@@ -162,8 +162,8 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
             .append("&uploaded=").append(this.getUploaded())
             .append("&downloaded=").append(this.getDownloaded())
             .append("&left=").append(this.getLeft())
-            .append("&compact=").append(this.getCompact() ? 1 : 0)
-            .append("&no_peer_id=").append(this.getNoPeerIds() ? 1 : 0);
+            .append("&compact=").append(this.isCompact() ? 1 : 0)
+            .append("&no_peer_id=").append(this.canOmitPeerId() ? 1 : 0);
 
     if (this.getEvent() != null &&
             !RequestEvent.NONE.equals(this.getEvent())) {

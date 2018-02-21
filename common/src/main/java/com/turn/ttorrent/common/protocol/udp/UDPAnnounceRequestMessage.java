@@ -123,12 +123,12 @@ public class UDPAnnounceRequestMessage
   }
 
   @Override
-  public boolean getCompact() {
+  public boolean isCompact() {
     return true;
   }
 
   @Override
-  public boolean getNoPeerIds() {
+  public boolean canOmitPeerId() {
     return true;
   }
 
