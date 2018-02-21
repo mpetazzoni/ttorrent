@@ -5,7 +5,6 @@ import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.AnnounceableFileTorrent;
-import com.turn.ttorrent.common.ConnectionUtils;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
 import org.slf4j.Logger;
@@ -114,7 +113,8 @@ public class HandshakeReceiver implements DataProcessor {
     if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
-        ConnectionUtils.sendHandshake(socketChannel, hs.getInfoHash(), myContext.getPeersStorage().getSelf().getPeerIdArray());
+        final Handshake craft = Handshake.craft(hs.getInfoHash(),myContext.getPeersStorage().getSelf().getPeerIdArray());
+        socketChannel.write(craft.getData());
       } catch (IOException e) {
         LoggerUtils.warnAndDebugDetails(logger, "error in sending handshake to {}", socketChannel, e);
         return new ShutdownAndRemovePeerProcessor(peerUID, myContext);
