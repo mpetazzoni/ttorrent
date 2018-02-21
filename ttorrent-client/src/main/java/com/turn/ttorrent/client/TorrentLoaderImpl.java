@@ -1,7 +1,6 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.AnnounceableFileTorrent;
-import com.turn.ttorrent.common.TorrentsStorage;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,6 +1,8 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.PeerUID;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;

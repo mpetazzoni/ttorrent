@@ -103,8 +103,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   private Random random;
   private volatile boolean myStarted = false;
-  private final PeersStorageProvider peersStorageProvider;
-  private final TorrentsStorageProvider torrentsStorageProvider;
   private final TorrentLoader myTorrentLoader;
   private final TorrentsStorage torrentsStorage;
   private final CountLimitConnectionAllower myInConnectionAllower;
@@ -121,10 +119,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   public Client(ExecutorService executorService) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce(this );
-    this.peersStorageProvider = new PeersStorageProviderImpl();
-    this.torrentsStorageProvider = new TorrentsStorageProviderImpl();
-    this.torrentsStorage = this.torrentsStorageProvider.getTorrentsStorage();
-    this.peersStorage = this.peersStorageProvider.getPeersStorage();
+    this.torrentsStorage = new TorrentsStorage();
+    this.peersStorage = new PeersStorage();
     this.mySendBufferSize = new AtomicInteger();
     this.myTorrentLoader = new TorrentLoaderImpl(this.torrentsStorage);
     this.myReceiveBufferSize = new AtomicInteger();
@@ -287,7 +283,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public Peer[] getSelfPeers(final InetAddress[] bindAddresses) throws UnsupportedEncodingException {
-    Peer self = this.peersStorageProvider.getPeersStorage().getSelf();
+    Peer self = peersStorage.getSelf();
 
     if (self == null) {
       return new Peer[0];
@@ -330,7 +326,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
     byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
     Peer self = new Peer(new InetSocketAddress(myConnectionManager.getBindPort()), ByteBuffer.wrap(idBytes));
-    peersStorageProvider.getPeersStorage().setSelf(self);
+    peersStorage.setSelf(self);
     logger.info("BitTorrent client [{}] started and " +
                     "listening at {}:{}...",
             new Object[]{

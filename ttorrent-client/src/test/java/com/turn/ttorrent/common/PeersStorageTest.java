@@ -1,14 +1,13 @@
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.client.PeersStorage;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Collection;
 

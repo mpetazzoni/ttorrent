@@ -1,6 +1,9 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.common.AnnounceableFileTorrent;
+import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;

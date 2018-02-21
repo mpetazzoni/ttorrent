@@ -1,6 +1,6 @@
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.common.MockTimeService;
+import com.turn.ttorrent.MockTimeService;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
