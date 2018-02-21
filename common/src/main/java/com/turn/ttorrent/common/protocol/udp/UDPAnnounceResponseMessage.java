@@ -16,7 +16,7 @@
 package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.AnnounceResponseMessage;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class UDPAnnounceResponseMessage
         extends UDPTrackerMessage.UDPTrackerResponseMessage
-        implements TrackerMessage.AnnounceResponseMessage {
+        implements AnnounceResponseMessage {
 
   private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
 
