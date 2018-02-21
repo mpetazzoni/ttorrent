@@ -27,6 +27,7 @@
 		<module>ttorrent-client</module>
 		<module>common</module>
 		<module>tests</module>
+		<module>test-api</module>
 	</modules>
 
 	<organization>
