@@ -19,12 +19,18 @@ import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.client.announce.Announce;
 import com.turn.ttorrent.client.announce.AnnounceException;
 import com.turn.ttorrent.client.announce.AnnounceResponseListener;
-import com.turn.ttorrent.client.network.*;
+import com.turn.ttorrent.client.network.CountLimitConnectionAllower;
+import com.turn.ttorrent.client.network.OutgoingConnectionListener;
+import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.network.ConnectTask;
+import com.turn.ttorrent.network.ConnectionListener;
+import com.turn.ttorrent.network.ConnectionManager;
+import com.turn.ttorrent.network.ConnectionManagerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +71,7 @@ import static com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMe
  *
  * @author mpetazzoni
  */
-public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context {
+public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context, ConnectionManagerContext {
 
   protected static final Logger logger = LoggerFactory.getLogger(Client.class);
 

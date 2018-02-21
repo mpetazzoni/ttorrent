@@ -14,4 +14,14 @@
     <artifactId>ttorrent-network</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-common</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+    </dependencies>
+
 </project>

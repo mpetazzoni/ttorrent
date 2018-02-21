@@ -2,6 +2,7 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.network.ConnectionListener;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

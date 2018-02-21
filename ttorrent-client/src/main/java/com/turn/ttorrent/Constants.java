@@ -28,8 +28,6 @@ public class Constants {
   public static final int DEFAULT_FILESIZE_THRESHOLD_MB =10;
 
   public final static int DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS = 100000;
-  public static final int DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS = 10000;
-  public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MILLIS = 10000;
 
   public static final int DEFAULT_MAX_CONNECTION_COUNT = 500;

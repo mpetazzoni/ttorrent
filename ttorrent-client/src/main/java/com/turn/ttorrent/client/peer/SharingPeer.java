@@ -17,9 +17,9 @@ package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.network.ConnectionManager;
-import com.turn.ttorrent.client.network.WriteListener;
-import com.turn.ttorrent.client.network.WriteTask;
+import com.turn.ttorrent.network.ConnectionManager;
+import com.turn.ttorrent.network.WriteListener;
+import com.turn.ttorrent.network.WriteTask;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;

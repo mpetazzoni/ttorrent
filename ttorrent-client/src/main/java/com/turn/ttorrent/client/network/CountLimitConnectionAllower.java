@@ -1,5 +1,6 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.network.NewConnectionAllower;
 import com.turn.ttorrent.common.PeersStorage;
 
 import java.util.concurrent.atomic.AtomicInteger;

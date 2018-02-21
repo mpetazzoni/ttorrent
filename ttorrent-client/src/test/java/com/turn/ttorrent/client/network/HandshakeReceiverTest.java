@@ -5,6 +5,7 @@ import com.turn.ttorrent.client.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.network.ConnectionManager;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
@@ -26,8 +27,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.*;
-import static org.testng.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 @Test
 public class HandshakeReceiverTest {
