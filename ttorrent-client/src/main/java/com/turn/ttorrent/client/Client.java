@@ -25,8 +25,8 @@ import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.network.ConnectTask;
 import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.ConnectionManager;
@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.turn.ttorrent.Constants.DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS;
-import static com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent.*;
+import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEvent.*;
 
 /**
  * A pure-java BitTorrent client.
@@ -167,7 +167,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return torrent.getHexInfoHash();
   }
 
-  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, TrackerMessage.AnnounceRequestMessage.RequestEvent event,
+  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, AnnounceRequestMessage.RequestEvent event,
                                         String dotTorrentFilePath) {
     try {
       this.announce.forceAnnounce(torrent, this, event);

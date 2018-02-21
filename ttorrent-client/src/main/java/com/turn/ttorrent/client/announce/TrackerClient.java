@@ -18,7 +18,7 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import org.slf4j.Logger;

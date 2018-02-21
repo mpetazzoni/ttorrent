@@ -19,7 +19,7 @@ import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;

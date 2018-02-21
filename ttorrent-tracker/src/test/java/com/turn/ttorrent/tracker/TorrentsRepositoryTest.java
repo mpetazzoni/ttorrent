@@ -1,7 +1,7 @@
 package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.MockTimeService;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -50,13 +50,13 @@ public class TorrentsRepositoryTest {
     final AtomicBoolean updateInvoked = new AtomicBoolean();
     TrackedTorrent torrent = new TrackedTorrent(new byte[]{1, 2, 3}) {
       @Override
-      public TrackedPeer update(TrackerMessage.AnnounceRequestMessage.RequestEvent event, ByteBuffer peerId, String hexPeerId, String ip, int port, long uploaded, long downloaded, long left) throws UnsupportedEncodingException {
+      public TrackedPeer update(AnnounceRequestMessage.RequestEvent event, ByteBuffer peerId, String hexPeerId, String ip, int port, long uploaded, long downloaded, long left) throws UnsupportedEncodingException {
         updateInvoked.set(true);
         return super.update(event, peerId, hexPeerId, ip, port, uploaded, downloaded, left);
       }
     };
     myTorrentsRepository.putIfAbsentAndUpdate(torrent.getHexInfoHash(), torrent,
-            TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED, ByteBuffer.allocate(5), "0",
+            AnnounceRequestMessage.RequestEvent.STARTED, ByteBuffer.allocate(5), "0",
             "127.0.0.1", 6881, 5, 10, 12);
     assertTrue(updateInvoked.get());
     assertEquals(torrent.getPeers().size(), 1);
@@ -111,7 +111,7 @@ public class TorrentsRepositoryTest {
       final TrackedTorrent secondTorrent = new TrackedTorrent(new byte[]{3, 1, 1});
 
       myTorrentsRepository.putIfAbsentAndUpdate(secondTorrent.getHexInfoHash(), secondTorrent,
-              TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED, ByteBuffer.allocate(5), "0",
+              AnnounceRequestMessage.RequestEvent.STARTED, ByteBuffer.allocate(5), "0",
               "127.0.0.1", 6881, 0, 0, 1);
 
       cleanFinishLock.release();

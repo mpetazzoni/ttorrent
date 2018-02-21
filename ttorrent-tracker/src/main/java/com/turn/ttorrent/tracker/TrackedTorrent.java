@@ -19,7 +19,7 @@ import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage.RequestEvent;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,7 +18,7 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
-import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ConnectionResponseMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
@@ -278,7 +278,7 @@ public class UDPTrackerClient extends TrackerClient {
             event,
             peer.getAddress().getAddress(),
             0,
-            TrackerMessage.AnnounceRequestMessage.DEFAULT_NUM_WANT,
+            AnnounceRequestMessage.DEFAULT_NUM_WANT,
             peer.getPort());
   }
 

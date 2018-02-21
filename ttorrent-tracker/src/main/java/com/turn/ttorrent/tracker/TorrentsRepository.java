@@ -1,6 +1,6 @@
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -37,7 +37,7 @@ public class TorrentsRepository {
   }
 
   public TrackedTorrent putIfAbsentAndUpdate(String hexInfoHash, TrackedTorrent torrent,
-                                             TrackerMessage.AnnounceRequestMessage.RequestEvent event, ByteBuffer peerId,
+                                             AnnounceRequestMessage.RequestEvent event, ByteBuffer peerId,
                                              String hexPeerId, String ip, int port, long uploaded, long downloaded,
                                              long left) throws UnsupportedEncodingException {
     TrackedTorrent actualTorrent;

@@ -16,7 +16,7 @@
 package com.turn.ttorrent.common.protocol.udp;
 
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
  */
 public class UDPAnnounceRequestMessage
         extends UDPTrackerMessage.UDPTrackerRequestMessage
-        implements TrackerMessage.AnnounceRequestMessage {
+        implements AnnounceRequestMessage {
 
   private static final int UDP_ANNOUNCE_REQUEST_MESSAGE_SIZE = 98;
 

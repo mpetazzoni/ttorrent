@@ -4,7 +4,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -55,10 +55,10 @@ public class TrackerClientTest {
     final SharedTorrent secondTorrent = getMockedTorrent(new byte[]{1, 3, 3, 2});
     List<SharedTorrent> torrents = Arrays.asList(firstTorrent, secondTorrent);
 
-    client.multiAnnounce(TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
+    client.multiAnnounce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
 
     peers = Collections.singletonList(new Peer(new InetSocketAddress("127.0.0.1", 6882), ByteBuffer.allocate(1)));
-    client.multiAnnounce(TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
+    client.multiAnnounce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
 
     List<Peer> leecher = Collections.singletonList(new Peer(new InetSocketAddress("127.0.0.1", 6885), ByteBuffer.allocate(1)));
     final SharedTorrent firstTorrentLeech = getMockedTorrent(new byte[]{1, 2, 3, 4});
@@ -69,7 +69,7 @@ public class TrackerClientTest {
     AnnounceResponseListener listener = mock(AnnounceResponseListener.class);
 
     client.register(listener);
-    client.multiAnnounce(TrackerMessage.AnnounceRequestMessage.RequestEvent.STARTED, false,
+    client.multiAnnounce(AnnounceRequestMessage.RequestEvent.STARTED, false,
             Arrays.asList(secondTorrentLeech, firstTorrentLeech), leecher);
 
     verify(listener, times(2)).handleAnnounceResponse(anyInt(), anyInt(), anyInt(), anyString());
