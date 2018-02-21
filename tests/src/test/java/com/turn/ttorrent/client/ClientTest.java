@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client;
 
-import com.sun.org.apache.xpath.internal.SourceTree;
 import com.turn.ttorrent.ClientFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
@@ -12,7 +11,10 @@ import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.*;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -20,7 +22,6 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -37,8 +38,8 @@ import static org.testng.Assert.*;
 
 /**
  * @author Sergey.Pak
- *         Date: 7/26/13
- *         Time: 2:32 PM
+ * Date: 7/26/13
+ * Time: 2:32 PM
  */
 @Test(timeOut = 600000)
 public class ClientTest {
@@ -50,7 +51,7 @@ public class ClientTest {
   private Tracker tracker;
   private TempFiles tempFiles;
 
-  public ClientTest(){
+  public ClientTest() {
     clientFactory = new ClientFactory();
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
@@ -67,7 +68,7 @@ public class ClientTest {
   }
 
 
-//  @Test(invocationCount = 50)
+  //  @Test(invocationCount = 50)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
     int numFiles = 50;
     this.tracker.setAcceptForeignTorrents(true);
@@ -116,12 +117,12 @@ public class ClientTest {
           int count = 0;
           final List<String> partItems = new ArrayList<String>();
           for (String s : strings) {
-            if (s.endsWith(".part")){
+            if (s.endsWith(".part")) {
               count++;
               partItems.add(s);
             }
           }
-          if (count < 5){
+          if (count < 5) {
 
             System.err.printf("Count: %d. Items: %s%n", count, Arrays.toString(partItems.toArray()));
           }
@@ -227,7 +228,7 @@ public class ClientTest {
   public void no_full_seeder_test() throws IOException, URISyntaxException, InterruptedException, NoSuchAlgorithmException {
     this.tracker.setAcceptForeignTorrents(true);
 
-    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int pieceSize = 48 * 1024; // lower piece size to reduce disk usage
     final int numSeeders = 6;
     final int piecesCount = numSeeders * 3 + 15;
 
@@ -252,12 +253,12 @@ public class ClientTest {
   }
 
   //  @Test(invocationCount = 50)
-  public void corrupted_seeder_repair()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
+  public void corrupted_seeder_repair() throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
 
-    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int pieceSize = 48 * 1024; // lower piece size to reduce disk usage
     final int numSeeders = 6;
-    final int piecesCount = numSeeders +7;
+    final int piecesCount = numSeeders + 7;
 
     final List<Client> clientsList;
     clientsList = new ArrayList<Client>(piecesCount);
@@ -271,7 +272,7 @@ public class ClientTest {
       String baseMD5 = getFileMD5(baseFile, md5);
       final Client firstClient = clientsList.get(0);
 
-      new WaitFor(10*1000) {
+      new WaitFor(10 * 1000) {
         @Override
         protected boolean condition() {
           return firstClient.getTorrentsStorage().activeTorrents().size() >= 1;
@@ -299,7 +300,7 @@ public class ClientTest {
         protected boolean condition() {
           for (Client client : clientsList) {
             final SharedTorrent next = client.getTorrents().iterator().next();
-            if (next.getCompletedPieces().cardinality() < next.getPieceCount()-1){
+            if (next.getCompletedPieces().cardinality() < next.getPieceCount() - 1) {
               return false;
             }
           }
@@ -307,10 +308,10 @@ public class ClientTest {
         }
       };
 
-      if (!waitFor.isMyResult()){
+      if (!waitFor.isMyResult()) {
         fail("All seeders didn't get their files");
       }
-      Thread.sleep(10*1000);
+      Thread.sleep(10 * 1000);
       {
         byte[] piece = new byte[pieceSize];
         FileInputStream fin = new FileInputStream(baseFile);
@@ -369,7 +370,7 @@ public class ClientTest {
       }
     };
 
-    assertTrue(waitFor.isMyResult(),"Torrent was not successfully removed");
+    assertTrue(waitFor.isMyResult(), "Torrent was not successfully removed");
 
     assertEquals(1, seeder.getTorrentsStorage().activeTorrents().size());
     assertEquals(1, leecher.getTorrentsStorage().activeTorrents().size());
@@ -386,17 +387,17 @@ public class ClientTest {
       }
     };
 
-    assertTrue(waitFor.isMyResult(),"Torrent was not successfully initialized");
+    assertTrue(waitFor.isMyResult(), "Torrent was not successfully initialized");
 
     assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
     assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
 
   }
 
-  public void corrupted_seeder()  throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
+  public void corrupted_seeder() throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
 
-    final int pieceSize = 48*1024; // lower piece size to reduce disk usage
+    final int pieceSize = 48 * 1024; // lower piece size to reduce disk usage
     final int piecesCount = 35;
 
     final List<Client> clientsList;
@@ -413,7 +414,7 @@ public class ClientTest {
       final File client2File = new File(client2Dir, baseFile.getName());
       FileUtils.copyFile(badFile, client2File);
 
-      final Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
+      final Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
       final File torrentFile = tempFiles.createTempFile();
       torrent.save(torrentFile);
 
@@ -439,7 +440,7 @@ public class ClientTest {
       final WaitFor waitFor = new WaitFor(30 * 1000) {
         @Override
         protected boolean condition() {
-          return  th.getState() == Thread.State.TERMINATED;
+          return th.getState() == Thread.State.TERMINATED;
         }
       };
 
@@ -474,7 +475,7 @@ public class ClientTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
-    downloadAndStop(torrent, 15*1000, createClient());
+    downloadAndStop(torrent, 15 * 1000, createClient());
     Thread.sleep(2 * 1000);
     assertTrue(dwnlFile.exists() && dwnlFile.isFile());
     final boolean delete = dwnlFile.delete();
@@ -493,9 +494,9 @@ public class ClientTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
-    for(int i=0; i<5; i++) {
-      downloadAndStop(torrent, 250*1000, createClient());
-      Thread.sleep(3*1000);
+    for (int i = 0; i < 5; i++) {
+      downloadAndStop(torrent, 250 * 1000, createClient());
+      Thread.sleep(3 * 1000);
     }
   }
 
@@ -584,7 +585,7 @@ public class ClientTest {
     }
   }
 
-  public void download_io_error() throws InterruptedException, NoSuchAlgorithmException, IOException{
+  public void download_io_error() throws InterruptedException, NoSuchAlgorithmException, IOException {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
 
@@ -596,27 +597,27 @@ public class ClientTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     seeder.start(InetAddress.getLocalHost());
 
-      final AtomicInteger interrupts = new AtomicInteger(0);
-      final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-      final Client leech = new Client(es){
-        @Override
-        public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
-          super.handlePieceCompleted(peer, piece);
-          if (piece.getIndex()%4==0 && interrupts.incrementAndGet() <= 2){
-            peer.unbind(true);
-          }
+    final AtomicInteger interrupts = new AtomicInteger(0);
+    final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final Client leech = new Client(es) {
+      @Override
+      public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
+        super.handlePieceCompleted(peer, piece);
+        if (piece.getIndex() % 4 == 0 && interrupts.incrementAndGet() <= 2) {
+          peer.unbind(true);
         }
+      }
 
-        @Override
-        public void stop(int timeout, TimeUnit timeUnit) {
-          super.stop(timeout, timeUnit);
-          es.shutdown();
-        }
-      };
-      //manually add leech here for graceful shutdown.
-      clientList.add(leech);
-      downloadAndStop(torrent, 45 * 1000, leech);
-      Thread.sleep(2*1000);
+      @Override
+      public void stop(int timeout, TimeUnit timeUnit) {
+        super.stop(timeout, timeUnit);
+        es.shutdown();
+      }
+    };
+    //manually add leech here for graceful shutdown.
+    clientList.add(leech);
+    downloadAndStop(torrent, 45 * 1000, leech);
+    Thread.sleep(2 * 1000);
   }
 
   public void download_uninterruptibly_positive() throws InterruptedException, NoSuchAlgorithmException, IOException {
@@ -647,7 +648,7 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    final Client leecher = new Client(es){
+    final Client leecher = new Client(es) {
       @Override
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);
@@ -657,7 +658,7 @@ public class ClientTest {
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         super.handlePieceCompleted(peer, piece);
-        if (downloadedPiecesCount.incrementAndGet() > 10){
+        if (downloadedPiecesCount.incrementAndGet() > 10) {
           seeder.stop();
         }
       }
@@ -668,14 +669,14 @@ public class ClientTest {
     try {
       leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), destDir.getAbsolutePath(), 5);
       fail("Must fail, because file wasn't downloaded completely");
-    } catch (IOException ex){
+    } catch (IOException ex) {
       // ensure .part was deleted:
       assertEquals(0, destDir.list().length);
     }
 
   }
 
-  public void download_uninterruptibly_timeout() throws InterruptedException, NoSuchAlgorithmException, IOException  {
+  public void download_uninterruptibly_timeout() throws InterruptedException, NoSuchAlgorithmException, IOException {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
@@ -687,12 +688,12 @@ public class ClientTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final AtomicInteger piecesDownloaded = new AtomicInteger(0);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    Client leecher = new Client(es){
+    Client leecher = new Client(es) {
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         piecesDownloaded.incrementAndGet();
         try {
-          Thread.sleep(piecesDownloaded.get()*500);
+          Thread.sleep(piecesDownloaded.get() * 500);
         } catch (InterruptedException e) {
 
         }
@@ -709,7 +710,7 @@ public class ClientTest {
     try {
       leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 5);
       fail("Must fail, because file wasn't downloaded completely");
-    } catch (IOException ex){
+    } catch (IOException ex) {
     }
   }
 
@@ -754,7 +755,7 @@ public class ClientTest {
         try {
           Thread.sleep(5 * 1000);
           seed1.removeTorrent(torrent);
-          Thread.sleep(3*1000);
+          Thread.sleep(3 * 1000);
           seed1.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
           seed2.removeTorrent(torrent);
         } catch (InterruptedException e) {
@@ -787,7 +788,7 @@ public class ClientTest {
     final Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
     final AtomicBoolean interrupted = new AtomicBoolean();
-    final Thread th = new Thread(){
+    final Thread th = new Thread() {
       @Override
       public void run() {
         try {
@@ -806,7 +807,7 @@ public class ClientTest {
     th.start();
     Thread.sleep(400);
     th.interrupt();
-    new WaitFor(10*1000){
+    new WaitFor(10 * 1000) {
       @Override
       protected boolean condition() {
         return !th.isAlive();
@@ -825,7 +826,7 @@ public class ClientTest {
     final Random random = new Random();
     final File leechFolder = tempFiles.createTempDir();
 
-    for (int i=0; i<40; i++) {
+    for (int i = 0; i < 40; i++) {
       byte[] data = new byte[20];
       random.nextBytes(data);
       announce.addPeer(new TrackedPeer(tt, "my_unknown_and_unreachablehost" + i, 6881, ByteBuffer.wrap(data)));
@@ -903,7 +904,7 @@ public class ClientTest {
 
     List<byte[]> piecesList = new ArrayList<byte[]>(piecesCount);
     FileInputStream fin = new FileInputStream(baseFile);
-    for (int i=0; i<piecesCount; i++){
+    for (int i = 0; i < piecesCount; i++) {
       byte[] piece = new byte[pieceSize];
       fin.read(piece);
       piecesList.add(piece);
@@ -911,18 +912,18 @@ public class ClientTest {
     fin.close();
 
     final long torrentFileLength = baseFile.length();
-    Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null,  "Test", pieceSize);
+    Torrent torrent = Torrent.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
     File torrentFile = new File(baseFile.getParentFile(), baseFile.getName() + ".torrent");
     torrent.save(torrentFile);
 
 
-    for (int i=0; i<numSeeders; i++){
+    for (int i = 0; i < numSeeders; i++) {
       final File baseDir = tempFiles.createTempDir();
       final File seederPiecesFile = new File(baseDir, baseFile.getName());
       RandomAccessFile raf = new RandomAccessFile(seederPiecesFile, "rw");
       raf.setLength(torrentFileLength);
-      for (int pieceIdx=i; pieceIdx<piecesCount; pieceIdx += numSeeders){
-        raf.seek(pieceIdx*pieceSize);
+      for (int pieceIdx = i; pieceIdx < piecesCount; pieceIdx += numSeeders) {
+        raf.seek(pieceIdx * pieceSize);
         raf.write(piecesList.get(pieceIdx));
       }
       Client client = createClient(" client idx " + i);
@@ -934,7 +935,7 @@ public class ClientTest {
 
   private String getFileMD5(File file, MessageDigest digest) throws IOException {
     DigestInputStream dIn = new DigestInputStream(new FileInputStream(file), digest);
-    while (dIn.read() >= 0);
+    while (dIn.read() >= 0) ;
     return dIn.getMessageDigest().toString();
   }
 
@@ -948,7 +949,6 @@ public class ClientTest {
 
     assertTrue(new File(downloadDir, fileName).isFile());
   }
-
 
 
   @AfterMethod
@@ -971,6 +971,7 @@ public class ClientTest {
     client.start(InetAddress.getLocalHost());
     return client;
   }
+
   private Client createClient(String name) throws IOException, NoSuchAlgorithmException, InterruptedException {
     final Client client = clientFactory.getClient(name);
     clientList.add(client);

@@ -1,10 +1,10 @@
 package com.turn.ttorrent.network.keyProcessors;
 
+import com.turn.ttorrent.common.TimeService;
 import com.turn.ttorrent.network.ConnectTask;
 import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.ReadWriteAttachment;
 import com.turn.ttorrent.network.TimeoutStorage;
-import com.turn.ttorrent.common.TimeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

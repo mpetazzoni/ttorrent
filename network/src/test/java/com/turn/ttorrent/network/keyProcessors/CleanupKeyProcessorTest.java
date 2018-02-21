@@ -1,8 +1,8 @@
 package com.turn.ttorrent.network.keyProcessors;
 
+import com.turn.ttorrent.MockTimeService;
 import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.TimeoutAttachment;
-import com.turn.ttorrent.MockTimeService;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;

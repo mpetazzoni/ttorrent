@@ -4,11 +4,9 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.PeerUID;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 

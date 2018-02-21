@@ -1,7 +1,7 @@
 package com.turn.ttorrent.network.keyProcessors;
 
-import com.turn.ttorrent.network.*;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.network.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

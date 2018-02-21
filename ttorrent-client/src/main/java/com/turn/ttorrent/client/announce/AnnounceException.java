@@ -23,17 +23,17 @@ package com.turn.ttorrent.client.announce;
  */
 public class AnnounceException extends Exception {
 
-	private static final long serialVersionUID = -1;
+  private static final long serialVersionUID = -1;
 
-	public AnnounceException(String message) {
-		super(message);
-	}
+  public AnnounceException(String message) {
+    super(message);
+  }
 
-	public AnnounceException(Throwable cause) {
-		super(cause);
-	}
+  public AnnounceException(Throwable cause) {
+    super(cause);
+  }
 
-	public AnnounceException(String message, Throwable cause) {
-		super(message, cause);
-	}
+  public AnnounceException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

@@ -1,8 +1,8 @@
 package com.turn.ttorrent.network.keyProcessors;
 
-import com.turn.ttorrent.network.TimeoutAttachment;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.network.TimeoutAttachment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

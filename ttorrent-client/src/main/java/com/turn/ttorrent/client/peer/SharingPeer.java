@@ -17,13 +17,13 @@ package com.turn.ttorrent.client.peer;
 
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.network.ConnectionManager;
-import com.turn.ttorrent.network.WriteListener;
-import com.turn.ttorrent.network.WriteTask;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.network.ConnectionManager;
+import com.turn.ttorrent.network.WriteListener;
+import com.turn.ttorrent.network.WriteTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +71,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
   private static final int MAX_PIPELINED_REQUESTS = 100;
-  private static final long MAX_REQUEST_TIMEOUT = 20*1000;
+  private static final long MAX_REQUEST_TIMEOUT = 20 * 1000;
 
   private final Object availablePiecesLock;
   private volatile boolean choking;
@@ -218,7 +218,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return this.interested;
   }
 
-  public BitSet getPoorlyAvailablePieces(){
+  public BitSet getPoorlyAvailablePieces() {
     return poorlyAvailablePieces;
   }
 
@@ -326,12 +326,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    *
    * @param piece The piece chosen to be downloaded from this peer.
    */
-  public synchronized void downloadPiece(final Piece piece){
+  public synchronized void downloadPiece(final Piece piece) {
     downloadPiece(piece, false);
   }
 
   public void downloadPiece(final Piece piece, boolean force)
-    throws IllegalStateException {
+          throws IllegalStateException {
     synchronized (this.requestsLock) {
       if (!myRequestedPieces.containsKey(piece) || force) {
         myRequestedPieces.put(piece, 0);
@@ -353,12 +353,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    */
   private void requestNextBlocksForPiece(final Piece piece) {
     synchronized (this.requestsLock) {
-      while ( myRequestedPieces.get(piece) < piece.size()) {
+      while (myRequestedPieces.get(piece) < piece.size()) {
         final int lastRequestedOffset = myRequestedPieces.get(piece);
         PeerMessage.RequestMessage request = PeerMessage.RequestMessage
-          .craft(piece.getIndex(),lastRequestedOffset,
-            Math.min((int) (piece.size() - lastRequestedOffset),
-              PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
+                .craft(piece.getIndex(), lastRequestedOffset,
+                        Math.min((int) (piece.size() - lastRequestedOffset),
+                                PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
         removeBlockRequest(piece.getIndex(), lastRequestedOffset);
         try {
           boolean addedCorrectly = myRequests.offer(request, 1, TimeUnit.SECONDS);
@@ -389,7 +389,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * </p>
    *
    * @param pieceIdx The piece index of PIECE message received.
-   * @param offset The offset of PIECE message received.
+   * @param offset   The offset of PIECE message received.
    */
   private void removeBlockRequest(final int pieceIdx, final int offset) {
     synchronized (this.requestsLock) {
@@ -423,7 +423,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   public Set<PeerMessage.RequestMessage> cancelPendingRequests(final Piece piece) {
     synchronized (this.requestsLock) {
       Set<PeerMessage.RequestMessage> cancelled =
-        new HashSet<PeerMessage.RequestMessage>();
+              new HashSet<PeerMessage.RequestMessage>();
 
       for (PeerMessage.RequestMessage request : myRequests) {
         if (piece == null || piece.getIndex() == request.getPiece()) {
@@ -440,7 +440,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public Set<PeerMessage.RequestMessage> getRemainingRequestedPieces(final Piece piece){
+  public Set<PeerMessage.RequestMessage> getRemainingRequestedPieces(final Piece piece) {
     synchronized (this.requestsLock) {
       Set<PeerMessage.RequestMessage> pieceParts =
               new HashSet<PeerMessage.RequestMessage>();
@@ -499,12 +499,12 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         synchronized (this.availablePiecesLock) {
           this.availablePieces.set(havePiece.getIndex());
           logger.trace("Peer {} now has {} [{}/{}].",
-            new Object[]{
-              this,
-              havePiece,
-              this.availablePieces.cardinality(),
-              this.torrent.getPieceCount()
-            });
+                  new Object[]{
+                          this,
+                          havePiece,
+                          this.availablePieces.cardinality(),
+                          this.torrent.getPieceCount()
+                  });
         }
 
         this.firePieceAvailabity(havePiece);
@@ -512,31 +512,31 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       case BITFIELD:
         // Augment the hasPiece bit field from this BITFIELD message
         PeerMessage.BitfieldMessage bitfield =
-          (PeerMessage.BitfieldMessage) msg;
+                (PeerMessage.BitfieldMessage) msg;
 
         synchronized (this.availablePiecesLock) {
           this.availablePieces.or(bitfield.getBitfield());
           logger.trace("Recorded bitfield from {} with {} " +
-            "pieces(s) [{}/{}].",
-            new Object[]{
-              this,
-              bitfield.getBitfield().cardinality(),
-              this.availablePieces.cardinality(),
-              this.torrent.getPieceCount()
-            });
+                          "pieces(s) [{}/{}].",
+                  new Object[]{
+                          this,
+                          bitfield.getBitfield().cardinality(),
+                          this.availablePieces.cardinality(),
+                          this.torrent.getPieceCount()
+                  });
         }
 
         this.fireBitfieldAvailabity();
         break;
       case REQUEST:
         PeerMessage.RequestMessage request =
-          (PeerMessage.RequestMessage) msg;
+                (PeerMessage.RequestMessage) msg;
         logger.trace("Got request message for {} ({} {}@{}) from {}", new Object[]{
-          Arrays.toString(torrent.getFilenames().toArray()),
-          request.getPiece(),
-          request.getLength(),
-          request.getOffset(),
-          this
+                Arrays.toString(torrent.getFilenames().toArray()),
+                request.getPiece(),
+                request.getLength(),
+                request.getOffset(),
+                this
         });
         Piece rp = this.torrent.getPiece(request.getPiece());
 
@@ -552,7 +552,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         }
 
         if (request.getLength() >
-          PeerMessage.RequestMessage.MAX_REQUEST_SIZE) {
+                PeerMessage.RequestMessage.MAX_REQUEST_SIZE) {
           logger.warn("Peer {} requested a block too big, terminating exchange.", this);
           this.unbind(true);
           break;
@@ -577,7 +577,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         } catch (IOException ioe) {
           logger.debug("error", ioe);
           this.fireIOException(new IOException(
-            "Error while sending piece block request!", ioe));
+                  "Error while sending piece block request!", ioe));
         }
 
         break;
@@ -591,11 +591,11 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         Piece p = this.torrent.getPiece(piece.getPiece());
 
         logger.trace("Got piece for {} ({} {}@{}) from {}", new Object[]{
-          Arrays.toString(torrent.getFilenames().toArray()),
-          p.getIndex(),
-          p.size(),
-          piece.getOffset(),
-          this
+                Arrays.toString(torrent.getFilenames().toArray()),
+                p.getIndex(),
+                p.size(),
+                piece.getOffset(),
+                this
         });
 
 
@@ -627,7 +627,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
               this.firePeerReady();
             } else {
               if (piece.getOffset() + piece.getBlock().capacity()
-                == p.size()) { // final request reached
+                      == p.size()) { // final request reached
                 for (PeerMessage.RequestMessage requestMessage : getRemainingRequestedPieces(p)) {
                   send(requestMessage);
                 }
@@ -639,7 +639,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
         } catch (IOException ioe) {
           logger.error(ioe.getMessage(), ioe);
           this.fireIOException(new IOException(
-            "Error while storing received piece block!", ioe));
+                  "Error while storing received piece block!", ioe));
           break;
         }
         break;
@@ -752,7 +752,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  private void firePeerConnected(){
+  private void firePeerConnected() {
     for (PeerActivityListener listener : this.listeners) {
       listener.handleNewPeerConnected(this);
     }
@@ -784,16 +784,16 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   public String toString() {
     return new StringBuilder(super.toString())
-      .append(" [")
-      .append((this.choked ? "C" : "c"))
-      .append((this.interested ? "I" : "i"))
-      .append("|")
-      .append((this.choking ? "C" : "c"))
-      .append((this.interesting ? "I" : "i"))
-      .append("|")
-      .append(this.availablePieces.cardinality())
-      .append("]")
-      .toString();
+            .append(" [")
+            .append((this.choked ? "C" : "c"))
+            .append((this.interested ? "I" : "i"))
+            .append("|")
+            .append((this.choking ? "C" : "c"))
+            .append((this.interesting ? "I" : "i"))
+            .append("|")
+            .append(this.availablePieces.cardinality())
+            .append("]")
+            .toString();
   }
 
   public String getTorrentHexInfoHash() {
@@ -808,9 +808,10 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     return this.socketChannel;
   }
 
-  public int getDownloadingPiecesCount(){
+  public int getDownloadingPiecesCount() {
     return myRequestedPieces.size();
   }
+
   @Override
   public TorrentHash getTorrentHash() {
     return torrent;
@@ -827,7 +828,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @see Rate.RateComparator
    */
   public static class DLRateComparator
-    implements Comparator<SharingPeer>, Serializable {
+          implements Comparator<SharingPeer>, Serializable {
 
     private static final long serialVersionUID = 96307229964730L;
 
@@ -847,7 +848,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * @see Rate.RateComparator
    */
   public static class ULRateComparator
-    implements Comparator<SharingPeer>, Serializable {
+          implements Comparator<SharingPeer>, Serializable {
 
     private static final long serialVersionUID = 38794949747717L;
 

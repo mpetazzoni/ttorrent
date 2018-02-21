@@ -9,10 +9,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.testng.Assert.*;
-import static org.testng.Assert.assertEqualsNoOrder;
 
 @Test
 public class TorrentTest {
@@ -47,7 +47,7 @@ public class TorrentTest {
     for (String fileName : fileNames) {
       files.add(new File(parentDir, fileName));
     }
-    Torrent createdTorrent = Torrent.create(parentDir,files, announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
+    Torrent createdTorrent = Torrent.create(parentDir, files, announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
     File torrentFileWin = new File("src/test/resources/torrents/parentDir.win.torrent");
     File torrentFileLinux = new File("src/test/resources/torrents/parentDir.linux.torrent");
     final byte[] expectedBytesWin = FileUtils.readFileToByteArray(torrentFileWin);
@@ -66,11 +66,11 @@ public class TorrentTest {
       normalizedFilenames.add(filename.replaceAll("\\\\", "/"));
     }
     String[] expectedFilenames = new String[]
-    {"parentDir/AccuRevCommon.jar",
-     "parentDir/commons-io-cio2.5_3.jar",
-     "parentDir/commons-io-cio2.5_3.jar.link",
-     "parentDir/inDir/application.wadl",
-     "parentDir/storage.version"};
+            {"parentDir/AccuRevCommon.jar",
+                    "parentDir/commons-io-cio2.5_3.jar",
+                    "parentDir/commons-io-cio2.5_3.jar.link",
+                    "parentDir/inDir/application.wadl",
+                    "parentDir/storage.version"};
     assertEqualsNoOrder(normalizedFilenames.toArray(new String[normalizedFilenames.size()]), expectedFilenames);
     System.out.println();
   }

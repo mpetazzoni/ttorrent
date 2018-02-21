@@ -57,7 +57,7 @@ import java.util.concurrent.*;
 public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private static final Logger logger =
-    LoggerFactory.getLogger(SharedTorrent.class);
+          LoggerFactory.getLogger(SharedTorrent.class);
 
   /**
    * Randomly select the next piece to download from a peer from the
@@ -66,18 +66,19 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private static final int RAREST_PIECE_JITTER = 42;
   private final static RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplAnyInteresting();
 
-    /** End-game trigger ratio.
-     *
-     * <p>
-     * Eng-game behavior (requesting already requested pieces from available
-     * and ready peers to try to speed-up the end of the transfer) will only be
-     * enabled when the ratio of completed pieces over total pieces in the
-     * torrent is over this value.
-     * </p>
-     */
-    private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
+  /**
+   * End-game trigger ratio.
+   *
+   * <p>
+   * Eng-game behavior (requesting already requested pieces from available
+   * and ready peers to try to speed-up the end of the transfer) will only be
+   * enabled when the ratio of completed pieces over total pieces in the
+   * torrent is over this value.
+   * </p>
+   */
+  private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
-    private Random random;
+  private Random random;
   private boolean stop;
 
   private long uploaded;
@@ -85,7 +86,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private long left;
 
   private long myLastAnnounceTime = -1;
-  private int mySeedersCount=0;
+  private int mySeedersCount = 0;
 
   private TorrentByteStorage bucket;
 
@@ -112,7 +113,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private volatile long myLastClose = System.currentTimeMillis();
 
-  private static long myUnloadTimeout = 1000*86400; // keep torrents loaded for 1 day
+  private static long myUnloadTimeout = 1000 * 86400; // keep torrents loaded for 1 day
 
   /**
    * Create a new shared torrent from a base Torrent object.
@@ -131,7 +132,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
     this(torrent, destDir, multiThreadHash, false);
   }
 
@@ -154,7 +155,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash, boolean seeder)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
     this(torrent.getEncoded(), destDir, multiThreadHash, seeder, false, DEFAULT_REQUEST_STRATEGY);
   }
 
@@ -169,7 +170,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws IOException           If the torrent file cannot be read or decoded.
    */
   public SharedTorrent(byte[] torrent, File destDir, boolean multiThreadHash)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
     this(torrent, destDir, multiThreadHash, false, false, DEFAULT_REQUEST_STRATEGY);
   }
 
@@ -184,7 +185,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy)
-    throws IOException, NoSuchAlgorithmException {
+          throws IOException, NoSuchAlgorithmException {
     super(torrent, seeder);
 
     this.isLeecher = leecher;
@@ -200,19 +201,19 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     String parentPath = parent.getCanonicalPath();
 
     try {
-      final Map<String,BEValue> decodedInfo = getDecodedInfo();
+      final Map<String, BEValue> decodedInfo = getDecodedInfo();
       this.pieceLength = decodedInfo.get("piece length").getInt();
       this.piecesHashes = ByteBuffer.wrap(decodedInfo.get("pieces")
-        .getBytes());
+              .getBytes());
 
       if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
-        (long) this.pieceLength < this.getSize()) {
+              (long) this.pieceLength < this.getSize()) {
         throw new IllegalArgumentException("Torrent size does not " +
-          "match the number of pieces and the piece size!");
+                "match the number of pieces and the piece size!");
       }
     } catch (InvalidBEncodingException ibee) {
       throw new IllegalArgumentException(
-        "Error reading torrent meta-info fields!");
+              "Error reading torrent meta-info fields!");
     }
 
     List<FileStorage> files = new LinkedList<FileStorage>();
@@ -222,7 +223,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
       if (!actual.getCanonicalPath().startsWith(parentPath)) {
         throw new SecurityException("Torrent file path attempted " +
-          "to break directory jail!");
+                "to break directory jail!");
       }
 
       actual.getParentFile().mkdirs();
@@ -273,7 +274,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY);
   }
 
-  private synchronized void openFileChannelIfNecessary(){
+  private synchronized void openFileChannelIfNecessary() {
     logger.debug("Opening file channel for {}. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     try {
       if (myDownloaders.size() == 0) {
@@ -286,7 +287,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
-    logger.debug("Closing file  channel for {} if necessary. Downloaders: {}",getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
+    logger.debug("Closing file  channel for {} if necessary. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     if (this.myDownloaders.size() == 0) {
       this.bucket.close();
       myLastClose = System.currentTimeMillis();
@@ -335,7 +336,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     myLastAnnounceTime = lastAnnounceTime;
   }
 
-  public void setTorrentStateListener(final TorrentStateListener listener){
+  public void setTorrentStateListener(final TorrentStateListener listener) {
     myStateListener = listener;
   }
 
@@ -353,9 +354,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     this.stop = true;
   }
 
-  public synchronized void unloadPieces(){
+  public synchronized void unloadPieces() {
     // do this only for completed torrents
-    if (clientState != ClientState.SEEDING || myDownloaders.size() > 0 && !bucket.isClosed()){
+    if (clientState != ClientState.SEEDING || myDownloaders.size() > 0 && !bucket.isClosed()) {
       return;
     }
     initialized = false;
@@ -395,13 +396,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     }
 
     logger.debug("{}: {}/{} bytes [{}/{}].",
-      new Object[]{
-        this.getName(),
-        (this.getSize() - this.left),
-        this.getSize(),
-        this.completedPieces.cardinality(),
-        this.pieces.length
-      });
+            new Object[]{
+                    this.getName(),
+                    (this.getSize() - this.left),
+                    this.getSize(),
+                    this.completedPieces.cardinality(),
+                    this.pieces.length
+            });
 
 //    Client.cleanupProcessor().registerCleanable(this);
     this.initialized = true;
@@ -409,7 +410,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private void initPieces() {
     int nPieces = (int) (Math.ceil(
-      (double) this.getSize() / this.pieceLength));
+            (double) this.getSize() / this.pieceLength));
     this.pieces = new Piece[nPieces];
     this.completedPieces = new BitSet(nPieces);
     this.piecesHashes.clear();
@@ -423,7 +424,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-      this.getName(), HASHING_THREADS_COUNT);
+            this.getName(), HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -433,11 +434,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       // situation.
       long off = ((long) idx) * this.pieceLength;
       long len = Math.min(
-        this.bucket.size() - off,
-        this.pieceLength);
+              this.bucket.size() - off,
+              this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder(), isLeecher);
+              this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       results.add(executor.submit(hasher));
@@ -473,7 +474,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     List<Piece> results = new LinkedList<Piece>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-      this.getName(), HASHING_THREADS_COUNT);
+            this.getName(), HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -483,11 +484,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       // situation.
       long off = ((long) idx) * this.pieceLength;
       long len = Math.min(
-        this.bucket.size() - off,
-        this.pieceLength);
+              this.bucket.size() - off,
+              this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
-        this.isSeeder(), isLeecher);
+              this.isSeeder(), isLeecher);
 
       Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
       try {
@@ -513,7 +514,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       this.bucket.close();
     } catch (IOException ioe) {
       logger.error("Error closing torrent byte storage: {}",
-        ioe.getMessage());
+              ioe.getMessage());
     }
   }
 
@@ -524,7 +525,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       this.bucket.delete();
     } catch (IOException ioe) {
       logger.error("Error deleting torrent byte storage: {}",
-        ioe.getMessage());
+              ioe.getMessage());
     }
   }
 
@@ -608,7 +609,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public synchronized boolean isComplete() {
     return this.pieces.length > 0 &&
-      this.completedPieces.cardinality() == this.pieces.length;
+            this.completedPieces.cardinality() == this.pieces.length;
   }
 
   /**
@@ -633,7 +634,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
     try {
       this.bucket.finish();
-    } catch (IOException ex){
+    } catch (IOException ex) {
       setClientState(ClientState.ERROR);
       throw ex;
     }
@@ -666,9 +667,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   public float getCompletion() {
     return this.isInitialized()
-      ? (float) this.completedPieces.cardinality() /
-      (float) this.pieces.length * 100.0f
-      : 0.0f;
+            ? (float) this.completedPieces.cardinality() /
+            (float) this.pieces.length * 100.0f
+            : 0.0f;
   }
 
   /**
@@ -703,19 +704,19 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   public synchronized void handlePeerChoked(SharingPeer peer) {
     Set<Piece> pieces = peer.getRequestedPieces();
 
-    if (pieces.size()>0) {
+    if (pieces.size() > 0) {
       for (Piece piece : pieces) {
         this.requestedPieces.set(piece.getIndex(), false);
       }
     }
 
     logger.trace("Peer {} choked, we now have {} outstanding " +
-      "request(s): {}.",
-      new Object[]{
-        peer,
-        this.requestedPieces.cardinality(),
-        this.requestedPieces
-      });
+                    "request(s): {}.",
+            new Object[]{
+                    peer,
+                    this.requestedPieces.cardinality(),
+                    this.requestedPieces
+            });
   }
 
   /**
@@ -739,7 +740,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 //    interesting.andNot(peer.getPoorlyAvailablePieces());
 
     while (peer.getDownloadingPiecesCount() < Math.min(10, interesting.cardinality())) {
-      if (!peer.isConnected()){
+      if (!peer.isConnected()) {
         break;
       }
       logger.trace("Peer {} is ready and has {} interesting piece(s).",
@@ -774,7 +775,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       }
       this.requestedPieces.set(chosen.getIndex());
       logger.trace("Requesting {} from {}, we now have {} " +
-              " outstanding request(s): {}.",
+                      " outstanding request(s): {}.",
               new Object[]{chosen, peer,
                       this.requestedPieces.cardinality(),
                       this.requestedPieces
@@ -787,7 +788,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   private synchronized void initIfNecessary(SharingPeer peer) {
-    if (!isInitialized()){
+    if (!isInitialized()) {
       try {
         init();
       } catch (InterruptedException e) {
@@ -819,7 +820,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     // If we don't have this piece, tell the peer we're interested in
     // getting it from him.
     if (!this.completedPieces.get(piece.getIndex()) &&
-      !this.requestedPieces.get(piece.getIndex())) {
+            !this.requestedPieces.get(piece.getIndex())) {
       peer.interesting();
     }
 
@@ -827,17 +828,17 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     this.rarest.add(piece);
 
     logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
-      new Object[]{
-        peer,
-        peer.getAvailablePieces().cardinality(),
-        this.completedPieces.cardinality(),
-        this.getAvailablePieces().cardinality(),
-        this.pieces.length
-      });
+            new Object[]{
+                    peer,
+                    peer.getAvailablePieces().cardinality(),
+                    this.completedPieces.cardinality(),
+                    this.getAvailablePieces().cardinality(),
+                    this.pieces.length
+            });
 
     if (!peer.isChoked() &&
-      peer.isInteresting() &&
-      !peer.isDownloading()) {
+            peer.isInteresting() &&
+            !peer.isDownloading()) {
       this.handlePeerReady(peer);
     }
   }
@@ -877,13 +878,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     }
 
     logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
-      new Object[]{
-        peer,
-        availablePieces.cardinality(),
-        this.completedPieces.cardinality(),
-        this.getAvailablePieces().cardinality(),
-        this.pieces.length
-      });
+            new Object[]{
+                    peer,
+                    availablePieces.cardinality(),
+                    this.completedPieces.cardinality(),
+                    this.getAvailablePieces().cardinality(),
+                    this.pieces.length
+            });
   }
 
   public int getDownloadersCount() {
@@ -929,16 +930,16 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   public synchronized void handlePieceCompleted(SharingPeer peer,
                                                 Piece piece) throws IOException {
     // Regardless of validity, record the number of bytes downloaded and
-		// mark the piece as not requested anymore
+    // mark the piece as not requested anymore
     this.downloaded += piece.size();
     this.requestedPieces.set(piece.getIndex(), false);
 
-		logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
-      new Object[]{
-        this.completedPieces.cardinality(),
-        this.requestedPieces.cardinality(),
-        this.requestedPieces
-      });
+    logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
+            new Object[]{
+                    this.completedPieces.cardinality(),
+                    this.requestedPieces.cardinality(),
+                    this.requestedPieces
+            });
   }
 
   /**
@@ -971,25 +972,25 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     myDownloaders.remove(peer);
 
     try {
-        closeFileChannelIfNecessary();
+      closeFileChannelIfNecessary();
     } catch (IOException e) {
       logger.info("I/O error on attempt to close file storage: " + e.toString());
     }
 
     logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
-      new Object[]{
-        peer,
-        availablePieces.cardinality(),
-        this.completedPieces.cardinality(),
-        this.getAvailablePieces().cardinality(),
-        this.pieces.length
-      });
+            new Object[]{
+                    peer,
+                    availablePieces.cardinality(),
+                    this.completedPieces.cardinality(),
+                    this.getAvailablePieces().cardinality(),
+                    this.pieces.length
+            });
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
-      new Object[]{
-        this.completedPieces.cardinality(),
-        this.requestedPieces.cardinality(),
-        this.requestedPieces
-      });
+            new Object[]{
+                    this.completedPieces.cardinality(),
+                    this.requestedPieces.cardinality(),
+                    this.requestedPieces
+            });
   }
 
   @Override
@@ -997,7 +998,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
                                              IOException ioe) { /* Do nothing */ }
 
   @Override
-  public synchronized void handleNewPeerConnected(SharingPeer peer){
+  public synchronized void handleNewPeerConnected(SharingPeer peer) {
     initIfNecessary(peer);
     openFileChannelIfNecessary();
     if (clientState != ClientState.ERROR) {
@@ -1006,11 +1007,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 
   @Override
-    public String toString() {
-        return "SharedTorrent{" +
-          Arrays.toString(getFilenames().toArray()) +
-          "}";
-    }
+  public String toString() {
+    return "SharedTorrent{" +
+            Arrays.toString(getFilenames().toArray()) +
+            "}";
+  }
 
 /*
   @Override
@@ -1022,7 +1023,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   }
 */
 
-  public static void setUnloadTimeout(final int unloadTimeout){
+  public static void setUnloadTimeout(final int unloadTimeout) {
     myUnloadTimeout = unloadTimeout;
   }
 }

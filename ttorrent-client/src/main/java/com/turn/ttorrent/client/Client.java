@@ -118,7 +118,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    */
   public Client(ExecutorService executorService) {
     this.random = new Random(System.currentTimeMillis());
-    this.announce = new Announce(this );
+    this.announce = new Announce(this);
     this.torrentsStorage = new TorrentsStorage();
     this.peersStorage = new PeersStorage();
     this.mySendBufferSize = new AtomicInteger();

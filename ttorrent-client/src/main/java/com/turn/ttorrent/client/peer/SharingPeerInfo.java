@@ -6,8 +6,8 @@ import java.nio.ByteBuffer;
 
 /**
  * @author Sergey.Pak
- *         Date: 8/9/13
- *         Time: 6:40 PM
+ * Date: 8/9/13
+ * Time: 6:40 PM
  */
 public interface SharingPeerInfo {
 

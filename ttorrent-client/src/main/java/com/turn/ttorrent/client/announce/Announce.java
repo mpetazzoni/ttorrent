@@ -15,10 +15,10 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.client.ClientState;
 import com.turn.ttorrent.client.Context;
-import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Announce implements Runnable {
 
   protected static final Logger logger =
-    LoggerFactory.getLogger(Announce.class);
+          LoggerFactory.getLogger(Announce.class);
 
   private List<Peer> myPeers;
 
@@ -76,7 +76,6 @@ public class Announce implements Runnable {
 
   /**
    * Initialize the base announce class members for the announcer.
-   *
    */
   public Announce(Context context) {
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
@@ -97,7 +96,7 @@ public class Announce implements Runnable {
       client.announceAllInterfaces(event, false, torrent);
     } catch (AnnounceException e) {
       logger.info(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getHexInfoHash(), String.valueOf(trackerUrl)));
-      logger.debug(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getHexInfoHash(), String.valueOf(trackerUrl)), e );
+      logger.debug(String.format("Unable to force announce torrent %s on tracker %s.", torrent.getHexInfoHash(), String.valueOf(trackerUrl)), e);
     }
   }
 
@@ -107,12 +106,13 @@ public class Announce implements Runnable {
   public void start(final URI defaultTrackerURI, final AnnounceResponseListener listener, final Peer[] peers, final int announceInterval) {
     myAnnounceInterval = announceInterval;
     myPeers.addAll(Arrays.asList(peers));
-    if (defaultTrackerURI != null){
+    if (defaultTrackerURI != null) {
       try {
         myDefaultTracker = createTrackerClient(myPeers, defaultTrackerURI);
         myDefaultTracker.register(listener);
         this.clients.put(defaultTrackerURI.toString(), myDefaultTracker);
-      } catch (Exception e) {}
+      } catch (Exception e) {
+      }
     } else {
       myDefaultTracker = null;
     }
@@ -212,7 +212,7 @@ public class Announce implements Runnable {
 
   private void defaultAnnounce(List<AnnounceableTorrent> torrentsForAnnounce) {
     for (AnnounceableTorrent torrent : torrentsForAnnounce) {
-      if (this.stop || Thread.currentThread().isInterrupted()){
+      if (this.stop || Thread.currentThread().isInterrupted()) {
         break;
       }
       try {
@@ -268,7 +268,7 @@ public class Announce implements Runnable {
   /**
    * Create a {@link TrackerClient} annoucing to the given tracker address.
    *
-   * @param peers    The list peer the tracker client will announce on behalf of.
+   * @param peers   The list peer the tracker client will announce on behalf of.
    * @param tracker The tracker address as a {@link java.net.URI}.
    * @throws UnknownHostException    If the tracker address is invalid.
    * @throws UnknownServiceException If the tracker protocol is not supported.
@@ -283,7 +283,7 @@ public class Announce implements Runnable {
     }
 
     throw new UnknownServiceException(
-      "Unsupported announce scheme: " + scheme + "!");
+            "Unsupported announce scheme: " + scheme + "!");
   }
 
   /**
@@ -303,8 +303,8 @@ public class Announce implements Runnable {
     return URI.create(uris.get(0));
   }
 
-  public URI getDefaultTrackerURI(){
-    if (myDefaultTracker == null){
+  public URI getDefaultTrackerURI() {
+    if (myDefaultTracker == null) {
       return null;
     }
     return myDefaultTracker.getTrackerURI();

@@ -31,134 +31,134 @@ import java.util.List;
  * @author mpetazzoni
  */
 public class UDPAnnounceResponseMessage
-	extends UDPTrackerMessage.UDPTrackerResponseMessage
-	implements TrackerMessage.AnnounceResponseMessage {
+        extends UDPTrackerMessage.UDPTrackerResponseMessage
+        implements TrackerMessage.AnnounceResponseMessage {
 
-	private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
+  private static final int UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE = 20;
 
-	private final int actionId = Type.ANNOUNCE_RESPONSE.getId();
-	private final int transactionId;
-	private final int interval;
-	private final int complete;
-	private final int incomplete;
-	private final List<Peer> peers;
+  private final int actionId = Type.ANNOUNCE_RESPONSE.getId();
+  private final int transactionId;
+  private final int interval;
+  private final int complete;
+  private final int incomplete;
+  private final List<Peer> peers;
 
-	private UDPAnnounceResponseMessage(ByteBuffer data, int transactionId,
-		int interval, int complete, int incomplete, List<Peer> peers) {
-		super(Type.ANNOUNCE_REQUEST, data);
-		this.transactionId = transactionId;
-		this.interval = interval;
-		this.complete = complete;
-		this.incomplete = incomplete;
-		this.peers = peers;
-	}
+  private UDPAnnounceResponseMessage(ByteBuffer data, int transactionId,
+                                     int interval, int complete, int incomplete, List<Peer> peers) {
+    super(Type.ANNOUNCE_REQUEST, data);
+    this.transactionId = transactionId;
+    this.interval = interval;
+    this.complete = complete;
+    this.incomplete = incomplete;
+    this.peers = peers;
+  }
 
-	@Override
-	public int getActionId() {
-		return this.actionId;
-	}
+  @Override
+  public int getActionId() {
+    return this.actionId;
+  }
 
-	@Override
-	public int getTransactionId() {
-		return this.transactionId;
-	}
+  @Override
+  public int getTransactionId() {
+    return this.transactionId;
+  }
 
-	@Override
-	public int getInterval() {
-		return this.interval;
-	}
+  @Override
+  public int getInterval() {
+    return this.interval;
+  }
 
-	@Override
-	public int getComplete() {
-		return this.complete;
-	}
+  @Override
+  public int getComplete() {
+    return this.complete;
+  }
 
-	@Override
-	public int getIncomplete() {
-		return this.incomplete;
-	}
+  @Override
+  public int getIncomplete() {
+    return this.incomplete;
+  }
 
-	@Override
-	public List<Peer> getPeers() {
-		return this.peers;
-	}
+  @Override
+  public List<Peer> getPeers() {
+    return this.peers;
+  }
 
   public String getHexInfoHash() {
     return "";
   }
 
-	public static UDPAnnounceResponseMessage parse(ByteBuffer data)
-		throws MessageValidationException {
-		if (data.remaining() < UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE ||
-			(data.remaining() - UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE) % 6 != 0) {
-			throw new MessageValidationException(
-				"Invalid announce response message size!");
-		}
+  public static UDPAnnounceResponseMessage parse(ByteBuffer data)
+          throws MessageValidationException {
+    if (data.remaining() < UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE ||
+            (data.remaining() - UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE) % 6 != 0) {
+      throw new MessageValidationException(
+              "Invalid announce response message size!");
+    }
 
-		if (data.getInt() != Type.ANNOUNCE_RESPONSE.getId()) {
-			throw new MessageValidationException(
-				"Invalid action code for announce response!");
-		}
+    if (data.getInt() != Type.ANNOUNCE_RESPONSE.getId()) {
+      throw new MessageValidationException(
+              "Invalid action code for announce response!");
+    }
 
-		int transactionId = data.getInt();
-		int interval = data.getInt();
-		int incomplete = data.getInt();
-		int complete = data.getInt();
+    int transactionId = data.getInt();
+    int interval = data.getInt();
+    int incomplete = data.getInt();
+    int complete = data.getInt();
 
-		List<Peer> peers = new LinkedList<Peer>();
-		for (int i=0; i < data.remaining() / 6; i++) {
-			try {
-				byte[] ipBytes = new byte[4];
-				data.get(ipBytes);
-				InetAddress ip = InetAddress.getByAddress(ipBytes);
-				int port =
-					(0xFF & (int)data.get()) << 8 |
-					(0xFF & (int)data.get());
-				peers.add(new Peer(new InetSocketAddress(ip, port)));
-			} catch (UnknownHostException uhe) {
-				throw new MessageValidationException(
-					"Invalid IP address in announce request!");
-			}
-		}
+    List<Peer> peers = new LinkedList<Peer>();
+    for (int i = 0; i < data.remaining() / 6; i++) {
+      try {
+        byte[] ipBytes = new byte[4];
+        data.get(ipBytes);
+        InetAddress ip = InetAddress.getByAddress(ipBytes);
+        int port =
+                (0xFF & (int) data.get()) << 8 |
+                        (0xFF & (int) data.get());
+        peers.add(new Peer(new InetSocketAddress(ip, port)));
+      } catch (UnknownHostException uhe) {
+        throw new MessageValidationException(
+                "Invalid IP address in announce request!");
+      }
+    }
 
-		return new UDPAnnounceResponseMessage(data,
-			transactionId,
-			interval,
-			complete,
-			incomplete,
-			peers);
-	}
+    return new UDPAnnounceResponseMessage(data,
+            transactionId,
+            interval,
+            complete,
+            incomplete,
+            peers);
+  }
 
-	public static UDPAnnounceResponseMessage craft(int transactionId,
-		int interval, int complete, int incomplete, List<Peer> peers) {
-		ByteBuffer data = ByteBuffer
-			.allocate(UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE + 6*peers.size());
-		data.putInt(Type.ANNOUNCE_RESPONSE.getId());
-		data.putInt(transactionId);
-		data.putInt(interval);
+  public static UDPAnnounceResponseMessage craft(int transactionId,
+                                                 int interval, int complete, int incomplete, List<Peer> peers) {
+    ByteBuffer data = ByteBuffer
+            .allocate(UDP_ANNOUNCE_RESPONSE_MIN_MESSAGE_SIZE + 6 * peers.size());
+    data.putInt(Type.ANNOUNCE_RESPONSE.getId());
+    data.putInt(transactionId);
+    data.putInt(interval);
 
-		/**
-		 * Leechers (incomplete) are first, before seeders (complete) in the packet.
-		 */
-		data.putInt(incomplete);
-		data.putInt(complete);
+    /**
+     * Leechers (incomplete) are first, before seeders (complete) in the packet.
+     */
+    data.putInt(incomplete);
+    data.putInt(complete);
 
-		for (Peer peer : peers) {
-			byte[] ip = peer.getRawIp();
-			if (ip == null || ip.length != 4) {
-				continue;
-			}
+    for (Peer peer : peers) {
+      byte[] ip = peer.getRawIp();
+      if (ip == null || ip.length != 4) {
+        continue;
+      }
 
-			data.put(ip);
-			data.putShort((short)peer.getPort());
-		}
+      data.put(ip);
+      data.putShort((short) peer.getPort());
+    }
 
-		return new UDPAnnounceResponseMessage(data,
-			transactionId,
-			interval,
-			complete,
-			incomplete,
-			peers);
-	}
+    return new UDPAnnounceResponseMessage(data,
+            transactionId,
+            interval,
+            complete,
+            incomplete,
+            peers);
+  }
 }
 

@@ -2,8 +2,8 @@ package com.turn.ttorrent.common;
 
 /**
  * @author Sergey.Pak
- *         Date: 8/9/13
- *         Time: 6:00 PM
+ * Date: 8/9/13
+ * Time: 6:00 PM
  */
 public interface TorrentInfo extends TorrentHash {
 

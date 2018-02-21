@@ -32,97 +32,97 @@ import java.util.Comparator;
  */
 public class Rate implements Comparable<Rate> {
 
-	public static final Comparator<Rate> RATE_COMPARATOR =
-		new RateComparator();
+  public static final Comparator<Rate> RATE_COMPARATOR =
+          new RateComparator();
 
-	private long bytes = 0;
-	private long reset = 0;
-	private long last = 0;
+  private long bytes = 0;
+  private long reset = 0;
+  private long last = 0;
 
-	/**
-	 * Add a byte count to the current measurement.
-	 *
-	 * @param count The number of bytes exchanged since the last reset.
-	 */
-	public synchronized void add(long count) {
-		this.bytes += count;
-		if (this.reset == 0) {
-			this.reset = System.currentTimeMillis();
-		}
-		this.last = System.currentTimeMillis();
-	}
+  /**
+   * Add a byte count to the current measurement.
+   *
+   * @param count The number of bytes exchanged since the last reset.
+   */
+  public synchronized void add(long count) {
+    this.bytes += count;
+    if (this.reset == 0) {
+      this.reset = System.currentTimeMillis();
+    }
+    this.last = System.currentTimeMillis();
+  }
 
-	/**
-	 * Get the current rate.
-	 *
-	 * <p>
-	 * The exchange rate is the number of bytes exchanged since the last
-	 * reset and the last input.
-	 * </p>
-	 */
-	public synchronized float get() {
-		if (this.last - this.reset == 0) {
-			return 0;
-		}
+  /**
+   * Get the current rate.
+   *
+   * <p>
+   * The exchange rate is the number of bytes exchanged since the last
+   * reset and the last input.
+   * </p>
+   */
+  public synchronized float get() {
+    if (this.last - this.reset == 0) {
+      return 0;
+    }
 
-		return this.bytes / ((this.last - this.reset) / 1000.0f);
-	}
+    return this.bytes / ((this.last - this.reset) / 1000.0f);
+  }
 
-	/**
-	 * Reset the measurement.
-	 */
-	public synchronized void reset() {
-		this.bytes = 0;
-		this.reset = System.currentTimeMillis();
-		this.last = this.reset;
-	}
+  /**
+   * Reset the measurement.
+   */
+  public synchronized void reset() {
+    this.bytes = 0;
+    this.reset = System.currentTimeMillis();
+    this.last = this.reset;
+  }
 
-	@Override
-	public int compareTo(Rate other) {
-		return RATE_COMPARATOR.compare(this, other);
-	}
+  @Override
+  public int compareTo(Rate other) {
+    return RATE_COMPARATOR.compare(this, other);
+  }
 
-	/**
-	 * A rate comparator.
-	 *
-	 * <p>
-	 * This class provides a comparator to sort peers by an exchange rate,
-	 * comparing two rates and returning an ascending ordering.
-	 * </p>
-	 *
-	 * <p>
-	 * <b>Note:</b> we need to make sure here that we don't return 0, which
-	 * would provide an ordering that is inconsistent with
-	 * <code>equals()</code>'s behavior, and result in unpredictable behavior
-	 * for sorted collections using this comparator.
-	 * </p>
-	 *
-	 * @author mpetazzoni
-	 */
-	private static class RateComparator
-			implements Comparator<Rate>, Serializable {
+  /**
+   * A rate comparator.
+   *
+   * <p>
+   * This class provides a comparator to sort peers by an exchange rate,
+   * comparing two rates and returning an ascending ordering.
+   * </p>
+   *
+   * <p>
+   * <b>Note:</b> we need to make sure here that we don't return 0, which
+   * would provide an ordering that is inconsistent with
+   * <code>equals()</code>'s behavior, and result in unpredictable behavior
+   * for sorted collections using this comparator.
+   * </p>
+   *
+   * @author mpetazzoni
+   */
+  private static class RateComparator
+          implements Comparator<Rate>, Serializable {
 
-		private static final long serialVersionUID = 72460233003600L;
+    private static final long serialVersionUID = 72460233003600L;
 
-		/**
-		 * Compare two rates together.
-		 *
-		 * <p>
-		 * This method compares float, but we don't care too much about
-		 * rounding errors. It's just to order peers so super-strict rate based
-		 * order is not required.
-		 * </p>
-		 *
-		 * @param a
-		 * @param b
-		 */
-		@Override
-		public int compare(Rate a, Rate b) {
-			if (a.get() > b.get()) {
-				return 1;
-			}
+    /**
+     * Compare two rates together.
+     *
+     * <p>
+     * This method compares float, but we don't care too much about
+     * rounding errors. It's just to order peers so super-strict rate based
+     * order is not required.
+     * </p>
+     *
+     * @param a
+     * @param b
+     */
+    @Override
+    public int compare(Rate a, Rate b) {
+      if (a.get() > b.get()) {
+        return 1;
+      }
 
-			return -1;
-		}
-	}
+      return -1;
+    }
+  }
 }

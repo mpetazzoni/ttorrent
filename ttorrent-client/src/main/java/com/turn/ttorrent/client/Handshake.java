@@ -30,10 +30,10 @@ import java.text.ParseException;
  */
 public class Handshake implements TorrentHash {
 
-	public static final String BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol";
-	public static final int BASE_HANDSHAKE_LENGTH = 49;
+  public static final String BITTORRENT_PROTOCOL_IDENTIFIER = "BitTorrent protocol";
+  public static final int BASE_HANDSHAKE_LENGTH = 49;
 
-	private ByteBuffer data;
+  private ByteBuffer data;
   private ByteBuffer infoHash;
   private ByteBuffer peerId;
 
@@ -41,60 +41,60 @@ public class Handshake implements TorrentHash {
 
   private int myPstrlen;
 
-	private Handshake(ByteBuffer data, ByteBuffer infoHash,
-			ByteBuffer peerId) {
-		this.data = data;
-		this.data.rewind();
+  private Handshake(ByteBuffer data, ByteBuffer infoHash,
+                    ByteBuffer peerId) {
+    this.data = data;
+    this.data.rewind();
 
-		this.infoHash = infoHash;
-		this.peerId = peerId;
-	}
+    this.infoHash = infoHash;
+    this.peerId = peerId;
+  }
 
-	public ByteBuffer getData() {
-		return this.data;
-	}
+  public ByteBuffer getData() {
+    return this.data;
+  }
 
-	public byte[] getInfoHash() {
-		return this.infoHash.array();
-	}
+  public byte[] getInfoHash() {
+    return this.infoHash.array();
+  }
 
   public String getHexInfoHash() {
     return Torrent.byteArrayToHexString(getInfoHash());
   }
 
-	public byte[] getPeerId() {
-		return this.peerId.array();
-	}
+  public byte[] getPeerId() {
+    return this.peerId.array();
+  }
 
-	public static Handshake parse(ByteBuffer buffer)
-		throws ParseException, UnsupportedEncodingException {
-		int pstrlen = Byte.valueOf(buffer.get()).intValue();
-		if (pstrlen < 0 ||
-				buffer.remaining() != BASE_HANDSHAKE_LENGTH + pstrlen - 1) {
-			throw new ParseException("Incorrect handshake message length " +
-				   "(pstrlen=" + pstrlen + ") !", 0);
-		}
+  public static Handshake parse(ByteBuffer buffer)
+          throws ParseException, UnsupportedEncodingException {
+    int pstrlen = Byte.valueOf(buffer.get()).intValue();
+    if (pstrlen < 0 ||
+            buffer.remaining() != BASE_HANDSHAKE_LENGTH + pstrlen - 1) {
+      throw new ParseException("Incorrect handshake message length " +
+              "(pstrlen=" + pstrlen + ") !", 0);
+    }
 
-		// Check the protocol identification string
-		byte[] pstr = new byte[pstrlen];
-		buffer.get(pstr);
+    // Check the protocol identification string
+    byte[] pstr = new byte[pstrlen];
+    buffer.get(pstr);
 
-		if (!Handshake.BITTORRENT_PROTOCOL_IDENTIFIER.equals(
-					new String(pstr, Torrent.BYTE_ENCODING))) {
-			throw new ParseException("Invalid protocol identifier!", 1);
-		}
+    if (!Handshake.BITTORRENT_PROTOCOL_IDENTIFIER.equals(
+            new String(pstr, Torrent.BYTE_ENCODING))) {
+      throw new ParseException("Invalid protocol identifier!", 1);
+    }
 
-		// Ignore reserved bytes
-		byte[] reserved = new byte[8];
-		buffer.get(reserved);
+    // Ignore reserved bytes
+    byte[] reserved = new byte[8];
+    buffer.get(reserved);
 
-		byte[] infoHash = new byte[20];
-		buffer.get(infoHash);
-		byte[] peerId = new byte[20];
-		buffer.get(peerId);
-		return new Handshake(buffer, ByteBuffer.wrap(infoHash),
-				ByteBuffer.wrap(peerId));
-	}
+    byte[] infoHash = new byte[20];
+    buffer.get(infoHash);
+    byte[] peerId = new byte[20];
+    buffer.get(peerId);
+    return new Handshake(buffer, ByteBuffer.wrap(infoHash),
+            ByteBuffer.wrap(peerId));
+  }
 
   public static Handshake parse(ByteBuffer buffer, String torrentIdentifier) throws UnsupportedEncodingException, ParseException {
     Handshake hs = Handshake.parse(buffer);
@@ -108,29 +108,29 @@ public class Handshake implements TorrentHash {
     return hs;
   }
 
-	public static Handshake craft(byte[] torrentInfoHash, byte[] clientPeerId) {
-		try {
-			ByteBuffer buffer = ByteBuffer.allocate(
-					Handshake.BASE_HANDSHAKE_LENGTH +
-					Handshake.BITTORRENT_PROTOCOL_IDENTIFIER.length());
+  public static Handshake craft(byte[] torrentInfoHash, byte[] clientPeerId) {
+    try {
+      ByteBuffer buffer = ByteBuffer.allocate(
+              Handshake.BASE_HANDSHAKE_LENGTH +
+                      Handshake.BITTORRENT_PROTOCOL_IDENTIFIER.length());
 
-			byte[] reserved = new byte[8];
-			ByteBuffer infoHash = ByteBuffer.wrap(torrentInfoHash);
-			ByteBuffer peerId = ByteBuffer.wrap(clientPeerId);
+      byte[] reserved = new byte[8];
+      ByteBuffer infoHash = ByteBuffer.wrap(torrentInfoHash);
+      ByteBuffer peerId = ByteBuffer.wrap(clientPeerId);
 
-			buffer.put((byte)Handshake
-					.BITTORRENT_PROTOCOL_IDENTIFIER.length());
-			buffer.put(Handshake
-					.BITTORRENT_PROTOCOL_IDENTIFIER.getBytes(Torrent.BYTE_ENCODING));
-			buffer.put(reserved);
-			buffer.put(infoHash);
-			buffer.put(peerId);
+      buffer.put((byte) Handshake
+              .BITTORRENT_PROTOCOL_IDENTIFIER.length());
+      buffer.put(Handshake
+              .BITTORRENT_PROTOCOL_IDENTIFIER.getBytes(Torrent.BYTE_ENCODING));
+      buffer.put(reserved);
+      buffer.put(infoHash);
+      buffer.put(peerId);
 
-			return new Handshake(buffer, infoHash, peerId);
-		} catch (UnsupportedEncodingException uee) {
-			return null;
-		}
-	}
+      return new Handshake(buffer, infoHash, peerId);
+    } catch (UnsupportedEncodingException uee) {
+      return null;
+    }
+  }
 
   public static Handshake parse(byte[] torrentInfoHash, byte[] clientPeerId, String torrentIdentifier) throws UnsupportedEncodingException, ParseException {
     Handshake hs = Handshake.craft(torrentInfoHash, clientPeerId);

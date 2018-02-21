@@ -32,31 +32,31 @@ import java.util.Map;
  */
 public abstract class HTTPTrackerMessage extends TrackerMessage {
 
-	protected HTTPTrackerMessage(Type type, ByteBuffer data) {
-		super(type, data);
-	}
+  protected HTTPTrackerMessage(Type type, ByteBuffer data) {
+    super(type, data);
+  }
 
-	public static HTTPTrackerMessage parse(InputStream data)
-		throws IOException, MessageValidationException {
-		BEValue decoded = BDecoder.bdecode(data);
+  public static HTTPTrackerMessage parse(InputStream data)
+          throws IOException, MessageValidationException {
+    BEValue decoded = BDecoder.bdecode(data);
     if (decoded == null) {
-			throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: ");
-		}
-		return parse(decoded);
-	}
+      throw new MessageValidationException("Could not decode tracker message (not B-encoded?)!: ");
+    }
+    return parse(decoded);
+  }
 
-	public static HTTPTrackerMessage parse(BEValue decoded) throws IOException, MessageValidationException {
-		Map<String, BEValue> params = decoded.getMap();
+  public static HTTPTrackerMessage parse(BEValue decoded) throws IOException, MessageValidationException {
+    Map<String, BEValue> params = decoded.getMap();
 
-		if (params.containsKey("info_hash")) {
-			return HTTPAnnounceRequestMessage.parse(decoded);
-		} else if (params.containsKey("peers")) {
-			return HTTPAnnounceResponseMessage.parse(decoded);
-		} else if (params.containsKey("failure reason")) {
-			return HTTPTrackerErrorMessage.parse(decoded);
-		}
+    if (params.containsKey("info_hash")) {
+      return HTTPAnnounceRequestMessage.parse(decoded);
+    } else if (params.containsKey("peers")) {
+      return HTTPAnnounceResponseMessage.parse(decoded);
+    } else if (params.containsKey("failure reason")) {
+      return HTTPTrackerErrorMessage.parse(decoded);
+    }
 
-		throw new MessageValidationException("Unknown HTTP tracker message!");
-	}
+    throw new MessageValidationException("Unknown HTTP tracker message!");
+  }
 
 }

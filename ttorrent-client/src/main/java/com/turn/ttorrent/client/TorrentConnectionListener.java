@@ -6,8 +6,8 @@ import java.nio.channels.SocketChannel;
 
 /**
  * @author Sergey.Pak
- *         Date: 9/9/13
- *         Time: 7:46 PM
+ * Date: 9/9/13
+ * Time: 7:46 PM
  */
 public interface TorrentConnectionListener {
 

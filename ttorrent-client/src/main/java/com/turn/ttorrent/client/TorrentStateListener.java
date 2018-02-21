@@ -18,8 +18,8 @@ package com.turn.ttorrent.client;
 
 /**
  * @author Sergey.Pak
- *         Date: 9/16/13
- *         Time: 4:45 PM
+ * Date: 9/16/13
+ * Time: 4:45 PM
  */
 public interface TorrentStateListener {
 

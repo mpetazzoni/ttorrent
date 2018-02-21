@@ -227,7 +227,7 @@ public class TrackerTest {
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(hexInfoHash);
 
-    new WaitFor(10*1000) {
+    new WaitFor(10 * 1000) {
       @Override
       protected boolean condition() {
         return tt.getPeers().size() == 2;
@@ -278,7 +278,7 @@ public class TrackerTest {
     c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
-    new WaitFor(10*1000) {
+    new WaitFor(10 * 1000) {
       @Override
       protected boolean condition() {
 

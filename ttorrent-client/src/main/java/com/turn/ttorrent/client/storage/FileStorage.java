@@ -15,18 +15,17 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -42,34 +41,34 @@ import org.slf4j.LoggerFactory;
  */
 public class FileStorage implements TorrentByteStorage {
 
-	private static final Logger logger =
-		LoggerFactory.getLogger(FileStorage.class);
+  private static final Logger logger =
+          LoggerFactory.getLogger(FileStorage.class);
 
-	private final File target;
-	private File partial;
-	private final long offset;
-	private final long size;
+  private final File target;
+  private File partial;
+  private final long offset;
+  private final long size;
 
-	private RandomAccessFile raf;
+  private RandomAccessFile raf;
   private FileChannel channel;
-	private File current;
+  private File current;
   private boolean myIsOpen = false;
 
   private final ReadWriteLock myLock = new ReentrantReadWriteLock();
 
   public FileStorage(File file, long offset, long size)
-		throws IOException {
-		this.target = file;
-		this.offset = offset;
-		this.size = size;
+          throws IOException {
+    this.target = file;
+    this.offset = offset;
+    this.size = size;
 
-	}
+  }
 
   public void open(final boolean seeder) throws IOException {
     try {
       myLock.writeLock().lock();
       if (seeder) {
-        if (!target.exists()){
+        if (!target.exists()) {
           throw new IOException("Target file " + target.getAbsolutePath() + " doesn't exist.");
         }
         this.current = this.target;
@@ -95,126 +94,127 @@ public class FileStorage implements TorrentByteStorage {
         this.raf.setLength(this.size);
       }
 
-    // Set the file length to the appropriate size, eventually truncating
-    // or extending the file if it already exists with a different size.
-      myIsOpen  = true;
-    this.channel = raf.getChannel();
+      // Set the file length to the appropriate size, eventually truncating
+      // or extending the file if it already exists with a different size.
+      myIsOpen = true;
+      this.channel = raf.getChannel();
 
-    logger.debug("Opened byte storage file at {} ({}+{} byte(s)).",
-      new Object[] {
-        this.current.getAbsolutePath(),
-        this.offset,
-        this.size,
-      });
+      logger.debug("Opened byte storage file at {} ({}+{} byte(s)).",
+              new Object[]{
+                      this.current.getAbsolutePath(),
+                      this.offset,
+                      this.size,
+              });
     } finally {
       myLock.writeLock().unlock();
     }
   }
 
-	protected long offset() {
-		return this.offset;
-	}
+  protected long offset() {
+    return this.offset;
+  }
 
-	@Override
-	public long size() {
-		return this.size;
-	}
+  @Override
+  public long size() {
+    return this.size;
+  }
 
-	@Override
-	public int read(ByteBuffer buffer, long offset) throws IOException {
-      try {
-        myLock.readLock().lock();
-		int requested = buffer.remaining();
+  @Override
+  public int read(ByteBuffer buffer, long offset) throws IOException {
+    try {
+      myLock.readLock().lock();
+      int requested = buffer.remaining();
 
-		if (offset + requested > this.size) {
-			throw new IllegalArgumentException("Invalid storage read request!");
-		}
-
-		int bytes = this.channel.read(buffer, offset);
-		if (bytes < requested) {
-			throw new IOException("Storage underrun!");
-		}
-
-		return bytes;
-      } finally {
-        myLock.readLock().unlock();
+      if (offset + requested > this.size) {
+        throw new IllegalArgumentException("Invalid storage read request!");
       }
-    }
 
-	@Override
-	public int write(ByteBuffer buffer, long offset) throws IOException {
-      try {
-        myLock.writeLock().lock();
-		int requested = buffer.remaining();
-
-		if (offset + requested > this.size) {
-			throw new IllegalArgumentException("Invalid storage write request!");
-		}
-
-		return this.channel.write(buffer, offset);
-      } finally {
-        myLock.writeLock().unlock();
+      int bytes = this.channel.read(buffer, offset);
+      if (bytes < requested) {
+        throw new IOException("Storage underrun!");
       }
-    }
 
-	@Override
-	public void close() throws IOException {
+      return bytes;
+    } finally {
+      myLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public int write(ByteBuffer buffer, long offset) throws IOException {
+    try {
+      myLock.writeLock().lock();
+      int requested = buffer.remaining();
+
+      if (offset + requested > this.size) {
+        throw new IllegalArgumentException("Invalid storage write request!");
+      }
+
+      return this.channel.write(buffer, offset);
+    } finally {
+      myLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    try {
+      myLock.writeLock().lock();
+      logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
+      if (this.channel.isOpen()) {
+        this.channel.force(true);
+      }
+      this.raf.close();
+      myIsOpen = false;
+    } finally {
+      myLock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * Move the partial file to its final location.
+   */
+  @Override
+  public void finish() throws IOException {
+    try {
+      myLock.writeLock().lock();
+      logger.debug("Closing file channel to " + this.current.getName() +
+              " (download complete).");
+      if (this.channel.isOpen()) {
+        this.channel.force(true);
+      }
+
+      // Nothing more to do if we're already on the target file.
+      if (this.isFinished()) {
+        return;
+      }
+
       try {
-        myLock.writeLock().lock();
-        logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
-        if (this.channel.isOpen()) {
-          this.channel.force(true);
-        }
+        FileUtils.deleteQuietly(this.target);
         this.raf.close();
-        myIsOpen = false;
-      } finally {
-        myLock.writeLock().unlock();
-      }
-    }
-
-	/** Move the partial file to its final location.
-	 */
-	@Override
-	public void finish() throws IOException {
-      try {
-        myLock.writeLock().lock();
-		logger.debug("Closing file channel to " + this.current.getName() +
-			" (download complete).");
-		if (this.channel.isOpen()) {
-			this.channel.force(true);
-		}
-
-		// Nothing more to do if we're already on the target file.
-		if (this.isFinished()) {
-			return;
-		}
-
-        try {
-          FileUtils.deleteQuietly(this.target);
-          this.raf.close();
-          FileUtils.moveFile(this.current, this.target);
-        } catch (Exception ex) {
-          logger.error("An error occurred while moving file to its final location", ex);
-          if (this.target.exists()){
-            throw new IOException("Was unable to delete existing file " + target.getAbsolutePath(), ex);
-          }
-          FileUtils.copyFile(this.current, this.target);
+        FileUtils.moveFile(this.current, this.target);
+      } catch (Exception ex) {
+        logger.error("An error occurred while moving file to its final location", ex);
+        if (this.target.exists()) {
+          throw new IOException("Was unable to delete existing file " + target.getAbsolutePath(), ex);
         }
-
-		this.current = this.target;
-
-		FileUtils.deleteQuietly(this.partial);
-        myIsOpen = false;
-		logger.debug("Moved torrent data from {} to {}.",
-			this.partial.getName(),
-			this.target.getName());
-      } finally {
-        myLock.writeLock().unlock();
+        FileUtils.copyFile(this.current, this.target);
       }
-    }
 
-  public boolean isOpen(){
-    try{
+      this.current = this.target;
+
+      FileUtils.deleteQuietly(this.partial);
+      myIsOpen = false;
+      logger.debug("Moved torrent data from {} to {}.",
+              this.partial.getName(),
+              this.target.getName());
+    } finally {
+      myLock.writeLock().unlock();
+    }
+  }
+
+  public boolean isOpen() {
+    try {
       myLock.readLock().lock();
       return myIsOpen;
     } finally {
@@ -222,16 +222,16 @@ public class FileStorage implements TorrentByteStorage {
     }
   }
 
-	@Override
-	public boolean isFinished() {
-		return this.current.equals(this.target);
-	}
+  @Override
+  public boolean isFinished() {
+    return this.current.equals(this.target);
+  }
 
   @Override
   public boolean isClosed() {
-    try{
+    try {
       myLock.readLock().lock();
-      return !myIsOpen && (channel==null || !channel.isOpen());
+      return !myIsOpen && (channel == null || !channel.isOpen());
     } finally {
       myLock.readLock().unlock();
     }

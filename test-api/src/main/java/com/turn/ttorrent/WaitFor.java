@@ -15,7 +15,7 @@ public abstract class WaitFor {
       while (System.currentTimeMillis() < maxTime && !condition()) {
         Thread.sleep(POLL_INTERVAL);
       }
-      if (condition()){
+      if (condition()) {
         myResult = true;
       }
     } catch (InterruptedException e) {

@@ -9,7 +9,7 @@ import java.util.Random;
 
 /**
  * @author Pavel.Sher
- *         Date: 05.03.2008
+ * Date: 05.03.2008
  */
 public class TempFiles {
   private static final File ourCurrentTempDir = FileUtils.getTempDirectory();
@@ -31,7 +31,7 @@ public class TempFiles {
     if (!myCurrentTempDir.isDirectory()) {
 
       throw new IllegalStateException("Temp directory is not a directory, was deleted by some process: " + myCurrentTempDir.getAbsolutePath() +
-          "\njava.io.tmpdir: " + FileUtils.getTempDirectory());
+              "\njava.io.tmpdir: " + FileUtils.getTempDirectory());
     }
 
     myShutdownHook = new Thread(new Runnable() {
@@ -56,6 +56,7 @@ public class TempFiles {
     } while (true);
 
   }
+
   private File doCreateTempFile(String prefix, String suffix) throws IOException {
     final File file = doCreateTempDir(prefix, suffix);
     file.delete();
@@ -127,7 +128,8 @@ public class TempFiles {
       for (File file : myFilesToDelete) {
         try {
           FileUtils.forceDelete(file);
-        } catch (IOException e) {}
+        } catch (IOException e) {
+        }
       }
 
       myFilesToDelete.clear();

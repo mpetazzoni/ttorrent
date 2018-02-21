@@ -34,53 +34,53 @@ import java.util.Map;
  * @author mpetazzoni
  */
 public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
-	implements ErrorMessage {
+        implements ErrorMessage {
 
-	private final String reason;
+  private final String reason;
 
-	private HTTPTrackerErrorMessage(ByteBuffer data, String reason) {
-		super(Type.ERROR, data);
-		this.reason = reason;
-	}
+  private HTTPTrackerErrorMessage(ByteBuffer data, String reason) {
+    super(Type.ERROR, data);
+    this.reason = reason;
+  }
 
-	@Override
-	public String getReason() {
-		return this.reason;
-	}
+  @Override
+  public String getReason() {
+    return this.reason;
+  }
 
-	public static HTTPTrackerErrorMessage parse(BEValue decoded)
-		throws IOException, MessageValidationException {
-		if (decoded == null) {
-			throw new MessageValidationException(
-				"Could not decode tracker message (not B-encoded?)!");
-		}
+  public static HTTPTrackerErrorMessage parse(BEValue decoded)
+          throws IOException, MessageValidationException {
+    if (decoded == null) {
+      throw new MessageValidationException(
+              "Could not decode tracker message (not B-encoded?)!");
+    }
 
-		Map<String, BEValue> params = decoded.getMap();
+    Map<String, BEValue> params = decoded.getMap();
 
-		try {
-			return new HTTPTrackerErrorMessage(
-							Constants.EMPTY_BUFFER,
-							params.get("failure reason")
-											.getString(Torrent.BYTE_ENCODING));
-		} catch (InvalidBEncodingException ibee) {
-			throw new MessageValidationException("Invalid tracker error " +
-							"message!", ibee);
-		}
-	}
+    try {
+      return new HTTPTrackerErrorMessage(
+              Constants.EMPTY_BUFFER,
+              params.get("failure reason")
+                      .getString(Torrent.BYTE_ENCODING));
+    } catch (InvalidBEncodingException ibee) {
+      throw new MessageValidationException("Invalid tracker error " +
+              "message!", ibee);
+    }
+  }
 
-	public static HTTPTrackerErrorMessage craft(
-		ErrorMessage.FailureReason reason) throws IOException,
-		   MessageValidationException {
-		return HTTPTrackerErrorMessage.craft(reason.getMessage());
-	}
+  public static HTTPTrackerErrorMessage craft(
+          ErrorMessage.FailureReason reason) throws IOException,
+          MessageValidationException {
+    return HTTPTrackerErrorMessage.craft(reason.getMessage());
+  }
 
-	public static HTTPTrackerErrorMessage craft(String reason)
-		throws IOException, MessageValidationException {
-		Map<String, BEValue> params = new HashMap<String, BEValue>();
-		params.put("failure reason",
-			new BEValue(reason, Torrent.BYTE_ENCODING));
-		return new HTTPTrackerErrorMessage(
-			BEncoder.bencode(params),
-			reason);
-	}
+  public static HTTPTrackerErrorMessage craft(String reason)
+          throws IOException, MessageValidationException {
+    Map<String, BEValue> params = new HashMap<String, BEValue>();
+    params.put("failure reason",
+            new BEValue(reason, Torrent.BYTE_ENCODING));
+    return new HTTPTrackerErrorMessage(
+            BEncoder.bencode(params),
+            reason);
+  }
 }

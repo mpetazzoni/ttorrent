@@ -1,9 +1,9 @@
 package com.turn.ttorrent.network;
 
-import com.turn.ttorrent.network.keyProcessors.CleanupProcessor;
-import com.turn.ttorrent.network.keyProcessors.KeyProcessor;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.network.keyProcessors.CleanupProcessor;
+import com.turn.ttorrent.network.keyProcessors.KeyProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,12 +39,12 @@ public class ConnectionWorker implements Runnable {
   private final NewConnectionAllower myNewConnectionAllower;
 
   ConnectionWorker(Selector selector,
-                          List<KeyProcessor> keyProcessors,
-                          int selectorTimeoutMillis,
-                          int cleanupTimeoutMillis,
-                          TimeService timeService,
-                          CleanupProcessor cleanupProcessor,
-                          NewConnectionAllower myNewConnectionAllower) {
+                   List<KeyProcessor> keyProcessors,
+                   int selectorTimeoutMillis,
+                   int cleanupTimeoutMillis,
+                   TimeService timeService,
+                   CleanupProcessor cleanupProcessor,
+                   NewConnectionAllower myNewConnectionAllower) {
     this.selector = selector;
     this.myTimeService = timeService;
     this.lastCleanupTime = timeService.now();

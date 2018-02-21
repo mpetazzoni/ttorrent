@@ -113,7 +113,7 @@ public class HandshakeReceiver implements DataProcessor {
     if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
-        final Handshake craft = Handshake.craft(hs.getInfoHash(),myContext.getPeersStorage().getSelf().getPeerIdArray());
+        final Handshake craft = Handshake.craft(hs.getInfoHash(), myContext.getPeersStorage().getSelf().getPeerIdArray());
         socketChannel.write(craft.getData());
       } catch (IOException e) {
         LoggerUtils.warnAndDebugDetails(logger, "error in sending handshake to {}", socketChannel, e);

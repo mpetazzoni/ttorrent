@@ -17,11 +17,9 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.TorrentInfo;
 import com.turn.ttorrent.common.protocol.TrackerMessage.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
@@ -45,38 +43,38 @@ import java.util.List;
  */
 public class HTTPTrackerClient extends TrackerClient {
 
-	protected static final Logger logger =
-		LoggerFactory.getLogger(HTTPTrackerClient.class);
+  protected static final Logger logger =
+          LoggerFactory.getLogger(HTTPTrackerClient.class);
 
-	/**
-	 * Create a new HTTP announcer for the given torrent.
-	 *
-	 * @param peers Our own peer specification.
-	 */
+  /**
+   * Create a new HTTP announcer for the given torrent.
+   *
+   * @param peers Our own peer specification.
+   */
   public HTTPTrackerClient(List<Peer> peers, URI tracker) {
     super(peers, tracker);
-	}
+  }
 
-	/**
-	 * Build, send and process a tracker announce request.
-	 *
-	 * <p>
-	 * This function first builds an announce request for the specified event
-	 * with all the required parameters. Then, the request is made to the
-	 * tracker and the response analyzed.
-	 * </p>
-	 *
-	 * <p>
-	 * All registered {@link AnnounceResponseListener} objects are then fired
-	 * with the decoded payload.
-	 * </p>
-	 *
-     * @param event The announce event type (can be AnnounceEvent.NONE for
-     * periodic updates).
-     * @param inhibitEvents Prevent event listeners from being notified.
-     * @param torrentInfo
-     */
-	public void announce(final AnnounceRequestMessage.RequestEvent event,
+  /**
+   * Build, send and process a tracker announce request.
+   *
+   * <p>
+   * This function first builds an announce request for the specified event
+   * with all the required parameters. Then, the request is made to the
+   * tracker and the response analyzed.
+   * </p>
+   *
+   * <p>
+   * All registered {@link AnnounceResponseListener} objects are then fired
+   * with the decoded payload.
+   * </p>
+   *
+   * @param event         The announce event type (can be AnnounceEvent.NONE for
+   *                      periodic updates).
+   * @param inhibitEvents Prevent event listeners from being notified.
+   * @param torrentInfo
+   */
+  public void announce(final AnnounceRequestMessage.RequestEvent event,
                        boolean inhibitEvents, final AnnounceableTorrent torrentInfo, final List<Peer> adresses) throws AnnounceException {
     logAnnounceRequest(event, torrentInfo);
 
@@ -155,7 +153,7 @@ public class HTTPTrackerClient extends TrackerClient {
           continue;
         }
 
-        final String hexInfoHash =  ((HTTPAnnounceResponseMessage)message).getHexInfoHash();
+        final String hexInfoHash = ((HTTPAnnounceResponseMessage) message).getHexInfoHash();
         try {
           this.handleTrackerAnnounceResponse(message, inhibitEvent, hexInfoHash);
         } catch (AnnounceException e) {
@@ -165,8 +163,8 @@ public class HTTPTrackerClient extends TrackerClient {
     }
   }
 
-  private URL encodeAnnounceToURL(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrentInfo, Peer peer) throws AnnounceException{
-	  URL result;
+  private URL encodeAnnounceToURL(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrentInfo, Peer peer) throws AnnounceException {
+    URL result;
     try {
       HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
       result = request.buildAnnounceURL(this.tracker.toURL());
@@ -183,15 +181,15 @@ public class HTTPTrackerClient extends TrackerClient {
     return result;
   }
 
-  private void sendAnnounce(final URL url,final String method, ResponseParser parser) throws AnnounceException {
-	  sendAnnounce(url, "", method, parser);
+  private void sendAnnounce(final URL url, final String method, ResponseParser parser) throws AnnounceException {
+    sendAnnounce(url, "", method, parser);
   }
 
   private void sendAnnounce(final URL url, final String body, final String method, ResponseParser parser) throws AnnounceException {
     HttpURLConnection conn = null;
     InputStream in = null;
     try {
-      conn = (HttpURLConnection)openConnectionCheckRedirects(url, body, method);
+      conn = (HttpURLConnection) openConnectionCheckRedirects(url, body, method);
       in = conn.getInputStream();
     } catch (IOException ioe) {
       LoggerUtils.warnAndDebugDetails(logger, "announce message is not sent. Announce URl is {}", url, ioe);
@@ -289,16 +287,16 @@ public class HTTPTrackerClient extends TrackerClient {
     return connection;
   }
 
-	/**
-	 * Build the announce request tracker message.
-	 *
-	 * @param event The announce event (can be <tt>NONE</tt> or <em>null</em>)
-	 * @return Returns an instance of a {@link HTTPAnnounceRequestMessage}
-	 * that can be used to generate the fully qualified announce URL, with
-	 * parameters, to make the announce request.
-	 * @throws UnsupportedEncodingException
-	 * @throws IOException
-	 * @throws MessageValidationException
+  /**
+   * Build the announce request tracker message.
+   *
+   * @param event The announce event (can be <tt>NONE</tt> or <em>null</em>)
+   * @return Returns an instance of a {@link HTTPAnnounceRequestMessage}
+   * that can be used to generate the fully qualified announce URL, with
+   * parameters, to make the announce request.
+   * @throws UnsupportedEncodingException
+   * @throws IOException
+   * @throws MessageValidationException
    */
   private HTTPAnnounceRequestMessage buildAnnounceRequest(
           AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrentInfo, Peer peer)

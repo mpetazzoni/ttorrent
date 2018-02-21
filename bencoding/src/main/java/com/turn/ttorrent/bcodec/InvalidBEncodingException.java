@@ -26,9 +26,9 @@ import java.io.IOException;
  */
 public class InvalidBEncodingException extends IOException {
 
-	public static final long serialVersionUID = -1;
+  public static final long serialVersionUID = -1;
 
-	public InvalidBEncodingException(String message) {
-		super(message);
-	}
+  public InvalidBEncodingException(String message) {
+    super(message);
+  }
 }

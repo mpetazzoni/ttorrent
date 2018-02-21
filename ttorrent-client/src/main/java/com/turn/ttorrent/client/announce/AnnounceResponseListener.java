@@ -28,20 +28,20 @@ import java.util.List;
  */
 public interface AnnounceResponseListener extends EventListener {
 
-	/**
-	 * Handle an announce response event.
-	 *
-	 * @param interval The announce interval requested by the tracker.
-	 * @param complete The number of seeders on this torrent.
-	 * @param incomplete The number of leechers on this torrent.
-	 */
+  /**
+   * Handle an announce response event.
+   *
+   * @param interval   The announce interval requested by the tracker.
+   * @param complete   The number of seeders on this torrent.
+   * @param incomplete The number of leechers on this torrent.
+   */
   public void handleAnnounceResponse(int interval, int complete, int incomplete, String hexInfoHash);
 
-	/**
-	 * Handle the discovery of new peers.
-	 *
-	 * @param peers The list of peers discovered (from the announce response or
-	 * any other means like DHT/PEX, etc.).
-	 */
+  /**
+   * Handle the discovery of new peers.
+   *
+   * @param peers The list of peers discovered (from the announce response or
+   *              any other means like DHT/PEX, etc.).
+   */
   public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash);
 }
