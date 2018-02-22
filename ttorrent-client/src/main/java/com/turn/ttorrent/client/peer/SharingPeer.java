@@ -71,7 +71,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
   private static final int MAX_PIPELINED_REQUESTS = 100;
-  private static final long MAX_REQUEST_TIMEOUT = 20 * 1000;
 
   private final Object availablePiecesLock;
   private volatile boolean choking;
@@ -92,7 +91,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   private final Object requestsLock;
 
-  private volatile Future connectTask;
   private final AtomicBoolean isStopped;
 
   private final ConnectionManager connectionManager;
@@ -329,11 +327,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
    * </p>
    *
    * @param piece The piece chosen to be downloaded from this peer.
+   * @param force if true then we request piece even if already requested
    */
-  public synchronized void downloadPiece(final Piece piece) {
-    downloadPiece(piece, false);
-  }
-
   public void downloadPiece(final Piece piece, boolean force)
           throws IllegalStateException {
     synchronized (this.requestsLock) {
@@ -776,16 +771,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public Future getConnectTask() {
-    return this.connectTask;
-  }
-
-  public void setConnectTask(Future connectTask) {
-    Future old = this.connectTask;
-    if (old != null) old.cancel(true);
-    this.connectTask = connectTask;
-  }
-
   public String toString() {
     return new StringBuilder(super.toString())
             .append(" [")
@@ -800,16 +785,8 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             .toString();
   }
 
-  public String getTorrentHexInfoHash() {
-    return this.torrent.getHexInfoHash();
-  }
-
   public SharedTorrent getTorrent() {
     return this.torrent;
-  }
-
-  public ByteChannel getSocketChannel() {
-    return this.socketChannel;
   }
 
   public int getDownloadingPiecesCount() {
@@ -838,26 +815,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
     public int compare(SharingPeer a, SharingPeer b) {
       return Rate.RATE_COMPARATOR.compare(a.getDLRate(), b.getDLRate());
-    }
-  }
-
-  /**
-   * Upload rate comparator.
-   * <p/>
-   * <p>
-   * Compares sharing peers based on their current upload rate.
-   * </p>
-   *
-   * @author mpetazzoni
-   * @see Rate.RateComparator
-   */
-  public static class ULRateComparator
-          implements Comparator<SharingPeer>, Serializable {
-
-    private static final long serialVersionUID = 38794949747717L;
-
-    public int compare(SharingPeer a, SharingPeer b) {
-      return Rate.RATE_COMPARATOR.compare(a.getULRate(), b.getULRate());
     }
   }
 }
