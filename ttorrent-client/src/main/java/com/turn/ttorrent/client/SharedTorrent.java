@@ -59,11 +59,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private static final Logger logger =
           LoggerFactory.getLogger(SharedTorrent.class);
 
-  /**
-   * Randomly select the next piece to download from a peer from the
-   * RAREST_PIECE_JITTER available from it.
-   */
-  private static final int RAREST_PIECE_JITTER = 42;
   private final static RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplAnyInteresting();
 
   /**
@@ -78,7 +73,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    */
   private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
-  private Random random;
   private boolean stop;
 
   private long uploaded;
@@ -110,10 +104,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private File parentFile;
   private final boolean isLeecher;
-
-  private volatile long myLastClose = System.currentTimeMillis();
-
-  private static long myUnloadTimeout = 1000 * 86400; // keep torrents loaded for 1 day
 
   /**
    * Create a new shared torrent from a base Torrent object.
@@ -232,7 +222,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     }
     this.bucket = new FileCollectionStorage(files, this.getSize());
 
-    this.random = new Random(System.currentTimeMillis());
     this.stop = false;
 
     this.uploaded = 0;
@@ -290,7 +279,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     logger.debug("Closing file  channel for {} if necessary. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getName(), myDownloaders.size());
     if (this.myDownloaders.size() == 0) {
       this.bucket.close();
-      myLastClose = System.currentTimeMillis();
     }
   }
 
@@ -1011,19 +999,5 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     return "SharedTorrent{" +
             Arrays.toString(getFilenames().toArray()) +
             "}";
-  }
-
-/*
-  @Override
-  public void cleanUp() {
-    if ((System.currentTimeMillis() - myLastClose) > myUnloadTimeout){
-      unloadPieces();
-    }
-    if ()
-  }
-*/
-
-  public static void setUnloadTimeout(final int unloadTimeout) {
-    myUnloadTimeout = unloadTimeout;
   }
 }
