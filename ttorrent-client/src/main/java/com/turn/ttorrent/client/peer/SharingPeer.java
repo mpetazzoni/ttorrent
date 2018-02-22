@@ -297,7 +297,11 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       connectionManager.offerWrite(new WriteTask(socketChannel, data, new WriteListener() {
         @Override
         public void onWriteFailed(String message, Throwable e) {
-          logger.debug(message, e);
+          if (e == null) {
+            logger.debug(message);
+          } else {
+            logger.debug(message, e);
+          }
           unbind(true);
         }
 
