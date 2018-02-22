@@ -45,6 +45,7 @@ public class WritableKeyProcessor implements KeyProcessor {
     try {
       int writeCount = socketChannel.write(processedTask.getByteBuffer());
       if (writeCount < 0) {
+        processedTask.getListener().onWriteFailed("Reached end of stream while writing", null);
         throw new EOFException("Reached end of stream while writing");
       }
 
