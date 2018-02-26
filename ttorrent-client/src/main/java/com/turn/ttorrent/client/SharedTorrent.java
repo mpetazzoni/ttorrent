@@ -96,8 +96,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
-  private TorrentStateListener myStateListener = null;
-
   private volatile ClientState clientState = ClientState.WAITING;
 
   private boolean multiThreadHash;
@@ -322,10 +320,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   public void setLastAnnounceTime(long lastAnnounceTime) {
     myLastAnnounceTime = lastAnnounceTime;
-  }
-
-  public void setTorrentStateListener(final TorrentStateListener listener) {
-    myStateListener = listener;
   }
 
   /**
@@ -640,24 +634,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   public void setClientState(ClientState clientState) {
     this.clientState = clientState;
-    if (myStateListener != null) {
-      myStateListener.torrentStateChanged(clientState, this);
-    }
-  }
-
-  /**
-   * Return the completion percentage of this torrent.
-   * <p/>
-   * <p>
-   * This is computed from the number of completed pieces divided by the
-   * number of pieces in this torrent, times 100.
-   * </p>
-   */
-  public float getCompletion() {
-    return this.isInitialized()
-            ? (float) this.completedPieces.cardinality() /
-            (float) this.pieces.length * 100.0f
-            : 0.0f;
   }
 
   /**
