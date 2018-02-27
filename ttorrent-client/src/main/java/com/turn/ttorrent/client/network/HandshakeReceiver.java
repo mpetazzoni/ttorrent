@@ -83,6 +83,12 @@ public class HandshakeReceiver implements DataProcessor {
     }
 
     final AnnounceableFileTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
+
+    if (announceableTorrent == null) {
+      logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
+    }
+
     SharedTorrent torrent;
     try {
       torrent = myContext.getTorrentLoader().loadTorrent(announceableTorrent);
@@ -108,11 +114,6 @@ public class HandshakeReceiver implements DataProcessor {
     if (old != null) {
       logger.debug("Already connected to old peer {}, close current connection with {}", old, sharingPeer);
       return new ShutdownProcessor().processAndGetNext(socketChannel);
-    }
-
-    if (!myContext.getTorrentsStorage().hasTorrent(hs.getHexInfoHash())) {
-      logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
-      return new ShutdownAndRemovePeerProcessor(peerUID, myContext);
     }
 
     // If I am not a leecher
