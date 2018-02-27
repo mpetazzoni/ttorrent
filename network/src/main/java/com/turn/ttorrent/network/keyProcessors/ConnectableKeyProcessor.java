@@ -77,6 +77,7 @@ public class ConnectableKeyProcessor implements KeyProcessor {
     KeyProcessorUtil.setBuffersSizeIfNecessary(socketChannel, mySendBufferSize.get(), myReceiveBufferSize.get());
     ReadWriteAttachment keyAttachment = new ReadWriteAttachment(connectionListener, myTimeService.now(), myTimeoutStorage.getTimeoutMillis());
     socketChannel.register(mySelector, SelectionKey.OP_READ, keyAttachment);
+    logger.info("setup new TCP connection with {}", socketChannel);
     connectionListener.onConnectionEstablished(socketChannel);
   }
 

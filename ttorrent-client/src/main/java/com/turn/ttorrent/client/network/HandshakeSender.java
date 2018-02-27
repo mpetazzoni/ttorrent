@@ -45,6 +45,7 @@ public class HandshakeSender implements DataProcessor {
     while (messageToSend.hasRemaining()) {
       socketChannel.write(messageToSend);
     }
+    logger.info("sent handshake to {}", socketChannel);
     return new HandshakeReceiver(
             myContext,
             mySendAddress.getHostName(),
