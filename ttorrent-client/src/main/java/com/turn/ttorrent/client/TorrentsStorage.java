@@ -42,18 +42,19 @@ public class TorrentsStorage {
   }
 
   public void peerDisconnected(String torrentHash) {
+    final SharedTorrent torrent;
     try {
       myReadWriteLock.writeLock().lock();
-      final SharedTorrent torrent = myActiveTorrents.get(torrentHash);
+      torrent = myActiveTorrents.get(torrentHash);
       if (torrent == null) return;
 
       if (torrent.getDownloadersCount() == 0) {
         myActiveTorrents.remove(torrentHash);
-        torrent.close();
       }
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
+    torrent.close();
   }
 
   public SharedTorrent getTorrent(String hash) {
