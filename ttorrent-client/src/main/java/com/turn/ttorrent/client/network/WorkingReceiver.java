@@ -114,7 +114,7 @@ public class WorkingReceiver implements DataProcessor {
             currentThread.setName(oldName + " handle message for torrent " + myPeerUID.getTorrentHash() + " peer: " + peer.getHostIdentifier());
             peer.handleMessage(message);
           } catch (Throwable e) {
-            LoggerUtils.warnAndDebugDetails(logger, "unhandled exception in executor task (handleMessage)", e);
+            LoggerUtils.warnAndDebugDetails(logger, "unhandled exception {} in executor task (handleMessage)", e.toString(), e);
           } finally {
             currentThread.setName(oldName);
           }
