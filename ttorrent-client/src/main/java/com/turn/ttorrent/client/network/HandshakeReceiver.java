@@ -27,10 +27,10 @@ public class HandshakeReceiver implements DataProcessor {
   private ByteBuffer messageBytes;
   private int pstrLength;
 
-  public HandshakeReceiver(Context context,
-                           String hostAddress,
-                           int port,
-                           boolean isOutgoingListener) {
+  HandshakeReceiver(Context context,
+                    String hostAddress,
+                    int port,
+                    boolean isOutgoingListener) {
     myContext = context;
     myHostAddress = hostAddress;
     myPort = port;
@@ -94,13 +94,6 @@ public class HandshakeReceiver implements DataProcessor {
       torrent = myContext.getTorrentLoader().loadTorrent(announceableTorrent);
     } catch (Exception e) {
       LoggerUtils.warnWithMessageAndDebugDetails(logger, "cannot load torrent {}", hs.getHexInfoHash(), e);
-      return new ShutdownProcessor().processAndGetNext(socketChannel);
-    }
-
-    if (torrent == null) {
-      logger.debug("peer {} tries to download unknown torrent {}",
-              Arrays.toString(hs.getPeerId()),
-              hs.getHexInfoHash());
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
