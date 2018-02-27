@@ -83,22 +83,6 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
   });
 
 
-  /**
-   * @author dgiffin
-   * @author mpetazzoni
-   */
-  public static class TorrentFile {
-
-    public final File file;
-    public final long size;
-
-    public TorrentFile(File file, long size) {
-      this.file = file;
-      this.size = size;
-    }
-  }
-
-
   protected final byte[] encoded;
 //	protected final byte[] encoded_info;
 //	protected final Map<String, BEValue> decoded;
@@ -219,21 +203,23 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     if (decoded_info.containsKey("files")) {
       for (BEValue file : decoded_info.get("files").getList()) {
         Map<String, BEValue> fileInfo = file.getMap();
-        StringBuilder path = new StringBuilder();
+        List<String> path = new ArrayList<String>();
+        path.add(this.name);
         for (BEValue pathElement : fileInfo.get("path").getList()) {
-          path.append(File.separator)
-                  .append(pathElement.getString());
+          path.add(pathElement.getString());
         }
         this.files.add(new TorrentFile(
-                new File(this.name, path.toString()),
-                fileInfo.get("length").getLong()));
+                path,
+                fileInfo.get("length").getLong(),
+                null));
       }
     } else {
       // For single-file torrents, the name of the torrent is
       // directly the name of the file.
       this.files.add(new TorrentFile(
-              new File(this.name),
-              decoded_info.get("length").getLong()));
+              Collections.singletonList(this.name),
+              decoded_info.get("length").getLong(),
+              null));
     }
 
     // Calculate the total size of this torrent from its files' sizes.
@@ -269,7 +255,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
         logger.debug("    {}. {} ({} byte(s))",
                 new Object[]{
                         String.format("%2d", ++i),
-                        file.file.getPath(),
+                        file.getRelativePathAsString(),
                         String.format("%,d", file.size)
                 });
       }
@@ -329,7 +315,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
   public List<String> getFilenames() {
     List<String> filenames = new LinkedList<String>();
     for (TorrentFile file : this.files) {
-      filenames.add(file.file.getPath());
+      filenames.add(file.getRelativePathAsString());
     }
     return filenames;
   }

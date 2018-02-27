@@ -26,6 +26,7 @@ import com.turn.ttorrent.client.strategy.RequestStrategy;
 import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,8 +207,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
     List<FileStorage> files = new LinkedList<FileStorage>();
     long offset = 0L;
-    for (Torrent.TorrentFile file : this.files) {
-      File actual = new File(parent, file.file.getPath());
+    for (TorrentFile file : this.files) {
+      File actual = new File(parent, file.getRelativePathAsString());
 
       if (!actual.getCanonicalPath().startsWith(parentPath)) {
         throw new SecurityException("Torrent file path attempted " +

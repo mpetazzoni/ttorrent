@@ -20,8 +20,9 @@ public final class Optional<T> {
     this.value = null;
   }
 
+  @NotNull
   @SuppressWarnings("unchecked")
-  private static <T> Optional<T> of(@Nullable T value) {
+  public static <T> Optional<T> of(@Nullable T value) {
     return value == null ? (Optional<T>) EMPTY : new Optional<T>(value);
   }
 
