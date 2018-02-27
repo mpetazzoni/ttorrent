@@ -110,6 +110,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownAndRemovePeerProcessor(peerUID, myContext);
     }
 
+    // If I am not a leecher
     if (!myIsOutgoingConnection) {
       logger.debug("send handshake to {}", socketChannel);
       try {
