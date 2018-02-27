@@ -14,6 +14,11 @@ public final class LoggerUtils {
     logger.debug("", t);
   }
 
+  public static void warnWithMessageAndDebugDetails(Logger logger, String message, Object arg, Throwable t) {
+    logger.warn(message + ": " + (t.getMessage() != null ? t.getMessage() : t.getClass().getName()), arg);
+    logger.debug("", t);
+  }
+
   public static void errorAndDebugDetails(Logger logger, String message, Object arg, Throwable t) {
     logger.error(message, arg);
     logger.debug("", t);

@@ -82,7 +82,7 @@ public class HandshakeReceiver implements DataProcessor {
     try {
       torrent = myContext.getTorrentLoader().loadTorrent(announceableTorrent);
     } catch (Exception e) {
-      LoggerUtils.warnAndDebugDetails(logger, "cannot load torrent {}", hs.getHexInfoHash(), e);
+      LoggerUtils.warnWithMessageAndDebugDetails(logger, "cannot load torrent {}", hs.getHexInfoHash(), e);
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
