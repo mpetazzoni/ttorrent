@@ -163,15 +163,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
             seeder);
     this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
 
-    // Initial completion test
-    final boolean finished = torrent.isFinished();
     if (seeder) {
       announceableTorrent.getTorrentStatistic().setLeft(0);
     } else {
       announceableTorrent.getTorrentStatistic().setLeft(torrent.getSize());
     }
 
-    forceAnnounceAndLogError(torrent, finished ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
     logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
