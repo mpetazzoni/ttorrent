@@ -41,4 +41,16 @@ public class TorrentStatistic {
     myLeftBytes.addAndGet(delta);
   }
 
+  public void setLeft(long value) {
+    myUploadedBytes.set(value);
+  }
+
+  public void setUploaded(long value) {
+    myUploadedBytes.set(value);
+  }
+
+  public void setDownloaded(long value) {
+    myDownloadedBytes.set(value);
+  }
+
 }
