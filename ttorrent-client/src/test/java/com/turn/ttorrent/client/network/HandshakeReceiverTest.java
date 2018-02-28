@@ -95,9 +95,13 @@ public class HandshakeReceiverTest {
 
     final File tempFile = myTempFiles.createTempFile(1024 * 1024);
     Torrent torrent = Torrent.create(tempFile, URI.create(""), "test");
+    File torrentFile = myTempFiles.createTempFile();
+    torrent.save(torrentFile);
 
-    final SharedTorrent sharedTorrent = new SharedTorrent(torrent, tempFile.getParentFile(), false);
     final AnnounceableFileTorrent announceableFileTorrent = mock(AnnounceableFileTorrent.class);
+    final SharedTorrent sharedTorrent =
+            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, announceableFileTorrent);
+
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
     when(torrentsLoader.loadTorrent(announceableFileTorrent)).thenReturn(sharedTorrent);
     when(myContext.getTorrentLoader()).thenReturn(torrentsLoader);

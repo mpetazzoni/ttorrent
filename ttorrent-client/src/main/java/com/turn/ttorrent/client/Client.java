@@ -134,7 +134,14 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder, leecher);
+    final TorrentStatistic torrentStatistic = new TorrentStatistic();
+    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder, leecher,
+            new TorrentStatisticProvider() {
+              @Override
+              public TorrentStatistic getTorrentStatistic() {
+                return torrentStatistic;
+              }
+            });
     if (torrent.getSize() == 0) {
       // we don't seed zero-size files
       return torrent.getHexInfoHash();
@@ -146,7 +153,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     }
 
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
-            new TorrentStatistic(),
+            torrentStatistic,
             torrent.getHexInfoHash(),
             torrent.getInfoHash(),
             torrent.getAnnounceList(),
@@ -158,8 +165,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     // Initial completion test
     final boolean finished = torrent.isFinished();
-    if (!finished) {
-      announceableTorrent.getTorrentStatistic().addLeft(torrent.getLeft());
+    if (seeder) {
+      announceableTorrent.getTorrentStatistic().setLeft(0);
+    } else {
+      announceableTorrent.getTorrentStatistic().setLeft(torrent.getSize());
     }
 
     forceAnnounceAndLogError(torrent, finished ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());

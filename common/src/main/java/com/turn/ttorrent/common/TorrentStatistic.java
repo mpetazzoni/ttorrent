@@ -42,7 +42,7 @@ public class TorrentStatistic {
   }
 
   public void setLeft(long value) {
-    myUploadedBytes.set(value);
+    myLeftBytes.set(value);
   }
 
   public void setUploaded(long value) {

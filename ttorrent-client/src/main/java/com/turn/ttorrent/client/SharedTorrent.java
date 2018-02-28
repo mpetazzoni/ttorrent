@@ -24,9 +24,7 @@ import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.client.strategy.RequestStrategy;
 import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentFile;
+import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,9 +74,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private boolean stop;
 
-  private long uploaded;
-  private long downloaded;
-  private long left;
+  private final TorrentStatistic myTorrentStatistic;
 
   private long myLastAnnounceTime = -1;
   private int mySeedersCount = 0;
@@ -105,65 +101,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   private final boolean isLeecher;
 
   /**
-   * Create a new shared torrent from a base Torrent object.
-   * <p/>
-   * <p>
-   * This will recreate a SharedTorrent object from the provided Torrent
-   * object's encoded meta-info data.
-   * </p>
-   *
-   * @param torrent The Torrent object.
-   * @param destDir The destination directory or location of the torrent
-   *                files.
-   * @throws FileNotFoundException    If the torrent file location or
-   *                                  destination directory does not exist and can't be created.
-   * @throws IOException              If the torrent file cannot be read or decoded.
-   * @throws NoSuchAlgorithmException
-   */
-  public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash)
-          throws IOException, NoSuchAlgorithmException {
-    this(torrent, destDir, multiThreadHash, false);
-  }
-
-  /**
-   * Create a new shared torrent from a base Torrent object.
-   * <p/>
-   * <p>
-   * This will recreate a SharedTorrent object from the provided Torrent
-   * object's encoded meta-info data.
-   * </p>
-   *
-   * @param torrent The Torrent object.
-   * @param destDir The destination directory or location of the torrent
-   *                files.
-   * @param seeder  Whether we're a seeder for this torrent or not (disables
-   *                validation).
-   * @throws FileNotFoundException    If the torrent file location or
-   *                                  destination directory does not exist and can't be created.
-   * @throws IOException              If the torrent file cannot be read or decoded.
-   * @throws NoSuchAlgorithmException
-   */
-  public SharedTorrent(Torrent torrent, File destDir, boolean multiThreadHash, boolean seeder)
-          throws IOException, NoSuchAlgorithmException {
-    this(torrent.getEncoded(), destDir, multiThreadHash, seeder, false, DEFAULT_REQUEST_STRATEGY);
-  }
-
-  /**
-   * Create a new shared torrent from meta-info binary data.
-   *
-   * @param torrent The meta-info byte data.
-   * @param destDir The destination directory or location of the torrent
-   *                files.
-   * @throws FileNotFoundException If the torrent file location or
-   *                               destination directory does not exist and can't be created.
-   * @throws IOException           If the torrent file cannot be read or decoded.
-   */
-  public SharedTorrent(byte[] torrent, File destDir, boolean multiThreadHash)
-          throws IOException, NoSuchAlgorithmException {
-    this(torrent, destDir, multiThreadHash, false, false, DEFAULT_REQUEST_STRATEGY);
-  }
-
-  /**
    * Create a new shared torrent from meta-info binary data.
    *
    * @param torrent The meta-info byte data.
@@ -173,10 +110,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * @throws IOException              If the torrent file cannot be read or decoded.
    * @throws NoSuchAlgorithmException
    */
-  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy)
+  public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
+                       TorrentStatisticProvider torrentStatisticProvider)
           throws IOException, NoSuchAlgorithmException {
     super(torrent, seeder);
-
+    myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
     this.isLeecher = leecher;
     this.parentFile = parent;
     this.myRequestStrategy = requestStrategy;
@@ -223,10 +161,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
     this.stop = false;
 
-    this.uploaded = 0;
-    this.downloaded = 0;
-    this.left = this.getSize();
-
     this.initialized = false;
     this.pieces = new Piece[0];
     this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
@@ -234,32 +168,21 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     this.requestedPieces = new BitSet();
   }
 
-  /**
-   * Create a new shared torrent from the given torrent file.
-   *
-   * @param source The <code>.torrent</code> file to read the torrent
-   *               meta-info from.
-   * @param parent The parent directory or location of the torrent files.
-   * @throws IOException              When the torrent file cannot be read or decoded.
-   * @throws NoSuchAlgorithmException
-   */
-  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash)
+  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder,
+                                       TorrentStatisticProvider torrentStatisticProvider)
           throws IOException, NoSuchAlgorithmException {
-    return fromFile(source, parent, multiThreadHash, false);
+    return fromFile(source, parent, multiThreadHash, seeder, false,
+            torrentStatisticProvider);
   }
 
-  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder)
-          throws IOException, NoSuchAlgorithmException {
-    return fromFile(source, parent, multiThreadHash, seeder, false);
-  }
-
-  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher)
+  public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher,
+                                       TorrentStatisticProvider torrentStatisticProvider)
           throws IOException, NoSuchAlgorithmException {
     FileInputStream fis = new FileInputStream(source);
     byte[] data = new byte[(int) source.length()];
     fis.read(data);
     fis.close();
-    return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY);
+    return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY, torrentStatisticProvider);
   }
 
   private synchronized void openFileChannelIfNecessary() {
@@ -285,7 +208,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * Get the number of bytes uploaded for this torrent.
    */
   public long getUploaded() {
-    return this.uploaded;
+    return myTorrentStatistic.getUploadedBytes();
   }
 
   /**
@@ -297,14 +220,14 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
    * </p>
    */
   public long getDownloaded() {
-    return this.downloaded;
+    return myTorrentStatistic.getDownloadedBytes();
   }
 
   /**
    * Get the number of bytes left to download for this torrent.
    */
   public long getLeft() {
-    return this.left;
+    return myTorrentStatistic.getLeftBytes();
   }
 
   public int getSeedersCount() {
@@ -381,7 +304,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     logger.debug("{}: {}/{} bytes [{}/{}].",
             new Object[]{
                     this.getName(),
-                    (this.getSize() - this.left),
+                    (this.getSize() - myTorrentStatistic.getLeftBytes()),
                     this.getSize(),
                     this.completedPieces.cardinality(),
                     this.pieces.length
@@ -443,7 +366,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
         Piece piece = task.get();
         if (this.pieces[piece.getIndex()].isValid()) {
           this.completedPieces.set(piece.getIndex());
-          this.left -= piece.size();
+          myTorrentStatistic.addLeft(-piece.size());
         }
       }
     } catch (ExecutionException e) {
@@ -485,7 +408,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     for (Piece piece : results) {
       if (this.pieces[piece.getIndex()].isValid()) {
         this.completedPieces.set(piece.getIndex());
-        this.left -= piece.size();
+        myTorrentStatistic.addLeft(-piece.size());
       }
     }
   }
@@ -648,7 +571,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
     // A completed piece means that's that much data left to download for
     // this torrent.
-    this.left -= piece.size();
+    myTorrentStatistic.addLeft(-piece.size());
     this.completedPieces.set(piece.getIndex());
   }
 
@@ -877,7 +800,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
   @Override
   public synchronized void handlePieceSent(SharingPeer peer, Piece piece) {
     logger.trace("Completed upload of {} to {}.", piece, peer);
-    this.uploaded += piece.size();
+    myTorrentStatistic.addUploaded(piece.size());
   }
 
   /**
@@ -896,7 +819,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
                                                 Piece piece) throws IOException {
     // Regardless of validity, record the number of bytes downloaded and
     // mark the piece as not requested anymore
-    this.downloaded += piece.size();
+    myTorrentStatistic.addDownloaded(piece.size());
     this.requestedPieces.set(piece.getIndex(), false);
 
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",

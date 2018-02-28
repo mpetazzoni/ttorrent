@@ -8,6 +8,8 @@ import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentStatistic;
+import com.turn.ttorrent.common.TorrentStatisticProvider;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -155,7 +157,7 @@ public class TrackerTest {
     Client seeder = createClient();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath(), true, false);
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -378,12 +380,22 @@ public class TrackerTest {
   private SharedTorrent completeTorrent(String name) throws IOException, NoSuchAlgorithmException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    return SharedTorrent.fromFile(torrentFile, parentFiles, false);
+    return SharedTorrent.fromFile(torrentFile, parentFiles, false, false, new TorrentStatisticProvider() {
+      @Override
+      public TorrentStatistic getTorrentStatistic() {
+        return new TorrentStatistic();
+      }
+    });
   }
 
   private SharedTorrent incompleteTorrent(String name, File destDir) throws IOException, NoSuchAlgorithmException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
-    return SharedTorrent.fromFile(torrentFile, destDir, false);
+    return SharedTorrent.fromFile(torrentFile, destDir, false, false, new TorrentStatisticProvider() {
+      @Override
+      public TorrentStatistic getTorrentStatistic() {
+        return new TorrentStatistic();
+      }
+    });
   }
 
   private void waitForSeeder(final byte[] torrentHash) {
