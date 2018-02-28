@@ -134,26 +134,9 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    final TorrentStatistic torrentStatistic = new TorrentStatistic();
-    SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentFilePath), new File(downloadDirPath), false, seeder, leecher,
-            new TorrentStatisticProvider() {
-              @Override
-              public TorrentStatistic getTorrentStatistic() {
-                return torrentStatistic;
-              }
-            });
-    if (torrent.getSize() == 0) {
-      // we don't seed zero-size files
-      return torrent.getHexInfoHash();
-    }
-    torrent.init();
-    if (!torrent.isInitialized()) {
-      torrent.close();
-      return torrent.getHexInfoHash();
-    }
-
+    Torrent torrent = Torrent.load(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
-            torrentStatistic,
+            new TorrentStatistic(),
             torrent.getHexInfoHash(),
             torrent.getInfoHash(),
             torrent.getAnnounceList(),
@@ -923,6 +906,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   @Override
   public void afterPeerRemoved(SharingPeer peer) {
+    logger.trace("disconnected peer " + peer);
     torrentsStorage.peerDisconnected(peer.getHexInfoHash());
   }
 
