@@ -241,6 +241,7 @@ public class FileStorage implements TorrentByteStorage {
   @Override
   public void delete() throws IOException {
     close();
-    current.delete();
+    final File local = this.current;
+    if (local != null) local.delete();
   }
 }
