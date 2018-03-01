@@ -214,6 +214,7 @@ public class TrackerTest {
     }
   }
 
+  @Test(invocationCount = 500)
   public void tracker_removes_peer_after_peer_shutdown() throws IOException, NoSuchAlgorithmException, InterruptedException {
     tracker.setAcceptForeignTorrents(true);
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
@@ -221,13 +222,20 @@ public class TrackerTest {
 
     final Client c1 = createClient();
     c1.start(InetAddress.getLocalHost());
-    String hexInfoHash = c1.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    c1.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final Client c2 = createClient();
     c2.start(InetAddress.getLocalHost());
     c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
-    final TrackedTorrent tt = tracker.getTrackedTorrent(hexInfoHash);
+    new WaitFor(10 * 1000) {
+      @Override
+      protected boolean condition() {
+        return tracker.getTrackedTorrents().size() == 1;
+      }
+    };
+
+    final TrackedTorrent tt = tracker.getTrackedTorrents().iterator().next();
 
     new WaitFor(10 * 1000) {
       @Override
