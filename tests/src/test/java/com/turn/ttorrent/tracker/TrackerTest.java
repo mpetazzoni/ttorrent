@@ -277,7 +277,7 @@ public class TrackerTest {
     c2.start(InetAddress.getLocalHost());
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath(), true, false);
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
     new WaitFor(10 * 1000) {
