@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
@@ -81,6 +80,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private TorrentByteStorage bucket;
   private boolean isFileChannelOpen = false;
+  private final List<DownloadProgressListener> myDownloadListeners;
 
   private final int pieceLength;
   private final ByteBuffer piecesHashes;
@@ -116,6 +116,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
           throws IOException, NoSuchAlgorithmException {
     super(torrent, seeder);
     myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
+    myDownloadListeners = new ArrayList<DownloadProgressListener>();
     this.isLeecher = leecher;
     this.parentFile = parent;
     this.myRequestStrategy = requestStrategy;
@@ -806,6 +807,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     myTorrentStatistic.addUploaded(piece.size());
   }
 
+  public void addDownloadProgressListener(DownloadProgressListener listener) {
+    myDownloadListeners.add(listener);
+  }
+
   /**
    * Piece download completion handler.
    * <p/>
@@ -824,6 +829,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     // mark the piece as not requested anymore
     myTorrentStatistic.addDownloaded(piece.size());
     this.requestedPieces.set(piece.getIndex(), false);
+
+    for (DownloadProgressListener listener : myDownloadListeners) {
+      listener.pieceLoaded(piece.getIndex(), (int) piece.size());
+    }
 
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
             new Object[]{

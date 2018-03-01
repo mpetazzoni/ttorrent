@@ -417,6 +417,17 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
+    downloadUninterruptibly(dotTorrentPath, downloadDirPath, idleTimeoutSec, minSeedersCount, isInterrupted,
+            maxTimeForConnectMs, new DownloadProgressListener.NopeListener());
+  }
+
+  public void downloadUninterruptibly(final String dotTorrentPath,
+                                      final String downloadDirPath,
+                                      final long idleTimeoutSec,
+                                      final int minSeedersCount,
+                                      final AtomicBoolean isInterrupted,
+                                      final long maxTimeForConnectMs,
+                                      DownloadProgressListener listener) throws IOException, InterruptedException, NoSuchAlgorithmException {
     String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
     SharedTorrent torrent;
@@ -429,6 +440,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
     if (torrent != null) {
+      torrent.addDownloadProgressListener(listener);
       final long startDownloadAt = System.currentTimeMillis();
       long currentLeft = torrent.getLeft();
 
