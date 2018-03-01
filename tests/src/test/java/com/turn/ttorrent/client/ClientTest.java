@@ -295,6 +295,7 @@ public class ClientTest {
     assertEquals(trackedPeer.getLeft(), fileSize - downloaded);
   }
 
+  @Test(invocationCount = 50)
   public void no_full_seeder_test() throws IOException, URISyntaxException, InterruptedException, NoSuchAlgorithmException {
     this.tracker.setAcceptForeignTorrents(true);
 

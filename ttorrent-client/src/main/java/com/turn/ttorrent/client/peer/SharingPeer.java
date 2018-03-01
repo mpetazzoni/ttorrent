@@ -464,6 +464,9 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 //    logger.trace("Received msg {} from {}", msg.getType(), this);
     if (isStopped.get())
       return;
+    if (!torrent.isInitialized()) {
+      torrent.initIfNecessary(this);
+    }
     switch (msg.getType()) {
       case KEEP_ALIVE:
         // Nothing to do, we're keeping the connection open anyways.
