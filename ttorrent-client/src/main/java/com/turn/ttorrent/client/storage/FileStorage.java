@@ -160,6 +160,7 @@ public class FileStorage implements TorrentByteStorage {
   public void close() throws IOException {
     try {
       myLock.writeLock().lock();
+      if (!myIsOpen) return;
       logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
       if (this.channel.isOpen()) {
         this.channel.force(true);
