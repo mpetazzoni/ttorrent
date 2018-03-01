@@ -850,7 +850,7 @@ public class ClientTest {
     final File torrentFile = tempFiles.createTempFile();
     torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent(), true, false);
     final Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
     final AtomicBoolean interrupted = new AtomicBoolean();
