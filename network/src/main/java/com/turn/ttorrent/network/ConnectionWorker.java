@@ -205,6 +205,10 @@ public class ConnectionWorker implements Runnable {
   private void processSelectedKey(SelectionKey key) throws IOException {
     logger.debug("try process key for channel {}", key.channel());
     myCleanupProcessor.processSelected(key);
+    if (!key.channel().isOpen()) {
+      key.cancel();
+      return;
+    }
     for (KeyProcessor keyProcessor : myKeyProcessors) {
       if (keyProcessor.accept(key)) {
         keyProcessor.process(key);
