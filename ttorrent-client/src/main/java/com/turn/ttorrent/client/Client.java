@@ -349,15 +349,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     logger.trace("try stop announce thread...");
 
-    final List<AnnounceableTorrent> announceableTorrents = torrentsStorage.announceableTorrents();
-    for (AnnounceableTorrent torrent : announceableTorrents) {
-      try {
-        announce.forceAnnounce(torrent, this, STOPPED);
-      } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "can not send stop event to tracker on stop client", e);
-      }
-    }
-
     this.announce.stop();
 
     logger.trace("announce thread is stopped");

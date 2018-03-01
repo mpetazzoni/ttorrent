@@ -156,7 +156,6 @@ public class Announce implements Runnable {
   public void stop() {
 
     this.stop = true;
-    this.myPeers.clear();
 
     if (this.thread != null && this.thread.isAlive()) {
       this.thread.interrupt();
@@ -171,6 +170,7 @@ public class Announce implements Runnable {
         // Ignore
       }
     }
+    this.myPeers.clear();
 
     this.thread = null;
   }
@@ -199,13 +199,15 @@ public class Announce implements Runnable {
 
       final List<AnnounceableTorrent> announceableTorrents = myContext.getTorrentsStorage().announceableTorrents();
       logger.debug("Starting announce for {} torrents", announceableTorrents.size());
-      announceAllTorrentsEventNone(announceableTorrents);
+      announceAllTorrents(announceableTorrents, AnnounceRequestMessage.RequestEvent.NONE);
       try {
         Thread.sleep(this.myAnnounceInterval * 1000);
       } catch (InterruptedException ie) {
         break;
       }
     }
+
+    announceAllTorrents(myContext.getTorrentsStorage().announceableTorrents(), AnnounceRequestMessage.RequestEvent.STOPPED);
 
     logger.info("Exited announce loop.");
   }
@@ -229,7 +231,7 @@ public class Announce implements Runnable {
     }
   }
 
-  private void announceAllTorrentsEventNone(List<AnnounceableTorrent> announceableTorrents) {
+  private void announceAllTorrents(List<AnnounceableTorrent> announceableTorrents, AnnounceRequestMessage.RequestEvent event) {
 
     logger.debug("Started multi announce");
     final Map<String, List<AnnounceableTorrent>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<AnnounceableTorrent>>();
@@ -251,7 +253,7 @@ public class Announce implements Runnable {
       TrackerClient trackerClient = this.clients.get(e.getKey());
       if (trackerClient != null) {
         try {
-          trackerClient.multiAnnounce(AnnounceRequestMessage.RequestEvent.NONE, false, e.getValue(), myPeers);
+          trackerClient.multiAnnounce(event, false, e.getValue(), myPeers);
         } catch (AnnounceException t) {
           LoggerUtils.warnAndDebugDetails(logger, "problem in multi announce {}", t.getMessage(), t);
           unannouncedTorrents.addAll(e.getValue());
