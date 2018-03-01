@@ -214,7 +214,6 @@ public class TrackerTest {
     }
   }
 
-  @Test(invocationCount = 500)
   public void tracker_removes_peer_after_peer_shutdown() throws IOException, NoSuchAlgorithmException, InterruptedException {
     tracker.setAcceptForeignTorrents(true);
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
