@@ -877,12 +877,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       logger.info("I/O error on attempt to close file storage: " + e.toString());
     }
 
-    logger.debug("Peer {} went away with {} piece(s) [{}/{}/{}].",
+    logger.debug("Peer {} went away with {} piece(s) [{}/{}].",
             new Object[]{
                     peer,
                     availablePieces.cardinality(),
                     this.completedPieces.cardinality(),
-                    this.getAvailablePieces().cardinality(),
                     this.pieces.length
             });
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
