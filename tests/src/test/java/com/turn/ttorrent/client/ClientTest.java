@@ -5,10 +5,7 @@ import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeerUID;
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
@@ -944,15 +941,16 @@ public class ClientTest {
     leech.stop();
   }
 
-  private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, File baseFile, String baseMD5) throws IOException {
+  private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, final File baseFile, String baseMD5) throws IOException {
     final WaitFor waitFor = new WaitFor(75 * 1000) {
       @Override
       protected boolean condition() {
         boolean retval = true;
         for (Client client : clientsList) {
           if (!retval) return false;
-          final boolean torrentState = client.getTorrents().iterator().next().getClientState() == ClientState.SEEDING;
-          retval = retval && torrentState;
+          final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent)client.getTorrentsStorage().announceableTorrents().iterator().next();
+          File downloadedFile = new File(torrent.getDownloadDirPath(), baseFile.getName());
+          retval = downloadedFile.isFile();
         }
         return retval;
       }
@@ -961,8 +959,8 @@ public class ClientTest {
     assertTrue(waitFor.isMyResult(), "All seeders didn't get their files");
     // check file contents here:
     for (Client client : clientsList) {
-      final SharedTorrent st = client.getTorrents().iterator().next();
-      final File file = new File(st.getParentFile(), st.getFilenames().get(0));
+      final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent)client.getTorrentsStorage().announceableTorrents().iterator().next();
+      final File file = new File(torrent.getDownloadDirPath(), baseFile.getName());
       assertEquals(baseMD5, getFileMD5(file, md5), String.format("MD5 hash is invalid. C:%s, O:%s ",
               file.getAbsolutePath(), baseFile.getAbsolutePath()));
     }
