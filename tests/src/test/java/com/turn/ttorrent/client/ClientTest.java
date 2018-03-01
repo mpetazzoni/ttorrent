@@ -833,7 +833,8 @@ public class ClientTest {
       }
     });
     try {
-      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 60);
+      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 60,
+              0, new AtomicBoolean(), 10);
     } finally {
       future.cancel(true);
       service.shutdown();
