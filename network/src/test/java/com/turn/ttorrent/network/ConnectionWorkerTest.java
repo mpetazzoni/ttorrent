@@ -5,9 +5,7 @@ import com.turn.ttorrent.network.keyProcessors.CleanupProcessor;
 import com.turn.ttorrent.network.keyProcessors.KeyProcessor;
 import org.testng.annotations.Test;
 
-import java.nio.channels.ClosedSelectorException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
+import java.nio.channels.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -20,6 +18,7 @@ public class ConnectionWorkerTest {
   public void testCleanupIsCalled() throws Exception {
 
     final SelectionKey mockKey = mock(SelectionKey.class);
+    final SelectableChannel channel = SocketChannel.open();
     final KeyProcessor acceptProcessor = mock(KeyProcessor.class);
     final KeyProcessor notAcceptProcessor = mock(KeyProcessor.class);
 
@@ -27,6 +26,7 @@ public class ConnectionWorkerTest {
     when(mockSelector.select(anyLong())).thenReturn(1).thenThrow(new ClosedSelectorException());
     when(mockSelector.selectedKeys()).thenReturn(new HashSet<SelectionKey>(Collections.singleton(mockKey)));
     when(mockKey.isValid()).thenReturn(true);
+    when(mockKey.channel()).thenReturn(channel);
     when(acceptProcessor.accept(mockKey)).thenReturn(true);
     when(notAcceptProcessor.accept(mockKey)).thenReturn(false);
     ConnectionWorker connectionWorker = new ConnectionWorker(
