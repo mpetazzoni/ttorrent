@@ -841,6 +841,30 @@ public class ClientTest {
     }
   }
 
+  public void testThatProgressListenerInvoked() throws Exception {
+    tracker.setAcceptForeignTorrents(true);
+    Client seeder = createClient();
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final Torrent torrent = Torrent.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+
+    final File torrentFile = tempFiles.createTempFile();
+    torrent.save(torrentFile);
+    seeder.start(InetAddress.getLocalHost());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent(), true, false);
+    Client leecher = createClient();
+    leecher.start(InetAddress.getLocalHost());
+    final AtomicInteger pieceLoadedInvocationCount = new AtomicInteger();
+    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(),
+            10, 1, new AtomicBoolean(false), 5000,
+            new DownloadProgressListener() {
+              @Override
+              public void pieceLoaded(int pieceIndex, int pieceSize) {
+                pieceLoadedInvocationCount.incrementAndGet();
+              }
+            });
+    assertEquals(pieceLoadedInvocationCount.get(), torrent.getPieceCount());
+  }
+
   public void interrupt_download() throws IOException, InterruptedException, NoSuchAlgorithmException {
     tracker.setAcceptForeignTorrents(true);
     final Client seeder = createClient();
