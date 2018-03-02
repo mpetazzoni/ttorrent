@@ -415,7 +415,8 @@ public class ClientTest {
     Torrent torrent = Torrent.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     torrent.save(torrentFile);
-    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParentFile().getAbsolutePath());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParentFile().getAbsolutePath(),
+            true, false);
 
     final Client leecher = createClient();
     File downloadDir = tempFiles.createTempDir();
@@ -437,7 +438,7 @@ public class ClientTest {
       }
     };
 
-    assertTrue(waitFor.isMyResult(), "Torrent was not successfully removed");
+    assertTrue(waitFor.isMyResult(), "Torrent was not successfully initialized");
 
     assertEquals(1, seeder.getTorrentsStorage().activeTorrents().size());
     assertEquals(1, leecher.getTorrentsStorage().activeTorrents().size());
@@ -454,7 +455,7 @@ public class ClientTest {
       }
     };
 
-    assertTrue(waitFor.isMyResult(), "Torrent was not successfully initialized");
+    assertTrue(waitFor.isMyResult(), "Torrent was not successfully removed");
 
     assertEquals(0, seeder.getTorrentsStorage().activeTorrents().size());
     assertEquals(0, leecher.getTorrentsStorage().activeTorrents().size());
