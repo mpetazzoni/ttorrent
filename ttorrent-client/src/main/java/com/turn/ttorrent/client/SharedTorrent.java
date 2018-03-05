@@ -264,15 +264,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     this.stop = true;
   }
 
-  public synchronized void unloadPieces() {
-    // do this only for completed torrents
-    if (clientState != ClientState.SEEDING || myDownloaders.size() > 0 && !bucket.isClosed()) {
-      return;
-    }
-    initialized = false;
-    this.pieces = new Piece[0];
-  }
-
   /**
    * Build this torrent's pieces array.
    * <p/>

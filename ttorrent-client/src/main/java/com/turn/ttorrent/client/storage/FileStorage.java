@@ -229,16 +229,6 @@ public class FileStorage implements TorrentByteStorage {
   }
 
   @Override
-  public boolean isClosed() {
-    try {
-      myLock.readLock().lock();
-      return !myIsOpen && (channel == null || !channel.isOpen());
-    } finally {
-      myLock.readLock().unlock();
-    }
-  }
-
-  @Override
   public void delete() throws IOException {
     close();
     final File local = this.current;

@@ -140,16 +140,6 @@ public class FileCollectionStorage implements TorrentByteStorage {
   }
 
   @Override
-  public boolean isClosed() {
-    for (FileStorage file : files) {
-      if (!file.isClosed()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @Override
   public void delete() throws IOException {
     for (FileStorage file : files) {
       file.delete();

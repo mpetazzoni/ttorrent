@@ -107,13 +107,6 @@ public interface TorrentByteStorage {
   boolean isFinished();
 
   /**
-   * Indicated whether bucket is closed and safe to delete or other operations
-   *
-   * @return
-   */
-  boolean isClosed();
-
-  /**
    * Delete byte storage information
    */
   void delete() throws IOException;
