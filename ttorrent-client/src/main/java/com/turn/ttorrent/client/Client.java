@@ -753,6 +753,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       return;
     }
 
+    if (announceableTorrent.isSeeded()) return;
+
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
