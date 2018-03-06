@@ -81,16 +81,20 @@ public class HTTPTrackerClient extends TrackerClient {
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
     for (final Peer address : adresses) {
       final URL target = encodeAnnounceToURL(event, torrentInfo, address);
-      sendAnnounce(target, "GET", new ResponseParser() {
-        @Override
-        public void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException {
-          if (responseCode != 200) {
-            logger.info("received not http 200 code from tracker for request " + target);
-            return;
+      try {
+        sendAnnounce(target, "GET", new ResponseParser() {
+          @Override
+          public void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException {
+            if (responseCode != 200) {
+              logger.info("received not http 200 code from tracker for request " + target);
+              return;
+            }
+            trackerResponses.add(HTTPTrackerMessage.parse(inputStream));
           }
-          trackerResponses.add(HTTPTrackerMessage.parse(inputStream));
-        }
-      });
+        });
+      } catch (ConnectException e) {
+        throw new AnnounceException(e.getMessage(), e);
+      }
     }
     // we process only first request:
     if (trackerResponses.size() > 0) {
@@ -100,7 +104,10 @@ public class HTTPTrackerClient extends TrackerClient {
   }
 
   @Override
-  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, final List<? extends AnnounceableTorrent> torrents, List<Peer> addresses) throws AnnounceException {
+  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event,
+                               boolean inhibitEvent,
+                               final List<? extends AnnounceableTorrent> torrents,
+                               List<Peer> addresses) throws AnnounceException, ConnectException {
     List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
 
     URL trackerUrl;
@@ -181,11 +188,13 @@ public class HTTPTrackerClient extends TrackerClient {
     return result;
   }
 
-  private void sendAnnounce(final URL url, final String method, ResponseParser parser) throws AnnounceException {
+  private void sendAnnounce(final URL url, final String method, ResponseParser parser)
+          throws AnnounceException, ConnectException {
     sendAnnounce(url, "", method, parser);
   }
 
-  private void sendAnnounce(final URL url, final String body, final String method, ResponseParser parser) throws AnnounceException {
+  private void sendAnnounce(final URL url, final String body, final String method, ResponseParser parser)
+          throws AnnounceException, ConnectException {
     HttpURLConnection conn = null;
     InputStream in = null;
     try {
@@ -202,7 +211,7 @@ public class HTTPTrackerClient extends TrackerClient {
     // response body nor an error stream from the server. No point in going
     // any further.
     if (in == null) {
-      throw new AnnounceException("No response or unreachable tracker!");
+      throw new ConnectException("No response or unreachable tracker!");
     }
 
     try {

@@ -86,4 +86,12 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   public TorrentStatistic getTorrentStatistic() {
     return myTorrentStatistic;
   }
+
+  @Override
+  public String toString() {
+    return "AnnounceableTorrentImpl{" +
+            "download directory='" + myDownloadDirPath + '\'' +
+            ", dot torrent file='" + myDotTorrentFilePath + '\'' +
+            '}';
+  }
 }

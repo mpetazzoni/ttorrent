@@ -24,6 +24,7 @@ import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -99,7 +100,9 @@ public abstract class TrackerClient {
                                    boolean inhibitEvent, final AnnounceableTorrent torrent, final List<Peer> peer) throws AnnounceException;
 
   protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
-                                        boolean inhibitEvent, final List<? extends AnnounceableTorrent> torrents, final List<Peer> peer) throws AnnounceException;
+                                        boolean inhibitEvent,
+                                        final List<? extends AnnounceableTorrent> torrents,
+                                        final List<Peer> peer) throws AnnounceException, ConnectException;
 
   protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrent) {
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {

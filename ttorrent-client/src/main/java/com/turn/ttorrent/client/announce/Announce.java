@@ -23,6 +23,7 @@ import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.net.UnknownServiceException;
@@ -257,6 +258,9 @@ public class Announce implements Runnable {
         } catch (AnnounceException t) {
           LoggerUtils.warnAndDebugDetails(logger, "problem in multi announce {}", t.getMessage(), t);
           unannouncedTorrents.addAll(e.getValue());
+        } catch (ConnectException t) {
+          LoggerUtils.warnWithMessageAndDebugDetails(logger, "Cannot connect to the tracker {}", e.getKey(), t);
+          logger.info("next torrents contain {} in tracker list. {}", e.getKey(), e.getValue());
         }
       } else {
         logger.warn("Tracker client for {} is null. Torrents are not announced on tracker", e.getKey());
