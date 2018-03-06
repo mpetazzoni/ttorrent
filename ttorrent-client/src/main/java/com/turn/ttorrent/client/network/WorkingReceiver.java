@@ -29,7 +29,7 @@ public class WorkingReceiver implements DataProcessor {
                          Context context) {
     myPeerUID = peerId;
     myContext = context;
-    this.messageBytes = ByteBuffer.allocate(2 * 1024 * 1024);
+    this.messageBytes = ByteBuffer.allocate(512 * 1024);
     this.pstrLength = -1;
   }
 
