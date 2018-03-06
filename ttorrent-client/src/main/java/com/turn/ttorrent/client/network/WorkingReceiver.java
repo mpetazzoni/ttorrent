@@ -6,6 +6,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,17 +20,23 @@ import java.util.concurrent.RejectedExecutionException;
 public class WorkingReceiver implements DataProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(WorkingReceiver.class);
+  //16 bytes is sufficient for all torrents messages except bitfield and piece.
+  //So piece and bitfield have dynamic size because bytebuffer for this messages will be allocated after get message length
+  private static final int DEF_BUFFER_SIZE = 16;
+  private static final int MAX_MESSAGE_SIZE = 2 * 1024 * 1024;
 
   private final PeerUID myPeerUID;
   private final Context myContext;
-  private final ByteBuffer messageBytes;
+  @NotNull
+  private ByteBuffer messageBytes;
   private int pstrLength;
 
-  public WorkingReceiver(PeerUID peerId,
+  WorkingReceiver(PeerUID peerId,
                          Context context) {
     myPeerUID = peerId;
     myContext = context;
-    this.messageBytes = ByteBuffer.allocate(512 * 1024);
+
+    this.messageBytes = ByteBuffer.allocate(DEF_BUFFER_SIZE);
     this.pstrLength = -1;
   }
 
@@ -54,15 +61,23 @@ public class WorkingReceiver implements DataProcessor {
       }
       this.pstrLength = messageBytes.getInt(0);
       logger.trace("read of message length finished, Message length is {}", this.pstrLength);
+
+      if (this.pstrLength > MAX_MESSAGE_SIZE) {
+        logger.warn("Proposed limit of {} is larger than max message size {}",
+                PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength, MAX_MESSAGE_SIZE);
+        logger.warn("current bytes in buffer is {}", Arrays.toString(messageBytes.array()));
+        logger.warn("Close connection with peer {}", myPeerUID);
+        return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
+      }
     }
 
     if (PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength > messageBytes.capacity()) {
-      logger.warn("Proposed limit of {} is larger than capacity of {}",
-              PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength, messageBytes.capacity());
-      logger.warn("current bytes in buffer is {}", Arrays.toString(messageBytes.array()));
-      logger.warn("Close connection with peer {}", myPeerUID);
-      return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
+      ByteBuffer old = messageBytes;
+      old.rewind();
+      messageBytes = ByteBuffer.allocate(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
+      messageBytes.put(old);
     }
+
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
     logger.trace("try read data from {}", socketChannel);
@@ -92,7 +107,7 @@ public class WorkingReceiver implements DataProcessor {
     logger.trace("try parse message from {}. Torrent {}", peer, torrent);
     ByteBuffer bufferCopy = ByteBuffer.wrap(Arrays.copyOf(messageBytes.array(), messageBytes.limit()));
 
-    this.messageBytes.rewind();
+    this.messageBytes = ByteBuffer.allocate(DEF_BUFFER_SIZE);
     final PeerMessage message;
 
     try {
