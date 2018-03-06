@@ -13,7 +13,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class PeersStorage {
 
   private volatile Peer self = null;
-  private final ReadWriteLock myLock = new ReentrantReadWriteLock();
   private final ConcurrentHashMap<PeerUID, SharingPeer> connectedSharingPeers;
 
   public PeersStorage() {
