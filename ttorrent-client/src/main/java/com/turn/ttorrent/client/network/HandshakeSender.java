@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.Arrays;
@@ -18,14 +17,17 @@ public class HandshakeSender implements DataProcessor {
   private static final Logger logger = LoggerFactory.getLogger(HandshakeSender.class);
 
   private final TorrentHash myTorrentHash;
-  private final InetSocketAddress mySendAddress;
+  private final String myRemotePeerIp;
+  private final int myRemotePeerPort;
   private final Context myContext;
 
   public HandshakeSender(TorrentHash torrentHash,
-                         InetSocketAddress sendAddress,
+                         String remotePeerIp,
+                         int remotePeerPort,
                          Context context) {
     myTorrentHash = torrentHash;
-    mySendAddress = sendAddress;
+    myRemotePeerIp = remotePeerIp;
+    myRemotePeerPort = remotePeerPort;
     myContext = context;
   }
 
@@ -48,8 +50,8 @@ public class HandshakeSender implements DataProcessor {
     logger.info("sent handshake to {}", socketChannel);
     return new HandshakeReceiver(
             myContext,
-            mySendAddress.getHostName(),
-            mySendAddress.getPort(),
+            myRemotePeerIp,
+            myRemotePeerPort,
             true);
   }
 

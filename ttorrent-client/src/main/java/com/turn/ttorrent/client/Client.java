@@ -779,7 +779,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               this,
               announceableTorrent,
-              new InetSocketAddress(peer.getIp(), peer.getPort()));
+              peer.getIp(),
+              peer.getPort());
 
       logger.debug("trying to connect to the peer {}", peer);
 

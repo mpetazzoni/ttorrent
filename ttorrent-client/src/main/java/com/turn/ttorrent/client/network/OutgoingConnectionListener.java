@@ -5,22 +5,24 @@ import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.network.ConnectionListener;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 public class OutgoingConnectionListener implements ConnectionListener {
 
   private volatile DataProcessor myNext;
   private final TorrentHash torrentHash;
-  private final InetSocketAddress mySendAddress;
+  private final String myRemotePeerIp;
+  private final int myRemotePeerPort;
   private final Context myContext;
 
   public OutgoingConnectionListener(Context context,
                                     TorrentHash torrentHash,
-                                    InetSocketAddress sendAddress) {
+                                    String remotePeerIp,
+                                    int remotePeerPort) {
     this.torrentHash = torrentHash;
-    this.mySendAddress = sendAddress;
-    this.myNext = new ShutdownProcessor();
+    myRemotePeerIp = remotePeerIp;
+    myRemotePeerPort = remotePeerPort;
+    myNext = new ShutdownProcessor();
     myContext = context;
   }
 
@@ -33,7 +35,8 @@ public class OutgoingConnectionListener implements ConnectionListener {
   public void onConnectionEstablished(SocketChannel socketChannel) throws IOException {
     HandshakeSender handshakeSender = new HandshakeSender(
             torrentHash,
-            mySendAddress,
+            myRemotePeerIp,
+            myRemotePeerPort,
             myContext);
     this.myNext = handshakeSender.processAndGetNext(socketChannel);
   }
