@@ -16,6 +16,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -46,7 +47,7 @@ public class TrackerClientTest {
 
 
   @Test
-  public void multiAnnounceTest() throws AnnounceException {
+  public void multiAnnounceTest() throws AnnounceException, ConnectException {
     List<Peer> peers = Collections.singletonList(new Peer(new InetSocketAddress("127.0.0.1", 6881), ByteBuffer.allocate(1)));
     final URI trackerURI = URI.create("http://localhost:6969/announce");
     TrackerClient client = new HTTPTrackerClient(peers, trackerURI);
