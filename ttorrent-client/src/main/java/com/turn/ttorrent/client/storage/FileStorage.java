@@ -41,6 +41,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class FileStorage implements TorrentByteStorage {
 
+  private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
+
   private static final Logger logger =
           LoggerFactory.getLogger(FileStorage.class);
 
@@ -74,8 +76,7 @@ public class FileStorage implements TorrentByteStorage {
         this.current = this.target;
         this.raf = new RandomAccessFile(this.current, "r");
       } else {
-        this.partial = new File(this.target.getAbsolutePath() +
-                TorrentByteStorage.PARTIAL_FILE_NAME_SUFFIX);
+        this.partial = new File(this.target.getAbsolutePath() + PARTIAL_FILE_NAME_SUFFIX);
 
         if (this.partial.exists()) {
           logger.debug("Partial download found at {}. Continuing...",
@@ -114,22 +115,21 @@ public class FileStorage implements TorrentByteStorage {
     return this.offset;
   }
 
-  @Override
   public long size() {
     return this.size;
   }
 
   @Override
-  public int read(ByteBuffer buffer, long offset) throws IOException {
+  public int read(ByteBuffer buffer, long position) throws IOException {
     try {
       myLock.readLock().lock();
       int requested = buffer.remaining();
 
-      if (offset + requested > this.size) {
+      if (position + requested > this.size) {
         throw new IllegalArgumentException("Invalid storage read request!");
       }
 
-      int bytes = this.channel.read(buffer, offset);
+      int bytes = this.channel.read(buffer, position);
       if (bytes < requested) {
         throw new IOException("Storage underrun!");
       }
@@ -141,16 +141,16 @@ public class FileStorage implements TorrentByteStorage {
   }
 
   @Override
-  public int write(ByteBuffer buffer, long offset) throws IOException {
+  public int write(ByteBuffer buffer, long position) throws IOException {
     try {
       myLock.writeLock().lock();
       int requested = buffer.remaining();
 
-      if (offset + requested > this.size) {
+      if (position + requested > this.size) {
         throw new IllegalArgumentException("Invalid storage write request!");
       }
 
-      return this.channel.write(buffer, offset);
+      return this.channel.write(buffer, position);
     } finally {
       myLock.writeLock().unlock();
     }

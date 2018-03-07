@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -34,34 +35,27 @@ import java.nio.ByteBuffer;
  * @author mpetazzoni
  * @author dgiffin
  */
-public interface TorrentByteStorage {
-
-  String PARTIAL_FILE_NAME_SUFFIX = ".part";
+public interface TorrentByteStorage extends Closeable {
 
   void open(boolean seeder) throws IOException;
-
-  /**
-   * Returns the total size of the torrent storage.
-   */
-  long size();
 
   /**
    * Read from the byte storage.
    *
    * <p>
-   * Read {@code length} bytes at offset {@code offset} from the underlying
+   * Read {@code length} bytes at position {@code position} from the underlying
    * byte storage and return them in a {@link ByteBuffer}.
    * </p>
    *
-   * @param buffer The buffer to read the bytes into. The buffer's limit will
-   *               control how many bytes are read from the storage.
-   * @param offset The offset, in bytes, to read from. This must be within
-   *               the storage boundary.
+   * @param buffer   The buffer to read the bytes into. The buffer's limit will
+   *                 control how many bytes are read from the storage.
+   * @param position The position, in bytes, to read from. This must be within
+   *                 the storage boundary.
    * @return The number of bytes read from the storage.
    * @throws IOException If an I/O error occurs while reading from the
    *                     byte storage.
    */
-  int read(ByteBuffer buffer, long offset) throws IOException;
+  int read(ByteBuffer buffer, long position) throws IOException;
 
   /**
    * Write bytes to the byte storage.
@@ -69,24 +63,16 @@ public interface TorrentByteStorage {
    * <p>
    * </p>
    *
-   * @param block  A {@link ByteBuffer} containing the bytes to write to the
-   *               storage. The buffer limit is expected to be set correctly: all bytes
-   *               from the buffer will be used.
-   * @param offset Offset in the underlying byte storage to write the block
-   *               at.
+   * @param block    A {@link ByteBuffer} containing the bytes to write to the
+   *                 storage. The buffer limit is expected to be set correctly: all bytes
+   *                 from the buffer will be used.
+   * @param position Position in the underlying byte storage to write the block
+   *                 at.
    * @return The number of bytes written to the storage.
    * @throws IOException If an I/O error occurs while writing to the byte
    *                     storage.
    */
-  int write(ByteBuffer block, long offset) throws IOException;
-
-  /**
-   * Close this byte storage.
-   *
-   * @throws IOException If closing the underlying storage (file(s) ?)
-   *                     failed.
-   */
-  void close() throws IOException;
+  int write(ByteBuffer block, long position) throws IOException;
 
   /**
    * Finalize the byte storage when the download is complete.

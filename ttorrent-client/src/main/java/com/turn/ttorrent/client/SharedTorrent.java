@@ -335,7 +335,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       // situation.
       long off = ((long) idx) * this.pieceLength;
       long len = Math.min(
-              this.bucket.size() - off,
+              this.getSize() - off,
               this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
@@ -385,7 +385,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
       // situation.
       long off = ((long) idx) * this.pieceLength;
       long len = Math.min(
-              this.bucket.size() - off,
+              this.getSize() - off,
               this.pieceLength);
 
       this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
