@@ -712,7 +712,7 @@ public class ClientTest {
     final File torrentFile = tempFiles.createTempFile();
     torrent.save(torrentFile);
     seeder.start(InetAddress.getLocalHost());
-    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent(), true, false);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     final Client leecher = new Client(es) {
       @Override
