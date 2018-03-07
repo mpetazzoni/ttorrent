@@ -36,7 +36,7 @@ public interface TorrentGeneralMetadata {
   /**
    * @return name and version of the program used to create .torrent
    */
-  Optional<String> createdBy();
+  Optional<String> getCreatedBy();
 
   /**
    * @return number of bytes in each piece
