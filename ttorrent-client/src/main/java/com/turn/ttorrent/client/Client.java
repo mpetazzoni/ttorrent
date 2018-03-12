@@ -152,7 +152,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     }
 
     forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
-    logger.info(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+    logger.debug(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
 
@@ -167,7 +167,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public void removeTorrent(TorrentHash torrentHash) {
-    logger.info("Stopping seeding " + torrentHash.getHexInfoHash());
+    logger.debug("Stopping seeding " + torrentHash.getHexInfoHash());
     final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash.getHexInfoHash());
 
     SharedTorrent torrent = torrents.first();
@@ -754,7 +754,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     if (announceableTorrent.isSeeded()) return;
 
-    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+    logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
     Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
@@ -878,7 +878,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
       if (torrent.isComplete()) {
         //close connection with all peers for this torrent
-        logger.info("Download of {} complete.", torrent.getName());
+        logger.debug("Download of {} complete.", torrent.getName());
 
         torrent.finish();
 
