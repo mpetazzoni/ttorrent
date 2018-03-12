@@ -41,10 +41,6 @@ public class HandshakeReceiver implements DataProcessor {
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {
 
-    if (myIsOutgoingConnection) {//for avoid logs on seeders particularly on server
-      logger.info("trying to process handshake data from {}", socketChannel);
-    }
-
     if (pstrLength == -1) {
       ByteBuffer len = ByteBuffer.allocate(1);
       int readBytes = -1;

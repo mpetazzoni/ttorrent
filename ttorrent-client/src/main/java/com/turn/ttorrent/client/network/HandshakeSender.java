@@ -43,11 +43,10 @@ public class HandshakeSender implements DataProcessor {
       return new ShutdownProcessor();
     }
     ByteBuffer messageToSend = ByteBuffer.wrap(handshake.getData().array());
-    logger.trace("try send handshake {} to {}", handshake, socketChannel);
+    logger.debug("try send handshake {} to {}", handshake, socketChannel);
     while (messageToSend.hasRemaining()) {
       socketChannel.write(messageToSend);
     }
-    logger.info("sent handshake to {}", socketChannel);
     return new HandshakeReceiver(
             myContext,
             myRemotePeerIp,
