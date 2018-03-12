@@ -17,12 +17,12 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.AnnounceResponseMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.net.URI;
@@ -34,7 +34,7 @@ import java.util.Set;
 public abstract class TrackerClient {
 
   private static final Logger logger =
-          LoggerFactory.getLogger(TrackerClient.class);
+          TorrentLoggerFactory.getLogger();
 
 
   /**

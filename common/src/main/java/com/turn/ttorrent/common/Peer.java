@@ -16,7 +16,6 @@
 package com.turn.ttorrent.common;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -36,7 +35,7 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
-  private static final Logger logger = LoggerFactory.getLogger(Peer.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   private final InetSocketAddress address;
   private final String hostId;

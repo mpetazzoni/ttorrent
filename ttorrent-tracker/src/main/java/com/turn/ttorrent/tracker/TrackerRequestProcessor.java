@@ -19,6 +19,7 @@ import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
@@ -27,7 +28,6 @@ import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPTrackerErrorMessage;
 import org.simpleframework.http.Status;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -59,7 +59,7 @@ import java.util.Map;
 public class TrackerRequestProcessor {
 
   private static final Logger logger =
-          LoggerFactory.getLogger(TrackerRequestProcessor.class);
+          TorrentLoggerFactory.getLogger();
 
   /**
    * The list of announce request URL fields that need to be interpreted as

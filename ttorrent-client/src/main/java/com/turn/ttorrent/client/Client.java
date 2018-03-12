@@ -32,7 +32,6 @@ import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.ConnectionManager;
 import com.turn.ttorrent.network.ConnectionManagerContext;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,7 +72,7 @@ import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEv
  */
 public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context, ConnectionManagerContext {
 
-  protected static final Logger logger = LoggerFactory.getLogger(Client.class);
+  protected static final Logger logger = TorrentLoggerFactory.getLogger();
 
   /**
    * Peers unchoking frequency, in seconds. Current BitTorrent specification

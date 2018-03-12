@@ -2,9 +2,9 @@ package com.turn.ttorrent.network.keyProcessors;
 
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.network.TimeoutAttachment;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class CleanupKeyProcessor implements CleanupProcessor {
 
-  private final static Logger logger = LoggerFactory.getLogger(CleanupKeyProcessor.class);
+  private final static Logger logger = TorrentLoggerFactory.getLogger();
 
   private final TimeService myTimeService;
 

@@ -22,7 +22,6 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -55,7 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Torrent extends Observable implements TorrentInfo, AnnounceableTorrent {
 
-  private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   /**
    * Torrent file piece length (in bytes), we use 512 kB.

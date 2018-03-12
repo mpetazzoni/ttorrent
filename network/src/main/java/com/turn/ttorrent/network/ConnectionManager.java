@@ -2,9 +2,9 @@ package com.turn.ttorrent.network;
 
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.network.keyProcessors.*;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,7 +23,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS
 
 public class ConnectionManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionManager.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   public static final int PORT_RANGE_START = 6881;
   public static final int PORT_RANGE_END = 6889;

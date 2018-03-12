@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.simpleframework.http.core.ContainerServer;
 import org.simpleframework.transport.connect.Connection;
 import org.simpleframework.transport.connect.SocketConnection;
@@ -41,7 +42,7 @@ import java.util.List;
  */
 public class Tracker {
 
-  private static final Logger logger = LoggerFactory.getLogger(Tracker.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   /**
    * Request path handled by the tracker announce request handler.

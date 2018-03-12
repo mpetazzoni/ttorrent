@@ -1,14 +1,14 @@
 package com.turn.ttorrent.client.network;
 
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
 public class ShutdownProcessor implements DataProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ShutdownProcessor.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {

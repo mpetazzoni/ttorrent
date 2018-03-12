@@ -20,12 +20,12 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.network.ConnectionManager;
 import com.turn.ttorrent.network.WriteListener;
 import com.turn.ttorrent.network.WriteTask;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
 
-  private static final Logger logger = LoggerFactory.getLogger(SharingPeer.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
   private static final int MAX_PIPELINED_REQUESTS = 100;
 
   private final Object availablePiecesLock;

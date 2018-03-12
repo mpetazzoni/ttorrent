@@ -17,8 +17,9 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.protocol.TrackerMessage;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
+import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ConnectionResponseMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.MessageValidationException;
@@ -27,7 +28,6 @@ import com.turn.ttorrent.common.protocol.udp.UDPConnectRequestMessage;
 import com.turn.ttorrent.common.protocol.udp.UDPConnectResponseMessage;
 import com.turn.ttorrent.common.protocol.udp.UDPTrackerMessage;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.*;
@@ -62,7 +62,7 @@ import java.util.Random;
 public class UDPTrackerClient extends TrackerClient {
 
   protected static final Logger logger =
-          LoggerFactory.getLogger(UDPTrackerClient.class);
+          TorrentLoggerFactory.getLogger();
 
   /**
    * Back-off timeout uses 15 * 2 ^ n formula.

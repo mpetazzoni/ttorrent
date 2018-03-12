@@ -26,7 +26,6 @@ import com.turn.ttorrent.client.strategy.RequestStrategy;
 import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -55,7 +54,7 @@ import java.util.concurrent.*;
 public class SharedTorrent extends Torrent implements PeerActivityListener {
 
   private static final Logger logger =
-          LoggerFactory.getLogger(SharedTorrent.class);
+          TorrentLoggerFactory.getLogger();
 
   private final static RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplAnyInteresting();
 

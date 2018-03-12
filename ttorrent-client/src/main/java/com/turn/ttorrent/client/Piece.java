@@ -18,8 +18,8 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,7 +49,7 @@ import java.util.concurrent.Callable;
 public class Piece implements Comparable<Piece> {
 
   private static final Logger logger =
-          LoggerFactory.getLogger(Piece.class);
+          TorrentLoggerFactory.getLogger();
 
   private final TorrentByteStorage bucket;
   private final int index;

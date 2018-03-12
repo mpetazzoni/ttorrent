@@ -5,10 +5,10 @@ import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,7 +19,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 public class WorkingReceiver implements DataProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(WorkingReceiver.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
   //16 bytes is sufficient for all torrents messages except bitfield and piece.
   //So piece and bitfield have dynamic size because bytebuffer for this messages will be allocated after get message length
   private static final int DEF_BUFFER_SIZE = 16;

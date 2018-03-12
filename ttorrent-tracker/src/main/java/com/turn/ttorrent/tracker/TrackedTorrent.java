@@ -15,13 +15,9 @@
  */
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.PeerUID;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEvent;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +49,7 @@ import java.util.concurrent.ConcurrentMap;
 public class TrackedTorrent implements TorrentHash {
 
   private static final Logger logger =
-          LoggerFactory.getLogger(TrackedTorrent.class);
+          TorrentLoggerFactory.getLogger();
 
   /**
    * Minimum announce interval requested from peers, in seconds.

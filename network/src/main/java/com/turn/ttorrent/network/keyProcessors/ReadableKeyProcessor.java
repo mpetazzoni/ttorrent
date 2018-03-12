@@ -1,9 +1,9 @@
 package com.turn.ttorrent.network.keyProcessors;
 
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.ReadAttachment;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.SelectableChannel;
@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class ReadableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ReadableKeyProcessor.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   private final String myServerSocketLocalAddress;
 

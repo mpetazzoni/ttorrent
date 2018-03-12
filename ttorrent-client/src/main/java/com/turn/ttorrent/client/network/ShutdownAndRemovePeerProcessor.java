@@ -4,15 +4,15 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.PeersStorage;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.PeerUID;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.ByteChannel;
 
 public class ShutdownAndRemovePeerProcessor implements DataProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(ShutdownAndRemovePeerProcessor.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   private final PeerUID myPeerUID;
   private final Context myContext;

@@ -19,9 +19,9 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.ConnectException;
 import java.net.URI;
@@ -51,7 +51,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Announce implements Runnable {
 
   protected static final Logger logger =
-          LoggerFactory.getLogger(Announce.class);
+          TorrentLoggerFactory.getLogger();
 
   private List<Peer> myPeers;
 

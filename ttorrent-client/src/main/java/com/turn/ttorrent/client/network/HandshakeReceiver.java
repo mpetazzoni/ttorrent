@@ -7,8 +7,8 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.AnnounceableFileTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,7 +18,7 @@ import java.util.Arrays;
 
 public class HandshakeReceiver implements DataProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(HandshakeReceiver.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
 
   private final Context myContext;
   private final String myHostAddress;

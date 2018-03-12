@@ -15,9 +15,9 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +44,7 @@ public class FileStorage implements TorrentByteStorage {
   private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
   private static final Logger logger =
-          LoggerFactory.getLogger(FileStorage.class);
+          TorrentLoggerFactory.getLogger();
 
   private final File target;
   private File partial;

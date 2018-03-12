@@ -2,10 +2,10 @@ package com.turn.ttorrent.network;
 
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TimeService;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.network.keyProcessors.CleanupProcessor;
 import com.turn.ttorrent.network.keyProcessors.KeyProcessor;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ConnectionWorker implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ConnectionWorker.class);
+  private static final Logger logger = TorrentLoggerFactory.getLogger();
   private static final String SELECTOR_THREAD_NAME = "Torrent channels manager thread";
   private volatile boolean stop = false;
   private final Selector selector;
