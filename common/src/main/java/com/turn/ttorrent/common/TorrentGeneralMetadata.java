@@ -56,4 +56,9 @@ public interface TorrentGeneralMetadata {
    */
   boolean isPrivate();
 
+  /**
+   * @return SHA-1 hash of info dictionary
+   */
+  String getHexInfoHash();
+
 }
