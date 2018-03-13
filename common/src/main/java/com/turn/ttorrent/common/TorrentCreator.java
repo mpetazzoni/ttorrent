@@ -14,6 +14,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
+
 public class TorrentCreator {
 
   private final static Logger logger = TorrentLoggerFactory.getLogger();
@@ -158,7 +160,7 @@ public class TorrentCreator {
     Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 
     if (announce != null) {
-      torrent.put("announce", new BEValue(announce.toString()));
+      torrent.put(ANNOUNCE, new BEValue(announce.toString()));
     }
     if (announceList != null) {
       List<BEValue> tiers = new LinkedList<BEValue>();
@@ -169,24 +171,24 @@ public class TorrentCreator {
         }
         tiers.add(new BEValue(tierInfo));
       }
-      torrent.put("announce-list", new BEValue(tiers));
+      torrent.put(ANNOUNCE_LIST, new BEValue(tiers));
     }
-    torrent.put("creation date", new BEValue(creationTimeSecs));
-    torrent.put("created by", new BEValue(createdBy));
+    torrent.put(CREATION_DATE_SEC, new BEValue(creationTimeSecs));
+    torrent.put(CREATED_BY, new BEValue(createdBy));
 
     Map<String, BEValue> info = new TreeMap<String, BEValue>();
-    info.put("name", new BEValue(parent.getName()));
-    info.put("piece length", new BEValue(pieceSize));
+    info.put(NAME, new BEValue(parent.getName()));
+    info.put(PIECE_LENGTH, new BEValue(pieceSize));
 
     if (files == null || files.isEmpty()) {
-      info.put("length", new BEValue(parent.length()));
-      info.put("pieces", new BEValue(hashFile(parent, pieceSize),
+      info.put(FILE_LENGTH, new BEValue(parent.length()));
+      info.put(PIECES, new BEValue(hashFile(parent, pieceSize),
               Torrent.BYTE_ENCODING));
     } else {
       List<BEValue> fileInfo = new LinkedList<BEValue>();
       for (File file : files) {
         Map<String, BEValue> fileMap = new HashMap<String, BEValue>();
-        fileMap.put("length", new BEValue(file.length()));
+        fileMap.put(FILE_LENGTH, new BEValue(file.length()));
 
         LinkedList<BEValue> filePath = new LinkedList<BEValue>();
         while (file != null) {
@@ -198,14 +200,14 @@ public class TorrentCreator {
           file = file.getParentFile();
         }
 
-        fileMap.put("path", new BEValue(filePath));
+        fileMap.put(FILE_PATH, new BEValue(filePath));
         fileInfo.add(new BEValue(fileMap));
       }
-      info.put("files", new BEValue(fileInfo));
-      info.put("pieces", new BEValue(hashFiles(files, pieceSize),
+      info.put(FILES, new BEValue(fileInfo));
+      info.put(PIECES, new BEValue(hashFiles(files, pieceSize),
               Torrent.BYTE_ENCODING));
     }
-    torrent.put("info", new BEValue(info));
+    torrent.put(INFO_TABLE, new BEValue(info));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BEncoder.bencode(new BEValue(torrent), baos);
