@@ -75,6 +75,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
 
   private final int myPieceCount;
   private final long myPieceLength;
+  private final byte[] myPiecesHashes;
 
   /**
    * Create a new torrent from meta-info binary data.
@@ -241,6 +242,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     myPieceLength = decoded_info.get("piece length").getInt();
     myPieceCount = (int) (Math.ceil(
             (double) this.getSize() / myPieceLength));
+    myPiecesHashes = decoded_info.get("pieces").getBytes();
   }
 
   /**
@@ -292,7 +294,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
 
   @Override
   public byte[] getPiecesHashes() {
-    return new byte[0];
+    return myPiecesHashes;
   }
 
   @Override
@@ -302,7 +304,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
 
   @Override
   public int getPiecesCount() {
-    return 0;
+    return myPieceCount;
   }
 
   /**
@@ -410,12 +412,6 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     return this.encoded;
   }
 
-  protected byte[] getEncodedInfo() throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BEncoder.bencode(getDecodedInfo(), baos);
-    return baos.toByteArray();
-  }
-
   protected Map<String, BEValue> getDecoded() throws IOException {
     return BDecoder.bdecode(new ByteArrayInputStream(encoded)).getMap();
   }
@@ -444,35 +440,10 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
   }
 
   /**
-   * Returns the number of trackers for this torrent.
-   */
-  public int getTrackerCount() {
-    return this.allTrackers.size();
-  }
-
-  /**
    * Tells whether we were an initial seeder for this torrent.
    */
   public boolean isSeeder() {
     return this.seeder;
-  }
-
-  /**
-   * Save this torrent meta-info structure into a .torrent file.
-   *
-   * @param file The file to write to.
-   * @throws IOException If an I/O error occurs while writing the file.
-   */
-  public void save(File file) throws IOException {
-    FileOutputStream fOut = null;
-    try {
-      fOut = new FileOutputStream(file);
-      fOut.write(this.getEncoded());
-    } finally {
-      if (fOut != null) {
-        fOut.close();
-      }
-    }
   }
 
   /** Torrent loading ---------------------------------------------------- */
