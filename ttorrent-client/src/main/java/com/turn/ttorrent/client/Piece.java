@@ -17,8 +17,8 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
+import com.turn.ttorrent.common.TorrentUtils;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -172,7 +172,7 @@ public class Piece implements Comparable<Piece> {
       this._read(0, this.length, buffer);
       byte[] data = new byte[(int) this.length];
       buffer.get(data);
-      final byte[] calculatedHash = Torrent.hash(data);
+      final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(data);
       this.valid = Arrays.equals(calculatedHash, this.hash);
       logger.trace("validating result of piece {} is {}", this.index, this.valid);
     } catch (NoSuchAlgorithmException nsae) {

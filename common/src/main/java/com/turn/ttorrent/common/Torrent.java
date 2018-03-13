@@ -24,7 +24,6 @@ import org.apache.log4j.PatternLayout;
 import org.slf4j.Logger;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -128,8 +127,8 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BEncoder.bencode(decoded_info, baos);
     byte[] encoded_info = baos.toByteArray();
-    this.info_hash = Torrent.hash(encoded_info);
-    this.hex_info_hash = Torrent.byteArrayToHexString(this.info_hash);
+    this.info_hash = TorrentUtils.calculateSha1Hash(encoded_info);
+    this.hex_info_hash = TorrentUtils.byteArrayToHexString(this.info_hash);
 
     /**
      * Parses the announce information from the decoded meta-info
@@ -468,53 +467,6 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     }
   }
 
-  public static byte[] hash(byte[] data) throws NoSuchAlgorithmException {
-    MessageDigest md = MessageDigest.getInstance("SHA-1");
-    md.update(data);
-    return md.digest();
-  }
-
-  /**
-   * Convert a byte string to a string containing an hexadecimal
-   * representation of the original data.
-   *
-   * @param bytes The byte array to convert.
-   */
-  public static String byteArrayToHexString(byte[] bytes) {
-    BigInteger bi = new BigInteger(1, bytes);
-    return String.format("%0" + (bytes.length << 1) + "X", bi);
-  }
-
-  /**
-   * Return an hexadecimal representation of the bytes contained in the
-   * given string, following the default, expected byte encoding.
-   *
-   * @param input The input string.
-   */
-  public static String toHexString(String input) {
-    try {
-      byte[] bytes = input.getBytes(Torrent.BYTE_ENCODING);
-      return Torrent.byteArrayToHexString(bytes);
-    } catch (UnsupportedEncodingException uee) {
-      return null;
-    }
-  }
-
-  public Torrent createWithNewTracker(final URI newTracker) {
-    trackers.clear();
-    trackers.add(Arrays.asList(newTracker));
-    try {
-      final Map<String, BEValue> decoded = getDecoded();
-      decoded.put("announce", new BEValue(newTracker.toString()));
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      BEncoder.bencode(decoded, baos);
-      return new Torrent(baos.toByteArray(), false);
-    } catch (UnsupportedEncodingException e) {
-    } catch (NoSuchAlgorithmException e) {
-    } catch (IOException e) {
-    }
-    return this;
-  }
   /** Torrent loading ---------------------------------------------------- */
 
   /**

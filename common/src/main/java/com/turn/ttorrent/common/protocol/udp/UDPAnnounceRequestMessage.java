@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 
 import java.net.Inet4Address;
@@ -89,7 +89,7 @@ public class UDPAnnounceRequestMessage
 
   @Override
   public String getHexInfoHash() {
-    return Torrent.byteArrayToHexString(this.infoHash);
+    return TorrentUtils.byteArrayToHexString(this.infoHash);
   }
 
   @Override
@@ -99,7 +99,7 @@ public class UDPAnnounceRequestMessage
 
   @Override
   public String getHexPeerId() {
-    return Torrent.byteArrayToHexString(this.peerId);
+    return TorrentUtils.byteArrayToHexString(this.peerId);
   }
 
   @Override

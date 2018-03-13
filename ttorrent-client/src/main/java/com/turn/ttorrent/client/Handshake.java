@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.TorrentUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
@@ -59,7 +60,7 @@ public class Handshake implements TorrentHash {
   }
 
   public String getHexInfoHash() {
-    return Torrent.byteArrayToHexString(getInfoHash());
+    return TorrentUtils.byteArrayToHexString(getInfoHash());
   }
 
   public byte[] getPeerId() {

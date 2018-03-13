@@ -4,6 +4,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.log4j.BasicConfigurator;
@@ -84,7 +85,7 @@ public class TrackerClientTest {
     when(result.getDownloaded()).thenReturn(0L);
     when(result.getUploaded()).thenReturn(0L);
     when(result.getInfoHash()).thenReturn(hash);
-    when(result.getHexInfoHash()).thenReturn(Torrent.byteArrayToHexString(hash));
+    when(result.getHexInfoHash()).thenReturn(TorrentUtils.byteArrayToHexString(hash));
     return result;
   }
 

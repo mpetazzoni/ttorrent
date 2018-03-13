@@ -6,10 +6,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.PeerUID;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.common.TorrentStatistic;
-import com.turn.ttorrent.common.TorrentStatisticProvider;
+import com.turn.ttorrent.common.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -410,7 +407,7 @@ public class TrackerTest {
       @Override
       protected boolean condition() {
         for (TrackedTorrent tt : tracker.getTrackedTorrents()) {
-          if (tt.seeders() == 1 && tt.getHexInfoHash().equals(Torrent.byteArrayToHexString(torrentHash))) return true;
+          if (tt.seeders() == 1 && tt.getHexInfoHash().equals(TorrentUtils.byteArrayToHexString(torrentHash))) return true;
         }
 
         return false;

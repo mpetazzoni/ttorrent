@@ -288,7 +288,7 @@ public class TrackedTorrent implements TorrentHash {
 
   @Override
   public String getHexInfoHash() {
-    return Torrent.byteArrayToHexString(this.info_hash);
+    return TorrentUtils.byteArrayToHexString(this.info_hash);
   }
 
   @Override
