@@ -43,7 +43,7 @@ import java.util.*;
  * @author mpetazzoni
  * @see <a href="http://wiki.theory.org/BitTorrentSpecification#Metainfo_File_Structure">Torrent meta-info file structure specification</a>
  */
-public class Torrent extends Observable implements TorrentInfo, AnnounceableTorrent {
+public class Torrent extends Observable implements TorrentInfo, AnnounceableTorrent, TorrentMultiFileMetadata {
 
   /**
    * The query parameters encoding when parsing byte strings.
@@ -259,15 +259,50 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
   /**
    * Get this torrent's comment string.
    */
-  public String getComment() {
-    return this.comment;
+  public Optional<String> getComment() {
+    return Optional.of(this.comment);
   }
 
   /**
    * Get this torrent's creator (user, software, whatever...).
    */
-  public String getCreatedBy() {
-    return this.createdBy;
+  public Optional<String> getCreatedBy() {
+    return Optional.of(this.createdBy);
+  }
+
+  @Override
+  public String getDirectoryName() {
+    return this.name;
+  }
+
+  @Override
+  public List<TorrentFile> getFiles() {
+    return files;
+  }
+
+  @Override
+  public Optional<Long> getCreationDate() {
+    return Optional.of(creationDate == null ? null : creationDate.getTime()/1000);
+  }
+
+  @Override
+  public int getPieceLength() {
+    return (int)myPieceLength;
+  }
+
+  @Override
+  public byte[] getPiecesHashes() {
+    return new byte[0];
+  }
+
+  @Override
+  public boolean isPrivate() {
+    return false;
+  }
+
+  @Override
+  public int getPiecesCount() {
+    return 0;
   }
 
   /**

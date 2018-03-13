@@ -15,7 +15,7 @@ public interface TorrentGeneralMetadata extends TorrentHash {
    * @return all tracker for announce
    * @see <a href="http://bittorrent.org/beps/bep_0012.html"></a>
    */
-  Optional<List<List<String>>> getAnnounceList();
+  List<List<String>> getAnnounceList();
 
   /**
    * @return main announce url for tracker
