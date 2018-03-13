@@ -320,11 +320,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     initPieces();
 
     ExecutorService executor = Executors.newFixedThreadPool(
-            HASHING_THREADS_COUNT);
+            TorrentCreator.HASHING_THREADS_COUNT);
     List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-            this.getName(), HASHING_THREADS_COUNT);
+            this.getName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -374,7 +374,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
     List<Piece> results = new LinkedList<Piece>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-            this.getName(), HASHING_THREADS_COUNT);
+            this.getName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);

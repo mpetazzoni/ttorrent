@@ -20,7 +20,7 @@ public class TorrentTest {
   public void test_create_torrent() throws URISyntaxException, IOException, NoSuchAlgorithmException, InterruptedException {
     URI announceURI = new URI("http://localhost:6969/announce");
     String createdBy = "Test";
-    Torrent t = Torrent.create(new File("src/test/resources/parentFiles/file1.jar"), announceURI, createdBy);
+    Torrent t = TorrentCreator.create(new File("src/test/resources/parentFiles/file1.jar"), announceURI, createdBy);
     assertEquals(createdBy, t.getCreatedBy());
     assertEquals(announceURI.toString(), t.getAnnounceList().get(0).get(0));
   }
@@ -47,7 +47,7 @@ public class TorrentTest {
     for (String fileName : fileNames) {
       files.add(new File(parentDir, fileName));
     }
-    Torrent createdTorrent = Torrent.create(parentDir, files, announceURI, null, createdBy, creationTimeSecs, Torrent.DEFAULT_PIECE_LENGTH);
+    Torrent createdTorrent = TorrentCreator.create(parentDir, files, announceURI, null, createdBy, creationTimeSecs, TorrentCreator.DEFAULT_PIECE_LENGTH);
     File torrentFileWin = new File("src/test/resources/torrents/parentDir.win.torrent");
     File torrentFileLinux = new File("src/test/resources/torrents/parentDir.linux.torrent");
     final byte[] expectedBytesWin = FileUtils.readFileToByteArray(torrentFileWin);

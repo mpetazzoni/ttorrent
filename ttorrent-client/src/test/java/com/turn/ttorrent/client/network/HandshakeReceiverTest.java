@@ -8,6 +8,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.AnnounceableFileTorrent;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.network.ConnectionManager;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -94,7 +95,7 @@ public class HandshakeReceiverTest {
     client.write(byteBuffer);
 
     final File tempFile = myTempFiles.createTempFile(1024 * 1024);
-    Torrent torrent = Torrent.create(tempFile, URI.create(""), "test");
+    Torrent torrent = TorrentCreator.create(tempFile, URI.create(""), "test");
     File torrentFile = myTempFiles.createTempFile();
     torrent.save(torrentFile);
 
