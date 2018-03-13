@@ -6,6 +6,6 @@ import org.slf4j.LoggerFactory;
 public final class TorrentLoggerFactory {
 
   public static Logger getLogger() {
-    return LoggerFactory.getLogger("jetbrains.TorrentLibrary");
+    return LoggerFactory.getLogger("jetbrains.torrent.Library");
   }
 }
