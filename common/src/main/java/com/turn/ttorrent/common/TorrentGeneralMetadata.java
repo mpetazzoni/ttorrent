@@ -9,7 +9,7 @@ import java.util.List;
  *
  * @see <a href="https://wiki.theory.org/index.php/BitTorrentSpecification#Metainfo_File_Structure"></a>
  */
-public interface TorrentGeneralMetadata {
+public interface TorrentGeneralMetadata extends TorrentHash {
 
   /**
    * @return all tracker for announce
@@ -57,8 +57,8 @@ public interface TorrentGeneralMetadata {
   boolean isPrivate();
 
   /**
-   * @return SHA-1 hash of info dictionary
+   * @return count of pieces in torrent
    */
-  String getHexInfoHash();
+  int getPiecesCount();
 
 }
