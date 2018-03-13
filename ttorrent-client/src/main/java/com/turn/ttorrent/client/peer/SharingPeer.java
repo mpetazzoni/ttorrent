@@ -774,20 +774,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
     }
   }
 
-  public String toString() {
-    return new StringBuilder(super.toString())
-            .append(" [")
-            .append((this.choked ? "C" : "c"))
-            .append((this.interested ? "I" : "i"))
-            .append("|")
-            .append((this.choking ? "C" : "c"))
-            .append((this.interesting ? "I" : "i"))
-            .append("|")
-            .append(this.availablePieces.cardinality())
-            .append("]")
-            .toString();
-  }
-
   public SharedTorrent getTorrent() {
     return this.torrent;
   }

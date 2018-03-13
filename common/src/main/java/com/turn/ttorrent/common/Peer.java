@@ -232,11 +232,6 @@ public class Peer {
    */
   @Override
   public String toString() {
-    return "Peer{" +
-            "address=" + address +
-            ", hostId='" + hostId + '\'' +
-            ", hexPeerId='" + hexPeerId + '\'' +
-            ", hexInfoHash='" + hexInfoHash + '\'' +
-            '}';
+    return "Peer " + address + " for torrent " + hexInfoHash;
   }
 }
