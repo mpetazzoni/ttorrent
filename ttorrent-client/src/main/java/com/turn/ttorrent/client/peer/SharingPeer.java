@@ -619,8 +619,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             // downloaded. In this case, we have nothing to save, but
             // we should validate the piece.
             if (getRemainingRequestedPieces(p).size() == 0) {
-              p.finish();
-              p.validate(torrent, p);
+              torrent.savePieceAndValidate(p);
               this.firePieceCompleted(p);
               myRequestedPieces.remove(p);
               this.firePeerReady();

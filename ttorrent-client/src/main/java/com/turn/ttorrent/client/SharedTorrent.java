@@ -985,4 +985,10 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   public long getPieceSize(int pieceIdx) {
     return getPieceLength();
   }
+
+  public synchronized void savePieceAndValidate(Piece p) throws IOException {
+    openFileChannelIfNecessary();
+    p.finish();
+    p.validate(this, p);
+  }
 }
