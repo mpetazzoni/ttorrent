@@ -213,7 +213,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     String path = file.getAbsolutePath();
     for (SharedTorrent torrent : torrentsStorage.activeTorrents()) {
       File parentFile = torrent.getParentFile();
-      final List<String> filenames = torrent.getFilenames();
+      final List<String> filenames = TorrentUtils.getTorrentFileNames(torrent);
       for (String filename : filenames) {
         File seededFile = new File(parentFile, filename);
         if (seededFile.getAbsolutePath().equals(path)) {
@@ -439,7 +439,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
               (torrent.getSeedersCount() >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
               (System.currentTimeMillis() <= maxIdleTime)) {
         if (Thread.currentThread().isInterrupted() || isInterrupted.get())
-          throw new InterruptedException("Download of " + torrent.getName() + " was interrupted");
+          throw new InterruptedException("Download of " + torrent.getDirectoryName() + " was interrupted");
         if (currentLeft > torrent.getLeft()) {
           currentLeft = torrent.getLeft();
           maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
@@ -878,13 +878,17 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
       if (torrent.isComplete()) {
         //close connection with all peers for this torrent
-        logger.debug("Download of {} complete.", torrent.getName());
+        logger.debug("Download of {} complete.", torrent.getDirectoryName());
 
         torrent.finish();
 
+        AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
+
+        if (announceableTorrent == null) return;
+
         try {
-          this.announce.getCurrentTrackerClient(torrent)
-                  .announceAllInterfaces(COMPLETED, true, torrent);
+          this.announce.getCurrentTrackerClient(announceableTorrent)
+                  .announceAllInterfaces(COMPLETED, true, announceableTorrent);
         } catch (AnnounceException e) {
           logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
         }

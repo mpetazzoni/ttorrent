@@ -353,7 +353,7 @@ public class ClientTest {
       };
 
       final SharedTorrent torrent = firstClient.getTorrents().iterator().next();
-      final File file = new File(torrent.getParentFile(), torrent.getFilenames().get(0));
+      final File file = new File(torrent.getParentFile(), TorrentUtils.getTorrentFileNames(torrent).get(0));
       final int oldByte;
       {
         RandomAccessFile raf = new RandomAccessFile(file, "rw");

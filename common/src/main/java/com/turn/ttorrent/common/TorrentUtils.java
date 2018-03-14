@@ -3,6 +3,8 @@ package com.turn.ttorrent.common;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TorrentUtils {
 
@@ -28,4 +30,15 @@ public final class TorrentUtils {
     BigInteger bi = new BigInteger(1, bytes);
     return String.format("%0" + (bytes.length << 1) + "X", bi);
   }
+
+  public static List<String> getTorrentFileNames(TorrentMultiFileMetadata metadata) {
+    List<String> result = new ArrayList<String>();
+
+    for (TorrentFile torrentFile : metadata.getFiles()) {
+      result.add(torrentFile.getRelativePathAsString());
+    }
+
+    return result;
+  }
+
 }
