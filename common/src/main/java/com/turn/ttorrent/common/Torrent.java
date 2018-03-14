@@ -424,6 +424,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
   /**
    * Return the trackers for this torrent.
    */
+  @NotNull
   public List<List<String>> getAnnounceList() {
     List<List<String>> result = new ArrayList<List<String>>();
     for (List<URI> uris : trackers) {

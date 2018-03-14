@@ -2,6 +2,7 @@ package com.turn.ttorrent.common;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -26,11 +27,15 @@ public class TorrentSerializer {
     if (metadata.getCreationDate().isPresent())
       mapMetadata.put(CREATION_DATE_SEC, new BEValue(metadata.getCreationDate().get()));
 
-    List<BEValue> beValueList = getAnnounceListAsBEValues(metadata.getAnnounceList());
-    mapMetadata.put(ANNOUNCE_LIST, new BEValue(beValueList));
+    List<BEValue> announceList = getAnnounceListAsBEValues(metadata.getAnnounceList());
+    if (announceList != null) {
+      mapMetadata.put(ANNOUNCE_LIST, new BEValue(announceList));
+    }
     infoTable.put(PIECE_LENGTH, new BEValue(metadata.getPieceLength()));
     infoTable.put(PIECES, new BEValue(metadata.getPiecesHashes()));
-    infoTable.put(PRIVATE, new BEValue(metadata.isPrivate() ? 1 : 0));
+    if (metadata.isPrivate()) {
+      infoTable.put(PRIVATE, new BEValue(1));
+    }
 
     infoTable.put(NAME, new BEValue(metadata.getDirectoryName()));
     if (metadata.getFiles().size() == 1) {
@@ -53,13 +58,17 @@ public class TorrentSerializer {
     return buffer.array();
   }
 
-  private List<BEValue> getAnnounceListAsBEValues(List<List<String>> announceList) throws UnsupportedEncodingException {
+  @Nullable
+  private List<BEValue> getAnnounceListAsBEValues(@Nullable List<List<String>> announceList) throws UnsupportedEncodingException {
+    if (announceList == null) return null;
     List<BEValue> result = new ArrayList<BEValue>();
 
     for (List<String> announceTier : announceList) {
       List<BEValue> tier = mapStringListToBEValueList(announceTier);
-      result.add(new BEValue(tier));
+      if (!tier.isEmpty()) result.add(new BEValue(tier));
     }
+
+    if (result.isEmpty()) return null;
 
     return result;
   }
