@@ -10,10 +10,7 @@ import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.apache.log4j.*;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -62,7 +59,7 @@ public class ClientTest {
   public void setUp() throws IOException {
     tempFiles = new TempFiles();
     clientList = new ArrayList<Client>();
-    Logger.getRootLogger().setLevel(Utils.getLogLevel());
+    Logger.getRootLogger().setLevel(Level.DEBUG);
     startTracker();
   }
 
@@ -933,7 +930,7 @@ public class ClientTest {
     }
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath(), true, false);
     leecher.addTorrent(torrentFile.getAbsolutePath(), leechFolder.getAbsolutePath());
     waitForFileInDir(leechFolder, "file1.jar");
   }
