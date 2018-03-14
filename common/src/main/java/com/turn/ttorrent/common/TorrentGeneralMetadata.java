@@ -1,6 +1,7 @@
 package com.turn.ttorrent.common;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ public interface TorrentGeneralMetadata extends TorrentHash {
    * @return all tracker for announce
    * @see <a href="http://bittorrent.org/beps/bep_0012.html"></a>
    */
+  @Nullable
   List<List<String>> getAnnounceList();
 
   /**

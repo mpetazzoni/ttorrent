@@ -18,6 +18,7 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -435,6 +436,7 @@ public class Torrent extends Observable implements TorrentInfo, AnnounceableTorr
     return result;
   }
 
+  @NotNull
   public String getAnnounce() {
     return trackers.get(0).get(0).toString();
   }
