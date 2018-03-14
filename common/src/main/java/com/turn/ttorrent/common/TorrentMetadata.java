@@ -19,7 +19,7 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
   private final int myPieceLength;
   private final byte[] myPiecesHashes;
 
-  public TorrentMetadata(byte[] infoHash,
+  TorrentMetadata(byte[] infoHash,
                          List<List<String>> announceList,
                          String mainAnnounce,
                          long creationDate,
