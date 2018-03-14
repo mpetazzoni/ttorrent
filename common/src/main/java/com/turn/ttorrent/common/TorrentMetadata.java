@@ -1,6 +1,7 @@
 package com.turn.ttorrent.common;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -52,6 +53,7 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
     return myFiles;
   }
 
+  @Nullable
   @Override
   public List<List<String>> getAnnounceList() {
     return myAnnounceList;
