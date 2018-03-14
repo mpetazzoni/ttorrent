@@ -421,7 +421,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
     SharedTorrent torrent;
-    int timeoutForFoundPeersMs = 10000;
+    int timeoutForFoundPeersMs = 3000;
     long start = System.currentTimeMillis();
 
     while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
