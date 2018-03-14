@@ -1,4 +1,4 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.client;
 
 import java.io.*;
 
