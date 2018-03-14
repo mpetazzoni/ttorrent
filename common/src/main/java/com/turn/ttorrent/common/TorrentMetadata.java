@@ -20,16 +20,16 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
   private final byte[] myPiecesHashes;
 
   TorrentMetadata(byte[] infoHash,
-                         List<List<String>> announceList,
-                         String mainAnnounce,
-                         long creationDate,
-                         String comment,
-                         String createdBy,
-                         String name,
-                         List<TorrentFile> files,
-                         int pieceCount,
-                         int pieceLength,
-                         byte[] piecesHashes) {
+                  List<List<String>> announceList,
+                  String mainAnnounce,
+                  long creationDate,
+                  String comment,
+                  String createdBy,
+                  String name,
+                  List<TorrentFile> files,
+                  int pieceCount,
+                  int pieceLength,
+                  byte[] piecesHashes) {
     myInfoHash = infoHash;
     myAnnounceList = announceList;
     myMainAnnounce = mainAnnounce;
