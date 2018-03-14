@@ -10,7 +10,10 @@ import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
 import org.apache.commons.io.FileUtils;
-import org.apache.log4j.*;
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -979,7 +982,7 @@ public class ClientTest {
         boolean retval = true;
         for (Client client : clientsList) {
           if (!retval) return false;
-          final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent)client.getTorrentsStorage().announceableTorrents().iterator().next();
+          final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
           File downloadedFile = new File(torrent.getDownloadDirPath(), baseFile.getName());
           retval = downloadedFile.isFile();
         }
@@ -990,11 +993,28 @@ public class ClientTest {
     assertTrue(waitFor.isMyResult(), "All seeders didn't get their files");
     // check file contents here:
     for (Client client : clientsList) {
-      final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent)client.getTorrentsStorage().announceableTorrents().iterator().next();
+      final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
       final File file = new File(torrent.getDownloadDirPath(), baseFile.getName());
       assertEquals(baseMD5, getFileMD5(file, md5), String.format("MD5 hash is invalid. C:%s, O:%s ",
               file.getAbsolutePath(), baseFile.getAbsolutePath()));
     }
+  }
+
+  public void testManySeeders() throws Exception {
+    File artifact = tempFiles.createTempFile(300 * 1024 * 1024);
+    int seedersCount = 4;
+    Torrent torrent = TorrentCreator.create(artifact, this.tracker.getAnnounceURI(), "test");
+    File torrentFile = tempFiles.createTempFile();
+    saveTorrent(torrent, torrentFile);
+    for (int i = 0; i < seedersCount; i++) {
+      Client seeder = createClient();
+      seeder.addTorrent(torrentFile.getAbsolutePath(), artifact.getParent(), true, false);
+      seeder.start(InetAddress.getLocalHost());
+    }
+
+    Client leecher = createClient();
+    leecher.start(InetAddress.getLocalHost());
+    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
   }
 
   private void createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,
