@@ -52,6 +52,8 @@ public class TorrentsStorage {
       boolean isTorrentFinished = clientState == ClientState.SEEDING || torrent.isSeeder();
       if (torrent.getDownloadersCount() == 0 && isTorrentFinished) {
         myActiveTorrents.remove(torrentHash);
+      } else {
+        return;
       }
     } finally {
       myReadWriteLock.writeLock().unlock();

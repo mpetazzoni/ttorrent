@@ -419,6 +419,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
 //    Client.cleanupProcessor().unregisterCleanable(this);
     try {
       this.bucket.close();
+      isFileChannelOpen = false;
     } catch (IOException ioe) {
       logger.error("Error closing torrent byte storage: {}",
               ioe.getMessage());
