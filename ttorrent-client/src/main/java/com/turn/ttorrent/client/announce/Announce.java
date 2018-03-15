@@ -264,6 +264,11 @@ public class Announce implements Runnable {
         }
       } else {
         logger.warn("Tracker client for {} is null. Torrents are not announced on tracker", e.getKey());
+        if (e.getKey() == null || e.getKey().isEmpty()) {
+          for (AnnounceableTorrent announceableTorrent : e.getValue()) {
+            myContext.getTorrentsStorage().remove(announceableTorrent.getHexInfoHash());
+          }
+        }
       }
     }
     if (unannouncedTorrents.size() > 0) {
