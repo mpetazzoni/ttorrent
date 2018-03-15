@@ -671,8 +671,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
               });
       peer.downloadPiece(chosen, endGameMode);
       interesting.clear(chosen.getIndex());
-      //stop requesting if in endGameMode
-      if (endGameMode) return;
     }
   }
 
