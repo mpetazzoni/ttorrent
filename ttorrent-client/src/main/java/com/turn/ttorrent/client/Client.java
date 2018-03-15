@@ -420,16 +420,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                                       DownloadProgressListener listener) throws IOException, InterruptedException, NoSuchAlgorithmException {
     String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
-    SharedTorrent torrent;
-    int timeoutForFoundPeersMs = 3000;
-    long start = System.currentTimeMillis();
-
-    while (((torrent = torrentsStorage.getTorrent(hash)) == null) && (System.currentTimeMillis() - start) < timeoutForFoundPeersMs) {
-      Thread.sleep(10);
-    }
+    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
+    if (announceableTorrent == null) throw new IOException("Unable to download torrent completely - announceable torrent is not found");
+    SharedTorrent torrent = new TorrentLoaderImpl(torrentsStorage).loadTorrent(announceableTorrent);
 
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-    if (torrent != null) {
       torrent.addDownloadProgressListener(listener);
       final long startDownloadAt = System.currentTimeMillis();
       long currentLeft = torrent.getLeft();
@@ -451,9 +446,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
         }
         Thread.sleep(100);
       }
-    }
 
-    if (torrent == null || !(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
+    if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
       removeAndDeleteTorrent(hash, torrent);
 
       final List<SharingPeer> peersForTorrent = getPeersForTorrent(hash);
@@ -463,9 +457,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       }
 
       final String errorMsg;
-      if (torrent == null) {
-        errorMsg = "Unable to download torrent completely - cannot initialize torrent in " + timeoutForFoundPeersMs + " ms";
-      } else if (System.currentTimeMillis() > maxIdleTime) {
+      if (System.currentTimeMillis() > maxIdleTime) {
         int completedPieces = torrent.getCompletedPieces().cardinality();
         int totalPieces = torrent.getPieceCount();
         errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
