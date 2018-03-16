@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.turn</groupId>
 		<artifactId>ttorrent</artifactId>
-		<version>1.5-SNAPSHOT</version>
+		<version>1.6-SNAPSHOT</version>
 	</parent>
 
 	<name>Java BitTorrent library core</name>
@@ -43,5 +43,11 @@
  			<version>4.10</version>
  			<scope>test</scope>
  		</dependency>
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>6.1.1</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 </project>

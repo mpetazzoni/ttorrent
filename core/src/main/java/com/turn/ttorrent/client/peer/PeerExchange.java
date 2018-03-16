@@ -78,6 +78,7 @@ class PeerExchange {
 		LoggerFactory.getLogger(PeerExchange.class);
 
 	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
+	private static final PeerMessage STOP = PeerMessage.KeepAliveMessage.craft();
 
 	private SharingPeer peer;
 	private SharedTorrent torrent;
@@ -120,10 +121,7 @@ class PeerExchange {
 			this.peer.getShortHexPeerId() + ")-send");
 		this.out.setDaemon(true);
 
-		// Automatically start the exchange activity loops
 		this.stop = false;
-		this.in.start();
-		this.out.start();
 
 		logger.debug("Started peer exchange with {} for {}.",
 			this.peer, this.torrent);
@@ -131,10 +129,11 @@ class PeerExchange {
 		// If we have pieces, start by sending a BITFIELD message to the peer.
 		BitSet pieces = this.torrent.getCompletedPieces();
 		if (pieces.cardinality() > 0) {
-			this.send(PeerMessage.BitfieldMessage.craft(pieces));
+			this.send(PeerMessage.BitfieldMessage.craft(pieces, torrent.getPieceCount()));
 		}
 	}
 
+	
 	/**
 	 * Register a new message listener to receive messages.
 	 *
@@ -172,14 +171,33 @@ class PeerExchange {
 	}
 
 	/**
-	 * Close and stop the peer exchange.
+	 * Start the peer exchange.
+	 *
+	 * <p>
+	 * Starts both incoming and outgoing thread.
+	 * </p>
+	 */
+	public void start() {
+		this.in.start();
+		this.out.start();
+	}
+	
+	/**
+	 * Stop the peer exchange.
 	 *
 	 * <p>
 	 * Closes the socket channel and stops both incoming and outgoing threads.
 	 * </p>
 	 */
-	public void close() {
+	public void stop() {
 		this.stop = true;
+
+		try {
+			// Wake-up and shutdown out-going thread immediately
+			this.sendQueue.put(STOP);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 
 		if (this.channel.isConnected()) {
 			IOUtils.closeQuietly(this.channel);
@@ -281,7 +299,7 @@ class PeerExchange {
 			Iterator it = selector.selectedKeys().iterator();
 			while (it.hasNext()) {
 				SelectionKey key = (SelectionKey) it.next();
-				if (key.isReadable()) {
+				if (key.isValid() && key.isReadable()) {
 					int read = ((SocketChannel) key.channel()).read(buffer);
 					if (read < 0) {
 						throw new IOException("Unexpected end-of-stream while reading");
@@ -332,7 +350,14 @@ class PeerExchange {
 					}
 
 					buffer.rewind();
-
+					
+					if (stop) {
+						// The buffer may contain the type from the last message
+						// if we were stopped before reading the payload and cause
+						// BufferUnderflowException in parsing.
+						break;
+					}
+					
 					try {
 						PeerMessage message = PeerMessage.parse(buffer, torrent);
 						logger.trace("Received {} from {}", message, peer);
@@ -392,11 +417,11 @@ class PeerExchange {
 								PeerExchange.KEEP_ALIVE_IDLE_MINUTES,
 								TimeUnit.MINUTES);
 
-						if (message == null) {
-							if (stop) {
-								return;
-							}
+						if (message == STOP) {
+							return;
+						}
 
+						if (message == null) {
 							message = PeerMessage.KeepAliveMessage.craft();
 						}
 

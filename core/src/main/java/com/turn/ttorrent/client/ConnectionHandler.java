@@ -17,6 +17,7 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.Utils;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -67,8 +68,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>
  * This class does nothing more. All further peer-to-peer communication happens
- * in the {@link com.turn.ttorrent.client.peer.PeerExchange PeerExchange}
- * class.
+ * in the <code>PeerExchange</code> class.
  * </p>
  *
  * @author mpetazzoni
@@ -392,15 +392,15 @@ public class ConnectionHandler implements Runnable {
 		Handshake hs = Handshake.parse(data);
 		if (!Arrays.equals(hs.getInfoHash(), this.torrent.getInfoHash())) {
 			throw new ParseException("Handshake for unknow torrent " +
-					Torrent.byteArrayToHexString(hs.getInfoHash()) +
+					Utils.bytesToHex(hs.getInfoHash()) +
 					" from " + this.socketRepr(channel) + ".", pstrlen + 9);
 		}
 
 		if (peerId != null && !Arrays.equals(hs.getPeerId(), peerId)) {
 			throw new ParseException("Announced peer ID " +
-					Torrent.byteArrayToHexString(hs.getPeerId()) +
+					Utils.bytesToHex(hs.getPeerId()) +
 					" did not match expected peer ID " +
-					Torrent.byteArrayToHexString(peerId) + ".", pstrlen + 29);
+					Utils.bytesToHex(peerId) + ".", pstrlen + 29);
 		}
 
 		return hs;
@@ -501,7 +501,7 @@ public class ConnectionHandler implements Runnable {
 						 ? this.peer.getPeerId().array()
 						 : null));
 				logger.info("Handshaked with {}, peer ID is {}.",
-					this.peer, Torrent.byteArrayToHexString(hs.getPeerId()));
+					this.peer, Utils.bytesToHex(hs.getPeerId()));
 
 				// Go to non-blocking mode for peer interaction
 				channel.configureBlocking(false);

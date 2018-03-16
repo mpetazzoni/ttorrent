@@ -107,7 +107,7 @@ public class Peer {
 	public void setPeerId(ByteBuffer peerId) {
 		if (peerId != null) {
 			this.peerId = peerId;
-			this.hexPeerId = Torrent.byteArrayToHexString(peerId.array());
+			this.hexPeerId = Utils.bytesToHex(peerId.array());
 		} else {
 			this.peerId = null;
 			this.hexPeerId = null;

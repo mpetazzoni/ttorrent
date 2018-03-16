@@ -3,10 +3,12 @@
 
 # Ignore build output
 /build/*
+/target/*
 /release.properties
 
 # Ignore Javadoc output
-/doc/*
+cli/doc/*
+core/doc/*
 
 # Ignore any eventual Eclipse project files, these don't belong in the
 # repository.
@@ -18,4 +20,4 @@
 *.swp
 *.bak
 *~
-
+pom.xml.releaseBackup

@@ -270,6 +270,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		this.exchange = new PeerExchange(this, this.torrent, channel);
 		this.exchange.register(this);
+		this.exchange.start();
 
 		this.download = new Rate();
 		this.download.reset();
@@ -308,7 +309,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		synchronized (this.exchangeLock) {
 			if (this.exchange != null) {
-				this.exchange.close();
+				this.exchange.stop();
 				this.exchange = null;
 			}
 		}
@@ -747,7 +748,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * </p>
 	 *
 	 * @author mpetazzoni
-	 * @see Rate.RateComparator
+	 * @see Rate#RATE_COMPARATOR
 	 */
 	public static class DLRateComparator
 			implements Comparator<SharingPeer>, Serializable {
@@ -768,7 +769,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	 * </p>
 	 *
 	 * @author mpetazzoni
-	 * @see Rate.RateComparator
+	 * @see Rate#RATE_COMPARATOR
 	 */
 	public static class ULRateComparator
 			implements Comparator<SharingPeer>, Serializable {
