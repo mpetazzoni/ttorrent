@@ -13,6 +13,11 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.10</version>
+		</dependency>
+		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<version>2.4</version>
@@ -25,8 +30,19 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.6.4</version>
+			<version>1.7.12</version>
 		</dependency>
+ 		<dependency>
+ 			<groupId>org.apache.httpcomponents</groupId>
+ 			<artifactId>httpclient</artifactId>
+ 			<version>4.5</version>
+ 		</dependency>
+ 		<dependency>
+ 			<groupId>junit</groupId>
+ 			<artifactId>junit</artifactId>
+ 			<version>4.10</version>
+ 			<scope>test</scope>
+ 		</dependency>
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
