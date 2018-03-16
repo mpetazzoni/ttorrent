@@ -276,7 +276,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException When the torrent file cannot be read or decoded.
 	 */
-	public SharedTorrent(URI uri, File destDir) throws FileNotFoundException, IOException {
+	public SharedTorrent(URI uri, File destDir) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		this(Utils.resolveUrlFileToByteArray(uri), destDir);
 	}
 	
@@ -290,7 +290,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * destination directory does not exist and can't be created.
 	 * @throws IOException When the torrent file cannot be read or decoded.
 	 */
-	public SharedTorrent(File source, File destDir) throws FileNotFoundException, IOException {
+	public SharedTorrent(File source, File destDir) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		this(FileUtils.readFileToByteArray(source), destDir);
 	}
 
@@ -306,7 +306,7 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	 * @see #SharedTorrent(File, File)
 	 */
 	public static SharedTorrent fromFile(File source, File destDir)
-		throws FileNotFoundException, IOException {
+			throws FileNotFoundException, IOException, NoSuchAlgorithmException {
 		return new SharedTorrent(FileUtils.readFileToByteArray(source), destDir);
 	}
 	
