@@ -72,7 +72,9 @@ public final class Utils {
 		} finally {
 			httpclient.close();
 		}
-    
+    	
+	}
+	
     /**
      * Convert a byte string to a string containing the hexadecimal
      * representation of the original data.
@@ -89,6 +91,4 @@ public final class Utils {
         }
         return new String(hexChars);
     }
-		
-	}
 }
