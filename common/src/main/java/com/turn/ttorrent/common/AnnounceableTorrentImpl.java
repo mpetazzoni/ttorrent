@@ -13,6 +13,7 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   private final String myDownloadDirPath;
   private final String myDotTorrentFilePath;
   private final boolean myIsSeeded;
+  private final boolean myIsLeeched;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
                                  String hexInfoHash,
@@ -21,7 +22,8 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
                                  String announce,
                                  String downloadDirPath,
                                  String dotTorrentFilePath,
-                                 boolean isSeeded) {
+                                 boolean isSeeded,
+                                 boolean isLeeched) {
     myTorrentStatistic = torrentStatistic;
     myHexInfoHash = hexInfoHash;
     myInfoHash = infoHash;
@@ -30,6 +32,12 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
     myDotTorrentFilePath = dotTorrentFilePath;
     myDownloadDirPath = downloadDirPath;
     myIsSeeded = isSeeded;
+    myIsLeeched = isLeeched;
+  }
+
+  @Override
+  public boolean isLeeched() {
+    return myIsLeeched;
   }
 
   @Override
