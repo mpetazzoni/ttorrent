@@ -577,6 +577,15 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     this.completedPieces.set(piece.getIndex());
   }
 
+  public synchronized void markUncompleted(Piece piece) {
+    if (!this.completedPieces.get(piece.getIndex())) {
+      return;
+    }
+
+    myTorrentStatistic.addLeft(piece.size());
+    this.completedPieces.clear(piece.getIndex());
+  }
+
   /** PeerActivityListener handler(s). *************************************/
 
   /**
@@ -988,6 +997,5 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   public synchronized void savePieceAndValidate(Piece p) throws IOException {
     openFileChannelIfNecessary();
     p.finish();
-    p.validate(this, p);
   }
 }

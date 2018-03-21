@@ -44,6 +44,7 @@ import java.nio.channels.ByteChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -111,6 +112,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   private final PeersStorage peersStorage;
   private volatile ConnectionManager myConnectionManager;
   private final ExecutorService myExecutorService;
+  private final ExecutorService myPieceValidatorExecutor;
 
   /**
    * @param executorService executor service for run connection worker and process incoming data. Must have a pool size at least 2
@@ -126,6 +128,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myExecutorService = executorService;
+    myPieceValidatorExecutor = Executors.newFixedThreadPool(4);
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
@@ -351,6 +354,20 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.announce.stop();
 
     logger.trace("announce thread is stopped");
+
+    myPieceValidatorExecutor.shutdownNow();
+
+    if (timeout > 0) {
+      boolean terminatedSuccessfully;
+      try {
+        terminatedSuccessfully = myPieceValidatorExecutor.awaitTermination(timeout, timeUnit);
+      } catch (InterruptedException e) {
+        terminatedSuccessfully = false;
+      }
+      if (!terminatedSuccessfully) {
+        logger.warn("Unable to await termination of piece validator executor in {} {}", timeout, timeUnit);
+      }
+    }
 
     for (SharedTorrent torrent : this.torrentsStorage.activeTorrents()) {
       logger.trace("try close torrent {}", torrent);
@@ -827,66 +844,79 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    * @param piece The piece in question.
    */
   @Override
-  public void handlePieceCompleted(final SharingPeer peer, Piece piece)
+  public void handlePieceCompleted(final SharingPeer peer, final Piece piece)
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
     final String torrentHash = torrent.getHexInfoHash();
-    if (piece.isValid()) {
-      // Send a HAVE message to all connected peers
-      PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
-      for (SharingPeer remote : getConnectedPeers()) {
-        if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
-          remote.send(have);
-      }
-    }
-    synchronized (torrent) {
-      if (piece.isValid()) {
-        // Make sure the piece is marked as completed in the torrent
-        // Note: this is required because the order the
-        // PeerActivityListeners are called is not defined, and we
-        // might be called before the torrent's piece completion
-        // handler is.
-        torrent.markCompleted(piece);
-        logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
-                new Object[]{
-                        piece,
-                        peer,
-                        torrent.getCompletedPieces().cardinality(),
-                        torrent.getPieceCount()
-                });
-
-        BitSet completed = new BitSet();
-        completed.or(torrent.getCompletedPieces());
-        completed.and(peer.getAvailablePieces());
-        if (completed.equals(peer.getAvailablePieces())) {
-          // send not interested when have no interested pieces;
-          peer.send(PeerMessage.NotInterestedMessage.craft());
-        }
-
-      } else {
-        logger.info("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
-        peer.getPoorlyAvailablePieces().set(piece.getIndex());
-      }
-
-      if (torrent.isComplete()) {
-        //close connection with all peers for this torrent
-        logger.debug("Download of {} complete.", torrent.getDirectoryName());
-
-        torrent.finish();
-
-        AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
-
-        if (announceableTorrent == null) return;
-
+    torrent.markCompleted(piece);
+    myPieceValidatorExecutor.submit(new Runnable() {
+      @Override
+      public void run() {
         try {
-          this.announce.getCurrentTrackerClient(announceableTorrent)
-                  .announceAllInterfaces(COMPLETED, true, announceableTorrent);
-        } catch (AnnounceException e) {
-          logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
-        }
+          synchronized (piece) {
+            piece.validate(torrent, piece);
+            if (piece.isValid()) {
+              // Send a HAVE message to all connected peers
+              PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
+              for (SharingPeer remote : getConnectedPeers()) {
+                if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
+                  remote.send(have);
+              }
 
+              synchronized (torrent) {
+                  // Make sure the piece is marked as completed in the torrent
+                  // Note: this is required because the order the
+                  // PeerActivityListeners are called is not defined, and we
+                  // might be called before the torrent's piece completion
+                  // handler is.
+                  torrent.markCompleted(piece);
+                  logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
+                          new Object[]{
+                                  piece,
+                                  peer,
+                                  torrent.getCompletedPieces().cardinality(),
+                                  torrent.getPieceCount()
+                          });
+
+                  BitSet completed = new BitSet();
+                  completed.or(torrent.getCompletedPieces());
+                  completed.and(peer.getAvailablePieces());
+                  if (completed.equals(peer.getAvailablePieces())) {
+                    // send not interested when have no interested pieces;
+                    peer.send(PeerMessage.NotInterestedMessage.craft());
+                  }
+
+                }
+
+                if (torrent.isComplete()) {
+                  //close connection with all peers for this torrent
+                  logger.debug("Download of {} complete.", torrent.getDirectoryName());
+
+                  torrent.finish();
+
+                  AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
+
+                  if (announceableTorrent == null) return;
+
+                  try {
+                    announce.getCurrentTrackerClient(announceableTorrent)
+                            .announceAllInterfaces(COMPLETED, true, announceableTorrent);
+                  } catch (AnnounceException e) {
+                    logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
+                  }
+
+                }
+            } else {
+              torrent.markUncompleted(piece);
+              logger.info("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
+              peer.getPoorlyAvailablePieces().set(piece.getIndex());
+            }
+          }
+        } catch (Throwable e) {
+          LoggerUtils.warnWithMessageAndDebugDetails(logger, "unhandled exception in piece {} validation task", piece, e);
+        }
       }
-    }
+    });
   }
 
   @Override
