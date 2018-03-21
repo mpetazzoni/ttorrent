@@ -19,9 +19,11 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.TorrentUtils;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -62,6 +64,8 @@ public class Piece implements Comparable<Piece> {
   private volatile boolean valid;
   private int seen;
   private ByteBuffer data;
+  @Nullable
+  private WeakReference<ByteBuffer> myDownloadedPieceData;
 
   /**
    * Initialize a new piece in the byte bucket.
@@ -157,21 +161,20 @@ public class Piece implements Comparable<Piece> {
       return true;
     }
 
-    this.valid = false;
-
-    if (this.leecher) {
-      return this.isValid();
-    }
-
     logger.trace("Validating {}...", this);
 
     try {
       // TODO: remove cast to int when large ByteBuffer support is
       // implemented in Java.
-      ByteBuffer buffer = ByteBuffer.allocate((int) this.length);
-      this._read(0, this.length, buffer);
-      byte[] data = new byte[(int) this.length];
-      buffer.get(data);
+      ByteBuffer buffer = null;
+      if (myDownloadedPieceData != null) {
+        buffer = myDownloadedPieceData.get();
+      }
+      if (buffer == null) {
+        buffer = ByteBuffer.allocate((int) this.length);
+        this._read(0, this.length, buffer);
+      }
+      byte[] data = buffer.array();
       final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(data);
       this.valid = Arrays.equals(calculatedHash, this.hash);
       logger.trace("validating result of piece {} is {}", this.index, this.valid);
@@ -275,6 +278,7 @@ public class Piece implements Comparable<Piece> {
     try {
       this.bucket.write(this.data, this.offset);
     } finally {
+      myDownloadedPieceData = new WeakReference<ByteBuffer>(this.data);
       this.data = null;
     }
   }
