@@ -186,6 +186,7 @@ public class ClientTest {
     }
   }
 
+  @Test(enabled = false)
   public void endgameModeTest() throws Exception {
     this.tracker.setAcceptForeignTorrents(true);
     final int numSeeders = 2;
@@ -232,8 +233,11 @@ public class ClientTest {
 
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
-    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
     leech.start(InetAddress.getLocalHost());
+    leech.downloadUninterruptibly(
+            torrentFile.getAbsolutePath(),
+            downloadDir.getParent(),
+            20);
 
     waitForFileInDir(downloadDir, tempFile.getName());
 
