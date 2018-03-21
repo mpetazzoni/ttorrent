@@ -194,11 +194,13 @@ public class ClientTest {
     final AtomicInteger skipPiecesCount = new AtomicInteger(1);
     for (int i = 0; i < numSeeders; i++) {
       final ExecutorService es = Executors.newFixedThreadPool(10);
-      final Client seeder = new Client(es) {
+      final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+      final Client seeder = new Client(es, validatorES) {
         @Override
         public void stop() {
           super.stop();
           es.shutdownNow();
+          validatorES.shutdownNow();
         }
 
         @Override
@@ -291,8 +293,9 @@ public class ClientTest {
 
   public void testThatDownloadStatisticProvidedToTracker() throws Exception {
     final ExecutorService executorService = Executors.newFixedThreadPool(8);
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
     final AtomicInteger countOfTrackerResponses = new AtomicInteger(0);
-    Client leecher = new Client(executorService) {
+    Client leecher = new Client(executorService, validatorES) {
       @Override
       public void handleDiscoveredPeers(List<Peer> peers, String hexInfoHash) {
         super.handleDiscoveredPeers(peers, hexInfoHash);
@@ -302,7 +305,8 @@ public class ClientTest {
       @Override
       public void stop() {
         super.stop();
-        executorService.shutdown();
+        executorService.shutdownNow();
+        validatorES.shutdownNow();
       }
     };
 
@@ -640,7 +644,15 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
 
     final ExecutorService executorService = Executors.newFixedThreadPool(8);
-    Client leecher = new Client(executorService);
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    Client leecher = new Client(executorService, validatorES) {
+      @Override
+      public void stop() {
+        super.stop();
+        executorService.shutdownNow();
+        validatorES.shutdownNow();
+      }
+    };
     leecher.setMaxInConnectionsCount(10);
     leecher.setMaxOutConnectionsCount(10);
 
@@ -733,7 +745,8 @@ public class ClientTest {
 
     final AtomicInteger interrupts = new AtomicInteger(0);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    final Client leech = new Client(es) {
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    final Client leech = new Client(es, validatorES) {
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         super.handlePieceCompleted(peer, piece);
@@ -746,6 +759,7 @@ public class ClientTest {
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);
         es.shutdown();
+        validatorES.shutdown();
       }
     };
     //manually add leech here for graceful shutdown.
@@ -782,11 +796,13 @@ public class ClientTest {
     seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent(), true, false);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    final Client leecher = new Client(es) {
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    final Client leecher = new Client(es, validatorES) {
       @Override
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);
         es.shutdown();
+        validatorES.shutdown();
       }
 
       @Override
@@ -822,7 +838,8 @@ public class ClientTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     final AtomicInteger piecesDownloaded = new AtomicInteger(0);
     final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    Client leecher = new Client(es) {
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    Client leecher = new Client(es, validatorES) {
       @Override
       public void handlePieceCompleted(SharingPeer peer, Piece piece) throws IOException {
         piecesDownloaded.incrementAndGet();
@@ -837,6 +854,7 @@ public class ClientTest {
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);
         es.shutdown();
+        validatorES.shutdown();
       }
     };
     clientList.add(leecher);
@@ -849,8 +867,9 @@ public class ClientTest {
   }
 
   public void canStartAndStopClientTwice() throws Exception {
-    ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    final Client client = new Client(es);
+    final ExecutorService es = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    final Client client = new Client(es, validatorES);
     clientList.add(client);
     try {
       client.start(InetAddress.getLocalHost());
@@ -859,6 +878,7 @@ public class ClientTest {
       client.stop();
     } finally {
       es.shutdown();
+      validatorES.shutdown();
     }
   }
 
@@ -964,7 +984,7 @@ public class ClientTest {
       }
     };
     th.start();
-    Thread.sleep(400);
+    Thread.sleep(200);
     th.interrupt();
     new WaitFor(10 * 1000) {
       @Override

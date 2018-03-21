@@ -115,9 +115,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   private final ExecutorService myPieceValidatorExecutor;
 
   /**
-   * @param executorService executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   * @param workingExecutor executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
    */
-  public Client(ExecutorService executorService) {
+  public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor) {
     this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce(this);
     this.torrentsStorage = new TorrentsStorage();
@@ -127,8 +128,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.myReceiveBufferSize = new AtomicInteger();
     this.myInConnectionAllower = new CountLimitConnectionAllower(peersStorage);
     this.myOutConnectionAllower = new CountLimitConnectionAllower(peersStorage);
-    this.myExecutorService = executorService;
-    myPieceValidatorExecutor = Executors.newFixedThreadPool(4);
+    this.myExecutorService = workingExecutor;
+    myPieceValidatorExecutor = pieceValidatorExecutor;
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
@@ -355,20 +356,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.announce.stop();
 
     logger.trace("announce thread is stopped");
-
-    myPieceValidatorExecutor.shutdownNow();
-
-    if (timeout > 0) {
-      boolean terminatedSuccessfully;
-      try {
-        terminatedSuccessfully = myPieceValidatorExecutor.awaitTermination(timeout, timeUnit);
-      } catch (InterruptedException e) {
-        terminatedSuccessfully = false;
-      }
-      if (!terminatedSuccessfully) {
-        logger.warn("Unable to await termination of piece validator executor in {} {}", timeout, timeUnit);
-      }
-    }
 
     for (SharedTorrent torrent : this.torrentsStorage.activeTorrents()) {
       logger.trace("try close torrent {}", torrent);

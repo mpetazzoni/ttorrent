@@ -13,14 +13,19 @@ public class ClientFactory {
 
   public Client getClient(String name) {
     final ExecutorService executorService = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    return new Client(executorService) {
+    final ExecutorService pieceValidatorExecutor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    return new Client(executorService, pieceValidatorExecutor) {
       @Override
       public void stop(int timeout, TimeUnit timeUnit) {
         super.stop(timeout, timeUnit);
 
         executorService.shutdown();
+        pieceValidatorExecutor.shutdown();
         if (timeout > 0) {
           try {
+            if (!pieceValidatorExecutor.awaitTermination(timeout, timeUnit)) {
+              logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
+            }
             boolean shutdownCorrectly = executorService.awaitTermination(timeout, timeUnit);
             if (!shutdownCorrectly) {
               logger.warn("unable to terminate executor service in {} {}", timeout, timeUnit);
