@@ -186,7 +186,6 @@ public class ClientTest {
     }
   }
 
-  @Test(invocationCount = 50)
   public void endgameModeTest() throws Exception {
     this.tracker.setAcceptForeignTorrents(true);
     final int numSeeders = 2;
@@ -194,7 +193,7 @@ public class ClientTest {
     final AtomicInteger skipPiecesCount = new AtomicInteger(1);
     for (int i = 0; i < numSeeders; i++) {
       final ExecutorService es = Executors.newFixedThreadPool(10);
-      seeders.add(new Client(es) {
+      final Client seeder = new Client(es) {
         @Override
         public void stop() {
           super.stop();
@@ -215,7 +214,9 @@ public class ClientTest {
             }
           };
         }
-      });
+      };
+      seeders.add(seeder);
+      clientList.add(seeder);
     }
     File tempFile = tempFiles.createTempFile(1024 * 20 * 1024);
 
