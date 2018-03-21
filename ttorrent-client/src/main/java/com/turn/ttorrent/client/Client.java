@@ -439,7 +439,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
     if (announceableTorrent == null) throw new IOException("Unable to download torrent completely - announceable torrent is not found");
-    SharedTorrent torrent = new TorrentLoaderImpl(torrentsStorage).loadTorrent(announceableTorrent);
+    final SharedTorrent torrent = SharedTorrent.fromFile(new File(dotTorrentPath),
+            new File(downloadDirPath),
+            false,
+            false,
+            true,
+            announceableTorrent);
+    torrentsStorage.putIfAbsentActiveTorrent(torrent.getHexInfoHash(), torrent);
 
     long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
       torrent.addDownloadProgressListener(listener);

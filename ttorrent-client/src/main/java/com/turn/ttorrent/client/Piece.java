@@ -343,7 +343,9 @@ public class Piece implements Comparable<Piece> {
 
     @Override
     public Piece call() throws IOException {
-      this.piece.validate(null, null);
+      if (!this.piece.leecher) {
+        this.piece.validate(null, null);
+      }
       return this.piece;
     }
   }
