@@ -6,6 +6,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
@@ -21,6 +22,7 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -182,6 +184,58 @@ public class ClientTest {
       seeder.stop();
       leech.stop();
     }
+  }
+
+  @Test(invocationCount = 50)
+  public void endgameModeTest() throws Exception {
+    this.tracker.setAcceptForeignTorrents(true);
+    final int numSeeders = 2;
+    List<Client> seeders = new ArrayList<Client>();
+    final AtomicInteger skipPiecesCount = new AtomicInteger(1);
+    for (int i = 0; i < numSeeders; i++) {
+      final ExecutorService es = Executors.newFixedThreadPool(10);
+      seeders.add(new Client(es) {
+        @Override
+        public void stop() {
+          super.stop();
+          es.shutdownNow();
+        }
+
+        @Override
+        public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
+          return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel) {
+            @Override
+            public void send(PeerMessage message) throws IllegalStateException {
+              if (message instanceof PeerMessage.PieceMessage) {
+                if (skipPiecesCount.getAndDecrement() > 0) {
+                  return;
+                }
+              }
+              super.send(message);
+            }
+          };
+        }
+      });
+    }
+    File tempFile = tempFiles.createTempFile(1024 * 20 * 1024);
+
+    Torrent torrent = TorrentCreator.create(tempFile, this.tracker.getAnnounceURI(), "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    saveTorrent(torrent, torrentFile);
+
+    for (int i = 0; i < numSeeders; i++) {
+      Client client = seeders.get(i);
+      client.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent(), true, false);
+      client.start(InetAddress.getLocalHost());
+    }
+
+    final File downloadDir = tempFiles.createTempDir();
+    Client leech = createClient();
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
+    leech.start(InetAddress.getLocalHost());
+
+    waitForFileInDir(downloadDir, tempFile.getName());
+
   }
 
 
