@@ -869,7 +869,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                   // PeerActivityListeners are called is not defined, and we
                   // might be called before the torrent's piece completion
                   // handler is.
-                  torrent.markCompleted(piece);
                   logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
                           new Object[]{
                                   piece,
@@ -921,12 +920,9 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   @Override
   public void handlePeerDisconnected(SharingPeer peer) {
-    final SharedTorrent peerTorrent = peer.getTorrent();
     Peer p = new Peer(peer.getIp(), peer.getPort());
     p.setPeerId(peer.getPeerId());
     p.setTorrentHash(peer.getHexInfoHash());
-    PeerUID peerUID = new PeerUID(p.getAddress(), p.getHexInfoHash());
-    SharingPeer sharingPeer = this.peersStorage.removeSharingPeer(peerUID);
     logger.debug("Peer {} disconnected, [{}/{}].",
             new Object[]{
                     peer,
