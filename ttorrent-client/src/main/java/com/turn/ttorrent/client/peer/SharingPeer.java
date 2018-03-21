@@ -624,14 +624,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
               myRequestedPieces.remove(p);
               this.firePeerReady();
             } else {
-              if (piece.getOffset() + piece.getBlock().capacity()
-                      == p.size()) { // final request reached
-                for (PeerMessage.RequestMessage requestMessage : getRemainingRequestedPieces(p)) {
-                  send(requestMessage);
-                }
-              } else {
-                this.requestNextBlocksForPiece(p);
-              }
+              this.requestNextBlocksForPiece(p);
             }
           }
         } catch (IOException ioe) {
