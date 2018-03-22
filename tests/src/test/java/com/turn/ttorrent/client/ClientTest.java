@@ -74,6 +74,63 @@ public class ClientTest {
     fos.close();
   }
 
+  public void testThatSeederIsNotReceivedHaveMessages() throws Exception {
+    final ExecutorService workerES = Executors.newFixedThreadPool(10);
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    final AtomicBoolean isSeederReceivedHaveMessage = new AtomicBoolean(false);
+    Client seeder = new Client(workerES, validatorES) {
+
+      @Override
+      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
+        return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel) {
+          @Override
+          public synchronized void handleMessage(PeerMessage msg) {
+            if (msg instanceof PeerMessage.HaveMessage) {
+              isSeederReceivedHaveMessage.set(true);
+            }
+            super.handleMessage(msg);
+          }
+        };
+      }
+
+      @Override
+      public void stop() {
+        super.stop();
+        workerES.shutdown();
+        validatorES.shutdown();
+      }
+    };
+    clientList.add(seeder);
+
+    File tempFile = tempFiles.createTempFile(100 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+
+    Torrent torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    saveTorrent(torrent, torrentFile);
+
+    seeder.seedTorrent(torrentFile.getAbsolutePath(), tempFile.getParent());
+    seeder.start(InetAddress.getLocalHost());
+
+    waitForSeederIsAnnounsedOnTracker(torrent.getHexInfoHash());
+
+    Client leecher = createClient();
+    leecher.start(InetAddress.getLocalHost());
+    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
+    assertFalse(isSeederReceivedHaveMessage.get());
+  }
+
+  private void waitForSeederIsAnnounsedOnTracker(final String hexInfoHash) {
+    final WaitFor waitFor = new WaitFor(10 * 1000) {
+      @Override
+      protected boolean condition() {
+        return tracker.getTrackedTorrent(hexInfoHash) != null;
+      }
+    };
+    assertTrue(waitFor.isMyResult());
+  }
+
 
   //  @Test(invocationCount = 50)
   public void download_multiple_files() throws IOException, NoSuchAlgorithmException, InterruptedException, URISyntaxException {
