@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.concurrent.RejectedExecutionException;
 
 public class HandshakeReceiver implements DataProcessor {
 
@@ -119,16 +120,21 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.info("setup new connection with {}", sharingPeer);
 
-    myContext.getExecutor().submit(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          sharingPeer.onConnectionEstablished();
-        } catch (Throwable e) {
-          LoggerUtils.warnAndDebugDetails(logger, "unhandled exception {} in executor task (onConnectionEstablished)", e.toString(), e);
+    try {
+      myContext.getExecutor().submit(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            sharingPeer.onConnectionEstablished();
+          } catch (Throwable e) {
+            LoggerUtils.warnAndDebugDetails(logger, "unhandled exception {} in executor task (onConnectionEstablished)", e.toString(), e);
+          }
         }
-      }
-    });
+      });
+    } catch (RejectedExecutionException e) {
+      LoggerUtils.warnAndDebugDetails(logger, "task 'onConnectionEstablished' submit is failed. Reason: {}", e.getMessage(), e);
+      return new ShutdownAndRemovePeerProcessor(peerUID, myContext).processAndGetNext(socketChannel);
+    }
 
     return new WorkingReceiver(peerUID, myContext);
   }
