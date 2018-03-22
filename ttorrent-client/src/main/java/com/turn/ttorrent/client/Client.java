@@ -869,6 +869,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
               remote.send(have);
           }
 
+          final boolean isTorrentComplete;
           synchronized (torrent) {
             torrent.removeValidationFuture(piece);
             // Make sure the piece is marked as completed in the torrent
@@ -891,13 +892,17 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                 peer.notInteresting();
               }
             }
+
+            isTorrentComplete = torrent.isComplete();
+
+            if (isTorrentComplete) {
+              logger.debug("Download of {} complete.", torrent.getDirectoryName());
+
+              torrent.finish();
+            }
           }
 
-          if (torrent.isComplete()) {
-            //close connection with all peers for this torrent
-            logger.debug("Download of {} complete.", torrent.getDirectoryName());
-
-            torrent.finish();
+          if (isTorrentComplete) {
 
             AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
 
