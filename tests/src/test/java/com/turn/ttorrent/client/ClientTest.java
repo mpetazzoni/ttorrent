@@ -448,7 +448,7 @@ public class ClientTest {
     }
   }
 
-  //  @Test(invocationCount = 50)
+  @Test(enabled = false)
   public void corrupted_seeder_repair() throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
 
