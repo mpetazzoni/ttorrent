@@ -81,9 +81,14 @@ public class WorkingReceiver implements DataProcessor {
     messageBytes.limit(PeerMessage.MESSAGE_LENGTH_FIELD_SIZE + this.pstrLength);
 
     logger.trace("try read data from {}", socketChannel);
+    int readBytes;
     try {
-      socketChannel.read(messageBytes);
+      readBytes = socketChannel.read(messageBytes);
     } catch (IOException e) {
+      return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
+    }
+    if (readBytes < 0) {
+      logger.debug("channel {} is closed by other peer", socketChannel);
       return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
     }
     if (messageBytes.hasRemaining()) {
