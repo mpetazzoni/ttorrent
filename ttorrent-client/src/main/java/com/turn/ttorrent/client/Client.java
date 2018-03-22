@@ -137,6 +137,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
   }
 
+  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException, InterruptedException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, true, false);
+  }
+
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
     Torrent torrent = Torrent.load(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
@@ -856,10 +860,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       synchronized (piece) {
         piece.validate(torrent, piece);
         if (piece.isValid()) {
-          // Send a HAVE message to all connected peers
+          // Send a HAVE message to all connected peers, which don't have the piece
           PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
           for (SharingPeer remote : getConnectedPeers()) {
-            if (remote.getTorrent().getHexInfoHash().equals(torrentHash))
+            if (remote.getTorrent().getHexInfoHash().equals(torrentHash) &&
+                    !remote.getAvailablePieces().get(piece.getIndex()))
               remote.send(have);
           }
 
