@@ -81,6 +81,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   private TorrentByteStorage bucket;
   private boolean isFileChannelOpen = false;
   private final List<DownloadProgressListener> myDownloadListeners;
+  private final Map<Integer, Future<?>> myValidationFutures;
   private final TorrentMultiFileMetadata myTorrentMultiFileMetadata;
   private final long myTorrentTotalSize;
 
@@ -120,6 +121,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     myTorrentMultiFileMetadata = new TorrentParser().parse(torrent);
     isSeeder = seeder;
     myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
+    myValidationFutures = new HashMap<Integer, Future<?>>();
     long totalSize = 0;
     for (TorrentFile torrentFile : myTorrentMultiFileMetadata.getFiles()) {
       totalSize += torrentFile.size;
@@ -517,7 +519,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
    */
   public synchronized boolean isComplete() {
     return this.pieces.length > 0 &&
-            this.completedPieces.cardinality() == this.pieces.length;
+            this.completedPieces.cardinality() == this.pieces.length &&
+            this.myValidationFutures.size() == 0;
   }
 
   /**
@@ -582,8 +585,13 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
       return;
     }
 
+    removeValidationFuture(piece);
     myTorrentStatistic.addLeft(piece.size());
     this.completedPieces.clear(piece.getIndex());
+  }
+
+  public synchronized void removeValidationFuture(Piece piece) {
+    myValidationFutures.remove(piece.getIndex());
   }
 
   /** PeerActivityListener handler(s). *************************************/
@@ -997,5 +1005,10 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   public synchronized void savePieceAndValidate(Piece p) throws IOException {
     openFileChannelIfNecessary();
     p.finish();
+  }
+
+  public synchronized void markCompletedAndAddValidationFuture(Piece piece, Future<?> validationFuture) {
+    this.markCompleted(piece);
+    myValidationFutures.put(piece.getIndex(), validationFuture);
   }
 }

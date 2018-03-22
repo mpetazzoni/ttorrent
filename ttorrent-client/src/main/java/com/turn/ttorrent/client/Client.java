@@ -44,6 +44,7 @@ import java.nio.channels.ByteChannel;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -836,14 +837,14 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
           throws IOException {
     final SharedTorrent torrent = peer.getTorrent();
     final String torrentHash = torrent.getHexInfoHash();
-    torrent.markCompleted(piece);
     try {
-      myPieceValidatorExecutor.submit(new Runnable() {
+      final Future<?> validationFuture = myPieceValidatorExecutor.submit(new Runnable() {
         @Override
         public void run() {
           validatePieceAsync(torrent, piece, torrentHash, peer);
         }
       });
+      torrent.markCompletedAndAddValidationFuture(piece, validationFuture);
     } catch (RejectedExecutionException e) {
       torrent.markUncompleted(piece);
       LoggerUtils.warnWithMessageAndDebugDetails(logger, "Unable to submit validation task for torrent {}", torrentHash, e);
@@ -863,6 +864,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
           }
 
           synchronized (torrent) {
+            torrent.removeValidationFuture(piece);
             // Make sure the piece is marked as completed in the torrent
             // Note: this is required because the order the
             // PeerActivityListeners are called is not defined, and we
