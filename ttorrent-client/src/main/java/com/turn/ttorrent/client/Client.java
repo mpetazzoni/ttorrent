@@ -443,6 +443,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
               torrent.getClientState() != ClientState.ERROR &&
               (torrent.getSeedersCount() >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
               (System.currentTimeMillis() <= maxIdleTime)) {
+        if (torrent.isFinished()) break;
         if (Thread.currentThread().isInterrupted() || isInterrupted.get())
           throw new InterruptedException("Download of " + torrent.getDirectoryName() + " was interrupted");
         if (currentLeft > torrent.getLeft()) {
