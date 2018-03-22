@@ -883,14 +883,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                             torrent.getPieceCount()
                     });
 
-            BitSet completed = new BitSet();
-            completed.or(torrent.getCompletedPieces());
-            completed.and(peer.getAvailablePieces());
-            if (completed.equals(peer.getAvailablePieces())) {
-              // send not interested when have no interested pieces;
-              peer.send(PeerMessage.NotInterestedMessage.craft());
+            boolean isCurrentPeerSeeder = peer.getAvailablePieces().cardinality() == torrent.getPieceCount();
+            //if it's seeder we will send not interested message when we download full file
+            if (!isCurrentPeerSeeder) {
+              if (torrent.isAllPiecesOfPeerCompletedAndValidated(peer)) {
+                peer.notInteresting();
+              }
             }
-
           }
 
           if (torrent.isComplete()) {
@@ -908,6 +907,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
                       .announceAllInterfaces(COMPLETED, true, announceableTorrent);
             } catch (AnnounceException e) {
               logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
+            }
+
+            for (SharingPeer remote : getPeersForTorrent(torrentHash)) {
+              remote.notInteresting();
             }
 
           }

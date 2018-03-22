@@ -1011,4 +1011,15 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     this.markCompleted(piece);
     myValidationFutures.put(piece.getIndex(), validationFuture);
   }
+
+  public synchronized boolean isAllPiecesOfPeerCompletedAndValidated(SharingPeer peer) {
+    final BitSet availablePieces = peer.getAvailablePieces();
+    for (Piece piece : pieces) {
+      final boolean peerHaveCurrentPiece = availablePieces.get(piece.getIndex());
+      if (!peerHaveCurrentPiece) continue;
+      if (!completedPieces.get(piece.getIndex())) return false;
+      if (myValidationFutures.get(piece.getIndex()) != null) return false;
+    }
+    return true;
+  }
 }
