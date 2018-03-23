@@ -18,6 +18,7 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
   private final int myPieceCount;
   private final int myPieceLength;
   private final byte[] myPiecesHashes;
+  private final String myHexString;
 
   TorrentMetadata(byte[] infoHash,
                   List<List<String>> announceList,
@@ -41,6 +42,7 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
     myPieceCount = pieceCount;
     myPieceLength = pieceLength;
     myPiecesHashes = piecesHashes;
+    myHexString = TorrentUtils.byteArrayToHexString(myInfoHash);
   }
 
   @Override
@@ -107,6 +109,6 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
 
   @Override
   public String getHexInfoHash() {
-    return TorrentUtils.byteArrayToHexString(myInfoHash);
+    return myHexString;
   }
 }
