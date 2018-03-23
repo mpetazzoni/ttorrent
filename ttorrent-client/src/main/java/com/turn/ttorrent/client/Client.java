@@ -757,7 +757,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     if (announceableTorrent.isSeeded()) return;
 
-    logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
     Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
@@ -877,7 +877,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
             // PeerActivityListeners are called is not defined, and we
             // might be called before the torrent's piece completion
             // handler is.
-            logger.debug("Completed download of {} from {}, now has {}/{} pieces.",
+            logger.trace("Completed download and validation of {} from {}, now has {}/{} pieces.",
                     new Object[]{
                             piece,
                             peer,
@@ -937,7 +937,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     Peer p = new Peer(peer.getIp(), peer.getPort());
     p.setPeerId(peer.getPeerId());
     p.setTorrentHash(peer.getHexInfoHash());
-    logger.debug("Peer {} disconnected, [{}/{}].",
+    logger.trace("Peer {} disconnected, [{}/{}].",
             new Object[]{
                     peer,
                     getConnectedPeers().size(),

@@ -84,7 +84,7 @@ public class ConnectionWorker implements Runnable {
           }
           connectToPeersFromQueue();
           processWriteTasks();
-          logger.debug("select keys from selector. Keys count is " + selected);
+          logger.trace("select keys from selector. Keys count is " + selected);
           if (selected != 0) {
             processSelectedKeys();
           }
@@ -123,7 +123,7 @@ public class ConnectionWorker implements Runnable {
       if (stop || Thread.currentThread().isInterrupted()) {
         return;
       }
-      logger.debug("try register channel for write. Write task is {}", writeTask);
+      logger.trace("try register channel for write. Write task is {}", writeTask);
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
         iterator.remove();
@@ -203,7 +203,7 @@ public class ConnectionWorker implements Runnable {
   }
 
   private void processSelectedKey(SelectionKey key) throws IOException {
-    logger.debug("try process key for channel {}", key.channel());
+    logger.trace("try process key for channel {}", key.channel());
     myCleanupProcessor.processSelected(key);
     if (!key.channel().isOpen()) {
       key.cancel();
@@ -235,7 +235,7 @@ public class ConnectionWorker implements Runnable {
   private <T> boolean addTaskToQueue(T task, int timeout, TimeUnit timeUnit, BlockingQueue<T> queue) {
     try {
       if (queue.offer(task, timeout, timeUnit)) {
-        logger.debug("added task {}. Wake up selector", task);
+        logger.trace("added task {}. Wake up selector", task);
         selector.wakeup();
         return true;
       }

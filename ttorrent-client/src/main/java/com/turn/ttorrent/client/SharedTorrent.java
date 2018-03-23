@@ -192,7 +192,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   }
 
   private synchronized void openFileChannelIfNecessary() {
-    logger.debug("Opening file channel for {}. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getDirectoryName(), myDownloaders.size());
+    logger.trace("Opening file channel for {}. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getDirectoryName(), myDownloaders.size());
     try {
       if (!isFileChannelOpen) {
         this.bucket.open(clientState == ClientState.SEEDING || isSeeder());
@@ -209,7 +209,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
-    logger.debug("Closing file  channel for {} if necessary. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getDirectoryName(), myDownloaders.size());
+    logger.trace("Closing file  channel for {} if necessary. Downloaders: {}", getParentFile().getAbsolutePath() + "/" + getDirectoryName(), myDownloaders.size());
     if (isFileChannelOpen && myDownloaders.size() == 0) {
       this.bucket.close();
       isFileChannelOpen = false;

@@ -94,7 +94,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    logger.debug("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
+    logger.trace("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
     final SharingPeer sharingPeer =
             myContext.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
@@ -108,7 +108,7 @@ public class HandshakeReceiver implements DataProcessor {
 
     // If I am not a leecher
     if (!myIsOutgoingConnection) {
-      logger.debug("send handshake to {}", socketChannel);
+      logger.trace("send handshake to {}", socketChannel);
       try {
         final Handshake craft = Handshake.craft(hs.getInfoHash(), myContext.getPeersStorage().getSelf().getPeerIdArray());
         socketChannel.write(craft.getData());
@@ -118,7 +118,7 @@ public class HandshakeReceiver implements DataProcessor {
       }
     }
 
-    logger.info("setup new connection with {}", sharingPeer);
+    logger.debug("setup new connection with {}", sharingPeer);
 
     try {
       myContext.getExecutor().submit(new Runnable() {
@@ -144,7 +144,7 @@ public class HandshakeReceiver implements DataProcessor {
       messageBytes.rewind();
       return Handshake.parse(messageBytes, pstrLength);
     } catch (ParseException e) {
-      logger.debug("incorrect handshake message from " + socketChannelForLog, e);
+      logger.info("incorrect handshake message from " + socketChannelForLog, e);
     }
     return null;
   }

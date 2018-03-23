@@ -10,7 +10,7 @@ public final class DataProcessorUtil {
 
   public static void closeChannelIfOpen(Logger logger, ByteChannel channel) {
     if (channel.isOpen()) {
-      logger.debug("close channel {}", channel);
+      logger.trace("close channel {}", channel);
       try {
         channel.close();
       } catch (IOException e) {

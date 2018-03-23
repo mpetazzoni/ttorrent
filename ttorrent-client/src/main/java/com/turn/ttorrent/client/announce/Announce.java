@@ -141,7 +141,7 @@ public class Announce implements Runnable {
       return;
     }
 
-    logger.debug("Setting announce interval to {}s per tracker request.",
+    logger.trace("Setting announce interval to {}s per tracker request.",
             announceInterval);
     this.myAnnounceInterval = announceInterval;
   }
@@ -234,7 +234,7 @@ public class Announce implements Runnable {
 
   private void announceAllTorrents(List<AnnounceableTorrent> announceableTorrents, AnnounceRequestMessage.RequestEvent event) {
 
-    logger.debug("Started multi announce");
+    logger.debug("Started multi announce. Event {}, torrents {}", event, announceableTorrents);
     final Map<String, List<AnnounceableTorrent>> torrentsGroupingByAnnounceUrl = new HashMap<String, List<AnnounceableTorrent>>();
 
     for (AnnounceableTorrent torrent : announceableTorrents) {

@@ -134,7 +134,7 @@ public class TrackedPeer extends Peer {
     }
 
     if (!state.equals(this.state)) {
-      logger.debug("Peer {} {} download of {}.",
+      logger.trace("Peer {} {} download of {}.",
               new Object[]{
                       this,
                       state.name().toLowerCase(),
