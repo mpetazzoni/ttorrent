@@ -191,7 +191,8 @@ public class ConnectionWorker implements Runnable {
       try {
         processSelectedKey(key);
       } catch (Exception e) {
-        LoggerUtils.warnAndDebugDetails(logger, "error {} in processing key. Close channel for this key", e.getMessage(), e);
+        logger.warn("error {} in processing key. Close channel {}", e.getMessage(), key.channel());
+        logger.debug("", e);
         try {
           key.channel().close();
         } catch (IOException ioe) {
