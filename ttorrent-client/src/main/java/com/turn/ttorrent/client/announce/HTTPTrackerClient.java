@@ -130,15 +130,15 @@ public class HTTPTrackerClient extends TrackerClient {
         public void parse(InputStream inputStream, int responseCode) throws IOException, MessageValidationException {
 
           if (responseCode != 200) {
-            logger.info("received not 200 code from tracker for multi announce request. POST body is:");
-            logger.info(bodyStr);
+            logger.info("received {} code from tracker for multi announce request.", responseCode);
+            logger.debug(bodyStr);
             return;
           }
 
           final BEValue bdecode = BDecoder.bdecode(inputStream);
           if (bdecode == null) {
-            logger.info("tracker send bad response for multi announce message. POST body is:");
-            logger.info(bodyStr);
+            logger.info("tracker sent bad response for multi announce message.");
+            logger.debug(bodyStr);
             return;
           }
           final List<BEValue> list = bdecode.getList();
