@@ -260,7 +260,7 @@ public class Announce implements Runnable {
           unannouncedTorrents.addAll(e.getValue());
         } catch (ConnectException t) {
           LoggerUtils.warnWithMessageAndDebugDetails(logger, "Cannot connect to the tracker {}", e.getKey(), t);
-          logger.info("next torrents contain {} in tracker list. {}", e.getKey(), e.getValue());
+          logger.debug("next torrents contain {} in tracker list. {}", e.getKey(), e.getValue());
         }
       } else {
         logger.warn("Tracker client for {} is null. Torrents are not announced on tracker", e.getKey());
