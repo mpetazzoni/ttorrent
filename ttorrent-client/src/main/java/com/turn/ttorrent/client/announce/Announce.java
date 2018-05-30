@@ -54,6 +54,7 @@ public class Announce implements Runnable {
           TorrentLoggerFactory.getLogger();
 
   private List<Peer> myPeers;
+  private final TrackerClientFactory myTrackerClientFactory;
 
   /**
    * The tiers of tracker clients matching the tracker URIs defined in the
@@ -78,9 +79,10 @@ public class Announce implements Runnable {
   /**
    * Initialize the base announce class members for the announcer.
    */
-  public Announce(Context context) {
+  public Announce(Context context, TrackerClientFactory trackerClientFactory) {
     this.clients = new ConcurrentHashMap<String, TrackerClient>();
     this.thread = null;
+    myTrackerClientFactory = trackerClientFactory;
     myContext = context;
     myPeers = new CopyOnWriteArrayList<Peer>();
   }
@@ -90,7 +92,7 @@ public class Announce implements Runnable {
     TrackerClient client = this.clients.get(trackerUrl.toString());
     try {
       if (client == null) {
-        client = createTrackerClient(myPeers, trackerUrl);
+        client = myTrackerClientFactory.createTrackerClient(myPeers, trackerUrl);
         client.register(listener);
         this.clients.put(trackerUrl.toString(), client);
       }
@@ -109,7 +111,7 @@ public class Announce implements Runnable {
     myPeers.addAll(Arrays.asList(peers));
     if (defaultTrackerURI != null) {
       try {
-        myDefaultTracker = createTrackerClient(myPeers, defaultTrackerURI);
+        myDefaultTracker = myTrackerClientFactory.createTrackerClient(myPeers, defaultTrackerURI);
         myDefaultTracker.register(listener);
         this.clients.put(defaultTrackerURI.toString(), myDefaultTracker);
       } catch (Exception e) {
@@ -274,27 +276,6 @@ public class Announce implements Runnable {
     if (unannouncedTorrents.size() > 0) {
       defaultAnnounce(unannouncedTorrents);
     }
-  }
-
-  /**
-   * Create a {@link TrackerClient} annoucing to the given tracker address.
-   *
-   * @param peers   The list peer the tracker client will announce on behalf of.
-   * @param tracker The tracker address as a {@link java.net.URI}.
-   * @throws UnknownHostException    If the tracker address is invalid.
-   * @throws UnknownServiceException If the tracker protocol is not supported.
-   */
-  public static TrackerClient createTrackerClient(List<Peer> peers, URI tracker) throws UnknownHostException, UnknownServiceException {
-    String scheme = tracker.getScheme();
-
-    if ("http".equals(scheme) || "https".equals(scheme)) {
-      return new HTTPTrackerClient(peers, tracker);
-    } else if ("udp".equals(scheme)) {
-      return new UDPTrackerClient(peers, tracker);
-    }
-
-    throw new UnknownServiceException(
-            "Unsupported announce scheme: " + scheme + "!");
   }
 
   /**

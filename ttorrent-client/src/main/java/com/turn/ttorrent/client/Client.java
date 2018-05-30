@@ -16,9 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.Constants;
-import com.turn.ttorrent.client.announce.Announce;
-import com.turn.ttorrent.client.announce.AnnounceException;
-import com.turn.ttorrent.client.announce.AnnounceResponseListener;
+import com.turn.ttorrent.client.announce.*;
 import com.turn.ttorrent.client.network.CountLimitConnectionAllower;
 import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.network.StateChannelListener;
@@ -117,8 +115,17 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
    * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
    */
   public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor) {
+    this(workingExecutor, pieceValidatorExecutor, new TrackerClientFactoryImpl());
+  }
+
+  /**
+   * @param workingExecutor executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
+   * @param trackerClientFactory factory which creates instances for communication with tracker
+   */
+  public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor, TrackerClientFactory trackerClientFactory) {
     this.random = new Random(System.currentTimeMillis());
-    this.announce = new Announce(this);
+    this.announce = new Announce(this, trackerClientFactory);
     this.torrentsStorage = new TorrentsStorage();
     this.peersStorage = new PeersStorage();
     this.mySendBufferSize = new AtomicInteger();
