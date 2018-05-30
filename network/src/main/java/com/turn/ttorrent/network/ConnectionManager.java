@@ -46,11 +46,12 @@ public class ConnectionManager {
                            TimeService timeService,
                            NewConnectionAllower newIncomingConnectionAllower,
                            NewConnectionAllower newOutgoingConnectionAllower,
+                           SelectorFactory selectorFactory,
                            AtomicInteger mySendBufferSize,
                            AtomicInteger myReceiveBufferSize) throws IOException {
     this.mySendBufferSize = mySendBufferSize;
     this.myReceiveBufferSize = myReceiveBufferSize;
-    this.selector = Selector.open();
+    this.selector = selectorFactory.newSelector();
     this.myTimeService = timeService;
     myContext = context;
     this.myIncomingConnectionAllower = newIncomingConnectionAllower;

@@ -27,10 +27,7 @@ import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage;
-import com.turn.ttorrent.network.ConnectTask;
-import com.turn.ttorrent.network.ConnectionListener;
-import com.turn.ttorrent.network.ConnectionManager;
-import com.turn.ttorrent.network.ConnectionManagerContext;
+import com.turn.ttorrent.network.*;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -274,11 +271,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   public void start(final InetAddress... bindAddresses) throws IOException {
-    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, null);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, null, new SelectorFactoryImpl());
   }
 
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
-    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI);
+    start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI, new SelectorFactoryImpl());
   }
 
   public Peer[] getSelfPeers(final InetAddress[] bindAddresses) throws UnsupportedEncodingException {
@@ -306,12 +303,16 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return result;
   }
 
-  public void start(final InetAddress[] bindAddresses, final int announceIntervalSec, final URI defaultTrackerURI) throws IOException {
+  public void start(final InetAddress[] bindAddresses,
+                    final int announceIntervalSec,
+                    final URI defaultTrackerURI,
+                    final SelectorFactory selectorFactory) throws IOException {
     this.myConnectionManager = new ConnectionManager(
             this,
             new SystemTimeService(),
             myInConnectionAllower,
             myOutConnectionAllower,
+            selectorFactory,
             mySendBufferSize,
             myReceiveBufferSize);
     this.setSocketConnectionTimeout(DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);

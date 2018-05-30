@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +43,8 @@ public class ConnectionManagerTest {
     myContext = mock(ConnectionManagerContext.class);
     myExecutorService = Executors.newSingleThreadExecutor();
     when(myContext.getExecutor()).thenReturn(myExecutorService);
+    final SelectorFactory selectorFactory = mock(SelectorFactory.class);
+    when(selectorFactory.newSelector()).thenReturn(Selector.open());
     NewConnectionAllower newConnectionAllower = mock(NewConnectionAllower.class);
     when(newConnectionAllower.isNewConnectionAllowed()).thenReturn(true);
     myConnectionManager = new ConnectionManager(
@@ -49,6 +52,7 @@ public class ConnectionManagerTest {
             new MockTimeService(),
             newConnectionAllower,
             newConnectionAllower,
+            selectorFactory,
             new AtomicInteger(),
             new AtomicInteger());
   }
