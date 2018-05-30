@@ -202,7 +202,6 @@ public class HTTPTrackerClient extends TrackerClient {
       conn = (HttpURLConnection) openConnectionCheckRedirects(url, body, method);
       in = conn.getInputStream();
     } catch (IOException ioe) {
-      LoggerUtils.warnAndDebugDetails(logger, "announce message is not sent. Announce URl is {}", url, ioe);
       if (conn != null) {
         in = conn.getErrorStream();
       }
