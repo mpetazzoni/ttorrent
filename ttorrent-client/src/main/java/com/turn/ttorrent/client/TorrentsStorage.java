@@ -4,10 +4,7 @@ import com.turn.ttorrent.common.AnnounceableFileTorrent;
 import com.turn.ttorrent.common.AnnounceableTorrent;
 import com.turn.ttorrent.common.Pair;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -92,14 +89,19 @@ public class TorrentsStorage {
   }
 
   public Pair<SharedTorrent, AnnounceableFileTorrent> remove(String hash) {
+    final Pair<SharedTorrent, AnnounceableFileTorrent> result;
     try {
       myReadWriteLock.writeLock().lock();
       final SharedTorrent sharedTorrent = myActiveTorrents.remove(hash);
       final AnnounceableFileTorrent announceableFileTorrent = myAnnounceableTorrents.remove(hash);
-      return new Pair<SharedTorrent, AnnounceableFileTorrent>(sharedTorrent, announceableFileTorrent);
+      result = new Pair<SharedTorrent, AnnounceableFileTorrent>(sharedTorrent, announceableFileTorrent);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
+    if (result.first() != null) {
+      result.first().close();
+    }
+    return result;
   }
 
   public List<SharedTorrent> activeTorrents() {
@@ -121,12 +123,17 @@ public class TorrentsStorage {
   }
 
   public void clear() {
+    final Collection<SharedTorrent> sharedTorrents;
     try {
       myReadWriteLock.writeLock().lock();
+      sharedTorrents = new ArrayList<SharedTorrent>(myActiveTorrents.values());
       myAnnounceableTorrents.clear();
       myActiveTorrents.clear();
     } finally {
       myReadWriteLock.writeLock().unlock();
+    }
+    for (SharedTorrent sharedTorrent : sharedTorrents) {
+      sharedTorrent.close();
     }
   }
 }
