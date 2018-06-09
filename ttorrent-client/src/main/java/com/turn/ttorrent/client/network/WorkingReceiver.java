@@ -49,7 +49,8 @@ public class WorkingReceiver implements DataProcessor {
       try {
         read = socketChannel.read(messageBytes);
       } catch (IOException e) {
-        LoggerUtils.warnAndDebugDetails(logger, "unable to read data from channel " + socketChannel, e);
+        //Some clients close connection so that java throws IOException "An existing connection was forcibly closed by the remote host"
+        logger.debug("unable to read data from channel " + socketChannel, e);
         return new ShutdownAndRemovePeerProcessor(myPeerUID, myContext).processAndGetNext(socketChannel);
       }
       if (read < 0) {
