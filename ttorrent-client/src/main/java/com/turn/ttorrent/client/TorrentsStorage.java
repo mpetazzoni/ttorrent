@@ -136,4 +136,23 @@ public class TorrentsStorage {
       sharedTorrent.close();
     }
   }
+
+  public Pair<SharedTorrent, AnnounceableFileTorrent> removeByTorrentPath(String absolutePath) {
+    String torrentHash = null;
+    try {
+      myReadWriteLock.writeLock().lock();
+      for (Map.Entry<String, AnnounceableFileTorrent> e : myAnnounceableTorrents.entrySet()) {
+        if (e.getValue().getDotTorrentFilePath().equals(absolutePath)) {
+          torrentHash = e.getKey();
+          break;
+        }
+      }
+    } finally {
+      myReadWriteLock.writeLock().unlock();
+    }
+    if (torrentHash != null) {
+      return remove(torrentHash);
+    }
+    return new Pair<SharedTorrent, AnnounceableFileTorrent>(null, null);
+  }
 }

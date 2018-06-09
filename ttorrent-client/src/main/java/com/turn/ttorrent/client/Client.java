@@ -194,6 +194,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     sendStopEvent(torrents.second(), torrentHash.getHexInfoHash());
   }
 
+  /**
+   * method tries to find seeded torrent by .torrent file and removes it
+   *
+   * @return removed torrent or {@code null} if this torrent was not found
+   */
+  public AnnounceableFileTorrent removeByTorrentFile(File seededFile) {
+    return torrentsStorage.removeByTorrentPath(seededFile.getAbsolutePath()).second();
+  }
+
   public void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
     final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash);
     final SharedTorrent sharedTorrent = torrents.first() == null ? torrent : torrents.first();
