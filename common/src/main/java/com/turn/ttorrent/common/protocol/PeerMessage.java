@@ -465,7 +465,7 @@ public abstract class PeerMessage {
     /**
      * Default block size is 2^14 bytes, or 16kB.
      */
-    public static final int DEFAULT_REQUEST_SIZE = 131072;
+    public static final int DEFAULT_REQUEST_SIZE = 16384;
 
     /**
      * Max block request size is 2^17 bytes, or 131kB.

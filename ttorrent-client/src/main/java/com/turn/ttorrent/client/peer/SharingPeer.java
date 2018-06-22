@@ -67,7 +67,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
 
   private static final Logger logger = TorrentLoggerFactory.getLogger();
-  private static final int MAX_PIPELINED_REQUESTS = 100;
+  private static final int MAX_PIPELINED_REQUESTS = 400;
 
   private final Object availablePiecesLock;
   private volatile boolean choking;
