@@ -1,5 +1,7 @@
 package com.turn.ttorrent.common;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -18,7 +20,7 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
                                  String hexInfoHash,
                                  byte[] infoHash,
-                                 List<List<String>> announceUrls,
+                                 @Nullable List<List<String>> announceUrls,
                                  String announce,
                                  String downloadDirPath,
                                  String dotTorrentFilePath,
@@ -27,7 +29,11 @@ public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
     myTorrentStatistic = torrentStatistic;
     myHexInfoHash = hexInfoHash;
     myInfoHash = infoHash;
-    myAnnounceUrls = Collections.unmodifiableList(announceUrls);
+    if (announceUrls != null) {
+      myAnnounceUrls = Collections.unmodifiableList(announceUrls);
+    } else {
+      myAnnounceUrls = Collections.singletonList(Collections.singletonList(announce));
+    }
     myAnnounce = announce;
     myDotTorrentFilePath = dotTorrentFilePath;
     myDownloadDirPath = downloadDirPath;

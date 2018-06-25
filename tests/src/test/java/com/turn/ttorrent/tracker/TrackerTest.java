@@ -341,7 +341,8 @@ public class TrackerTest {
   }
 
   private TrackedTorrent loadTorrent(String name) throws IOException, NoSuchAlgorithmException {
-    return new TrackedTorrent(Torrent.load(new File(TEST_RESOURCES + "/torrents", name)));
+    TorrentMultiFileMetadata torrentMultiFileMetadata = new TorrentParser().parseFromFile(new File(TEST_RESOURCES + "/torrents", name));
+    return new TrackedTorrent(torrentMultiFileMetadata.getInfoHash());
   }
 
   private void startTracker() throws IOException {

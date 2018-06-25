@@ -8,6 +8,7 @@ import java.util.List;
 public class TorrentMetadata implements TorrentMultiFileMetadata {
 
   private final byte[] myInfoHash;
+  @Nullable
   private final List<List<String>> myAnnounceList;
   private final String myMainAnnounce;
   private final long myCreationDate;
@@ -21,7 +22,7 @@ public class TorrentMetadata implements TorrentMultiFileMetadata {
   private final String myHexString;
 
   TorrentMetadata(byte[] infoHash,
-                  List<List<String>> announceList,
+                  @Nullable List<List<String>> announceList,
                   String mainAnnounce,
                   long creationDate,
                   String comment,

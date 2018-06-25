@@ -91,11 +91,6 @@ public class TrackedTorrent implements TorrentHash {
     this.announceInterval = TrackedTorrent.DEFAULT_ANNOUNCE_INTERVAL_SECONDS;
   }
 
-  public TrackedTorrent(Torrent torrent)
-          throws IOException, NoSuchAlgorithmException {
-    this(torrent.getInfoHash());
-  }
-
   /**
    * Returns the map of all peers currently exchanging on this torrent.
    */
@@ -277,8 +272,8 @@ public class TrackedTorrent implements TorrentHash {
   public static TrackedTorrent load(File torrent) throws IOException,
           NoSuchAlgorithmException {
 
-    Torrent t = Torrent.load(torrent);
-    return new TrackedTorrent(t.getInfoHash());
+    TorrentMultiFileMetadata torrentMultiFileMetadata = new TorrentParser().parseFromFile(torrent);
+    return new TrackedTorrent(torrentMultiFileMetadata.getInfoHash());
   }
 
   @Override

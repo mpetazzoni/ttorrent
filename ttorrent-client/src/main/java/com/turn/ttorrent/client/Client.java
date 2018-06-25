@@ -146,7 +146,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   }
 
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, NoSuchAlgorithmException {
-    Torrent torrent = Torrent.load(new File(dotTorrentFilePath));
+    TorrentMultiFileMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
             torrent.getHexInfoHash(),
@@ -162,11 +162,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
     if (seeder) {
       announceableTorrent.getTorrentStatistic().setLeft(0);
     } else {
-      announceableTorrent.getTorrentStatistic().setLeft(torrent.getSize());
+      long size = 0;
+      for (TorrentFile torrentFile : torrent.getFiles()) {
+        size += torrentFile.size;
+      }
+      announceableTorrent.getTorrentStatistic().setLeft(size);
     }
 
     forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
-    logger.debug(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
+    logger.debug(String.format("Added torrent %s (%s)", torrent, torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
 
@@ -302,7 +306,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
         peer.setPeerId(self.getPeerId());
       } else {
         final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-        byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+        byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
         peer.setPeerId(ByteBuffer.wrap(idBytes));
       }
       result[i] = peer;
@@ -331,7 +335,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       return;
     }
     final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-    byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+    byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
     Peer self = new Peer(new InetSocketAddress(myConnectionManager.getBindPort()), ByteBuffer.wrap(idBytes));
     peersStorage.setSelf(self);
     logger.info("BitTorrent client [{}] started and " +
