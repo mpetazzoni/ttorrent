@@ -137,15 +137,15 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
     myPieceValidatorExecutor = pieceValidatorExecutor;
   }
 
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException {
     return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
   }
 
-  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException, InterruptedException {
+  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException {
     return addTorrent(dotTorrentFilePath, downloadDirPath, true, false);
   }
 
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, NoSuchAlgorithmException {
     Torrent torrent = Torrent.load(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
