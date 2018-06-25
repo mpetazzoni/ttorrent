@@ -109,7 +109,6 @@ public class TorrentParser {
     for (BEValue file : infoTable.get(FILES).getList()) {
       Map<String, BEValue> fileInfo = file.getMap();
       List<String> path = new ArrayList<String>();
-      path.add(name);
       for (BEValue pathElement : fileInfo.get(FILE_PATH).getList()) {
         path.add(pathElement.getString());
       }
