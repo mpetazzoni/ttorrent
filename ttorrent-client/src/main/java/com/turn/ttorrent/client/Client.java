@@ -67,7 +67,7 @@ import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEv
  *
  * @author mpetazzoni
  */
-public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context, ConnectionManagerContext {
+public class Client implements AnnounceResponseListener, PeerActivityListener, Context, ConnectionManagerContext {
 
   protected static final Logger logger = TorrentLoggerFactory.getLogger();
 
@@ -969,13 +969,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   @Override
   public void handleNewPeerConnected(SharingPeer peer) {
     //do nothing
-  }
-
-  @Override
-  public void torrentStateChanged(ClientState newState, SharedTorrent torrent) {
-    if (newState.equals(ClientState.ERROR)) {
-      removeTorrent(torrent);
-    }
   }
 
   public ConnectionManager getConnectionManager() throws IllegalStateException {
