@@ -54,8 +54,6 @@ public class TorrentTest {
     final byte[] expectedBytesLinux = FileUtils.readFileToByteArray(torrentFileLinux);
     final byte[] actualBytes = new TorrentSerializer().serialize(createdTorrent);
 
-    new TorrentParser().parse(actualBytes);
-
     assertTrue(Hex.encodeHexString(expectedBytesWin).equals(Hex.encodeHexString(actualBytes)) || Hex.encodeHexString(expectedBytesLinux).equals(Hex.encodeHexString(actualBytes)));
   }
 
@@ -65,7 +63,7 @@ public class TorrentTest {
     final List<TorrentFile> tmpFileNames = t2.getFiles();
     final List<String> normalizedFilenames = new ArrayList<String>(tmpFileNames.size());
     for (TorrentFile torrentFileInfo : tmpFileNames) {
-      normalizedFilenames.add(torrentFileInfo.getRelativePathAsString().replaceAll("\\\\", "/"));
+      normalizedFilenames.add(t2.getDirectoryName() + "/" + torrentFileInfo.getRelativePathAsString().replaceAll("\\\\", "/"));
     }
     String[] expectedFilenames = new String[]
             {"parentDir/AccuRevCommon.jar",
