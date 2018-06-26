@@ -71,25 +71,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
   protected static final Logger logger = TorrentLoggerFactory.getLogger();
 
-  /**
-   * Peers unchoking frequency, in seconds. Current BitTorrent specification
-   * recommends 10 seconds to avoid choking fibrilation.
-   */
-  private static final int UNCHOKING_FREQUENCY = 3;
-
-  /**
-   * Optimistic unchokes are done every 2 loop iterations, i.e. every
-   * 2*UNCHOKING_FREQUENCY seconds.
-   */
-  private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
-
-  private static final int RATE_COMPUTATION_ITERATIONS = 2;
   private static final int MAX_DOWNLOADERS_UNCHOKE = 10;
-
-  /**
-   * Default data output directory.
-   */
-  private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 

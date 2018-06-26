@@ -1,5 +1,6 @@
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
@@ -17,8 +18,6 @@ import java.util.*;
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentParser {
-
-  private final static int PIECE_HASH_LENGTH = 20;
 
   public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException, NoSuchAlgorithmException {
     final FileInputStream fileInputStream = new FileInputStream(torrentFile);
@@ -68,10 +67,10 @@ public class TorrentParser {
 
     final List<TorrentFile> files = parseFiles(infoTable, torrentContainsManyFiles, dirName);
 
-    if (piecesHashes.length % PIECE_HASH_LENGTH != 0)
+    if (piecesHashes.length % Constants.PIECE_HASH_SIZE != 0)
       throw new InvalidBEncodingException("Incorrect size of pieces hashes");
 
-    final int piecesCount = piecesHashes.length / PIECE_HASH_LENGTH;
+    final int piecesCount = piecesHashes.length / Constants.PIECE_HASH_SIZE;
 
     byte[] infoTableBytes;
     try {

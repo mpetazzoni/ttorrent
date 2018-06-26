@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.Constants;
 import org.slf4j.Logger;
 
 import java.io.UnsupportedEncodingException;
@@ -124,7 +125,7 @@ public class Peer {
 
   public String getStringPeerId() {
     try {
-      return new String(peerId.array(), Torrent.BYTE_ENCODING);
+      return new String(peerId.array(), Constants.BYTE_ENCODING);
     } catch (UnsupportedEncodingException e) {
       LoggerUtils.warnAndDebugDetails(logger, "can not get peer id as string", e);
     }

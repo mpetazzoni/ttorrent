@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
@@ -143,7 +144,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     this.pieceLength = myTorrentMultiFileMetadata.getPieceLength();
     this.piecesHashes = ByteBuffer.wrap(myTorrentMultiFileMetadata.getPiecesHashes());
 
-    if (this.piecesHashes.capacity() / Torrent.PIECE_HASH_SIZE *
+    if (this.piecesHashes.capacity() / Constants.PIECE_HASH_SIZE *
             (long) this.pieceLength < myTorrentTotalSize) {
       throw new IllegalArgumentException("Torrent size does not " +
               "match the number of pieces and the piece size!");
@@ -335,7 +336,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     logger.debug("Analyzing local data for {} with {} threads...",
             myTorrentMultiFileMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
-      byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
+      byte[] hash = new byte[Constants.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
 
       // The last piece may be shorter than the torrent's global piece
@@ -377,7 +378,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     }
   }
 
-  private void hashSingleThread() throws InterruptedException, IOException {
+  private void hashSingleThread() {
     initPieces();
 
     List<Piece> results = new LinkedList<Piece>();
@@ -385,7 +386,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     logger.debug("Analyzing local data for {} with {} threads...",
             myTorrentMultiFileMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
-      byte[] hash = new byte[Torrent.PIECE_HASH_SIZE];
+      byte[] hash = new byte[Constants.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
 
       // The last piece may be shorter than the torrent's global piece

@@ -20,7 +20,6 @@ import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.AnnounceResponseMessage;
 
 import java.io.IOException;
@@ -145,7 +144,7 @@ public class HTTPAnnounceResponseMessage extends HTTPTrackerMessage
     for (BEValue peer : peers) {
       Map<String, BEValue> peerInfo = peer.getMap();
       result.add(new Peer(
-              peerInfo.get("ip").getString(Torrent.BYTE_ENCODING),
+              peerInfo.get("ip").getString(Constants.BYTE_ENCODING),
               peerInfo.get("port").getInt()));
     }
 

@@ -20,7 +20,6 @@ import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 
@@ -163,12 +162,12 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
     url.append(base.contains("?") ? "&" : "?")
             .append("info_hash=")
             .append(URLEncoder.encode(
-                    new String(this.getInfoHash(), Torrent.BYTE_ENCODING),
-                    Torrent.BYTE_ENCODING))
+                    new String(this.getInfoHash(), Constants.BYTE_ENCODING),
+                    Constants.BYTE_ENCODING))
             .append("&peer_id=")
             .append(URLEncoder.encode(
-                    new String(this.getPeerId(), Torrent.BYTE_ENCODING),
-                    Torrent.BYTE_ENCODING))
+                    new String(this.getPeerId(), Constants.BYTE_ENCODING),
+                    Constants.BYTE_ENCODING))
             .append("&port=").append(this.getPort())
             .append("&uploaded=").append(this.getUploaded())
             .append("&downloaded=").append(this.getDownloaded())
@@ -253,13 +252,13 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
       String ip = null;
       if (params.containsKey("ip")) {
-        ip = params.get("ip").getString(Torrent.BYTE_ENCODING);
+        ip = params.get("ip").getString(Constants.BYTE_ENCODING);
       }
 
       RequestEvent event = RequestEvent.NONE;
       if (params.containsKey("event")) {
         event = RequestEvent.getByName(params.get("event")
-                .getString(Torrent.BYTE_ENCODING));
+                .getString(Constants.BYTE_ENCODING));
       }
 
       return new HTTPAnnounceRequestMessage(Constants.EMPTY_BUFFER, infoHash,
@@ -276,8 +275,7 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
                                                  byte[] peerId, int port, long uploaded, long downloaded, long left,
                                                  boolean compact, boolean noPeerId, RequestEvent event,
                                                  String ip, int numWant)
-          throws IOException, MessageValidationException,
-          UnsupportedEncodingException {
+          throws IOException {
     Map<String, BEValue> params = new HashMap<String, BEValue>();
     params.put("info_hash", new BEValue(infoHash));
     params.put("peer_id", new BEValue(peerId));
@@ -290,12 +288,12 @@ public class HTTPAnnounceRequestMessage extends HTTPTrackerMessage
 
     if (event != null) {
       params.put("event",
-              new BEValue(event.getEventName(), Torrent.BYTE_ENCODING));
+              new BEValue(event.getEventName(), Constants.BYTE_ENCODING));
     }
 
     if (ip != null) {
       params.put("ip",
-              new BEValue(ip, Torrent.BYTE_ENCODING));
+              new BEValue(ip, Constants.BYTE_ENCODING));
     }
 
     if (numWant != AnnounceRequestMessage.DEFAULT_NUM_WANT) {

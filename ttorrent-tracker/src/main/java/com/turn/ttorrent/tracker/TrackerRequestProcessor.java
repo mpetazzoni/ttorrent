@@ -15,10 +15,10 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
@@ -257,8 +257,7 @@ public class TrackerRequestProcessor {
     if (params.get("ip") == null) {
       params.put("ip", new BEValue(
               hostAddress,
-//				request.getClientAddress().getAddress().getHostAddress(),
-              Torrent.BYTE_ENCODING));
+              Constants.BYTE_ENCODING));
     }
 
     return HTTPAnnounceRequestMessage.parse(new BEValue(params));
@@ -266,7 +265,7 @@ public class TrackerRequestProcessor {
 
   private void recordParam(Map<String, BEValue> params, String key, String value) {
     try {
-      value = URLDecoder.decode(value, Torrent.BYTE_ENCODING);
+      value = URLDecoder.decode(value, Constants.BYTE_ENCODING);
 
       for (String f : NUMERIC_REQUEST_FIELDS) {
         if (f.equals(key)) {
@@ -275,10 +274,9 @@ public class TrackerRequestProcessor {
         }
       }
 
-      params.put(key, new BEValue(value, Torrent.BYTE_ENCODING));
+      params.put(key, new BEValue(value, Constants.BYTE_ENCODING));
     } catch (UnsupportedEncodingException uee) {
       // Ignore, act like parameter was not there
-      return;
     }
   }
 
@@ -300,11 +298,7 @@ public class TrackerRequestProcessor {
    * @param error  The error message reported by the tracker.
    */
   private void serveError(Status status, String error, RequestHandler requestHandler) throws IOException {
-    try {
-      this.serveError(status, HTTPTrackerErrorMessage.craft(error), requestHandler);
-    } catch (MessageValidationException mve) {
-      logger.warn("Could not craft tracker error message!", mve);
-    }
+    this.serveError(status, HTTPTrackerErrorMessage.craft(error), requestHandler);
   }
 
   /**

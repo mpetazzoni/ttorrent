@@ -19,7 +19,6 @@ import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
-import com.turn.ttorrent.common.Torrent;
 import com.turn.ttorrent.common.protocol.TrackerMessage.ErrorMessage;
 
 import java.io.IOException;
@@ -61,7 +60,7 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
       return new HTTPTrackerErrorMessage(
               Constants.EMPTY_BUFFER,
               params.get("failure reason")
-                      .getString(Torrent.BYTE_ENCODING));
+                      .getString(Constants.BYTE_ENCODING));
     } catch (InvalidBEncodingException ibee) {
       throw new MessageValidationException("Invalid tracker error " +
               "message!", ibee);
@@ -69,16 +68,15 @@ public class HTTPTrackerErrorMessage extends HTTPTrackerMessage
   }
 
   public static HTTPTrackerErrorMessage craft(
-          ErrorMessage.FailureReason reason) throws IOException,
-          MessageValidationException {
+          ErrorMessage.FailureReason reason) throws IOException {
     return HTTPTrackerErrorMessage.craft(reason.getMessage());
   }
 
   public static HTTPTrackerErrorMessage craft(String reason)
-          throws IOException, MessageValidationException {
+          throws IOException {
     Map<String, BEValue> params = new HashMap<String, BEValue>();
     params.put("failure reason",
-            new BEValue(reason, Torrent.BYTE_ENCODING));
+            new BEValue(reason, Constants.BYTE_ENCODING));
     return new HTTPTrackerErrorMessage(
             BEncoder.bencode(params),
             reason);

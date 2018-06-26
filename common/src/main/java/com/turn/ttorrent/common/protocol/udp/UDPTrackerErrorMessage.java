@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.common.protocol.udp;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 
 import java.io.UnsupportedEncodingException;
@@ -78,7 +78,7 @@ public class UDPTrackerErrorMessage
     try {
       return new UDPTrackerErrorMessage(data,
               transactionId,
-              new String(reasonBytes, Torrent.BYTE_ENCODING)
+              new String(reasonBytes, Constants.BYTE_ENCODING)
       );
     } catch (UnsupportedEncodingException uee) {
       throw new MessageValidationException(
@@ -88,7 +88,7 @@ public class UDPTrackerErrorMessage
 
   public static UDPTrackerErrorMessage craft(int transactionId,
                                              String reason) throws UnsupportedEncodingException {
-    byte[] reasonBytes = reason.getBytes(Torrent.BYTE_ENCODING);
+    byte[] reasonBytes = reason.getBytes(Constants.BYTE_ENCODING);
     ByteBuffer data = ByteBuffer
             .allocate(UDP_TRACKER_ERROR_MIN_MESSAGE_SIZE +
                     reasonBytes.length);
