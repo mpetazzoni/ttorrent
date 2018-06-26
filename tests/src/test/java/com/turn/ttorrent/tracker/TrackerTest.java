@@ -154,7 +154,7 @@ public class TrackerTest {
     Client seeder = createClient();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath(), true, false);
+    seeder.seedTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -281,7 +281,7 @@ public class TrackerTest {
     c2.start(InetAddress.getLocalHost());
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath(), true, false);
+    c2.seedTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
     new WaitFor(10 * 1000) {

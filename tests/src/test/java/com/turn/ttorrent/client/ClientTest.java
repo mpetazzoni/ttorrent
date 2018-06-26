@@ -962,10 +962,10 @@ public class ClientTest {
       public void run() {
         try {
           Thread.sleep(5 * 1000);
-          seed1.removeTorrent(torrent);
+          seed1.removeTorrent(torrent.getHexInfoHash());
           Thread.sleep(3 * 1000);
           seed1.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
-          seed2.removeTorrent(torrent);
+          seed2.removeTorrent(torrent.getHexInfoHash());
         } catch (InterruptedException e) {
           e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
