@@ -25,6 +25,7 @@ import com.turn.ttorrent.client.strategy.RequestStrategy;
 import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.Optional;
+import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -185,10 +186,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher,
                                        TorrentStatisticProvider torrentStatisticProvider)
           throws IOException, NoSuchAlgorithmException {
-    FileInputStream fis = new FileInputStream(source);
-    byte[] data = new byte[(int) source.length()];
-    fis.read(data);
-    fis.close();
+    byte[] data = FileUtils.readFileToByteArray(source);
     return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY, torrentStatisticProvider);
   }
 

@@ -5,6 +5,7 @@ import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,14 +21,8 @@ import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 public class TorrentParser {
 
   public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException, NoSuchAlgorithmException {
-    final FileInputStream fileInputStream = new FileInputStream(torrentFile);
-    try {
-      byte[] fileContent = new byte[(int) torrentFile.length()];
-      fileInputStream.read(fileContent);
-      return parse(fileContent);
-    } finally {
-      fileInputStream.close();
-    }
+    byte[] fileContent = FileUtils.readFileToByteArray(torrentFile);
+    return parse(fileContent);
   }
 
   /**
