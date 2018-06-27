@@ -3,7 +3,7 @@
 Ttorrent, a Java implementation of the BitTorrent protocol
 ==========================================================
 
-####Note
+#### Note
 It's new version of Ttorrent library which has
 a lot of changes and may not be compatible with previous version.
 Previous version is stored in [v1.6 branch](https://github.com/mpetazzoni/ttorrent/tree/v1.6)
@@ -56,13 +56,6 @@ to re-integrate into another application;
 This implementation aims at providing a down-to-earth, simple to use library.
 No fancy protocol extensions are implemented here: just the basics that allows
 for the exchange and distribution of files through the BitTorrent protocol.
-
-Although the write performance of the BitTorrent client is currently quite poor
-(~10MB/sec/connected peer), it has been measured that the distribution of a
-150MB file to thousands of machines across several datacenters took no more
-than 30 seconds, with very little network overhead for the initial seeder (only
-125% of the original file size uploaded by the initial seeder).
-
 
 How to use
 ----------
