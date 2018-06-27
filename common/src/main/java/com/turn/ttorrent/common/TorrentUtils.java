@@ -1,8 +1,8 @@
 package com.turn.ttorrent.common;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,12 +12,9 @@ public final class TorrentUtils {
   /**
    * @param data for hashing
    * @return sha 1 hash of specified data
-   * @throws NoSuchAlgorithmException if sha 1 algorithm is not available
    */
-  public static byte[] calculateSha1Hash(byte[] data) throws NoSuchAlgorithmException {
-    MessageDigest md = MessageDigest.getInstance("SHA-1");
-    md.update(data);
-    return md.digest();
+  public static byte[] calculateSha1Hash(byte[] data) {
+    return DigestUtils.sha1(data);
   }
 
   /**

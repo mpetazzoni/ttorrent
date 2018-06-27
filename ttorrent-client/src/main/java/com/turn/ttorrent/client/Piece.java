@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
 
@@ -163,24 +162,20 @@ public class Piece implements Comparable<Piece> {
 
     logger.trace("Validating {}...", this);
 
-    try {
-      // TODO: remove cast to int when large ByteBuffer support is
-      // implemented in Java.
-      ByteBuffer buffer = null;
-      if (myDownloadedPieceData != null) {
-        buffer = myDownloadedPieceData.get();
-      }
-      if (buffer == null) {
-        buffer = ByteBuffer.allocate((int) this.length);
-        this._read(0, this.length, buffer);
-      }
-      byte[] data = buffer.array();
-      final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(data);
-      this.valid = Arrays.equals(calculatedHash, this.hash);
-      logger.trace("validating result of piece {} is {}", this.index, this.valid);
-    } catch (NoSuchAlgorithmException nsae) {
-      logger.error("{}", nsae);
+    // TODO: remove cast to int when large ByteBuffer support is
+    // implemented in Java.
+    ByteBuffer buffer = null;
+    if (myDownloadedPieceData != null) {
+      buffer = myDownloadedPieceData.get();
     }
+    if (buffer == null) {
+      buffer = ByteBuffer.allocate((int) this.length);
+      this._read(0, this.length, buffer);
+    }
+    byte[] data = buffer.array();
+    final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(data);
+    this.valid = Arrays.equals(calculatedHash, this.hash);
+    logger.trace("validating result of piece {} is {}", this.index, this.valid);
 
     return this.isValid();
   }

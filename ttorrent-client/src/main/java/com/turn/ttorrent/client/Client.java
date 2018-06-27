@@ -36,7 +36,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -126,9 +125,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param downloadDirPath    path to directory where downloaded files are placed
    * @return hash of added torrent
    * @throws IOException              if IO error occurs in reading metadata file
-   * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
    */
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException {
+  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
     return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
   }
 
@@ -139,13 +137,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param downloadDirPath    path to directory where downloaded files are placed
    * @return hash of added torrent
    * @throws IOException              if IO error occurs in reading metadata file
-   * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
    */
-  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException {
+  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
     return addTorrent(dotTorrentFilePath, downloadDirPath, true, false);
   }
 
-  String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, NoSuchAlgorithmException {
+  String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException {
     TorrentMultiFileMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
@@ -464,11 +461,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param downloadTimeoutSeconds timeout in seconds for downloading one piece of data (size of piece depends from the torrent)
    * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
    * @throws InterruptedException     if download was interrupted
-   * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
    */
   public void downloadUninterruptibly(final String dotTorrentPath,
                                       final String downloadDirPath,
-                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException, NoSuchAlgorithmException {
+                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException {
     downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
   }
 
@@ -483,14 +479,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param maxTimeForConnectMs maximum time for set up connections with peers.
    * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
    * @throws InterruptedException     if download was interrupted
-   * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
    */
   public void downloadUninterruptibly(final String dotTorrentPath,
                                       final String downloadDirPath,
                                       final long idleTimeoutSec,
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
+                                      final long maxTimeForConnectMs) throws IOException, InterruptedException {
     downloadUninterruptibly(dotTorrentPath, downloadDirPath, idleTimeoutSec, minSeedersCount, isInterrupted,
             maxTimeForConnectMs, new DownloadProgressListener.NopeListener());
   }
@@ -507,7 +502,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param listener            listener for monitoring download progress
    * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
    * @throws InterruptedException     if download was interrupted
-   * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
    */
   public void downloadUninterruptibly(final String dotTorrentPath,
                                       final String downloadDirPath,
@@ -515,7 +509,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
                                       final int minSeedersCount,
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs,
-                                      DownloadProgressListener listener) throws IOException, InterruptedException, NoSuchAlgorithmException {
+                                      DownloadProgressListener listener) throws IOException, InterruptedException {
     String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
     final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);

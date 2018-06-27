@@ -5,7 +5,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
 import static com.turn.ttorrent.tracker.TrackerUtils.loadTorrent;
 import static org.testng.Assert.assertEquals;
@@ -23,7 +22,7 @@ public class TrackerAnnounceTest {
     this.tracker.start(false);
   }
 
-  public void test_announce() throws IOException, NoSuchAlgorithmException {
+  public void test_announce() throws IOException {
 
     assertEquals(0, this.tracker.getTrackedTorrents().size());
 

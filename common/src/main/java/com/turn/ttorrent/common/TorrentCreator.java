@@ -10,8 +10,6 @@ import java.io.*;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,7 +50,7 @@ public class TorrentCreator {
    *                  torrent's creator.
    */
   public static TorrentMultiFileMetadata create(File source, URI announce, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     return create(source, null, announce, createdBy);
   }
 
@@ -74,8 +72,7 @@ public class TorrentCreator {
    *                  torrent's creator.
    */
   public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
-                               String createdBy) throws NoSuchAlgorithmException,
-          InterruptedException, IOException {
+                               String createdBy) throws InterruptedException, IOException {
     return create(parent, files, announce, null, createdBy);
   }
 
@@ -95,8 +92,7 @@ public class TorrentCreator {
    *                     torrent's creator.
    */
   public static TorrentMultiFileMetadata create(File source, List<List<URI>> announceList,
-                               String createdBy) throws NoSuchAlgorithmException,
-          InterruptedException, IOException {
+                               String createdBy) throws InterruptedException, IOException {
     return create(source, null, null, announceList, createdBy);
   }
 
@@ -120,7 +116,7 @@ public class TorrentCreator {
    */
   public static TorrentMultiFileMetadata create(File source, List<File> files,
                                List<List<URI>> announceList, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     return create(source, files, null, announceList, createdBy);
   }
 
@@ -144,13 +140,13 @@ public class TorrentCreator {
    *                     torrent's creator.
    */
   public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce, List<List<URI>> announceList, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, DEFAULT_PIECE_LENGTH);
   }
 
   public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
                                List<List<URI>> announceList, String createdBy, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, System.currentTimeMillis() / 1000, pieceSize);
   }
 
@@ -158,7 +154,7 @@ public class TorrentCreator {
   /*package local*/
   static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
                         List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 
     if (announce != null) {
@@ -232,12 +228,12 @@ public class TorrentCreator {
    * @param file The file to hash.
    */
   private static String hashFile(final File file, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     return hashFiles(Collections.singletonList(file), pieceSize);
   }
 
   private static String hashFiles(final List<File> files, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     if (files.size() == 0) {
       return "";
     }
@@ -352,27 +348,16 @@ public class TorrentCreator {
    */
   private static class CallableChunkHasher implements Callable<String> {
 
-    private final MessageDigest md;
     private final ByteBuffer data;
 
-    CallableChunkHasher(final ByteBuffer data)
-            throws NoSuchAlgorithmException {
-      this.md = MessageDigest.getInstance("SHA-1");
+    CallableChunkHasher(final ByteBuffer data) {
       this.data = data;
-/*
-      this.data = ByteBuffer.allocate(buffer.remaining());
-			buffer.mark();
-			this.data.put(buffer);
-			this.data.clear();
-			buffer.reset();
-*/
     }
 
     @Override
     public String call() throws UnsupportedEncodingException {
-      this.md.reset();
-      this.md.update(this.data.array());
-      return new String(md.digest(), Constants.BYTE_ENCODING);
+      byte[] sha1Hash = TorrentUtils.calculateSha1Hash(this.data.array());
+      return new String(sha1Hash, Constants.BYTE_ENCODING);
     }
   }
 

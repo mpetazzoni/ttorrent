@@ -5,7 +5,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
 public class TorrentLoaderImpl implements TorrentLoader {
 
@@ -18,7 +17,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
 
   @Override
   @NotNull
-  public SharedTorrent loadTorrent(@NotNull AnnounceableFileTorrent announceableFileTorrent) throws IOException, NoSuchAlgorithmException {
+  public SharedTorrent loadTorrent(@NotNull AnnounceableFileTorrent announceableFileTorrent) throws IOException {
 
     final String hexInfoHash = announceableFileTorrent.getHexInfoHash();
     SharedTorrent old = myTorrentsStorage.getTorrent(hexInfoHash);

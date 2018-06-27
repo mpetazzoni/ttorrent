@@ -11,16 +11,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentParser {
 
-  public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException, NoSuchAlgorithmException {
+  public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException {
     byte[] fileContent = FileUtils.readFileToByteArray(torrentFile);
     return parse(fileContent);
   }
@@ -29,12 +27,11 @@ public class TorrentParser {
    * @param metadata binary .torrent content
    * @return parsed metadata object. This parser also wraps single torrent as multi torrent with one file
    * @throws InvalidBEncodingException if metadata has incorrect BEP format or missing required fields
-   * @throws NoSuchAlgorithmException  if the SHA-1 algorithm is not available.
    * @throws RuntimeException          It's wrapped io exception from bep decoder.
    *                                   This exception doesn't must to throw io exception because reading from
    *                                   byte array input stream cannot throw the exception
    */
-  public TorrentMultiFileMetadata parse(byte[] metadata) throws InvalidBEncodingException, NoSuchAlgorithmException, RuntimeException {
+  public TorrentMultiFileMetadata parse(byte[] metadata) throws InvalidBEncodingException, RuntimeException {
     final Map<String, BEValue> dictionaryMetadata;
     try {
       dictionaryMetadata = BDecoder.bdecode(new ByteArrayInputStream(metadata)).getMap();

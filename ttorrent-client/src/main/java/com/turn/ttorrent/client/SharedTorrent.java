@@ -31,10 +31,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -115,11 +113,10 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
    * @param seeder  Whether we're a seeder for this torrent or not (disables
    *                validation).
    * @throws IOException              If the torrent file cannot be read or decoded.
-   * @throws NoSuchAlgorithmException
    */
   public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
                        TorrentStatisticProvider torrentStatisticProvider)
-          throws IOException, NoSuchAlgorithmException {
+          throws IOException {
     myTorrentMultiFileMetadata = new TorrentParser().parse(torrent);
     isSeeder = seeder;
     myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
@@ -178,14 +175,14 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
 
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder,
                                        TorrentStatisticProvider torrentStatisticProvider)
-          throws IOException, NoSuchAlgorithmException {
+          throws IOException {
     return fromFile(source, parent, multiThreadHash, seeder, false,
             torrentStatisticProvider);
   }
 
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher,
                                        TorrentStatisticProvider torrentStatisticProvider)
-          throws IOException, NoSuchAlgorithmException {
+          throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
     return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY, torrentStatisticProvider);
   }

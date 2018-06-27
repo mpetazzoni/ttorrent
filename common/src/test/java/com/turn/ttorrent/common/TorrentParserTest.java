@@ -7,7 +7,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static org.testng.Assert.*;
@@ -18,11 +17,11 @@ public class TorrentParserTest {
   private TorrentParser myTorrentParser;
 
   @BeforeMethod
-  public void setUp() throws Exception {
+  public void setUp() {
     myTorrentParser = new TorrentParser();
   }
 
-  public void parseTest() throws IOException, NoSuchAlgorithmException {
+  public void parseTest() throws IOException {
     final Map<String, BEValue> metadata = new HashMap<String, BEValue>();
     final HashMap<String, BEValue> infoTable = new HashMap<String, BEValue>();
 
@@ -63,8 +62,6 @@ public class TorrentParserTest {
       fail("This method must throw invalid bencoding exception");
     } catch (InvalidBEncodingException e) {
       //it's okay
-    } catch (NoSuchAlgorithmException e) {
-      fail("", e);
     }
   }
 
@@ -77,8 +74,6 @@ public class TorrentParserTest {
       fail("This method must throw invalid bencoding exception");
     } catch (InvalidBEncodingException e) {
       //it's okay
-    } catch (NoSuchAlgorithmException e) {
-      fail("", e);
     } catch (IOException e) {
       fail("", e);
     }
