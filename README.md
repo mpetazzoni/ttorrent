@@ -3,6 +3,13 @@
 Ttorrent, a Java implementation of the BitTorrent protocol
 ==========================================================
 
+####Note
+It's new version of Ttorrent library which has
+a lot of changes and may not be compatible with previous version.
+Previous version is stored in [v1.6 branch](https://github.com/mpetazzoni/ttorrent/tree/v1.6)
+
+See [this issue](https://github.com/mpetazzoni/ttorrent/issues/212) for details 
+
 Description
 -----------
 
@@ -60,43 +67,31 @@ than 30 seconds, with very little network overhead for the initial seeder (only
 How to use
 ----------
 
-### As standalone programs
-
-The client, tracker and torrent file manipulation utilities will all present a
-usage message on the console when invoked with the ``-h`` command-line flag.
-
 ### As a library
-
-*Thanks to Anatoli Vladev for the code examples in #16.*
 
 #### Client code
 
 ```java
 // First, instantiate the Client object.
-Client client = new Client(
-  // This is the interface the client will listen on (you might need something
-  // else than localhost here).
-  InetAddress.getLocalHost(),
+Client client = new SimpleClient();
 
-  // Load the torrent from the torrent file and use the given
-  // output directory. Partials downloads are automatically recovered.
-  SharedTorrent.fromFile(
-    new File("/path/to/your.torrent"),
-    new File("/path/to/output/directory")));
+// This is the interface the client will listen on (you might need something
+// else than localhost here because other peers cannot connect to localhost).
+InetAddress address = InetAddress.getLocalHost();
+client.start(address);
 
-// At this point, can you either call download() to download the torrent and
-// stop immediately after...
-client.download();
-
-// Or call client.share(...) with a seed time in seconds:
-// client.share(3600);
-// Which would seed the torrent for an hour after the download is complete.
-
-// Downloading and seeding is done in background threads.
-// To wait for this process to finish, call:
-client.waitForCompletion();
-
-// At any time you can call client.stop() to interrupt the download.
+//Start download. Thread is blocked here
+try {
+  client.downloadUninterruptibly("/path/to/filed.torrent",
+          "/path/to/output/directory",
+          30);
+  //download finished
+} catch (Exception e) {
+  //download failed, see exception for details
+  e.printStackTrace();
+}
+//If you don't want to seed the torrent you can stop client
+client.stop();
 ```
 
 #### Tracker code
@@ -104,7 +99,7 @@ client.waitForCompletion();
 ```java
 // First, instantiate a Tracker object with the port you want it to listen on.
 // The default tracker port recommended by the BitTorrent protocol is 6969.
-Tracker tracker = new Tracker(new InetSocketAddress(6969));
+Tracker tracker = new Tracker(6969);
 
 // Then, for each torrent you wish to announce on this tracker, simply created
 // a TrackedTorrent object and pass it to the tracker.announce() method:
@@ -119,8 +114,12 @@ for (File f : new File("/path/to/torrent/files").listFiles(filter)) {
   tracker.announce(TrackedTorrent.load(f));
 }
 
+//Also you can enable accepting foreign torrents.
+//if tracker accepts request for unknown torrent it starts tracking the torrent automatically
+tracker.setAcceptForeignTorrents(true);
+
 // Once done, you just have to start the tracker's main operation loop:
-tracker.start();
+tracker.start(true);
 
 // You can stop the tracker when you're done with:
 tracker.stop();

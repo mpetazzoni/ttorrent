@@ -461,7 +461,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    *
    * @param dotTorrentPath         path to torrent metadata file
    * @param downloadDirPath        path to directory where downloaded files are placed
-   * @param downloadTimeoutSeconds timeout in seconds for downloading of one piece of data (size of piece depends from the torrent)
+   * @param downloadTimeoutSeconds timeout in seconds for downloading one piece of data (size of piece depends from the torrent)
    * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
    * @throws InterruptedException     if download was interrupted
    * @throws NoSuchAlgorithmException if the SHA-1 algorithm is not available.
@@ -628,6 +628,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   @Override
   public ExecutorService getExecutor() {
     return myExecutorService;
+  }
+
+  public ExecutorService getPieceValidatorExecutor() {
+    return myPieceValidatorExecutor;
   }
 
   @Override
