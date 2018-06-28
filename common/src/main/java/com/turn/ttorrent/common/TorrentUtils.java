@@ -2,12 +2,12 @@ package com.turn.ttorrent.common;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class TorrentUtils {
 
+  private final static char[] HEX_SYMBOLS = "0123456789ABCDEF".toCharArray();
 
   /**
    * @param data for hashing
@@ -24,8 +24,13 @@ public final class TorrentUtils {
    * @param bytes The byte array to convert.
    */
   public static String byteArrayToHexString(byte[] bytes) {
-    BigInteger bi = new BigInteger(1, bytes);
-    return String.format("%0" + (bytes.length << 1) + "X", bi);
+    char[] hexChars = new char[bytes.length * 2];
+    for (int j = 0; j < bytes.length; j++) {
+      int v = bytes[j] & 0xFF;
+      hexChars[j * 2] = HEX_SYMBOLS[v >>> 4];
+      hexChars[j * 2 + 1] = HEX_SYMBOLS[v & 0x0F];
+    }
+    return new String(hexChars);
   }
 
   public static List<String> getTorrentFileNames(TorrentMultiFileMetadata metadata) {
