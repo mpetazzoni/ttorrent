@@ -100,7 +100,11 @@ public class TorrentParser {
     for (BEValue file : infoTable.get(FILES).getList()) {
       Map<String, BEValue> fileInfo = file.getMap();
       List<String> path = new ArrayList<String>();
-      for (BEValue pathElement : fileInfo.get(FILE_PATH).getList()) {
+      BEValue filePathList = fileInfo.get(FILE_PATH_UTF8);
+      if (filePathList == null) {
+        filePathList = fileInfo.get(FILE_PATH);
+      }
+      for (BEValue pathElement : filePathList.getList()) {
         path.add(pathElement.getString());
       }
       final BEValue md5Sum = infoTable.get(MD5_SUM);
