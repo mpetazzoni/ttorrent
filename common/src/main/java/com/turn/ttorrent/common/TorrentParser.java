@@ -71,7 +71,7 @@ public class TorrentParser {
       throw new RuntimeException(e);
     }
 
-    return new TorrentMetadata(
+    return new TorrentMetadataImpl(
             TorrentUtils.calculateSha1Hash(infoTableBytes),
             trackers,
             announceUrl,

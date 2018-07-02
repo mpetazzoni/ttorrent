@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class TorrentMetadata implements TorrentGeneralMetadata {
+public class TorrentMetadataImpl implements TorrentGeneralMetadata {
 
   private final byte[] myInfoHash;
   @Nullable
@@ -21,17 +21,17 @@ public class TorrentMetadata implements TorrentGeneralMetadata {
   private final byte[] myPiecesHashes;
   private final String myHexString;
 
-  TorrentMetadata(byte[] infoHash,
-                  @Nullable List<List<String>> announceList,
-                  String mainAnnounce,
-                  long creationDate,
-                  String comment,
-                  String createdBy,
-                  String name,
-                  List<TorrentFile> files,
-                  int pieceCount,
-                  int pieceLength,
-                  byte[] piecesHashes) {
+  TorrentMetadataImpl(byte[] infoHash,
+                      @Nullable List<List<String>> announceList,
+                      String mainAnnounce,
+                      long creationDate,
+                      String comment,
+                      String createdBy,
+                      String name,
+                      List<TorrentFile> files,
+                      int pieceCount,
+                      int pieceLength,
+                      byte[] piecesHashes) {
     myInfoHash = infoHash;
     myAnnounceList = announceList;
     myMainAnnounce = mainAnnounce;
