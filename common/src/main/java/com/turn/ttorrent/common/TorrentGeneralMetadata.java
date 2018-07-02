@@ -63,4 +63,14 @@ public interface TorrentGeneralMetadata extends TorrentHash {
    */
   int getPiecesCount();
 
+  /**
+   * @return The filename of the directory in which to store all the files
+   */
+  String getDirectoryName();
+
+  /**
+   * @return list of files, stored in this torrent
+   */
+  List<TorrentFile> getFiles();
+
 }

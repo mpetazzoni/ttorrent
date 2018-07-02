@@ -143,7 +143,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   }
 
   String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException {
-    TorrentMultiFileMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
+    TorrentGeneralMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
             torrent.getHexInfoHash(),

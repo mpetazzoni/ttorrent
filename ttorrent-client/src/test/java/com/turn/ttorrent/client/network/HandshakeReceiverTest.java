@@ -93,7 +93,7 @@ public class HandshakeReceiverTest {
     client.write(byteBuffer);
 
     final File tempFile = myTempFiles.createTempFile(1024 * 1024);
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, URI.create(""), "test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, URI.create(""), "test");
     File torrentFile = myTempFiles.createTempFile();
     FileOutputStream fos = new FileOutputStream(torrentFile);
     fos.write(new TorrentSerializer().serialize(torrent));

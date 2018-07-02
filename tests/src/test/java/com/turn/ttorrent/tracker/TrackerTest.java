@@ -340,8 +340,8 @@ public class TrackerTest {
   }
 
   private TrackedTorrent loadTorrent(String name) throws IOException {
-    TorrentMultiFileMetadata torrentMultiFileMetadata = new TorrentParser().parseFromFile(new File(TEST_RESOURCES + "/torrents", name));
-    return new TrackedTorrent(torrentMultiFileMetadata.getInfoHash());
+    TorrentGeneralMetadata torrentGeneralMetadata = new TorrentParser().parseFromFile(new File(TEST_RESOURCES + "/torrents", name));
+    return new TrackedTorrent(torrentGeneralMetadata.getInfoHash());
   }
 
   private void startTracker() throws IOException {

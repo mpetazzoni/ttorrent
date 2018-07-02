@@ -18,7 +18,7 @@ import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentParser {
 
-  public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException {
+  public TorrentGeneralMetadata parseFromFile(File torrentFile) throws IOException {
     byte[] fileContent = FileUtils.readFileToByteArray(torrentFile);
     return parse(fileContent);
   }
@@ -31,7 +31,7 @@ public class TorrentParser {
    *                                   This exception doesn't must to throw io exception because reading from
    *                                   byte array input stream cannot throw the exception
    */
-  public TorrentMultiFileMetadata parse(byte[] metadata) throws InvalidBEncodingException, RuntimeException {
+  public TorrentGeneralMetadata parse(byte[] metadata) throws InvalidBEncodingException, RuntimeException {
     final Map<String, BEValue> dictionaryMetadata;
     try {
       dictionaryMetadata = BDecoder.bdecode(new ByteArrayInputStream(metadata)).getMap();

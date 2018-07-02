@@ -19,13 +19,13 @@ public class TorrentTest {
   public void test_create_torrent() throws URISyntaxException, IOException, InterruptedException {
     URI announceURI = new URI("http://localhost:6969/announce");
     String createdBy = "Test";
-    TorrentMultiFileMetadata t = TorrentCreator.create(new File("src/test/resources/parentFiles/file1.jar"), announceURI, createdBy);
+    TorrentGeneralMetadata t = TorrentCreator.create(new File("src/test/resources/parentFiles/file1.jar"), announceURI, createdBy);
     assertEquals(createdBy, t.getCreatedBy().get());
     assertEquals(announceURI.toString(), t.getAnnounce());
   }
 
   public void load_torrent_created_by_utorrent() throws IOException {
-    TorrentMultiFileMetadata t = new TorrentParser().parseFromFile(new File("src/test/resources/torrents/file1.jar.torrent"));
+    TorrentGeneralMetadata t = new TorrentParser().parseFromFile(new File("src/test/resources/torrents/file1.jar.torrent"));
     assertEquals("http://localhost:6969/announce", t.getAnnounce());
     assertEquals("B92D38046C76D73948E14C42DF992CAF25489D08", t.getHexInfoHash());
     assertEquals("uTorrent/3130", t.getCreatedBy().get());
@@ -46,7 +46,7 @@ public class TorrentTest {
     for (String fileName : fileNames) {
       files.add(new File(parentDir, fileName));
     }
-    TorrentMultiFileMetadata createdTorrent = TorrentCreator.create(parentDir, files, announceURI, null, createdBy, creationTimeSecs, TorrentCreator.DEFAULT_PIECE_LENGTH);
+    TorrentGeneralMetadata createdTorrent = TorrentCreator.create(parentDir, files, announceURI, null, createdBy, creationTimeSecs, TorrentCreator.DEFAULT_PIECE_LENGTH);
     File torrentFileWin = new File("src/test/resources/torrents/parentDir.win.torrent");
     File torrentFileLinux = new File("src/test/resources/torrents/parentDir.linux.torrent");
     final byte[] expectedBytesWin = FileUtils.readFileToByteArray(torrentFileWin);
@@ -58,7 +58,7 @@ public class TorrentTest {
 
   public void testFilenames() throws IOException {
     File torrentFile = new File("src/test/resources/torrents/parentDir.win.torrent");
-    TorrentMultiFileMetadata t2 = new TorrentParser().parseFromFile(torrentFile);
+    TorrentGeneralMetadata t2 = new TorrentParser().parseFromFile(torrentFile);
     final List<TorrentFile> tmpFileNames = t2.getFiles();
     final List<String> normalizedFilenames = new ArrayList<String>(tmpFileNames.size());
     for (TorrentFile torrentFileInfo : tmpFileNames) {

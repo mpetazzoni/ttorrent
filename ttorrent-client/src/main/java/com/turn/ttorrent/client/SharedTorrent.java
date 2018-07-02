@@ -52,7 +52,7 @@ import java.util.concurrent.*;
  *
  * @author mpetazzoni
  */
-public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMetadata, TorrentInfo {
+public class SharedTorrent implements PeerActivityListener, TorrentGeneralMetadata, TorrentInfo {
 
   private static final Logger logger =
           TorrentLoggerFactory.getLogger();
@@ -82,7 +82,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   private boolean isFileChannelOpen = false;
   private final List<DownloadProgressListener> myDownloadListeners;
   private final Map<Integer, Future<?>> myValidationFutures;
-  private final TorrentMultiFileMetadata myTorrentMultiFileMetadata;
+  private final TorrentGeneralMetadata myTorrentGeneralMetadata;
   private final long myTorrentTotalSize;
 
   private final int pieceLength;
@@ -117,12 +117,12 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
                        TorrentStatisticProvider torrentStatisticProvider)
           throws IOException {
-    myTorrentMultiFileMetadata = new TorrentParser().parse(torrent);
+    myTorrentGeneralMetadata = new TorrentParser().parse(torrent);
     isSeeder = seeder;
     myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
     myValidationFutures = new HashMap<Integer, Future<?>>();
     long totalSize = 0;
-    for (TorrentFile torrentFile : myTorrentMultiFileMetadata.getFiles()) {
+    for (TorrentFile torrentFile : myTorrentGeneralMetadata.getFiles()) {
       totalSize += torrentFile.size;
     }
     myTorrentTotalSize = totalSize;
@@ -139,8 +139,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
 
     String parentPath = parent.getCanonicalPath();
 
-    this.pieceLength = myTorrentMultiFileMetadata.getPieceLength();
-    this.piecesHashes = ByteBuffer.wrap(myTorrentMultiFileMetadata.getPiecesHashes());
+    this.pieceLength = myTorrentGeneralMetadata.getPieceLength();
+    this.piecesHashes = ByteBuffer.wrap(myTorrentGeneralMetadata.getPiecesHashes());
 
     if (this.piecesHashes.capacity() / Constants.PIECE_HASH_SIZE *
             (long) this.pieceLength < myTorrentTotalSize) {
@@ -329,7 +329,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     List<Future<Piece>> results = new LinkedList<Future<Piece>>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-            myTorrentMultiFileMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
+            myTorrentGeneralMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Constants.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -379,7 +379,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
     List<Piece> results = new LinkedList<Piece>();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-            myTorrentMultiFileMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
+            myTorrentGeneralMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Constants.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -413,7 +413,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   }
 
   public synchronized void close() {
-    logger.trace("Closing torrent", myTorrentMultiFileMetadata.getDirectoryName());
+    logger.trace("Closing torrent", myTorrentGeneralMetadata.getDirectoryName());
 //    Client.cleanupProcessor().unregisterCleanable(this);
     try {
       this.bucket.close();
@@ -425,7 +425,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   }
 
   public synchronized void delete() {
-    logger.trace("Closing and deleting torrent data", myTorrentMultiFileMetadata.getDirectoryName());
+    logger.trace("Closing and deleting torrent data", myTorrentGeneralMetadata.getDirectoryName());
     try {
       close();
       this.bucket.delete();
@@ -917,75 +917,75 @@ public class SharedTorrent implements PeerActivityListener, TorrentMultiFileMeta
   @Override
   public String toString() {
     return "SharedTorrent{" +
-            Arrays.toString(TorrentUtils.getTorrentFileNames(myTorrentMultiFileMetadata).toArray()) +
+            Arrays.toString(TorrentUtils.getTorrentFileNames(myTorrentGeneralMetadata).toArray()) +
             "}";
   }
 
   @Override
   public String getDirectoryName() {
-    return myTorrentMultiFileMetadata.getDirectoryName();
+    return myTorrentGeneralMetadata.getDirectoryName();
   }
 
   @Override
   public List<TorrentFile> getFiles() {
-    return myTorrentMultiFileMetadata.getFiles();
+    return myTorrentGeneralMetadata.getFiles();
   }
 
   @Nullable
   @Override
   public List<List<String>> getAnnounceList() {
-    return myTorrentMultiFileMetadata.getAnnounceList();
+    return myTorrentGeneralMetadata.getAnnounceList();
   }
 
   @NotNull
   @Override
   public String getAnnounce() {
-    return myTorrentMultiFileMetadata.getAnnounce();
+    return myTorrentGeneralMetadata.getAnnounce();
   }
 
   @Override
   public Optional<Long> getCreationDate() {
-    return myTorrentMultiFileMetadata.getCreationDate();
+    return myTorrentGeneralMetadata.getCreationDate();
   }
 
   @Override
   public Optional<String> getComment() {
-    return myTorrentMultiFileMetadata.getComment();
+    return myTorrentGeneralMetadata.getComment();
   }
 
   @Override
   public Optional<String> getCreatedBy() {
-    return myTorrentMultiFileMetadata.getCreatedBy();
+    return myTorrentGeneralMetadata.getCreatedBy();
   }
 
   @Override
   public int getPieceLength() {
-    return myTorrentMultiFileMetadata.getPieceLength();
+    return myTorrentGeneralMetadata.getPieceLength();
   }
 
   @Override
   public byte[] getPiecesHashes() {
-    return myTorrentMultiFileMetadata.getPiecesHashes();
+    return myTorrentGeneralMetadata.getPiecesHashes();
   }
 
   @Override
   public boolean isPrivate() {
-    return myTorrentMultiFileMetadata.isPrivate();
+    return myTorrentGeneralMetadata.isPrivate();
   }
 
   @Override
   public int getPiecesCount() {
-    return myTorrentMultiFileMetadata.getPiecesCount();
+    return myTorrentGeneralMetadata.getPiecesCount();
   }
 
   @Override
   public byte[] getInfoHash() {
-    return myTorrentMultiFileMetadata.getInfoHash();
+    return myTorrentGeneralMetadata.getInfoHash();
   }
 
   @Override
   public String getHexInfoHash() {
-    return myTorrentMultiFileMetadata.getHexInfoHash();
+    return myTorrentGeneralMetadata.getHexInfoHash();
   }
 
   @Override

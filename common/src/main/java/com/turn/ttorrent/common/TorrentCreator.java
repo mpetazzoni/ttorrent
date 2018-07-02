@@ -36,11 +36,11 @@ public class TorrentCreator {
   });
 
   /**
-   * Create a {@link TorrentMultiFileMetadata} object for a file.
+   * Create a {@link TorrentGeneralMetadata} object for a file.
    *
    * <p>
-   * Hash the given file to create the {@link TorrentMultiFileMetadata} object representing
-   * the Torrent metainfo about this file, needed for announcing and/or
+   * Hash the given file to create the {@link TorrentGeneralMetadata} object representing
+   * the Torrent meta info about this file, needed for announcing and/or
    * sharing said file.
    * </p>
    *
@@ -49,16 +49,16 @@ public class TorrentCreator {
    * @param createdBy The creator's name, or any string identifying the
    *                  torrent's creator.
    */
-  public static TorrentMultiFileMetadata create(File source, URI announce, String createdBy)
+  public static TorrentGeneralMetadata create(File source, URI announce, String createdBy)
           throws InterruptedException, IOException {
     return create(source, null, announce, createdBy);
   }
 
   /**
-   * Create a {@link TorrentMultiFileMetadata} object for a set of files.
+   * Create a {@link TorrentGeneralMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link TorrentMultiFileMetadata} object
+   * Hash the given files to create the multi-file {@link TorrentGeneralMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -71,16 +71,16 @@ public class TorrentCreator {
    * @param createdBy The creator's name, or any string identifying the
    *                  torrent's creator.
    */
-  public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
-                               String createdBy) throws InterruptedException, IOException {
+  public static TorrentGeneralMetadata create(File parent, List<File> files, URI announce,
+                                              String createdBy) throws InterruptedException, IOException {
     return create(parent, files, announce, null, createdBy);
   }
 
   /**
-   * Create a {@link TorrentMultiFileMetadata} object for a file.
+   * Create a {@link TorrentGeneralMetadata} object for a file.
    *
    * <p>
-   * Hash the given file to create the {@link TorrentMultiFileMetadata} object representing
+   * Hash the given file to create the {@link TorrentGeneralMetadata} object representing
    * the Torrent metainfo about this file, needed for announcing and/or
    * sharing said file.
    * </p>
@@ -91,16 +91,16 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static TorrentMultiFileMetadata create(File source, List<List<URI>> announceList,
-                               String createdBy) throws InterruptedException, IOException {
+  public static TorrentGeneralMetadata create(File source, List<List<URI>> announceList,
+                                              String createdBy) throws InterruptedException, IOException {
     return create(source, null, null, announceList, createdBy);
   }
 
   /**
-   * Create a {@link TorrentMultiFileMetadata} object for a set of files.
+   * Create a {@link TorrentGeneralMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link TorrentMultiFileMetadata} object
+   * Hash the given files to create the multi-file {@link TorrentGeneralMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -114,17 +114,17 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static TorrentMultiFileMetadata create(File source, List<File> files,
-                               List<List<URI>> announceList, String createdBy)
+  public static TorrentGeneralMetadata create(File source, List<File> files,
+                                              List<List<URI>> announceList, String createdBy)
           throws InterruptedException, IOException {
     return create(source, files, null, announceList, createdBy);
   }
 
   /**
-   * Helper method to create a {@link TorrentMultiFileMetadata} object for a set of files.
+   * Helper method to create a {@link TorrentGeneralMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link TorrentMultiFileMetadata} object
+   * Hash the given files to create the multi-file {@link TorrentGeneralMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -139,21 +139,21 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce, List<List<URI>> announceList, String createdBy)
+  public static TorrentGeneralMetadata create(File parent, List<File> files, URI announce, List<List<URI>> announceList, String createdBy)
           throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, DEFAULT_PIECE_LENGTH);
   }
 
-  public static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
-                               List<List<URI>> announceList, String createdBy, final int pieceSize)
+  public static TorrentGeneralMetadata create(File parent, List<File> files, URI announce,
+                                              List<List<URI>> announceList, String createdBy, final int pieceSize)
           throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, System.currentTimeMillis() / 1000, pieceSize);
   }
 
   //for tests
   /*package local*/
-  static TorrentMultiFileMetadata create(File parent, List<File> files, URI announce,
-                        List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
+  static TorrentGeneralMetadata create(File parent, List<File> files, URI announce,
+                                       List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
           throws InterruptedException, IOException {
     Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 

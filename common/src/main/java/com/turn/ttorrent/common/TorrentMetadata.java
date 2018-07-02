@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class TorrentMetadata implements TorrentMultiFileMetadata {
+public class TorrentMetadata implements TorrentGeneralMetadata {
 
   private final byte[] myInfoHash;
   @Nullable

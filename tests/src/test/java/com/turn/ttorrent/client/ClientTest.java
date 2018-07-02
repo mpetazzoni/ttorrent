@@ -65,7 +65,7 @@ public class ClientTest {
     startTracker();
   }
 
-  private void saveTorrent(TorrentMultiFileMetadata torrent, File file) throws IOException {
+  private void saveTorrent(TorrentGeneralMetadata torrent, File file) throws IOException {
     FileOutputStream fos = new FileOutputStream(file);
     fos.write(new TorrentSerializer().serialize(torrent));
     fos.close();
@@ -103,7 +103,7 @@ public class ClientTest {
     URL announce = new URL("http://127.0.0.1:6969/announce");
     URI announceURI = announce.toURI();
 
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
@@ -152,7 +152,7 @@ public class ClientTest {
         File srcFile = new File(srcDir, tempFile.getName());
         assertTrue(tempFile.renameTo(srcFile));
 
-        TorrentMultiFileMetadata torrent = TorrentCreator.create(srcFile, announceURI, "Test");
+        TorrentGeneralMetadata torrent = TorrentCreator.create(srcFile, announceURI, "Test");
         File torrentFile = new File(srcFile.getParentFile(), srcFile.getName() + ".torrent");
         saveTorrent(torrent, torrentFile);
         filesToShare.add(srcFile);
@@ -217,7 +217,7 @@ public class ClientTest {
     URL announce = new URL("http://127.0.0.1:6969/announce");
     URI announceURI = announce.toURI();
 
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
@@ -277,7 +277,7 @@ public class ClientTest {
     }
     File tempFile = tempFiles.createTempFile(1024 * 20 * 1024);
 
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, this.tracker.getAnnounceURI(), "Test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, this.tracker.getAnnounceURI(), "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
@@ -313,7 +313,7 @@ public class ClientTest {
     try {
       File tempFile = tempFiles.createTempFile(100 * 1024);
 
-      TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, this.tracker.getAnnounceURI(), "Test");
+      TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, this.tracker.getAnnounceURI(), "Test");
       File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
       saveTorrent(torrent, torrentFile);
 
@@ -371,7 +371,7 @@ public class ClientTest {
     URL announce = new URL("http://127.0.0.1:6969/announce");
     URI announceURI = announce.toURI();
 
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
@@ -538,7 +538,7 @@ public class ClientTest {
     URL announce = new URL("http://127.0.0.1:6969/announce");
     URI announceURI = announce.toURI();
 
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
     seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParentFile().getAbsolutePath(),
@@ -608,7 +608,7 @@ public class ClientTest {
       final File client2File = new File(client2Dir, baseFile.getName());
       FileUtils.copyFile(badFile, client2File);
 
-      final TorrentMultiFileMetadata torrent = TorrentCreator.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
+      final TorrentGeneralMetadata torrent = TorrentCreator.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
       final File torrentFile = tempFiles.createTempFile();
       saveTorrent(torrent, torrentFile);
 
@@ -660,7 +660,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 7);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
 
@@ -679,7 +679,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 7);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
 
@@ -709,7 +709,7 @@ public class ClientTest {
     leecher.setMaxOutConnectionsCount(10);
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
 
@@ -788,7 +788,7 @@ public class ClientTest {
     Client seeder = createClient();
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 34);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
 
@@ -824,7 +824,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -841,7 +841,7 @@ public class ClientTest {
     final Client seeder = createClient();
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -882,7 +882,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -940,7 +940,7 @@ public class ClientTest {
     final Client seed2 = createClient();
 
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 240);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -984,7 +984,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -1008,7 +1008,7 @@ public class ClientTest {
     tracker.setAcceptForeignTorrents(true);
     final Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 60);
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -1071,7 +1071,7 @@ public class ClientTest {
 
     Client seeder = createAndStartClient();
 
-    final TorrentMultiFileMetadata torrent = TorrentCreator.create(srcFile, null, tracker.getAnnounceURI(), "Test");
+    final TorrentGeneralMetadata torrent = TorrentCreator.create(srcFile, null, tracker.getAnnounceURI(), "Test");
 
     File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -1088,7 +1088,7 @@ public class ClientTest {
     assertEquals(time, srcFile.lastModified());
   }
 
-  private void downloadAndStop(TorrentMultiFileMetadata torrent, long timeout, final Client leech) throws IOException {
+  private void downloadAndStop(TorrentGeneralMetadata torrent, long timeout, final Client leech) throws IOException {
     final File tempDir = tempFiles.createTempDir();
     File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
@@ -1128,7 +1128,7 @@ public class ClientTest {
   public void testManySeeders() throws Exception {
     File artifact = tempFiles.createTempFile(300 * 1024 * 1024);
     int seedersCount = 4;
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(artifact, this.tracker.getAnnounceURI(), "test");
+    TorrentGeneralMetadata torrent = TorrentCreator.create(artifact, this.tracker.getAnnounceURI(), "test");
     File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
     for (int i = 0; i < seedersCount; i++) {
@@ -1155,7 +1155,7 @@ public class ClientTest {
     fin.close();
 
     final long torrentFileLength = baseFile.length();
-    TorrentMultiFileMetadata torrent = TorrentCreator.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
+    TorrentGeneralMetadata torrent = TorrentCreator.create(baseFile, null, this.tracker.getAnnounceURI(), null, "Test", pieceSize);
     File torrentFile = new File(baseFile.getParentFile(), baseFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
