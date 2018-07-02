@@ -35,21 +35,21 @@ public class TorrentParserTest {
 
     metadata.put("info", new BEValue(infoTable));
 
-    final TorrentGeneralMetadata torrentGeneralMetadata = myTorrentParser.parse(BEncoder.bencode(metadata).array());
+    final TorrentMetadata torrentMetadata = myTorrentParser.parse(BEncoder.bencode(metadata).array());
 
-    assertEquals(torrentGeneralMetadata.getPieceLength(), 4);
-    assertEquals(torrentGeneralMetadata.getAnnounce(), "http://localhost/announce");
-    assertEquals(torrentGeneralMetadata.getDirectoryName(), "test.file");
-    assertNull(torrentGeneralMetadata.getAnnounceList());
+    assertEquals(torrentMetadata.getPieceLength(), 4);
+    assertEquals(torrentMetadata.getAnnounce(), "http://localhost/announce");
+    assertEquals(torrentMetadata.getDirectoryName(), "test.file");
+    assertNull(torrentMetadata.getAnnounceList());
 
     List<BEValue> announceList = new ArrayList<BEValue>();
     announceList.add(new BEValue(Collections.singletonList(new BEValue("http://localhost/announce"))));
     announceList.add(new BEValue(Collections.singletonList(new BEValue("http://second/announce"))));
     metadata.put("announce-list", new BEValue(announceList));
 
-    final TorrentGeneralMetadata torrentGeneralMetadataWithAnnounceList = myTorrentParser.parse(BEncoder.bencode(metadata).array());
+    final TorrentMetadata torrentMetadataWithAnnounceList = myTorrentParser.parse(BEncoder.bencode(metadata).array());
 
-    final List<List<String>> actualAnnounceList = torrentGeneralMetadataWithAnnounceList.getAnnounceList();
+    final List<List<String>> actualAnnounceList = torrentMetadataWithAnnounceList.getAnnounceList();
     assertNotNull(actualAnnounceList);
     assertEquals(actualAnnounceList.get(0).get(0), "http://localhost/announce");
     assertEquals(actualAnnounceList.get(1).get(0), "http://second/announce");

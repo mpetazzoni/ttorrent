@@ -269,8 +269,8 @@ public class TrackedTorrent implements TorrentHash {
    */
   public static TrackedTorrent load(File torrent) throws IOException {
 
-    TorrentGeneralMetadata torrentGeneralMetadata = new TorrentParser().parseFromFile(torrent);
-    return new TrackedTorrent(torrentGeneralMetadata.getInfoHash());
+    TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(torrent);
+    return new TrackedTorrent(torrentMetadata.getInfoHash());
   }
 
   @Override

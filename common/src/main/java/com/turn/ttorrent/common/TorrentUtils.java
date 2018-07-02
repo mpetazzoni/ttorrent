@@ -33,7 +33,7 @@ public final class TorrentUtils {
     return new String(hexChars);
   }
 
-  public static List<String> getTorrentFileNames(TorrentGeneralMetadata metadata) {
+  public static List<String> getTorrentFileNames(TorrentMetadata metadata) {
     List<String> result = new ArrayList<String>();
 
     for (TorrentFile torrentFile : metadata.getFiles()) {

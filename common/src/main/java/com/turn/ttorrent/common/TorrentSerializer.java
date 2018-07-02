@@ -16,7 +16,7 @@ import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentSerializer {
 
-  public byte[] serialize(TorrentGeneralMetadata metadata) throws IOException {
+  public byte[] serialize(TorrentMetadata metadata) throws IOException {
     Map<String, BEValue> mapMetadata = new HashMap<String, BEValue>();
     Map<String, BEValue> infoTable = new HashMap<String, BEValue>();
 

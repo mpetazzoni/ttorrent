@@ -10,7 +10,7 @@ import java.util.List;
  *
  * @see <a href="https://wiki.theory.org/index.php/BitTorrentSpecification#Metainfo_File_Structure"></a>
  */
-public interface TorrentGeneralMetadata extends TorrentHash {
+public interface TorrentMetadata extends TorrentHash {
 
   /**
    * @return all tracker for announce
