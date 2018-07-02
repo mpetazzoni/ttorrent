@@ -4,9 +4,9 @@ Ttorrent, a Java implementation of the BitTorrent protocol
 ==========================================================
 
 #### Note
-It's new version of Ttorrent library which has
-a lot of changes and may not be compatible with previous version.
-Previous version is stored in [v1.6 branch](https://github.com/mpetazzoni/ttorrent/tree/v1.6)
+It's Ttorrent library version 2.0 which has
+a lot of improvements and may not be compatible with previous version
+(stored in [v1.6 branch](https://github.com/mpetazzoni/ttorrent/tree/v1.6))
 
 See [this issue](https://github.com/mpetazzoni/ttorrent/issues/212) for details 
 
