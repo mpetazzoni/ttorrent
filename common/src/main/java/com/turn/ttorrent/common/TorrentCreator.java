@@ -23,7 +23,7 @@ public class TorrentCreator {
   /**
    * Torrent file piece length (in bytes), we use 512 kB.
    */
-  static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
+  public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
   private static final int HASHING_TIMEOUT_SEC = 15;
   public static int HASHING_THREADS_COUNT = Runtime.getRuntime().availableProcessors();
   private static final ExecutorService HASHING_EXECUTOR = Executors.newFixedThreadPool(HASHING_THREADS_COUNT, new ThreadFactory() {

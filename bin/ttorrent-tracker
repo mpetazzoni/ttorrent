@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (C) 2012 Turn, Inc.
 #
@@ -14,5 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-base=$(dirname $(readlink -f $0))
-exec java -cp $(find ${base}/../build -name "ttorrent-*.jar" | tail -n 1) com.turn.ttorrent.common.Torrent $*
+EXEFILE="${0%-tracker}"
+MAINCLASS="com.turn.ttorrent.cli.TrackerMain" "${EXEFILE}" "$@"

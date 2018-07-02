@@ -28,6 +28,7 @@
         <module>common</module>
         <module>tests</module>
         <module>test-api</module>
+        <module>cli</module>
     </modules>
 
     <organization>
