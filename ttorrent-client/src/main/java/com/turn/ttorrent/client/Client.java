@@ -188,7 +188,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    */
   public void removeTorrent(String torrentHash) {
     logger.debug("Stopping seeding " + torrentHash);
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash);
+    final Pair<SharedTorrent, LoadedTorrent> torrents = torrentsStorage.remove(torrentHash);
 
     SharedTorrent torrent = torrents.first();
     if (torrent != null) {
@@ -201,7 +201,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   }
 
   private void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash);
+    final Pair<SharedTorrent, LoadedTorrent> torrents = torrentsStorage.remove(torrentHash);
     final SharedTorrent sharedTorrent = torrents.first() == null ? torrent : torrents.first();
     if (sharedTorrent != null) {
       sharedTorrent.setClientState(ClientState.DONE);
@@ -210,12 +210,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
     sendStopEvent(torrents.second(), torrentHash);
   }
 
-  private void sendStopEvent(AnnounceableFileTorrent announceableFileTorrent, String torrentHash) {
-    if (announceableFileTorrent == null) {
+  private void sendStopEvent(LoadedTorrent loadedTorrent, String torrentHash) {
+    if (loadedTorrent == null) {
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
       return;
     }
-    forceAnnounceAndLogError(announceableFileTorrent, STOPPED, announceableFileTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(loadedTorrent, STOPPED, loadedTorrent.getDotTorrentFilePath());
   }
 
   /**
@@ -512,7 +512,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
                                       DownloadProgressListener listener) throws IOException, InterruptedException {
     String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
 
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
+    final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
     if (announceableTorrent == null)
       throw new IOException("Unable to download torrent completely - announceable torrent is not found");
     SharedTorrent torrent = new TorrentLoaderImpl(torrentsStorage).loadTorrent(announceableTorrent);
@@ -678,7 +678,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
     if (torrent != null && torrent.isFinished()) return;
 
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
+    final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
     if (announceableTorrent == null) {
       logger.info("announceable torrent {} is not found in storage. Maybe it was removed", hexInfoHash);
       return;

@@ -377,7 +377,7 @@ public class ClientTest {
 
     leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), false, false);
     leecher.start(InetAddress.getLocalHost());
-    final AnnounceableFileTorrent announceableTorrent = (AnnounceableFileTorrent)
+    final LoadedTorrent announceableTorrent = (LoadedTorrent)
             leecher.getTorrentsStorage().announceableTorrents().iterator().next();
 
     final SharedTorrent sharedTorrent = leecher.getTorrentsStorage().putIfAbsentActiveTorrent(announceableTorrent.getHexInfoHash(),
@@ -1107,7 +1107,7 @@ public class ClientTest {
         boolean retval = true;
         for (Client client : clientsList) {
           if (!retval) return false;
-          final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
+          final LoadedTorrent torrent = (LoadedTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
           File downloadedFile = new File(torrent.getDownloadDirPath(), baseFile.getName());
           retval = downloadedFile.isFile();
         }
@@ -1118,7 +1118,7 @@ public class ClientTest {
     assertTrue(waitFor.isMyResult(), "All seeders didn't get their files");
     // check file contents here:
     for (Client client : clientsList) {
-      final AnnounceableFileTorrent torrent = (AnnounceableFileTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
+      final LoadedTorrent torrent = (LoadedTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
       final File file = new File(torrent.getDownloadDirPath(), baseFile.getName());
       assertEquals(baseMD5, getFileMD5(file, md5), String.format("MD5 hash is invalid. C:%s, O:%s ",
               file.getAbsolutePath(), baseFile.getAbsolutePath()));

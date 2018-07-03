@@ -99,16 +99,16 @@ public class HandshakeReceiverTest {
     fos.write(new TorrentSerializer().serialize(torrent));
     fos.close();
 
-    final AnnounceableFileTorrent announceableFileTorrent = mock(AnnounceableFileTorrent.class);
+    final LoadedTorrent loadedTorrent = mock(LoadedTorrent.class);
     final SharedTorrent sharedTorrent =
-            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, announceableFileTorrent);
+            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, loadedTorrent);
 
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
-    when(torrentsLoader.loadTorrent(announceableFileTorrent)).thenReturn(sharedTorrent);
+    when(torrentsLoader.loadTorrent(loadedTorrent)).thenReturn(sharedTorrent);
     when(myContext.getTorrentLoader()).thenReturn(torrentsLoader);
     final ExecutorService executorService = Executors.newFixedThreadPool(1);
     when(myContext.getExecutor()).thenReturn(executorService);
-    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), announceableFileTorrent);
+    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), loadedTorrent);
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 

@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
+import com.turn.ttorrent.common.LoadedTorrent;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Pair;
 
@@ -15,12 +15,12 @@ public class TorrentsStorage {
 
   private final ReadWriteLock myReadWriteLock;
   private final Map<String, SharedTorrent> myActiveTorrents;
-  private final Map<String, AnnounceableFileTorrent> myAnnounceableTorrents;
+  private final Map<String, LoadedTorrent> myAnnounceableTorrents;
 
   public TorrentsStorage() {
     myReadWriteLock = new ReentrantReadWriteLock();
     myActiveTorrents = new HashMap<String, SharedTorrent>();
-    myAnnounceableTorrents = new HashMap<String, AnnounceableFileTorrent>();
+    myAnnounceableTorrents = new HashMap<String, LoadedTorrent>();
   }
 
   public boolean hasTorrent(String hash) {
@@ -32,7 +32,7 @@ public class TorrentsStorage {
     }
   }
 
-  public AnnounceableFileTorrent getAnnounceableTorrent(String hash) {
+  public LoadedTorrent getAnnounceableTorrent(String hash) {
     try {
       myReadWriteLock.readLock().lock();
       return myAnnounceableTorrents.get(hash);
@@ -70,7 +70,7 @@ public class TorrentsStorage {
     }
   }
 
-  public void addAnnounceableTorrent(String hash, AnnounceableFileTorrent torrent) {
+  public void addAnnounceableTorrent(String hash, LoadedTorrent torrent) {
     try {
       myReadWriteLock.writeLock().lock();
       myAnnounceableTorrents.put(hash, torrent);
@@ -91,12 +91,12 @@ public class TorrentsStorage {
     }
   }
 
-  public Pair<SharedTorrent, AnnounceableFileTorrent> remove(String hash) {
+  public Pair<SharedTorrent, LoadedTorrent> remove(String hash) {
     try {
       myReadWriteLock.writeLock().lock();
       final SharedTorrent sharedTorrent = myActiveTorrents.remove(hash);
-      final AnnounceableFileTorrent announceableFileTorrent = myAnnounceableTorrents.remove(hash);
-      return new Pair<SharedTorrent, AnnounceableFileTorrent>(sharedTorrent, announceableFileTorrent);
+      final LoadedTorrent loadedTorrent = myAnnounceableTorrents.remove(hash);
+      return new Pair<SharedTorrent, LoadedTorrent>(sharedTorrent, loadedTorrent);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }

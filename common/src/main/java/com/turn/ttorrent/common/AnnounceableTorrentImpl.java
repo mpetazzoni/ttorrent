@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Collections;
 import java.util.List;
 
-public class AnnounceableTorrentImpl implements AnnounceableFileTorrent {
+public class AnnounceableTorrentImpl implements LoadedTorrent {
 
   private final TorrentStatistic myTorrentStatistic;
   private final String myHexInfoHash;

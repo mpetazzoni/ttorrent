@@ -4,7 +4,7 @@ import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
+import com.turn.ttorrent.common.LoadedTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
@@ -79,7 +79,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    final AnnounceableFileTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
+    final LoadedTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
 
     if (announceableTorrent == null) {
       logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());

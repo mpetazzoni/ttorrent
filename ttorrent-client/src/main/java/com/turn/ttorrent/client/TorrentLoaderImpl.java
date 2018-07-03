@@ -1,6 +1,6 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
+import com.turn.ttorrent.common.LoadedTorrent;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -17,19 +17,19 @@ public class TorrentLoaderImpl implements TorrentLoader {
 
   @Override
   @NotNull
-  public SharedTorrent loadTorrent(@NotNull AnnounceableFileTorrent announceableFileTorrent) throws IOException {
+  public SharedTorrent loadTorrent(@NotNull LoadedTorrent loadedTorrent) throws IOException {
 
-    final String hexInfoHash = announceableFileTorrent.getHexInfoHash();
+    final String hexInfoHash = loadedTorrent.getHexInfoHash();
     SharedTorrent old = myTorrentsStorage.getTorrent(hexInfoHash);
     if (old != null) {
       return old;
     }
 
-    final File dotTorrentFile = new File(announceableFileTorrent.getDotTorrentFilePath());
-    final File downloadDir = new File(announceableFileTorrent.getDownloadDirPath());
+    final File dotTorrentFile = new File(loadedTorrent.getDotTorrentFilePath());
+    final File downloadDir = new File(loadedTorrent.getDownloadDirPath());
 
     final SharedTorrent sharedTorrent = SharedTorrent.fromFile(dotTorrentFile, downloadDir, false,
-            announceableFileTorrent.isSeeded(), announceableFileTorrent.isLeeched(), announceableFileTorrent);
+            loadedTorrent.isSeeded(), loadedTorrent.isLeeched(), loadedTorrent);
 
     old = myTorrentsStorage.putIfAbsentActiveTorrent(hexInfoHash, sharedTorrent);
     if (old != null) {
