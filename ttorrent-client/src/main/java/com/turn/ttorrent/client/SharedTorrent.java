@@ -115,11 +115,11 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @throws IOException              If the torrent file cannot be read or decoded.
    */
   public SharedTorrent(byte[] torrent, File parent, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
-                       TorrentStatisticProvider torrentStatisticProvider)
+                       TorrentStatistic torrentStatistic)
           throws IOException {
     myTorrentMetadata = new TorrentParser().parse(torrent);
     isSeeder = seeder;
-    myTorrentStatistic = torrentStatisticProvider.getTorrentStatistic();
+    myTorrentStatistic = torrentStatistic;
     myValidationFutures = new HashMap<Integer, Future<?>>();
     long totalSize = 0;
     for (TorrentFile torrentFile : myTorrentMetadata.getFiles()) {
@@ -174,17 +174,17 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   }
 
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder,
-                                       TorrentStatisticProvider torrentStatisticProvider)
+                                       TorrentStatistic torrentStatistic)
           throws IOException {
     return fromFile(source, parent, multiThreadHash, seeder, false,
-            torrentStatisticProvider);
+            torrentStatistic);
   }
 
   public static SharedTorrent fromFile(File source, File parent, boolean multiThreadHash, boolean seeder, boolean leecher,
-                                       TorrentStatisticProvider torrentStatisticProvider)
+                                       TorrentStatistic torrentStatistic)
           throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
-    return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY, torrentStatisticProvider);
+    return new SharedTorrent(data, parent, multiThreadHash, seeder, leecher, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
   }
 
   private synchronized void openFileChannelIfNecessary() {

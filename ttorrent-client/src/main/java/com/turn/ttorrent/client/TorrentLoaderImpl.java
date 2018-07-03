@@ -29,7 +29,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
     final File downloadDir = new File(loadedTorrent.getDownloadDirPath());
 
     final SharedTorrent sharedTorrent = SharedTorrent.fromFile(dotTorrentFile, downloadDir, false,
-            loadedTorrent.isSeeded(), loadedTorrent.isLeeched(), loadedTorrent);
+            loadedTorrent.isSeeded(), loadedTorrent.isLeeched(), loadedTorrent.getTorrentStatistic());
 
     old = myTorrentsStorage.putIfAbsentActiveTorrent(hexInfoHash, sharedTorrent);
     if (old != null) {

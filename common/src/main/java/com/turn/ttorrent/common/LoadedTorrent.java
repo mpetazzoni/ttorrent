@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-public interface LoadedTorrent extends AnnounceableInformation, TorrentStatisticProvider {
+public interface LoadedTorrent extends AnnounceableInformation {
 
   /**
    * @return path to torrent root directory which contains files from torrent and is used for files downloading
@@ -22,4 +22,5 @@ public interface LoadedTorrent extends AnnounceableInformation, TorrentStatistic
    */
   boolean isLeeched();
 
+  TorrentStatistic getTorrentStatistic();
 }

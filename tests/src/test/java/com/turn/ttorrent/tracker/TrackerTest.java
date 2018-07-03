@@ -384,22 +384,12 @@ public class TrackerTest {
   private SharedTorrent completeTorrent(String name) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    return SharedTorrent.fromFile(torrentFile, parentFiles, false, false, new TorrentStatisticProvider() {
-      @Override
-      public TorrentStatistic getTorrentStatistic() {
-        return new TorrentStatistic();
-      }
-    });
+    return SharedTorrent.fromFile(torrentFile, parentFiles, false, false, new TorrentStatistic());
   }
 
   private SharedTorrent incompleteTorrent(String name, File destDir) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
-    return SharedTorrent.fromFile(torrentFile, destDir, false, false, new TorrentStatisticProvider() {
-      @Override
-      public TorrentStatistic getTorrentStatistic() {
-        return new TorrentStatistic();
-      }
-    });
+      return SharedTorrent.fromFile(torrentFile, destDir, false, false, new TorrentStatistic());
   }
 
   private void waitForSeeder(final byte[] torrentHash) {

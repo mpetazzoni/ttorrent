@@ -101,7 +101,7 @@ public class HandshakeReceiverTest {
 
     final LoadedTorrent loadedTorrent = mock(LoadedTorrent.class);
     final SharedTorrent sharedTorrent =
-            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, loadedTorrent);
+            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, loadedTorrent.getTorrentStatistic());
 
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
     when(torrentsLoader.loadTorrent(loadedTorrent)).thenReturn(sharedTorrent);
