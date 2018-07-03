@@ -1,6 +1,16 @@
 package com.turn.ttorrent.common;
 
-public interface AnnounceableFileTorrent extends AnnounceableTorrent, TorrentStatisticProvider, FileTorrent {
+public interface AnnounceableFileTorrent extends AnnounceableTorrent, TorrentStatisticProvider {
+
+  /**
+   * @return path to torrent root directory which contains files from torrent and is used for files downloading
+   */
+  String getDownloadDirPath();
+
+  /**
+   * @return path to .torrent file
+   */
+  String getDotTorrentFilePath();
 
   /**
    * @return true if it's fully seeder
