@@ -171,7 +171,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
     return torrent.getHexInfoHash();
   }
 
-  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, AnnounceRequestMessage.RequestEvent event,
+  private void forceAnnounceAndLogError(AnnounceableInformation torrent, AnnounceRequestMessage.RequestEvent event,
                                         String dotTorrentFilePath) {
     try {
       this.announce.forceAnnounce(torrent, this, event);
@@ -833,13 +833,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
           if (isTorrentComplete) {
 
-            AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
+            AnnounceableInformation announceableInformation = torrentsStorage.getAnnounceableTorrent(torrentHash);
 
-            if (announceableTorrent == null) return;
+            if (announceableInformation == null) return;
 
             try {
-              announce.getCurrentTrackerClient(announceableTorrent)
-                      .announceAllInterfaces(COMPLETED, true, announceableTorrent);
+              announce.getCurrentTrackerClient(announceableInformation)
+                      .announceAllInterfaces(COMPLETED, true, announceableInformation);
             } catch (AnnounceException e) {
               logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
             }

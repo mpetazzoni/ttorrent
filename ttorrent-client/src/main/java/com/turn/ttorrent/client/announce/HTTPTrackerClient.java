@@ -17,7 +17,7 @@ package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
@@ -27,7 +27,6 @@ import com.turn.ttorrent.common.protocol.http.HTTPAnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPTrackerMessage;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,7 +75,7 @@ public class HTTPTrackerClient extends TrackerClient {
    * @param torrentInfo
    */
   public void announce(final AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, final AnnounceableTorrent torrentInfo, final List<Peer> adresses) throws AnnounceException {
+                       boolean inhibitEvents, final AnnounceableInformation torrentInfo, final List<Peer> adresses) throws AnnounceException {
     logAnnounceRequest(event, torrentInfo);
 
     final List<HTTPTrackerMessage> trackerResponses = new ArrayList<HTTPTrackerMessage>();
@@ -107,7 +106,7 @@ public class HTTPTrackerClient extends TrackerClient {
   @Override
   protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event,
                                boolean inhibitEvent,
-                               final List<? extends AnnounceableTorrent> torrents,
+                               final List<? extends AnnounceableInformation> torrents,
                                List<Peer> addresses) throws AnnounceException, ConnectException {
     List<List<HTTPTrackerMessage>> trackerResponses = new ArrayList<List<HTTPTrackerMessage>>();
 
@@ -120,7 +119,7 @@ public class HTTPTrackerClient extends TrackerClient {
 
     for (final Peer address : addresses) {
       StringBuilder body = new StringBuilder();
-      for (final AnnounceableTorrent torrentInfo : torrents) {
+      for (final AnnounceableInformation torrentInfo : torrents) {
         body.append(encodeAnnounceToURL(event, torrentInfo, address)).append("\n");
       }
       final List<HTTPTrackerMessage> responsesForCurrentIp = new ArrayList<HTTPTrackerMessage>();
@@ -171,7 +170,7 @@ public class HTTPTrackerClient extends TrackerClient {
     }
   }
 
-  private URL encodeAnnounceToURL(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrentInfo, Peer peer) throws AnnounceException {
+  private URL encodeAnnounceToURL(AnnounceRequestMessage.RequestEvent event, AnnounceableInformation torrentInfo, Peer peer) throws AnnounceException {
     URL result;
     try {
       HTTPAnnounceRequestMessage request = this.buildAnnounceRequest(event, torrentInfo, peer);
@@ -308,7 +307,7 @@ public class HTTPTrackerClient extends TrackerClient {
    * @throws MessageValidationException
    */
   private HTTPAnnounceRequestMessage buildAnnounceRequest(
-          AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrentInfo, Peer peer)
+          AnnounceRequestMessage.RequestEvent event, AnnounceableInformation torrentInfo, Peer peer)
           throws IOException,
           MessageValidationException {
     // Build announce request message

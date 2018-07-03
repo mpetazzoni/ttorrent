@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
@@ -68,7 +68,7 @@ public abstract class TrackerClient {
   }
 
   public void announceAllInterfaces(final AnnounceRequestMessage.RequestEvent event,
-                                    boolean inhibitEvent, final AnnounceableTorrent torrent) throws AnnounceException {
+                                    boolean inhibitEvent, final AnnounceableInformation torrent) throws AnnounceException {
     try {
       announce(event, inhibitEvent, torrent, myAddress);
     } catch (AnnounceException e) {
@@ -97,14 +97,14 @@ public abstract class TrackerClient {
    * @param torrent
    */
   protected abstract void announce(final AnnounceRequestMessage.RequestEvent event,
-                                   boolean inhibitEvent, final AnnounceableTorrent torrent, final List<Peer> peer) throws AnnounceException;
+                                   boolean inhibitEvent, final AnnounceableInformation torrent, final List<Peer> peer) throws AnnounceException;
 
   protected abstract void multiAnnounce(final AnnounceRequestMessage.RequestEvent event,
                                         boolean inhibitEvent,
-                                        final List<? extends AnnounceableTorrent> torrents,
+                                        final List<? extends AnnounceableInformation> torrents,
                                         final List<Peer> peer) throws AnnounceException, ConnectException;
 
-  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, AnnounceableTorrent torrent) {
+  protected void logAnnounceRequest(AnnounceRequestMessage.RequestEvent event, AnnounceableInformation torrent) {
     if (event != AnnounceRequestMessage.RequestEvent.NONE) {
       logger.debug("Announcing {} to tracker with {}U/{}D/{}L bytes...",
               new Object[]{

@@ -1,7 +1,7 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.AnnounceableFileTorrent;
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Pair;
 
 import java.util.ArrayList;
@@ -111,10 +111,10 @@ public class TorrentsStorage {
     }
   }
 
-  public List<AnnounceableTorrent> announceableTorrents() {
+  public List<AnnounceableInformation> announceableTorrents() {
     try {
       myReadWriteLock.readLock().lock();
-      return new ArrayList<AnnounceableTorrent>(myAnnounceableTorrents.values());
+      return new ArrayList<AnnounceableInformation>(myAnnounceableTorrents.values());
     } finally {
       myReadWriteLock.readLock().unlock();
     }

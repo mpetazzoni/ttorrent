@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-public interface AnnounceableFileTorrent extends AnnounceableTorrent, TorrentStatisticProvider {
+public interface AnnounceableFileTorrent extends AnnounceableInformation, TorrentStatisticProvider {
 
   /**
    * @return path to torrent root directory which contains files from torrent and is used for files downloading

@@ -2,7 +2,7 @@ package com.turn.ttorrent.common;
 
 import java.util.List;
 
-public interface AnnounceableTorrent extends TorrentHash {
+public interface AnnounceableInformation extends TorrentHash {
 
   /**
    * @return number of bytes uploaded by the client for this torrent

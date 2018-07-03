@@ -1,8 +1,7 @@
 package com.turn.ttorrent.client.announce;
 
 import com.turn.ttorrent.Utils;
-import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.common.TorrentUtils;
@@ -54,9 +53,9 @@ public class TrackerClientTest {
     final URI trackerURI = URI.create("http://localhost:6969/announce");
     TrackerClient client = new HTTPTrackerClient(peers, trackerURI);
 
-    final AnnounceableTorrent firstTorrent = getMockedTorrent(new byte[]{1, 2, 3, 4});
-    final AnnounceableTorrent secondTorrent = getMockedTorrent(new byte[]{1, 3, 3, 2});
-    List<AnnounceableTorrent> torrents = Arrays.asList(firstTorrent, secondTorrent);
+    final AnnounceableInformation firstTorrent = getMockedTorrent(new byte[]{1, 2, 3, 4});
+    final AnnounceableInformation secondTorrent = getMockedTorrent(new byte[]{1, 3, 3, 2});
+    List<AnnounceableInformation> torrents = Arrays.asList(firstTorrent, secondTorrent);
 
     client.multiAnnounce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
 
@@ -64,8 +63,8 @@ public class TrackerClientTest {
     client.multiAnnounce(AnnounceRequestMessage.RequestEvent.STARTED, true, torrents, peers);
 
     List<Peer> leecher = Collections.singletonList(new Peer(new InetSocketAddress("127.0.0.1", 6885), ByteBuffer.allocate(1)));
-    final AnnounceableTorrent firstTorrentLeech = getMockedTorrent(new byte[]{1, 2, 3, 4});
-    final AnnounceableTorrent secondTorrentLeech = getMockedTorrent(new byte[]{1, 3, 3, 2});
+    final AnnounceableInformation firstTorrentLeech = getMockedTorrent(new byte[]{1, 2, 3, 4});
+    final AnnounceableInformation secondTorrentLeech = getMockedTorrent(new byte[]{1, 3, 3, 2});
     when(firstTorrentLeech.getLeft()).thenReturn(10L);
     when(secondTorrentLeech.getLeft()).thenReturn(10L);
 
@@ -80,8 +79,8 @@ public class TrackerClientTest {
 
   }
 
-  private AnnounceableTorrent getMockedTorrent(byte[] hash) {
-    final AnnounceableTorrent result = mock(AnnounceableTorrent.class);
+  private AnnounceableInformation getMockedTorrent(byte[] hash) {
+    final AnnounceableInformation result = mock(AnnounceableInformation.class);
     when(result.getLeft()).thenReturn(0L);
     when(result.getDownloaded()).thenReturn(0L);
     when(result.getUploaded()).thenReturn(0L);
