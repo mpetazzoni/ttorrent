@@ -5,11 +5,11 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 
-public class FileMetadataFactory implements TorrentMetadataFactory {
+public class FileMetadataProvider implements TorrentMetadataProvider {
 
   private final String filePath;
 
-  public FileMetadataFactory(String filePath) {
+  public FileMetadataProvider(String filePath) {
     this.filePath = filePath;
   }
 

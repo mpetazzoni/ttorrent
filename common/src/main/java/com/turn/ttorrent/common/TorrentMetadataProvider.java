@@ -5,7 +5,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 
-public interface TorrentMetadataFactory {
+public interface TorrentMetadataProvider {
 
   /**
    * load and return new {@link TorrentMetadata} instance from any source
