@@ -166,7 +166,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       announceableTorrent.getTorrentStatistic().setLeft(size);
     }
 
-    forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(announceableTorrent.createAnnounceableInformation(), seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
     logger.debug(String.format("Added torrent %s (%s)", torrent, torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
@@ -215,7 +215,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
       return;
     }
-    forceAnnounceAndLogError(loadedTorrent, STOPPED, loadedTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(loadedTorrent.createAnnounceableInformation(), STOPPED, loadedTorrent.getDotTorrentFilePath());
   }
 
   /**
@@ -709,7 +709,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               this,
-              announceableTorrent,
+              announceableTorrent.getTorrentHash(),
               peer.getIp(),
               peer.getPort());
 
@@ -833,7 +833,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
           if (isTorrentComplete) {
 
-            AnnounceableInformation announceableInformation = torrentsStorage.getAnnounceableTorrent(torrentHash);
+            AnnounceableInformation announceableInformation = torrentsStorage.getAnnounceableTorrent(torrentHash).createAnnounceableInformation();
 
             if (announceableInformation == null) return;
 

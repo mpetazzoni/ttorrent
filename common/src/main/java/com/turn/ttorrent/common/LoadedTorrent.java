@@ -1,6 +1,6 @@
 package com.turn.ttorrent.common;
 
-public interface LoadedTorrent extends AnnounceableInformation {
+public interface LoadedTorrent {
 
   /**
    * @return path to torrent root directory which contains files from torrent and is used for files downloading
@@ -11,6 +11,11 @@ public interface LoadedTorrent extends AnnounceableInformation {
    * @return path to .torrent file
    */
   String getDotTorrentFilePath();
+
+  /**
+   * @return new instance of {@link AnnounceableInformation} for announce this torrent to the tracker
+   */
+  AnnounceableInformation createAnnounceableInformation();
 
   /**
    * @return true if it's fully seeder
@@ -26,4 +31,10 @@ public interface LoadedTorrent extends AnnounceableInformation {
    * @return {@link TorrentStatistic} instance related with this torrent
    */
   TorrentStatistic getTorrentStatistic();
+
+  /**
+   * @return hash of this torrent
+   */
+  TorrentHash getTorrentHash();
+
 }

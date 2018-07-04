@@ -7,105 +7,95 @@ import java.util.List;
 
 public class AnnounceableTorrentImpl implements LoadedTorrent {
 
-  private final TorrentStatistic myTorrentStatistic;
-  private final String myHexInfoHash;
-  private final byte[] myInfoHash;
-  private final List<List<String>> myAnnounceUrls;
-  private final String myAnnounce;
-  private final String myDownloadDirPath;
-  private final String myDotTorrentFilePath;
-  private final boolean myIsSeeded;
-  private final boolean myIsLeeched;
+  private final TorrentStatistic torrentStatistic;
+  private final TorrentHash torrentHash;
+  private final List<List<String>> announceUrls;
+  private final String announce;
+  private final String downloadDirPath;
+  private final String dotTorrentFilePath;
+  private final boolean isSeeded;
+  private final boolean isLeeched;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
-                                 String hexInfoHash,
-                                 byte[] infoHash,
+                                 final String hexInfoHash,
+                                 final byte[] infoHash,
                                  @Nullable List<List<String>> announceUrls,
                                  String announce,
                                  String downloadDirPath,
                                  String dotTorrentFilePath,
                                  boolean isSeeded,
                                  boolean isLeeched) {
-    myTorrentStatistic = torrentStatistic;
-    myHexInfoHash = hexInfoHash;
-    myInfoHash = infoHash;
+    this.torrentStatistic = torrentStatistic;
+    torrentHash = new TorrentHash() {
+      @Override
+      public byte[] getInfoHash() {
+        return infoHash;
+      }
+
+      @Override
+      public String getHexInfoHash() {
+        return hexInfoHash;
+      }
+    };
     if (announceUrls != null) {
-      myAnnounceUrls = Collections.unmodifiableList(announceUrls);
+      this.announceUrls = Collections.unmodifiableList(announceUrls);
     } else {
-      myAnnounceUrls = Collections.singletonList(Collections.singletonList(announce));
+      this.announceUrls = Collections.singletonList(Collections.singletonList(announce));
     }
-    myAnnounce = announce;
-    myDotTorrentFilePath = dotTorrentFilePath;
-    myDownloadDirPath = downloadDirPath;
-    myIsSeeded = isSeeded;
-    myIsLeeched = isLeeched;
+    this.announce = announce;
+    this.dotTorrentFilePath = dotTorrentFilePath;
+    this.downloadDirPath = downloadDirPath;
+    this.isSeeded = isSeeded;
+    this.isLeeched = isLeeched;
   }
 
   @Override
   public boolean isLeeched() {
-    return myIsLeeched;
+    return isLeeched;
   }
 
   @Override
   public boolean isSeeded() {
-    return myIsSeeded;
+    return isSeeded;
   }
 
   @Override
   public String getDownloadDirPath() {
-    return myDownloadDirPath;
+    return downloadDirPath;
   }
 
   @Override
   public String getDotTorrentFilePath() {
-    return myDotTorrentFilePath;
-  }
-
-  @Override
-  public long getUploaded() {
-    return myTorrentStatistic.getUploadedBytes();
-  }
-
-  @Override
-  public long getDownloaded() {
-    return myTorrentStatistic.getDownloadedBytes();
-  }
-
-  @Override
-  public long getLeft() {
-    return myTorrentStatistic.getLeftBytes();
-  }
-
-  @Override
-  public List<List<String>> getAnnounceList() {
-    return myAnnounceUrls;
-  }
-
-  @Override
-  public byte[] getInfoHash() {
-    return myInfoHash;
-  }
-
-  @Override
-  public String getHexInfoHash() {
-    return myHexInfoHash;
-  }
-
-  @Override
-  public String getAnnounce() {
-    return myAnnounce;
+    return dotTorrentFilePath;
   }
 
   @Override
   public TorrentStatistic getTorrentStatistic() {
-    return myTorrentStatistic;
+    return torrentStatistic;
+  }
+
+  @Override
+  public AnnounceableInformation createAnnounceableInformation() {
+    return new AnnounceableInformationImpl(
+            torrentStatistic.getUploadedBytes(),
+            torrentStatistic.getDownloadedBytes(),
+            torrentStatistic.getLeftBytes(),
+            torrentHash,
+            announceUrls,
+            announce
+    );
+  }
+
+  @Override
+  public TorrentHash getTorrentHash() {
+    return torrentHash;
   }
 
   @Override
   public String toString() {
     return "AnnounceableTorrentImpl{" +
-            "download directory='" + myDownloadDirPath + '\'' +
-            ", dot torrent file='" + myDotTorrentFilePath + '\'' +
+            "download directory='" + downloadDirPath + '\'' +
+            ", dot torrent file='" + dotTorrentFilePath + '\'' +
             '}';
   }
 }

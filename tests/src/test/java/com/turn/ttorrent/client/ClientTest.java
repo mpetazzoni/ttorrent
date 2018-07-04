@@ -375,12 +375,11 @@ public class ClientTest {
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
-    leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), false, false);
+    String hash = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), false, false);
     leecher.start(InetAddress.getLocalHost());
-    final LoadedTorrent announceableTorrent = (LoadedTorrent)
-            leecher.getTorrentsStorage().announceableTorrents().iterator().next();
+    final LoadedTorrent announceableTorrent = leecher.getTorrentsStorage().getAnnounceableTorrent(hash);
 
-    final SharedTorrent sharedTorrent = leecher.getTorrentsStorage().putIfAbsentActiveTorrent(announceableTorrent.getHexInfoHash(),
+    final SharedTorrent sharedTorrent = leecher.getTorrentsStorage().putIfAbsentActiveTorrent(announceableTorrent.getTorrentHash().getHexInfoHash(),
             leecher.getTorrentLoader().loadTorrent(announceableTorrent));
 
     sharedTorrent.init();
@@ -392,7 +391,7 @@ public class ClientTest {
       }
     };
 
-    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(announceableTorrent.getHexInfoHash());
+    final TrackedTorrent trackedTorrent = tracker.getTrackedTorrent(announceableTorrent.getTorrentHash().getHexInfoHash());
 
     assertEquals(trackedTorrent.getPeers().size(), 1);
 
@@ -433,10 +432,10 @@ public class ClientTest {
     try {
       File tempFile = tempFiles.createTempFile(piecesCount * pieceSize);
 
-      createMultipleSeedersWithDifferentPieces(tempFile, piecesCount, pieceSize, numSeeders, clientsList);
+      String hash = createMultipleSeedersWithDifferentPieces(tempFile, piecesCount, pieceSize, numSeeders, clientsList);
       String baseMD5 = getFileMD5(tempFile, md5);
 
-      validateMultipleClientsResults(clientsList, md5, tempFile, baseMD5);
+      validateMultipleClientsResults(clientsList, md5, tempFile, baseMD5, hash);
 
     } finally {
       for (Client client : clientsList) {
@@ -461,7 +460,7 @@ public class ClientTest {
     try {
       File baseFile = tempFiles.createTempFile(piecesCount * pieceSize);
 
-      createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
+      String hash = createMultipleSeedersWithDifferentPieces(baseFile, piecesCount, pieceSize, numSeeders, clientsList);
       String baseMD5 = getFileMD5(baseFile, md5);
       final Client firstClient = clientsList.get(0);
 
@@ -522,7 +521,7 @@ public class ClientTest {
           e.printStackTrace();
         }
       }
-      validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5);
+      validateMultipleClientsResults(clientsList, md5, baseFile, baseMD5, hash);
 
     } finally {
       for (Client client : clientsList) {
@@ -1100,14 +1099,14 @@ public class ClientTest {
     leech.stop();
   }
 
-  private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, final File baseFile, String baseMD5) throws IOException {
+  private void validateMultipleClientsResults(final List<Client> clientsList, MessageDigest md5, final File baseFile, String baseMD5, final String hash) throws IOException {
     final WaitFor waitFor = new WaitFor(75 * 1000) {
       @Override
       protected boolean condition() {
         boolean retval = true;
         for (Client client : clientsList) {
           if (!retval) return false;
-          final LoadedTorrent torrent = (LoadedTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
+          final LoadedTorrent torrent = client.getTorrentsStorage().getAnnounceableTorrent(hash);
           File downloadedFile = new File(torrent.getDownloadDirPath(), baseFile.getName());
           retval = downloadedFile.isFile();
         }
@@ -1118,7 +1117,7 @@ public class ClientTest {
     assertTrue(waitFor.isMyResult(), "All seeders didn't get their files");
     // check file contents here:
     for (Client client : clientsList) {
-      final LoadedTorrent torrent = (LoadedTorrent) client.getTorrentsStorage().announceableTorrents().iterator().next();
+      final LoadedTorrent torrent = client.getTorrentsStorage().getAnnounceableTorrent(hash);
       final File file = new File(torrent.getDownloadDirPath(), baseFile.getName());
       assertEquals(baseMD5, getFileMD5(file, md5), String.format("MD5 hash is invalid. C:%s, O:%s ",
               file.getAbsolutePath(), baseFile.getAbsolutePath()));
@@ -1142,7 +1141,7 @@ public class ClientTest {
     leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
   }
 
-  private void createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,
+  private String createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,
                                                         List<Client> clientList) throws IOException, InterruptedException, URISyntaxException {
 
     List<byte[]> piecesList = new ArrayList<byte[]>(piecesCount);
@@ -1174,6 +1173,7 @@ public class ClientTest {
       client.addTorrent(torrentFile.getAbsolutePath(), baseDir.getAbsolutePath());
       client.start(InetAddress.getLocalHost());
     }
+    return torrent.getHexInfoHash();
   }
 
   private String getFileMD5(File file, MessageDigest digest) throws IOException {

@@ -112,9 +112,13 @@ public class TorrentsStorage {
   }
 
   public List<AnnounceableInformation> announceableTorrents() {
+    List<AnnounceableInformation> result = new ArrayList<AnnounceableInformation>();
     try {
       myReadWriteLock.readLock().lock();
-      return new ArrayList<AnnounceableInformation>(myAnnounceableTorrents.values());
+      for (LoadedTorrent loadedTorrent : myAnnounceableTorrents.values()) {
+        result.add(loadedTorrent.createAnnounceableInformation());
+      }
+      return result;
     } finally {
       myReadWriteLock.readLock().unlock();
     }

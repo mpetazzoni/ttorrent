@@ -19,7 +19,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
   @NotNull
   public SharedTorrent loadTorrent(@NotNull LoadedTorrent loadedTorrent) throws IOException {
 
-    final String hexInfoHash = loadedTorrent.getHexInfoHash();
+    final String hexInfoHash = loadedTorrent.getTorrentHash().getHexInfoHash();
     SharedTorrent old = myTorrentsStorage.getTorrent(hexInfoHash);
     if (old != null) {
       return old;
