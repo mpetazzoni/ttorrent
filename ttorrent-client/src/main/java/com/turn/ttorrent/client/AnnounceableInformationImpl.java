@@ -1,4 +1,7 @@
-package com.turn.ttorrent.common;
+package com.turn.ttorrent.client;
+
+import com.turn.ttorrent.common.AnnounceableInformation;
+import com.turn.ttorrent.common.TorrentHash;
 
 import java.util.List;
 

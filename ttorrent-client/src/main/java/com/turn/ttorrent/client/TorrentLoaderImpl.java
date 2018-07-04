@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.LoadedTorrent;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;

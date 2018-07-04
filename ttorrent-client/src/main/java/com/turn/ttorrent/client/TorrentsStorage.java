@@ -1,6 +1,5 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.LoadedTorrent;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Pair;
 
