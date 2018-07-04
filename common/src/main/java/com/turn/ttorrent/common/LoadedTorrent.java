@@ -22,5 +22,8 @@ public interface LoadedTorrent extends AnnounceableInformation {
    */
   boolean isLeeched();
 
+  /**
+   * @return {@link TorrentStatistic} instance related with this torrent
+   */
   TorrentStatistic getTorrentStatistic();
 }
