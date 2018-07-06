@@ -3,7 +3,14 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ttorrent.iml" filepath="$PROJECT_DIR$/ttorrent.iml" />
+      <module fileurl="file://$PROJECT_DIR$/bencoding/ttorrent-bencoding.iml" filepath="$PROJECT_DIR$/bencoding/ttorrent-bencoding.iml" />
+      <module fileurl="file://$PROJECT_DIR$/cli/ttorrent-cli.iml" filepath="$PROJECT_DIR$/cli/ttorrent-cli.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ttorrent-client/ttorrent-client.iml" filepath="$PROJECT_DIR$/ttorrent-client/ttorrent-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common/ttorrent-common.iml" filepath="$PROJECT_DIR$/common/ttorrent-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/network/ttorrent-network.iml" filepath="$PROJECT_DIR$/network/ttorrent-network.iml" />
+      <module fileurl="file://$PROJECT_DIR$/test-api/ttorrent-test-api.iml" filepath="$PROJECT_DIR$/test-api/ttorrent-test-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tests/ttorrent-tests.iml" filepath="$PROJECT_DIR$/tests/ttorrent-tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ttorrent-tracker/ttorrent-tracker.iml" filepath="$PROJECT_DIR$/ttorrent-tracker/ttorrent-tracker.iml" />
     </modules>
   </component>
 </project>
-

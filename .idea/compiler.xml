@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <option name="DEFAULT_COMPILER" value="Javac" />
-    <resourceExtensions />
     <wildcardResourcePatterns>
       <entry name="!?*.java" />
       <entry name="!?*.form" />
@@ -14,20 +12,30 @@
       <entry name="!?*.clj" />
     </wildcardResourcePatterns>
     <annotationProcessing>
-      <profile default="true" name="Default" enabled="false">
-        <processorPath useClasspath="true" />
-      </profile>
-      <profile default="false" name="Annotation profile for ttorrent" enabled="true">
-        <sourceOutputDir name="build\generated-sources\annotations" />
-        <sourceTestOutputDir name="build\generated-test-sources\test-annotations" />
+      <profile name="Annotation profile for Java BitTorrent library" enabled="true">
+        <sourceOutputDir name="build/generated-sources/annotations" />
+        <sourceTestOutputDir name="build/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="true" />
-        <module name="ttorrent" />
+        <module name="ttorrent-bencoding" />
+        <module name="ttorrent-cli" />
+        <module name="ttorrent-client" />
+        <module name="ttorrent-common" />
+        <module name="ttorrent-network" />
+        <module name="ttorrent-test-api" />
+        <module name="ttorrent-tests" />
+        <module name="ttorrent-tracker" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="ttorrent" target="1.6" />
+      <module name="ttorrent-bencoding" target="1.6" />
+      <module name="ttorrent-cli" target="1.6" />
+      <module name="ttorrent-client" target="1.6" />
+      <module name="ttorrent-common" target="1.6" />
+      <module name="ttorrent-network" target="1.6" />
+      <module name="ttorrent-test-api" target="1.6" />
+      <module name="ttorrent-tests" target="1.6" />
+      <module name="ttorrent-tracker" target="1.6" />
     </bytecodeTargetLevel>
   </component>
 </project>
-
