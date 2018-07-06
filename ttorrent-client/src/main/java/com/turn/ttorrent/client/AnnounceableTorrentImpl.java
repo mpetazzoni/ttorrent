@@ -65,7 +65,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   }
 
   @Override
-  public PieceStorage getDownloadDirPath() {
+  public PieceStorage getPieceStorage() {
     return pieceStorage;
   }
 

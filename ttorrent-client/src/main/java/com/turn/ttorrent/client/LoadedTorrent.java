@@ -9,9 +9,9 @@ import org.jetbrains.annotations.NotNull;
 public interface LoadedTorrent {
 
   /**
-   * @return path to torrent root directory which contains files from torrent and is used for files downloading
+   * @return {@link PieceStorage} where stored available pieces
    */
-  PieceStorage getDownloadDirPath();
+  PieceStorage getPieceStorage();
 
   /**
    * @return path to .torrent file
