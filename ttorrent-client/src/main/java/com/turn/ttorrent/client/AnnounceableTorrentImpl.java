@@ -1,8 +1,10 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.TorrentStatistic;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -14,7 +16,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   private final TorrentHash torrentHash;
   private final List<List<String>> announceUrls;
   private final String announce;
-  private final String downloadDirPath;
+  private final PieceStorage pieceStorage;
   private final String dotTorrentFilePath;
   private final boolean isSeeded;
   private final boolean isLeeched;
@@ -24,7 +26,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
                                  final byte[] infoHash,
                                  @Nullable List<List<String>> announceUrls,
                                  String announce,
-                                 String downloadDirPath,
+                                 PieceStorage pieceStorage,
                                  String dotTorrentFilePath,
                                  boolean isSeeded,
                                  boolean isLeeched) {
@@ -47,7 +49,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
     }
     this.announce = announce;
     this.dotTorrentFilePath = dotTorrentFilePath;
-    this.downloadDirPath = downloadDirPath;
+    this.pieceStorage = pieceStorage;
     this.isSeeded = isSeeded;
     this.isLeeched = isLeeched;
   }
@@ -63,8 +65,8 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   }
 
   @Override
-  public String getDownloadDirPath() {
-    return downloadDirPath;
+  public PieceStorage getDownloadDirPath() {
+    return pieceStorage;
   }
 
   @Override
@@ -78,6 +80,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   }
 
   @Override
+  @NotNull
   public AnnounceableInformation createAnnounceableInformation() {
     return new AnnounceableInformationImpl(
             torrentStatistic.getUploadedBytes(),
@@ -97,7 +100,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   @Override
   public String toString() {
     return "AnnounceableTorrentImpl{" +
-            "download directory='" + downloadDirPath + '\'' +
+            "piece storage='" + pieceStorage + '\'' +
             ", dot torrent file='" + dotTorrentFilePath + '\'' +
             '}';
   }

@@ -1,15 +1,17 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.TorrentStatistic;
+import org.jetbrains.annotations.NotNull;
 
 public interface LoadedTorrent {
 
   /**
    * @return path to torrent root directory which contains files from torrent and is used for files downloading
    */
-  String getDownloadDirPath();
+  PieceStorage getDownloadDirPath();
 
   /**
    * @return path to .torrent file
@@ -19,7 +21,7 @@ public interface LoadedTorrent {
   /**
    * @return new instance of {@link AnnounceableInformation} for announce this torrent to the tracker
    */
-  AnnounceableInformation createAnnounceableInformation();
+  @NotNull AnnounceableInformation createAnnounceableInformation();
 
   /**
    * @return true if it's fully seeder

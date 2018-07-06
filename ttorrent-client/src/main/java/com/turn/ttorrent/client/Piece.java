@@ -16,6 +16,7 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.TorrentUtils;
@@ -52,7 +53,7 @@ public class Piece implements Comparable<Piece> {
   private static final Logger logger =
           TorrentLoggerFactory.getLogger();
 
-  private final TorrentByteStorage bucket;
+  private final PieceStorage pieceStorage;
   private final int index;
   private final long offset;
   private final long length;
@@ -69,7 +70,7 @@ public class Piece implements Comparable<Piece> {
   /**
    * Initialize a new piece in the byte bucket.
    *
-   * @param bucket  The underlying byte storage bucket.
+   * @param pieceStorage  The underlying piece storage bucket.
    * @param index   This piece index in the torrent.
    * @param offset  This piece offset, in bytes, in the storage.
    * @param length  This piece length, in bytes.
@@ -77,9 +78,9 @@ public class Piece implements Comparable<Piece> {
    * @param seeder  Whether we're seeding this torrent or not (disables piece
    * @param leecher
    */
-  public Piece(TorrentByteStorage bucket, int index, long offset,
+  public Piece(PieceStorage pieceStorage, int index, long offset,
                long length, byte[] hash, boolean seeder, boolean leecher) {
-    this.bucket = bucket;
+    this.pieceStorage = pieceStorage;
     this.index = index;
     this.offset = offset;
     this.length = length;
@@ -146,6 +147,10 @@ public class Piece implements Comparable<Piece> {
     this.seen--;
   }
 
+  void setValid(boolean valid) {
+    this.valid = valid;
+  }
+
   /**
    * Validates this piece.
    *
@@ -164,16 +169,8 @@ public class Piece implements Comparable<Piece> {
 
     // TODO: remove cast to int when large ByteBuffer support is
     // implemented in Java.
-    ByteBuffer buffer = null;
-    if (myDownloadedPieceData != null) {
-      buffer = myDownloadedPieceData.get();
-    }
-    if (buffer == null) {
-      buffer = ByteBuffer.allocate((int) this.length);
-      this._read(0, this.length, buffer);
-    }
-    byte[] data = buffer.array();
-    final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(data);
+    byte[] pieceBytes = data.array();
+    final byte[] calculatedHash = TorrentUtils.calculateSha1Hash(pieceBytes);
     this.valid = Arrays.equals(calculatedHash, this.hash);
     logger.trace("validating result of piece {} is {}", this.index, this.valid);
 
@@ -207,9 +204,10 @@ public class Piece implements Comparable<Piece> {
     // TODO: remove cast to int when large ByteBuffer support is
     // implemented in Java.
     int position = buffer.position();
-    int bytes = this.bucket.read(buffer, this.offset + offset);
+    byte[] bytes = this.pieceStorage.readPiecePart(this.index, (int)offset, (int)length);
+    buffer.put(bytes);
     buffer.rewind();
-    buffer.limit((bytes >= 0 ? bytes : 0) + position);
+    buffer.limit(bytes.length + position);
     return buffer;
   }
 
@@ -271,7 +269,7 @@ public class Piece implements Comparable<Piece> {
     this.data.rewind();
     logger.trace("Recording {}...", this);
     try {
-      this.bucket.write(this.data, this.offset);
+      pieceStorage.savePiece(index, this.data.array());
     } finally {
       myDownloadedPieceData = new WeakReference<ByteBuffer>(this.data);
       this.data = null;

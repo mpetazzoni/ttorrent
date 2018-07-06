@@ -22,6 +22,7 @@ import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.PieceStorageImpl;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -150,7 +151,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
             torrent.getInfoHash(),
             torrent.getAnnounceList(),
             torrent.getAnnounce(),
-            downloadDirPath,
+            PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, torrent),
             dotTorrentFilePath,
             seeder,
             leecher);
@@ -232,22 +233,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    */
   public Collection<SharedTorrent> getTorrents() {
     return this.torrentsStorage.activeTorrents();
-  }
-
-  @SuppressWarnings("unused")
-  public SharedTorrent getTorrentByFilePath(File file) {
-    String path = file.getAbsolutePath();
-    for (SharedTorrent torrent : torrentsStorage.activeTorrents()) {
-      File parentFile = torrent.getParentFile();
-      final List<String> filenames = TorrentUtils.getTorrentFileNames(torrent);
-      for (String filename : filenames) {
-        File seededFile = new File(parentFile, filename);
-        if (seededFile.getAbsolutePath().equals(path)) {
-          return torrent;
-        }
-      }
-    }
-    return null;
   }
 
   @SuppressWarnings("unused")
@@ -541,7 +526,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       Thread.sleep(100);
     }
 
-    if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
+    if (!torrent.isFinished()) {
       removeAndDeleteTorrent(hash, torrent);
 
       final List<SharingPeer> peersForTorrent = getPeersForTorrent(hash);
@@ -790,6 +775,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       synchronized (piece) {
         piece.validate(torrent, piece);
         if (piece.isValid()) {
+          piece.finish();
           // Send a HAVE message to all connected peers, which don't have the piece
           PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
           for (SharingPeer remote : getConnectedPeers()) {
@@ -833,9 +819,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
           if (isTorrentComplete) {
 
-            AnnounceableInformation announceableInformation = torrentsStorage.getAnnounceableTorrent(torrentHash).createAnnounceableInformation();
+            LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
 
-            if (announceableInformation == null) return;
+            if (announceableTorrent == null) return;
+
+            AnnounceableInformation announceableInformation = announceableTorrent.createAnnounceableInformation();
+
 
             try {
               announce.getCurrentTrackerClient(announceableInformation)

@@ -1,5 +1,8 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentParser;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -25,10 +28,12 @@ public class TorrentLoaderImpl implements TorrentLoader {
     }
 
     final File dotTorrentFile = new File(loadedTorrent.getDotTorrentFilePath());
-    final File downloadDir = new File(loadedTorrent.getDownloadDirPath());
+    TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(dotTorrentFile);
 
-    final SharedTorrent sharedTorrent = SharedTorrent.fromFile(dotTorrentFile, downloadDir, false,
-            loadedTorrent.isSeeded(), loadedTorrent.isLeeched(), loadedTorrent.getTorrentStatistic());
+    final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getDownloadDirPath(),
+            false, loadedTorrent.isSeeded(), loadedTorrent.isLeeched(),
+            new RequestStrategyImplAnyInteresting(),
+            loadedTorrent.getTorrentStatistic());
 
     old = myTorrentsStorage.putIfAbsentActiveTorrent(hexInfoHash, sharedTorrent);
     if (old != null) {

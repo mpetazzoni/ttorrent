@@ -6,6 +6,7 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
+import com.turn.ttorrent.client.storage.PieceStorageImpl;
 import com.turn.ttorrent.common.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
@@ -384,12 +385,16 @@ public class TrackerTest {
   private SharedTorrent completeTorrent(String name) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    return SharedTorrent.fromFile(torrentFile, parentFiles, false, false, new TorrentStatistic());
+    return SharedTorrent.fromFile(torrentFile,
+            PieceStorageImpl.createFromDirectoryAndMetadata(parentFiles.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
+            false, false, new TorrentStatistic());
   }
 
   private SharedTorrent incompleteTorrent(String name, File destDir) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
-      return SharedTorrent.fromFile(torrentFile, destDir, false, false, new TorrentStatistic());
+      return SharedTorrent.fromFile(torrentFile,
+              PieceStorageImpl.createFromDirectoryAndMetadata(destDir.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
+              false, false, new TorrentStatistic());
   }
 
   private void waitForSeeder(final byte[] torrentHash) {

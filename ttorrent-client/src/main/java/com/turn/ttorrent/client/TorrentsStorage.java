@@ -48,7 +48,7 @@ public class TorrentsStorage {
       if (torrent == null) return;
 
       final ClientState clientState = torrent.getClientState();
-      boolean isTorrentFinished = clientState == ClientState.SEEDING || torrent.isSeeder();
+      boolean isTorrentFinished = torrent.isFinished();
       if (torrent.getDownloadersCount() == 0 && isTorrentFinished) {
         myActiveTorrents.remove(torrentHash);
       } else {
