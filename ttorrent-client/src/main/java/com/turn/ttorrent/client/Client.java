@@ -38,10 +38,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -145,6 +142,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
   String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException {
     TorrentMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
+    CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
             torrent.getHexInfoHash(),
@@ -154,7 +152,8 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
             PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, torrent),
             dotTorrentFilePath,
             seeder,
-            leecher);
+            leecher,
+            new EventDispatcher(listeners));
     this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
 
     if (seeder) {

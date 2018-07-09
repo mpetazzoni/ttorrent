@@ -21,7 +21,8 @@ public interface LoadedTorrent {
   /**
    * @return new instance of {@link AnnounceableInformation} for announce this torrent to the tracker
    */
-  @NotNull AnnounceableInformation createAnnounceableInformation();
+  @NotNull
+  AnnounceableInformation createAnnounceableInformation();
 
   /**
    * @return true if it's fully seeder
@@ -42,5 +43,10 @@ public interface LoadedTorrent {
    * @return hash of this torrent
    */
   TorrentHash getTorrentHash();
+
+  /**
+   * @return related {@link EventDispatcher}
+   */
+  EventDispatcher getEventDispatcher();
 
 }

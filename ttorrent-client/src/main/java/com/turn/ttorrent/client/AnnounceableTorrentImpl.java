@@ -20,6 +20,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   private final String dotTorrentFilePath;
   private final boolean isSeeded;
   private final boolean isLeeched;
+  private final EventDispatcher eventDispatcher;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
                                  final String hexInfoHash,
@@ -29,8 +30,10 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
                                  PieceStorage pieceStorage,
                                  String dotTorrentFilePath,
                                  boolean isSeeded,
-                                 boolean isLeeched) {
+                                 boolean isLeeched,
+                                 EventDispatcher eventDispatcher) {
     this.torrentStatistic = torrentStatistic;
+    this.eventDispatcher = eventDispatcher;
     torrentHash = new TorrentHash() {
       @Override
       public byte[] getInfoHash() {
@@ -95,6 +98,11 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   @Override
   public TorrentHash getTorrentHash() {
     return torrentHash;
+  }
+
+  @Override
+  public EventDispatcher getEventDispatcher() {
+    return eventDispatcher;
   }
 
   @Override
