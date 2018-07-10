@@ -104,7 +104,7 @@ public class HandshakeReceiverTest {
     final SharedTorrent sharedTorrent =
             SharedTorrent.fromFile(torrentFile,
                     PieceStorageImpl.createFromDirectoryAndMetadata(tempFile.getParentFile().getAbsolutePath(), torrent)
-                    , false, true, loadedTorrent.getTorrentStatistic());
+                    , true, loadedTorrent.getTorrentStatistic());
 
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
     when(torrentsLoader.loadTorrent(loadedTorrent)).thenReturn(sharedTorrent);

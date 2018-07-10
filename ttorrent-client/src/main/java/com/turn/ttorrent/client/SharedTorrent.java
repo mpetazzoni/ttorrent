@@ -33,7 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 
@@ -100,23 +99,19 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private volatile ClientState clientState = ClientState.WAITING;
 
-  private boolean multiThreadHash;
-
   private File parentFile;
   private final boolean isLeecher;
   private final boolean isSeeder;
 
   /**
-   * Create a new shared torrent from meta-info binary data.
+   * Create a new shared torrent from meta-info
    *
    * @param torrentMetadata The meta-info
    * @param seeder  Whether we're a seeder for this torrent or not (disables
    *                validation).
-   * @throws IOException              If the torrent file cannot be read or decoded.
    */
-  public SharedTorrent(TorrentMetadata torrentMetadata, PieceStorage pieceStorage, boolean multiThreadHash, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
-                       TorrentStatistic torrentStatistic)
-          throws IOException {
+  public SharedTorrent(TorrentMetadata torrentMetadata, PieceStorage pieceStorage, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
+                       TorrentStatistic torrentStatistic) {
     myTorrentMetadata = torrentMetadata;
     isSeeder = seeder;
     this.pieceStorage = pieceStorage;
@@ -130,8 +125,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     myDownloadListeners = new ArrayList<DownloadProgressListener>();
     this.isLeecher = leecher;
     this.myRequestStrategy = requestStrategy;
-
-    this.multiThreadHash = multiThreadHash;
 
     this.pieceLength = myTorrentMetadata.getPieceLength();
     this.piecesHashes = ByteBuffer.wrap(myTorrentMetadata.getPiecesHashes());
@@ -151,12 +144,12 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     this.requestedPieces = new BitSet();
   }
 
-  public static SharedTorrent fromFile(File source, PieceStorage pieceStorage, boolean multiThreadHash, boolean seeder,
+  public static SharedTorrent fromFile(File source, PieceStorage pieceStorage, boolean seeder,
                                        TorrentStatistic torrentStatistic)
           throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
     TorrentMetadata torrentMetadata = new TorrentParser().parse(data);
-    return new SharedTorrent(torrentMetadata, pieceStorage, multiThreadHash, seeder, false, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
+    return new SharedTorrent(torrentMetadata, pieceStorage, seeder, false, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
   }
 
   public boolean isSeeder() {

@@ -31,7 +31,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
     TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(dotTorrentFile);
 
     final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getPieceStorage(),
-            false, loadedTorrent.isSeeded(), loadedTorrent.isLeeched(),
+            loadedTorrent.isSeeded(), loadedTorrent.isLeeched(),
             new RequestStrategyImplAnyInteresting(),
             loadedTorrent.getTorrentStatistic());
 
