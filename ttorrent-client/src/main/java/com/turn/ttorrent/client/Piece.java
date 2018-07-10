@@ -17,17 +17,13 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.PieceStorage;
-import com.turn.ttorrent.client.storage.TorrentByteStorage;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.TorrentUtils;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.concurrent.Callable;
 
 
 /**
@@ -55,38 +51,26 @@ public class Piece implements Comparable<Piece> {
 
   private final PieceStorage pieceStorage;
   private final int index;
-  private final long offset;
   private final long length;
   private final byte[] hash;
-  private final boolean seeder;
-  private final boolean leecher;
 
   private volatile boolean valid;
   private int seen;
   private ByteBuffer data;
-  @Nullable
-  private WeakReference<ByteBuffer> myDownloadedPieceData;
 
   /**
    * Initialize a new piece in the byte bucket.
    *
    * @param pieceStorage  The underlying piece storage bucket.
    * @param index   This piece index in the torrent.
-   * @param offset  This piece offset, in bytes, in the storage.
    * @param length  This piece length, in bytes.
    * @param hash    This piece 20-byte SHA1 hash sum.
-   * @param seeder  Whether we're seeding this torrent or not (disables piece
-   * @param leecher
    */
-  public Piece(PieceStorage pieceStorage, int index, long offset,
-               long length, byte[] hash, boolean seeder, boolean leecher) {
+  public Piece(PieceStorage pieceStorage, int index, long length, byte[] hash) {
     this.pieceStorage = pieceStorage;
     this.index = index;
-    this.offset = offset;
     this.length = length;
     this.hash = hash;
-    this.seeder = seeder;
-    this.leecher = leecher;
 
     // Piece is considered invalid until first check.
     this.valid = false;
@@ -159,11 +143,6 @@ public class Piece implements Comparable<Piece> {
    * meta-info.
    */
   public synchronized boolean validate(SharedTorrent torrent, Piece piece) throws IOException {
-    if (this.seeder) {
-      logger.trace("Skipping validation of {} (seeder mode).", this);
-      this.valid = true;
-      return true;
-    }
 
     logger.trace("Validating {}...", this);
 
@@ -251,8 +230,7 @@ public class Piece implements Comparable<Piece> {
    * @param block  The ByteBuffer containing the block data.
    * @param offset The block offset in this piece.
    */
-  public synchronized void record(ByteBuffer block, int offset)
-          throws IOException {
+  public synchronized void record(ByteBuffer block, int offset) {
     if (this.data == null) {
       // TODO: remove cast to int when large ByteBuffer support is
       // implemented in Java.
@@ -271,7 +249,6 @@ public class Piece implements Comparable<Piece> {
     try {
       pieceStorage.savePiece(index, this.data.array());
     } finally {
-      myDownloadedPieceData = new WeakReference<ByteBuffer>(this.data);
       this.data = null;
     }
   }
@@ -313,33 +290,4 @@ public class Piece implements Comparable<Piece> {
     }
   }
 
-  /**
-   * A {@link Callable} to call the piece validation function.
-   *
-   * <p>
-   * This {@link Callable} implementation allows for the calling of the piece
-   * validation function in a controlled context like a thread or an
-   * executor. It returns the piece it was created for. Results of the
-   * validation can easily be extracted from the {@link Piece} object after
-   * it is returned.
-   * </p>
-   *
-   * @author mpetazzoni
-   */
-  public static class CallableHasher implements Callable<Piece> {
-
-    private final Piece piece;
-
-    public CallableHasher(Piece piece) {
-      this.piece = piece;
-    }
-
-    @Override
-    public Piece call() throws IOException {
-      if (!this.piece.leecher) {
-        this.piece.validate(null, null);
-      }
-      return this.piece;
-    }
-  }
 }

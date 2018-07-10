@@ -25,16 +25,6 @@ public interface LoadedTorrent {
   AnnounceableInformation createAnnounceableInformation();
 
   /**
-   * @return true if it's fully seeder
-   */
-  boolean isSeeded();
-
-  /**
-   * @return true if and only if it's fully leacher
-   */
-  boolean isLeeched();
-
-  /**
    * @return {@link TorrentStatistic} instance related with this torrent
    */
   TorrentStatistic getTorrentStatistic();

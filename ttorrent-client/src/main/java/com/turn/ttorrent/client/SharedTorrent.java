@@ -71,8 +71,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    */
   private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
 
-  private boolean stop;
-
   private final TorrentStatistic myTorrentStatistic;
 
   private long myLastAnnounceTime = -1;
@@ -99,21 +97,14 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private volatile ClientState clientState = ClientState.WAITING;
 
-  private File parentFile;
-  private final boolean isLeecher;
-  private final boolean isSeeder;
-
   /**
    * Create a new shared torrent from meta-info
    *
    * @param torrentMetadata The meta-info
-   * @param seeder  Whether we're a seeder for this torrent or not (disables
-   *                validation).
    */
-  public SharedTorrent(TorrentMetadata torrentMetadata, PieceStorage pieceStorage, boolean seeder, boolean leecher, RequestStrategy requestStrategy,
+  public SharedTorrent(TorrentMetadata torrentMetadata, PieceStorage pieceStorage, RequestStrategy requestStrategy,
                        TorrentStatistic torrentStatistic) {
     myTorrentMetadata = torrentMetadata;
-    isSeeder = seeder;
     this.pieceStorage = pieceStorage;
     myTorrentStatistic = torrentStatistic;
     myValidationFutures = new HashMap<Integer, Future<?>>();
@@ -123,7 +114,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     }
     myTorrentTotalSize = totalSize;
     myDownloadListeners = new ArrayList<DownloadProgressListener>();
-    this.isLeecher = leecher;
     this.myRequestStrategy = requestStrategy;
 
     this.pieceLength = myTorrentMetadata.getPieceLength();
@@ -135,8 +125,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
               "match the number of pieces and the piece size!");
     }
 
-    this.stop = false;
-
     this.initialized = false;
     this.pieces = new Piece[0];
     this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
@@ -144,21 +132,16 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     this.requestedPieces = new BitSet();
   }
 
-  public static SharedTorrent fromFile(File source, PieceStorage pieceStorage, boolean seeder,
-                                       TorrentStatistic torrentStatistic)
+  public static SharedTorrent fromFile(File source, PieceStorage pieceStorage, TorrentStatistic torrentStatistic)
           throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
     TorrentMetadata torrentMetadata = new TorrentParser().parse(data);
-    return new SharedTorrent(torrentMetadata, pieceStorage, seeder, false, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
-  }
-
-  public boolean isSeeder() {
-    return isSeeder;
+    return new SharedTorrent(torrentMetadata, pieceStorage, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
-    logger.trace("Closing file  channel for {} if necessary. Downloaders: {}", getParentFile() + "/" + getDirectoryName(), myDownloaders.size());
     if (isFileChannelOpen && myDownloaders.size() == 0) {
+      logger.debug("Closing file  channel for {} if necessary. Downloaders: {}", getHexInfoHash(), myDownloaders.size());
       this.pieceStorage.close();
       isFileChannelOpen = false;
     }
@@ -217,7 +200,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * Stop the torrent initialization as soon as possible.
    */
   public void stop() {
-    this.stop = true;
   }
 
   /**
@@ -271,8 +253,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
               myTorrentTotalSize - off,
               this.pieceLength);
 
-      Piece piece = new Piece(this.pieceStorage, idx, off, len, hash,
-              this.isSeeder(), isLeecher);
+      Piece piece = new Piece(this.pieceStorage, idx, len, hash
+      );
       this.pieces[idx] = piece;
       piece.setValid(pieceStorage.getAvailablePieces().get(idx));
     }
@@ -323,11 +305,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     return this.pieces[index];
   }
 
-
-  public File getParentFile() {
-    return parentFile;
-  }
-
   /**
    * Return a copy of the bit field of available pieces for this torrent.
    * <p/>
@@ -368,19 +345,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   }
 
   /**
-   * Return a copy of the requested pieces bitset.
-   */
-  public BitSet getRequestedPieces() {
-    if (!this.isInitialized()) {
-      throw new IllegalStateException("Torrent not yet initialized!");
-    }
-
-    synchronized (this.requestedPieces) {
-      return (BitSet) this.requestedPieces.clone();
-    }
-  }
-
-  /**
    * Tells whether this torrent has been fully downloaded, or is fully
    * available locally.
    */
@@ -401,7 +365,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    *
    * @see TorrentByteStorage#finish
    */
-  public synchronized void finish() throws IOException {
+  public synchronized void finish() {
     if (!this.isInitialized()) {
       throw new IllegalStateException("Torrent not yet initialized!");
     }
@@ -500,7 +464,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   public synchronized void handlePeerReady(SharingPeer peer) {
     initIfNecessary(peer);
     boolean endGameMode = false;
-    int requestedPiecesCount = 0;
     final BitSet interesting = peer.getAvailablePieces();
     interesting.andNot(this.completedPieces);
     interesting.andNot(this.requestedPieces);

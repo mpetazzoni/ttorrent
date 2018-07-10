@@ -18,8 +18,6 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   private final String announce;
   private final PieceStorage pieceStorage;
   private final String dotTorrentFilePath;
-  private final boolean isSeeded;
-  private final boolean isLeeched;
   private final EventDispatcher eventDispatcher;
 
   public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
@@ -29,8 +27,6 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
                                  String announce,
                                  PieceStorage pieceStorage,
                                  String dotTorrentFilePath,
-                                 boolean isSeeded,
-                                 boolean isLeeched,
                                  EventDispatcher eventDispatcher) {
     this.torrentStatistic = torrentStatistic;
     this.eventDispatcher = eventDispatcher;
@@ -53,18 +49,6 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
     this.announce = announce;
     this.dotTorrentFilePath = dotTorrentFilePath;
     this.pieceStorage = pieceStorage;
-    this.isSeeded = isSeeded;
-    this.isLeeched = isLeeched;
-  }
-
-  @Override
-  public boolean isLeeched() {
-    return isLeeched;
-  }
-
-  @Override
-  public boolean isSeeded() {
-    return isSeeded;
   }
 
   @Override

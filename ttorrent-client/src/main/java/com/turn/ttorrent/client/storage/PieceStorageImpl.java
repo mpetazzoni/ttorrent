@@ -174,6 +174,16 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   @Override
+  public boolean isFinished() {
+    try {
+      readWriteLock.readLock().lock();
+      return availablePieces == null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
   public BitSet getAvailablePieces() {
     try {
       readWriteLock.readLock().lock();

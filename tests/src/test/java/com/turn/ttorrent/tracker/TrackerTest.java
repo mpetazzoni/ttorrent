@@ -387,14 +387,14 @@ public class TrackerTest {
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
     return SharedTorrent.fromFile(torrentFile,
             PieceStorageImpl.createFromDirectoryAndMetadata(parentFiles.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
-            false, new TorrentStatistic());
+            new TorrentStatistic());
   }
 
   private SharedTorrent incompleteTorrent(String name, File destDir) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
       return SharedTorrent.fromFile(torrentFile,
               PieceStorageImpl.createFromDirectoryAndMetadata(destDir.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
-              false, new TorrentStatistic());
+              new TorrentStatistic());
   }
 
   private void waitForSeeder(final byte[] torrentHash) {

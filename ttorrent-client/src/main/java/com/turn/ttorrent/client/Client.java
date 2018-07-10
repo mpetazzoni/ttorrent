@@ -125,7 +125,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
+    return addTorrent(dotTorrentFilePath, downloadDirPath, false);
   }
 
   /**
@@ -137,10 +137,10 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, true, false);
+    return addTorrent(dotTorrentFilePath, downloadDirPath, true);
   }
 
-  String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException {
+  String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException {
     TorrentMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
     final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
@@ -151,8 +151,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
             torrent.getAnnounce(),
             PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, torrent),
             dotTorrentFilePath,
-            seeder,
-            leecher,
             new EventDispatcher(listeners));
     this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
 
@@ -494,7 +492,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs,
                                       DownloadProgressListener listener) throws IOException, InterruptedException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
+    String hash = addTorrent(dotTorrentPath, downloadDirPath, false);
 
     final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
     if (announceableTorrent == null)
@@ -668,7 +666,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       return;
     }
 
-    if (announceableTorrent.isSeeded()) return;
+    if (announceableTorrent.getPieceStorage().isFinished()) return;
 
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});

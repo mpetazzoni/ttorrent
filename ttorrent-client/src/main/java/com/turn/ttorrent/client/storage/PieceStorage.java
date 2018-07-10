@@ -12,6 +12,8 @@ public interface PieceStorage extends Closeable {
 
   BitSet getAvailablePieces();
 
+  boolean isFinished();
+
   void delete() throws IOException;
 
 }
