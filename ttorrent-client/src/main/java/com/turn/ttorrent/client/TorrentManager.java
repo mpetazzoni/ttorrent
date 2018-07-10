@@ -1,6 +1,8 @@
 package com.turn.ttorrent.client;
 
-public interface TorrentListeners {
+import com.turn.ttorrent.common.TorrentHash;
+
+public interface TorrentManager extends TorrentHash {
 
   /**
    * add specified listener which will be notified on new events
@@ -10,19 +12,12 @@ public interface TorrentListeners {
   void addListener(TorrentListener listener);
 
   /**
-   * remove specified listener which was added earlier by {@link TorrentListeners#addListener} method.
+   * remove specified listener which was added earlier by {@link TorrentManager#addListener} method.
    * You can receive events in this listener after execution of the method if notify method was invoked before this method
    *
    * @param listener specified listener
    * @return true if listeners was removed otherwise false (e.g. listener was not found in storage
    */
   boolean removeListener(TorrentListener listener);
-
-  /**
-   * Remove the torrent from client.
-   * So after invocation of current method all existing connection will be closed, "stop" announce message will be sent to the trackers
-   * and {@link TorrentListener#downloadCancelled()} method will be invoked
-   */
-  void cancel();
 
 }
