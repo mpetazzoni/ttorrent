@@ -120,9 +120,11 @@ public class HandshakeReceiverTest {
             anyInt(),
             any(ByteBuffer.class),
             any(SharedTorrent.class),
-            any(ByteChannel.class)))
+            any(ByteChannel.class),
+            any(String.class),
+            anyInt()))
             .thenReturn(new SharingPeer("127.0.0.1", 6881, ByteBuffer.wrap(peerId), sharedTorrent, null,
-                    mock(PeerActivityListener.class), server) {
+                    mock(PeerActivityListener.class), server, "TO", 1234) {
               @Override
               public void onConnectionEstablished() {
                 onConnectionEstablishedInvoker.set(true);

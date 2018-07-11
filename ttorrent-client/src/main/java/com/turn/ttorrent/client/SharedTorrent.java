@@ -92,6 +92,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   private BitSet completedPieces;
   private final BitSet requestedPieces;
   private final RequestStrategy myRequestStrategy;
+  private final EventDispatcher eventDispatcher;
 
   private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
@@ -101,11 +102,13 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * Create a new shared torrent from meta-info
    *
    * @param torrentMetadata The meta-info
+   * @param eventDispatcher
    */
   public SharedTorrent(TorrentMetadata torrentMetadata, PieceStorage pieceStorage, RequestStrategy requestStrategy,
-                       TorrentStatistic torrentStatistic) {
+                       TorrentStatistic torrentStatistic, EventDispatcher eventDispatcher) {
     myTorrentMetadata = torrentMetadata;
     this.pieceStorage = pieceStorage;
+    this.eventDispatcher = eventDispatcher;
     myTorrentStatistic = torrentStatistic;
     myValidationFutures = new HashMap<Integer, Future<?>>();
     long totalSize = 0;
@@ -136,7 +139,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
           throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
     TorrentMetadata torrentMetadata = new TorrentParser().parse(data);
-    return new SharedTorrent(torrentMetadata, pieceStorage, DEFAULT_REQUEST_STRATEGY, torrentStatistic);
+    return new SharedTorrent(torrentMetadata, pieceStorage, DEFAULT_REQUEST_STRATEGY, torrentStatistic, new EventDispatcher(new ArrayList<TorrentListener>()));
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
@@ -374,6 +377,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       throw new IllegalStateException("Torrent download is not complete!");
     }
 
+    eventDispatcher.notifyDownloadComplete();
     setClientState(ClientState.SEEDING);
   }
 
@@ -669,6 +673,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     for (DownloadProgressListener listener : myDownloadListeners) {
       listener.pieceLoaded(piece.getIndex(), (int) piece.size());
     }
+    eventDispatcher.notifyPieceDownloaded(piece, peer);
 
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
             new Object[]{
@@ -726,11 +731,14 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
                     this.requestedPieces.cardinality(),
                     this.requestedPieces
             });
+    eventDispatcher.notifyPeerDisconnected(peer);
   }
 
   @Override
   public synchronized void handleIOException(SharingPeer peer,
-                                             IOException ioe) { /* Do nothing */ }
+                                             IOException ioe) {
+    eventDispatcher.notifyDownloadFailed(ioe);
+  }
 
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer) {
@@ -738,6 +746,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     if (clientState != ClientState.ERROR) {
       myDownloaders.add(peer);
     }
+    eventDispatcher.notifyPeerConnected(peer);
   }
 
   @Override

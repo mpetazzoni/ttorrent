@@ -616,8 +616,14 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   }
 
   @Override
-  public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
-    return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel);
+  public SharingPeer createSharingPeer(String host,
+                                       int port,
+                                       ByteBuffer peerId,
+                                       SharedTorrent torrent,
+                                       ByteChannel channel,
+                                       String clientIdentifier,
+                                       int clientVersion) {
+    return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel, clientIdentifier, clientVersion);
   }
 
   @Override

@@ -44,7 +44,7 @@ import java.util.Arrays;
  *
  * @author mpetazzoni
  */
-public class Piece implements Comparable<Piece> {
+public class Piece implements Comparable<Piece>, PieceInformation {
 
   private static final Logger logger =
           TorrentLoggerFactory.getLogger();
@@ -79,6 +79,11 @@ public class Piece implements Comparable<Piece> {
     this.seen = 0;
 
     this.data = null;
+  }
+
+  @Override
+  public int getSize() {
+    return (int)length;
   }
 
   /**

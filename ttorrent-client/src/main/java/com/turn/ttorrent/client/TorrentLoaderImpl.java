@@ -32,7 +32,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
 
     final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getPieceStorage(),
             new RequestStrategyImplAnyInteresting(),
-            loadedTorrent.getTorrentStatistic());
+            loadedTorrent.getTorrentStatistic(), loadedTorrent.getEventDispatcher());
 
     old = myTorrentsStorage.putIfAbsentActiveTorrent(hexInfoHash, sharedTorrent);
     if (old != null) {

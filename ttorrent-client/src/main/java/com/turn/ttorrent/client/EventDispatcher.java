@@ -21,4 +21,23 @@ public class EventDispatcher {
       listener.peerDisconnected(peerInformation);
     }
   }
+
+  void notifyPieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
+    for (TorrentListener listener : listeners) {
+      listener.pieceDownloaded(pieceInformation, peerInformation);
+    }
+  }
+
+  void notifyDownloadComplete() {
+    for (TorrentListener listener : listeners) {
+      listener.downloadComplete();
+    }
+  }
+
+  void notifyDownloadFailed(Throwable cause) {
+    for (TorrentListener listener : listeners) {
+      listener.downloadFailed(cause);
+    }
+  }
+
 }

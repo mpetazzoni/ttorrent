@@ -54,7 +54,7 @@ public class PeersStorageTest {
             mock(SharedTorrent.class),
             null,
             mock(PeerActivityListener.class),
-            mock(ByteChannel.class));
+            mock(ByteChannel.class), "TO", 1234);
   }
 
   public void getAndRemoveSharingPeersTest() {

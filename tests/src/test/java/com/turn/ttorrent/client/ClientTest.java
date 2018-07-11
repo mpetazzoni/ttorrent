@@ -79,8 +79,8 @@ public class ClientTest {
     Client seeder = new Client(workerES, validatorES) {
 
       @Override
-      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
-        return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel) {
+      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel, String clientIdentifier, int clientVersion) {
+        return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel, "TO", 1234) {
           @Override
           public synchronized void handleMessage(PeerMessage msg) {
             if (msg instanceof PeerMessage.HaveMessage) {
@@ -259,8 +259,8 @@ public class ClientTest {
         }
 
         @Override
-        public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
-          return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel) {
+        public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel, String clientIdentifier, int clientVersion) {
+          return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel, "TO", 1234) {
             @Override
             public void send(PeerMessage message) throws IllegalStateException {
               if (message instanceof PeerMessage.PieceMessage) {

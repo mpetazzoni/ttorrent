@@ -19,8 +19,8 @@ public interface TorrentListener {
   /**
    * Invoked when piece is downloaded and validated
    *
-   * @param pieceInformation
-   * @param peerInformation
+   * @param pieceInformation specified information about piece
+   * @param peerInformation  specified information about peer
    */
   void pieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation);
 
