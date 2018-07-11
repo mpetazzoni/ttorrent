@@ -1,12 +1,12 @@
 package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.storage.PieceStorage;
-import com.turn.ttorrent.common.AnnounceableInformation;
-import com.turn.ttorrent.common.TorrentHash;
-import com.turn.ttorrent.common.TorrentStatistic;
+import com.turn.ttorrent.common.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -57,8 +57,12 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   }
 
   @Override
-  public String getDotTorrentFilePath() {
-    return dotTorrentFilePath;
+  public TorrentMetadata getMetadata() {
+    try {
+      return new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
+    } catch (IOException e) {
+      throw new IllegalStateException("Unable to fetch torrent metadata from file " + dotTorrentFilePath, e);
+    }
   }
 
   @Override

@@ -164,17 +164,16 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       announceableTorrent.getTorrentStatistic().setLeft(size);
     }
 
-    forceAnnounceAndLogError(announceableTorrent.createAnnounceableInformation(), seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", torrent, torrent.getHexInfoHash()));
     return torrent.getHexInfoHash();
   }
 
-  private void forceAnnounceAndLogError(AnnounceableInformation torrent, AnnounceRequestMessage.RequestEvent event,
-                                        String dotTorrentFilePath) {
+  private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
     try {
-      this.announce.forceAnnounce(torrent, this, event);
+      this.announce.forceAnnounce(torrent.createAnnounceableInformation(), this, event);
     } catch (IOException e) {
-      logger.warn("unable to force announce torrent {}. Dot torrent path is {}", torrent.getHexInfoHash(), dotTorrentFilePath);
+      logger.warn("unable to force announce torrent {}", torrent);
       logger.debug("", e);
     }
   }
@@ -213,7 +212,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
       return;
     }
-    forceAnnounceAndLogError(loadedTorrent.createAnnounceableInformation(), STOPPED, loadedTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(loadedTorrent, STOPPED);
   }
 
   /**

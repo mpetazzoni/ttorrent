@@ -3,6 +3,7 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.TorrentHash;
+import com.turn.ttorrent.common.TorrentMetadata;
 import com.turn.ttorrent.common.TorrentStatistic;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,7 +17,7 @@ public interface LoadedTorrent {
   /**
    * @return path to .torrent file
    */
-  String getDotTorrentFilePath();
+  TorrentMetadata getMetadata();
 
   /**
    * @return new instance of {@link AnnounceableInformation} for announce this torrent to the tracker

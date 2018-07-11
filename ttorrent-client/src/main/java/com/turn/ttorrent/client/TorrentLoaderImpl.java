@@ -27,8 +27,7 @@ public class TorrentLoaderImpl implements TorrentLoader {
       return old;
     }
 
-    final File dotTorrentFile = new File(loadedTorrent.getDotTorrentFilePath());
-    TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(dotTorrentFile);
+    TorrentMetadata torrentMetadata = loadedTorrent.getMetadata();
 
     final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getPieceStorage(),
             new RequestStrategyImplAnyInteresting(),
