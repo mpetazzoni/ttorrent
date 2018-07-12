@@ -3,9 +3,7 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.*;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -17,37 +15,24 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   private final List<List<String>> announceUrls;
   private final String announce;
   private final PieceStorage pieceStorage;
-  private final String dotTorrentFilePath;
+  private final TorrentMetadataProvider metadataProvider;
   private final EventDispatcher eventDispatcher;
 
-  public AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
-                                 final String hexInfoHash,
-                                 final byte[] infoHash,
-                                 @Nullable List<List<String>> announceUrls,
-                                 String announce,
-                                 PieceStorage pieceStorage,
-                                 String dotTorrentFilePath,
-                                 EventDispatcher eventDispatcher) {
+  AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
+                          TorrentMetadataProvider metadataProvider,
+                          PieceStorage pieceStorage,
+                          EventDispatcher eventDispatcher) throws IOException {
     this.torrentStatistic = torrentStatistic;
+    this.metadataProvider = metadataProvider;
+    final TorrentMetadata torrentMetadata = metadataProvider.getTorrentMetadata();
     this.eventDispatcher = eventDispatcher;
-    torrentHash = new TorrentHash() {
-      @Override
-      public byte[] getInfoHash() {
-        return infoHash;
-      }
-
-      @Override
-      public String getHexInfoHash() {
-        return hexInfoHash;
-      }
-    };
-    if (announceUrls != null) {
-      this.announceUrls = Collections.unmodifiableList(announceUrls);
+    torrentHash = new ImmutableTorrentHash(torrentMetadata.getInfoHash());
+    if (torrentMetadata.getAnnounceList() != null) {
+      this.announceUrls = Collections.unmodifiableList(torrentMetadata.getAnnounceList());
     } else {
-      this.announceUrls = Collections.singletonList(Collections.singletonList(announce));
+      this.announceUrls = Collections.singletonList(Collections.singletonList(torrentMetadata.getAnnounce()));
     }
-    this.announce = announce;
-    this.dotTorrentFilePath = dotTorrentFilePath;
+    this.announce = torrentMetadata.getAnnounce();
     this.pieceStorage = pieceStorage;
   }
 
@@ -59,9 +44,9 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   @Override
   public TorrentMetadata getMetadata() {
     try {
-      return new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
+      return metadataProvider.getTorrentMetadata();
     } catch (IOException e) {
-      throw new IllegalStateException("Unable to fetch torrent metadata from file " + dotTorrentFilePath, e);
+      throw new IllegalStateException("Unable to fetch torrent metadata from metadata provider: " + metadataProvider, e);
     }
   }
 
@@ -97,7 +82,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   public String toString() {
     return "AnnounceableTorrentImpl{" +
             "piece storage='" + pieceStorage + '\'' +
-            ", dot torrent file='" + dotTorrentFilePath + '\'' +
+            ", metadata provider='" + metadataProvider + '\'' +
             '}';
   }
 }

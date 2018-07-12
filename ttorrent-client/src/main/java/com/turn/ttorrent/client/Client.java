@@ -29,7 +29,6 @@ import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.network.*;
 import org.slf4j.Logger;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -141,32 +140,28 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   }
 
   String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException {
-    TorrentMetadata torrent = new TorrentParser().parseFromFile(new File(dotTorrentFilePath));
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
-    final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
+    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
+    final AnnounceableTorrentImpl loadedTorrent = new AnnounceableTorrentImpl(
             new TorrentStatistic(),
-            torrent.getHexInfoHash(),
-            torrent.getInfoHash(),
-            torrent.getAnnounceList(),
-            torrent.getAnnounce(),
-            PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, torrent),
-            dotTorrentFilePath,
+            metadataProvider,
+            PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata()),
             new EventDispatcher(listeners));
-    this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
+    this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
 
     if (seeder) {
-      announceableTorrent.getTorrentStatistic().setLeft(0);
+      loadedTorrent.getTorrentStatistic().setLeft(0);
     } else {
       long size = 0;
-      for (TorrentFile torrentFile : torrent.getFiles()) {
+      for (TorrentFile torrentFile : loadedTorrent.getMetadata().getFiles()) {
         size += torrentFile.size;
       }
-      announceableTorrent.getTorrentStatistic().setLeft(size);
+      loadedTorrent.getTorrentStatistic().setLeft(size);
     }
 
-    forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED);
-    logger.debug(String.format("Added torrent %s (%s)", torrent, torrent.getHexInfoHash()));
-    return torrent.getHexInfoHash();
+    forceAnnounceAndLogError(loadedTorrent, seeder ? COMPLETED : STARTED);
+    logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
+    return loadedTorrent.getTorrentHash().getHexInfoHash();
   }
 
   private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
