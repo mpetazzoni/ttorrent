@@ -22,6 +22,7 @@ import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.client.storage.PieceStorageImpl;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
@@ -124,7 +125,9 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, false);
+    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
+    PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
+    return addTorrent(metadataProvider, pieceStorage);
   }
 
   /**
@@ -136,20 +139,21 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, true);
+    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
+    PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
+    return addTorrent(metadataProvider, pieceStorage);
   }
 
-  String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException {
+  String addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
-    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
             metadataProvider,
-            PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata()),
+            pieceStorage,
             new EventDispatcher(listeners));
     this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
 
-    if (seeder) {
+    if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
     } else {
       long size = 0;
@@ -159,7 +163,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       loadedTorrent.getTorrentStatistic().setLeft(size);
     }
 
-    forceAnnounceAndLogError(loadedTorrent, seeder ? COMPLETED : STARTED);
+    forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
     return loadedTorrent.getTorrentHash().getHexInfoHash();
   }
@@ -486,7 +490,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
                                       final AtomicBoolean isInterrupted,
                                       final long maxTimeForConnectMs,
                                       DownloadProgressListener listener) throws IOException, InterruptedException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath, false);
+    String hash = addTorrent(dotTorrentPath, downloadDirPath);
 
     final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
     if (announceableTorrent == null)
