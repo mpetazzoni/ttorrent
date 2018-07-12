@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-public class AnnounceableTorrentImpl implements LoadedTorrent {
+public class LoadedTorrentImpl implements LoadedTorrent {
 
   private final TorrentStatistic torrentStatistic;
   private final TorrentHash torrentHash;
@@ -18,10 +18,10 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
   private final TorrentMetadataProvider metadataProvider;
   private final EventDispatcher eventDispatcher;
 
-  AnnounceableTorrentImpl(TorrentStatistic torrentStatistic,
-                          TorrentMetadataProvider metadataProvider,
-                          PieceStorage pieceStorage,
-                          EventDispatcher eventDispatcher) throws IOException {
+  LoadedTorrentImpl(TorrentStatistic torrentStatistic,
+                    TorrentMetadataProvider metadataProvider,
+                    PieceStorage pieceStorage,
+                    EventDispatcher eventDispatcher) throws IOException {
     this.torrentStatistic = torrentStatistic;
     this.metadataProvider = metadataProvider;
     final TorrentMetadata torrentMetadata = metadataProvider.getTorrentMetadata();
@@ -80,7 +80,7 @@ public class AnnounceableTorrentImpl implements LoadedTorrent {
 
   @Override
   public String toString() {
-    return "AnnounceableTorrentImpl{" +
+    return "LoadedTorrentImpl{" +
             "piece storage='" + pieceStorage + '\'' +
             ", metadata provider='" + metadataProvider + '\'' +
             '}';

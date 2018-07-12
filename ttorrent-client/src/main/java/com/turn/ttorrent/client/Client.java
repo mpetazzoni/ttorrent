@@ -142,7 +142,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder) throws IOException {
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
     FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
-    final AnnounceableTorrentImpl loadedTorrent = new AnnounceableTorrentImpl(
+    final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
             metadataProvider,
             PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata()),
