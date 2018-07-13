@@ -93,7 +93,7 @@ public class TrackerTest {
     Client seeder = createClient();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    final String hexInfoHash = seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    final String hexInfoHash = seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath()).getHexInfoHash();
     seeder.start(inetAddresses);
     final WaitFor waitFor = new WaitFor(10000) {
       @Override

@@ -124,7 +124,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @return hash of added torrent
    * @throws IOException              if IO error occurs in reading metadata file
    */
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
+  public TorrentManager addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
     FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
     PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
     return addTorrent(metadataProvider, pieceStorage);
@@ -138,13 +138,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @return hash of added torrent
    * @throws IOException              if IO error occurs in reading metadata file
    */
-  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
+  public TorrentManager seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
     FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
     PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
     return addTorrent(metadataProvider, pieceStorage);
   }
 
-  String addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
+  TorrentManager addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
@@ -165,7 +165,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
-    return loadedTorrent.getTorrentHash().getHexInfoHash();
+    return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
   }
 
   private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
@@ -431,120 +431,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   public boolean isSeed(String hexInfoHash) {
     SharedTorrent t = this.torrentsStorage.getTorrent(hexInfoHash);
     return t != null && t.isComplete();
-  }
-
-  /**
-   * Starts downloading of specified torrent. This method blocks until downloading will be finished or some error occurs
-   *
-   * @param dotTorrentPath         path to torrent metadata file
-   * @param downloadDirPath        path to directory where downloaded files are placed
-   * @param downloadTimeoutSeconds timeout in seconds for downloading one piece of data (size of piece depends from the torrent)
-   * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
-   * @throws InterruptedException     if download was interrupted
-   */
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException {
-    downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
-  }
-
-  /**
-   * Starts downloading of specified torrent. This method blocks until downloading will be finished or some error occurs
-   *
-   * @param dotTorrentPath      path to torrent metadata file
-   * @param downloadDirPath     path to directory where downloaded files are placed
-   * @param idleTimeoutSec      timeout in seconds for downloading of one piece of data (size of piece depends from the torrent)
-   * @param minSeedersCount     minimum count of seeders for the torrent. If seeders are not enough IO error will be thrown
-   * @param isInterrupted       atomic boolean instance which can be used for interrupt current download from other thread
-   * @param maxTimeForConnectMs maximum time for set up connections with peers.
-   * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
-   * @throws InterruptedException     if download was interrupted
-   */
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long idleTimeoutSec,
-                                      final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs) throws IOException, InterruptedException {
-    downloadUninterruptibly(dotTorrentPath, downloadDirPath, idleTimeoutSec, minSeedersCount, isInterrupted,
-            maxTimeForConnectMs, new DownloadProgressListener.NopeListener());
-  }
-
-  /**
-   * Starts downloading of specified torrent. This method blocks until downloading will be finished or some error occurs
-   *
-   * @param dotTorrentPath      path to torrent metadata file
-   * @param downloadDirPath     path to directory where downloaded files are placed
-   * @param idleTimeoutSec      timeout in seconds for downloading of one piece of data (size of piece depends from the torrent)
-   * @param minSeedersCount     minimum count of seeders for the torrent. If seeders are not enough IO error will be thrown
-   * @param isInterrupted       atomic boolean instance which can be used for interrupt current download from other thread
-   * @param maxTimeForConnectMs maximum time for set up connections with peers.
-   * @param listener            listener for monitoring download progress
-   * @throws IOException              if IO error occurs in reading metadata file or downloading was failed
-   * @throws InterruptedException     if download was interrupted
-   */
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long idleTimeoutSec,
-                                      final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs,
-                                      DownloadProgressListener listener) throws IOException, InterruptedException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath);
-
-    final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
-    if (announceableTorrent == null)
-      throw new IOException("Unable to download torrent completely - announceable torrent is not found");
-    SharedTorrent torrent = new TorrentLoaderImpl(torrentsStorage).loadTorrent(announceableTorrent);
-
-    long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-    torrent.addDownloadProgressListener(listener);
-    final long startDownloadAt = System.currentTimeMillis();
-    long currentLeft = torrent.getLeft();
-
-    while (torrent.getClientState() != ClientState.SEEDING &&
-            torrent.getClientState() != ClientState.ERROR &&
-            (torrent.getSeedersCount() >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
-            (System.currentTimeMillis() <= maxIdleTime)) {
-      if (torrent.isFinished()) break;
-      if (Thread.currentThread().isInterrupted() || isInterrupted.get())
-        throw new InterruptedException("Download of " + torrent.getDirectoryName() + " was interrupted");
-      if (currentLeft > torrent.getLeft()) {
-        currentLeft = torrent.getLeft();
-        maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-      }
-      if (System.currentTimeMillis() - startDownloadAt > maxTimeForConnectMs) {
-        if (getPeersForTorrent(torrent.getHexInfoHash()).size() < minSeedersCount) {
-          break;
-        }
-      }
-      Thread.sleep(100);
-    }
-
-    if (!torrent.isFinished()) {
-      removeAndDeleteTorrent(hash, torrent);
-
-      final List<SharingPeer> peersForTorrent = getPeersForTorrent(hash);
-      int connectedPeersForTorrent = peersForTorrent.size();
-      for (SharingPeer peer : peersForTorrent) {
-        peer.unbind(true);
-      }
-
-      final String errorMsg;
-      if (System.currentTimeMillis() > maxIdleTime) {
-        int completedPieces = torrent.getCompletedPieces().cardinality();
-        int totalPieces = torrent.getPieceCount();
-        errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
-                , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
-      } else if (connectedPeersForTorrent < minSeedersCount) {
-        errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, connectedPeersForTorrent);
-      } else if (torrent.getClientState() == ClientState.ERROR) {
-        errorMsg = "Torrent state is ERROR";
-      } else {
-        errorMsg = "Unknown error";
-      }
-      throw new IOException("Unable to download torrent completely - " + errorMsg);
-    }
   }
 
   public List<SharingPeer> getPeersForTorrent(String torrentHash) {

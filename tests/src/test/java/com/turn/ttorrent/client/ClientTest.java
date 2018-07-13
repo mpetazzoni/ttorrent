@@ -115,8 +115,26 @@ public class ClientTest {
 
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
-    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    waitDownloadComplete(torrentManager, 15);
     assertFalse(isSeederReceivedHaveMessage.get());
+  }
+
+  private void waitDownloadComplete(TorrentManager torrentManager, int timeoutSec) throws InterruptedException {
+    final Semaphore semaphore = new Semaphore(0);
+    TorrentListenerWrapper listener = new TorrentListenerWrapper() {
+      @Override
+      public void downloadComplete() {
+        semaphore.release();
+      }
+    };
+    try {
+      torrentManager.addListener(listener);
+      boolean res = semaphore.tryAcquire(timeoutSec, TimeUnit.SECONDS);
+      if (!res) throw new RuntimeException("Unable to download file in " + timeoutSec + " seconds");
+    } finally {
+      torrentManager.removeListener(listener);
+    }
   }
 
   private void waitForSeederIsAnnounsedOnTracker(final String hexInfoHash) {
@@ -291,10 +309,8 @@ public class ClientTest {
     final File downloadDir = tempFiles.createTempDir();
     Client leech = createClient();
     leech.start(InetAddress.getLocalHost());
-    leech.downloadUninterruptibly(
-            torrentFile.getAbsolutePath(),
-            downloadDir.getParent(),
-            20);
+    TorrentManager torrentManager = leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getParent());
+    waitDownloadComplete(torrentManager, 20);
 
     waitForFileInDir(downloadDir, tempFile.getName());
 
@@ -376,7 +392,7 @@ public class ClientTest {
     File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
     saveTorrent(torrent, torrentFile);
 
-    String hash = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    String hash = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath()).getHexInfoHash();
     leecher.start(InetAddress.getLocalHost());
     final LoadedTorrent announceableTorrent = leecher.getTorrentsStorage().getAnnounceableTorrent(hash);
 
@@ -624,7 +640,8 @@ public class ClientTest {
         @Override
         public void run() {
           try {
-            leech.downloadUninterruptibly(torrentFile.getAbsolutePath(), leechDestDir.getAbsolutePath(), 7);
+            TorrentManager torrentManager = leech.addTorrent(torrentFile.getAbsolutePath(), leechDestDir.getAbsolutePath());
+            waitDownloadComplete(torrentManager, 10);
           } catch (Exception e) {
             thrownException.set(e);
             throw new RuntimeException(e);
@@ -649,7 +666,7 @@ public class ClientTest {
 
       assertTrue(waitFor.isMyResult());
       assertNotNull(thrownException.get());
-      assertTrue(thrownException.get().getMessage().contains("Unable to download torrent completely"));
+      assertTrue(thrownException.get().getMessage().contains("Unable to download"));
 
     } finally {
       for (Client client : clientsList) {
@@ -716,7 +733,7 @@ public class ClientTest {
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
 
-    final String hexInfoHash = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    final String hexInfoHash = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath()).getHexInfoHash();
     final List<ServerSocket> serverSockets = new ArrayList<ServerSocket>();
 
     final int startPort = 6885;
@@ -835,7 +852,8 @@ public class ClientTest {
     seeder.seedTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
-    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    waitDownloadComplete(torrentManager, 10);
   }
 
   public void download_uninterruptibly_negative() throws InterruptedException, IOException {
@@ -871,10 +889,13 @@ public class ClientTest {
     clientList.add(leecher);
     leecher.start(InetAddress.getLocalHost());
     final File destDir = tempFiles.createTempDir();
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), destDir.getAbsolutePath());
     try {
-      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), destDir.getAbsolutePath(), 5);
+      waitDownloadComplete(torrentManager, 7);
       fail("Must fail, because file wasn't downloaded completely");
-    } catch (IOException ex) {
+    } catch (RuntimeException ex) {
+      SharedTorrent sharedTorrent = leecher.getTorrentsStorage().getTorrent(torrentManager.getHexInfoHash());
+      sharedTorrent.delete();
       // ensure .part was deleted:
       assertEquals(0, destDir.list().length);
     }
@@ -915,9 +936,10 @@ public class ClientTest {
     clientList.add(leecher);
     leecher.start(InetAddress.getLocalHost());
     try {
-      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 5);
+      TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+      waitDownloadComplete(torrentManager, 7);
       fail("Must fail, because file wasn't downloaded completely");
-    } catch (IOException ignored) {
+    } catch (RuntimeException ignored) {
     }
   }
 
@@ -975,15 +997,15 @@ public class ClientTest {
       }
     });
     try {
-      leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 60,
-              0, new AtomicBoolean(), 10);
+      TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+      waitDownloadComplete(torrentManager, 60);
     } finally {
       future.cancel(true);
       service.shutdown();
     }
   }
 
-  public void testThatProgressListenerInvoked() throws Exception {
+  public void torrentListenersTest() throws Exception {
     tracker.setAcceptForeignTorrents(true);
     Client seeder = createClient();
     final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
@@ -996,14 +1018,14 @@ public class ClientTest {
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
     final AtomicInteger pieceLoadedInvocationCount = new AtomicInteger();
-    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(),
-            10, 1, new AtomicBoolean(false), 5000,
-            new DownloadProgressListener() {
-              @Override
-              public void pieceLoaded(int pieceIndex, int pieceSize) {
-                pieceLoadedInvocationCount.incrementAndGet();
-              }
-            });
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    torrentManager.addListener(new TorrentListenerWrapper() {
+      @Override
+      public void pieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
+        pieceLoadedInvocationCount.incrementAndGet();
+      }
+    });
+    waitDownloadComplete(torrentManager, 30);
     assertEquals(pieceLoadedInvocationCount.get(), torrent.getPiecesCount());
   }
 
@@ -1024,7 +1046,8 @@ public class ClientTest {
       @Override
       public void run() {
         try {
-          leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 30);
+          TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+          waitDownloadComplete(torrentManager, 30);
         } catch (ClosedByInterruptException e) {
           interrupted.set(true);
         } catch (IOException e) {
@@ -1149,7 +1172,8 @@ public class ClientTest {
 
     Client leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
-    leecher.downloadUninterruptibly(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath(), 10);
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    waitDownloadComplete(torrentManager, 30);
   }
 
   private String createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,

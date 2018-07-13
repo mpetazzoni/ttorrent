@@ -2,7 +2,6 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.TorrentHash;
 
-import java.util.Arrays;
 import java.util.List;
 
 class TorrentManagerImpl implements TorrentManager {
@@ -27,8 +26,7 @@ class TorrentManagerImpl implements TorrentManager {
 
   @Override
   public byte[] getInfoHash() {
-    byte[] hash = this.hash.getInfoHash();
-    return Arrays.copyOf(hash, hash.length);
+    return hash.getInfoHash();
   }
 
   @Override

@@ -17,6 +17,8 @@ package com.turn.ttorrent.cli;
 
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SimpleClient;
+import com.turn.ttorrent.client.TorrentListenerWrapper;
+import com.turn.ttorrent.client.TorrentManager;
 import jargs.gnu.CmdLineParser;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -29,6 +31,7 @@ import java.io.PrintStream;
 import java.net.*;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Enumeration;
+import java.util.concurrent.Semaphore;
 
 /**
  * Command-line entry-point for starting a {@link Client}
@@ -148,11 +151,18 @@ public class ClientMain {
       File outputFile = new File(outputValue);
       c.start(iPv4Address);
 
-      //download the torrent. This method blocks current thread
-      c.downloadUninterruptibly(
+      TorrentManager torrentManager = c.addTorrent(
               torrentFile.getAbsolutePath(),
-              outputFile.getAbsolutePath(),
-              30);
+              outputFile.getAbsolutePath());
+      final Semaphore semaphore = new Semaphore(0);
+      torrentManager.addListener(new TorrentListenerWrapper() {
+        @Override
+        public void downloadComplete() {
+          semaphore.release();
+        }
+      });
+      semaphore.acquire();
+
       if (seedTimeValue > 0) {
         Thread.sleep(seedTimeValue * 1000);
       }
