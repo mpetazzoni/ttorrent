@@ -68,15 +68,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
   protected static final Logger logger = TorrentLoggerFactory.getLogger();
 
-  private static final int MAX_DOWNLOADERS_UNCHOKE = 10;
-
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
   private AtomicBoolean stop = new AtomicBoolean(false);
 
   private Announce announce;
 
-  private Random random;
   private volatile boolean myStarted = false;
   private final TorrentLoader myTorrentLoader;
   private final TorrentsStorage torrentsStorage;
@@ -103,7 +100,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param trackerClientFactory   factory which creates instances for communication with tracker
    */
   public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor, TrackerClientFactory trackerClientFactory) {
-    this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce(this, trackerClientFactory);
     this.torrentsStorage = new TorrentsStorage();
     this.peersStorage = new PeersStorage();
@@ -121,7 +117,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    *
    * @param dotTorrentFilePath path to torrent metadata file
    * @param downloadDirPath    path to directory where downloaded files are placed
-   * @return hash of added torrent
+   * @return {@link TorrentManager} instance for monitoring torrent state
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public TorrentManager addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
@@ -135,7 +131,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    *
    * @param dotTorrentFilePath path to torrent metadata file
    * @param downloadDirPath    path to directory where downloaded files are placed
-   * @return hash of added torrent
+   * @return {@link TorrentManager} instance for monitoring torrent state
    * @throws IOException              if IO error occurs in reading metadata file
    */
   public TorrentManager seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {

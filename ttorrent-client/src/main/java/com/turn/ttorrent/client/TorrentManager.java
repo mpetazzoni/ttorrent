@@ -16,7 +16,7 @@ public interface TorrentManager extends TorrentHash {
    * You can receive events in this listener after execution of the method if notify method was invoked before this method
    *
    * @param listener specified listener
-   * @return true if listeners was removed otherwise false (e.g. listener was not found in storage
+   * @return true if listeners was removed otherwise false (e.g. listener was not found)
    */
   boolean removeListener(TorrentListener listener);
 
