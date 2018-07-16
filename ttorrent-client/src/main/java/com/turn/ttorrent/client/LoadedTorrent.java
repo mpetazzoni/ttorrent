@@ -15,9 +15,11 @@ public interface LoadedTorrent {
   PieceStorage getPieceStorage();
 
   /**
-   * @return path to .torrent file
+   * @return {@link TorrentMetadata} instance
+   * @throws IllegalStateException if unable to fetch metadata from source
+   *                               (e.g. source is .torrent file and it was deleted manually)
    */
-  TorrentMetadata getMetadata();
+  TorrentMetadata getMetadata() throws IllegalStateException;
 
   /**
    * @return new instance of {@link AnnounceableInformation} for announce this torrent to the tracker
