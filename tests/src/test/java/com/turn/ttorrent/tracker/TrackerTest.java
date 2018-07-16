@@ -25,6 +25,7 @@ import java.util.*;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import static com.turn.ttorrent.tracker.Tracker.ANNOUNCE_URL;
 import static com.turn.ttorrent.tracker.TrackerUtils.TEST_RESOURCES;
 import static org.testng.Assert.*;
 
@@ -347,7 +348,8 @@ public class TrackerTest {
   }
 
   private void startTracker() throws IOException {
-    this.tracker = new Tracker(6969);
+    int port = 6969;
+    this.tracker = new Tracker(port, "http://" + InetAddress.getLocalHost().getHostAddress() + ":" + port + "" + ANNOUNCE_URL);
     tracker.setAnnounceInterval(5);
     tracker.setPeerCollectorExpireTimeout(10);
     this.tracker.start(true);
