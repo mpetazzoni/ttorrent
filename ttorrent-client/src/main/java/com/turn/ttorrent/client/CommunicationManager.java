@@ -67,7 +67,7 @@ import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEv
  *
  * @author mpetazzoni
  */
-public class Client implements AnnounceResponseListener, PeerActivityListener, Context, ConnectionManagerContext {
+public class CommunicationManager implements AnnounceResponseListener, PeerActivityListener, Context, ConnectionManagerContext {
 
   protected static final Logger logger = TorrentLoggerFactory.getLogger();
 
@@ -93,7 +93,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param workingExecutor        executor service for run connection worker and process incoming data. Must have a pool size at least 2
    * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
    */
-  public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor) {
+  public CommunicationManager(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor) {
     this(workingExecutor, pieceValidatorExecutor, new TrackerClientFactoryImpl());
   }
 
@@ -102,7 +102,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
    * @param trackerClientFactory   factory which creates instances for communication with tracker
    */
-  public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor, TrackerClientFactory trackerClientFactory) {
+  public CommunicationManager(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor, TrackerClientFactory trackerClientFactory) {
     this.announce = new Announce(this, trackerClientFactory);
     this.torrentsStorage = new TorrentsStorage();
     this.peersStorage = new PeersStorage();
@@ -321,7 +321,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       if (i == 0) {
         peer.setPeerId(self.getPeerId());
       } else {
-        final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+        final String id = CommunicationManager.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
         byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
         peer.setPeerId(ByteBuffer.wrap(idBytes));
       }
@@ -361,7 +361,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       this.stop();
       return;
     }
-    final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
+    final String id = CommunicationManager.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
     byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
     Peer self = new Peer(new InetSocketAddress(myConnectionManager.getBindPort()), ByteBuffer.wrap(idBytes));
     peersStorage.setSelf(self);

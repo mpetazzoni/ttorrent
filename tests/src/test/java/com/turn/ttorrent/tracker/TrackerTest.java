@@ -1,10 +1,10 @@
 package com.turn.ttorrent.tracker;
 
-import com.turn.ttorrent.ClientFactory;
+import com.turn.ttorrent.CommunicationManagerFactory;
 import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.CommunicationManager;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
 import com.turn.ttorrent.client.storage.FileCollectionStorage;
@@ -35,13 +35,13 @@ public class TrackerTest {
   private Tracker tracker;
   private TempFiles tempFiles;
   //  private String myLogfile;
-  private List<Client> clientList = new ArrayList<Client>();
+  private List<CommunicationManager> communicationManagerList = new ArrayList<CommunicationManager>();
 
-  private final ClientFactory clientFactory;
+  private final CommunicationManagerFactory communicationManagerFactory;
 
 
   public TrackerTest() {
-    clientFactory = new ClientFactory();
+    communicationManagerFactory = new CommunicationManagerFactory();
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
@@ -92,7 +92,7 @@ public class TrackerTest {
     }
 
     final InetAddress[] inetAddresses = selfAddresses.toArray(new InetAddress[selfAddresses.size()]);
-    Client seeder = createClient();
+    CommunicationManager seeder = createCommunicationManager();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
     final String hexInfoHash = seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath()).getHexInfoHash();
@@ -127,7 +127,7 @@ public class TrackerTest {
     final TrackedTorrent tt = this.tracker.announce(loadTorrent("file1.jar.torrent"));
     assertEquals(0, tt.getPeers().size());
 
-    Client seeder = createClient();
+    CommunicationManager seeder = createCommunicationManager();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
     seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
@@ -135,7 +135,7 @@ public class TrackerTest {
     assertEquals(tt.getHexInfoHash(), seeder.getTorrentsStorage().announceableTorrents().iterator().next().getHexInfoHash());
 
     final File downloadDir = tempFiles.createTempDir();
-    Client leech = createClient();
+    CommunicationManager leech = createCommunicationManager();
     leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
@@ -153,7 +153,7 @@ public class TrackerTest {
 
   public void tracker_accepts_torrent_from_seeder() throws IOException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
-    Client seeder = createClient();
+    CommunicationManager seeder = createCommunicationManager();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
     seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
@@ -181,7 +181,7 @@ public class TrackerTest {
     this.tracker.setAcceptForeignTorrents(true);
 
     final File downloadDir = tempFiles.createTempDir();
-    Client leech = createClient();
+    CommunicationManager leech = createCommunicationManager();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
@@ -218,11 +218,11 @@ public class TrackerTest {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
 
-    final Client c1 = createClient();
+    final CommunicationManager c1 = createCommunicationManager();
     c1.start(InetAddress.getLocalHost());
     c1.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
-    final Client c2 = createClient();
+    final CommunicationManager c2 = createCommunicationManager();
     c2.start(InetAddress.getLocalHost());
     c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
@@ -278,7 +278,7 @@ public class TrackerTest {
       fail("", e);
     }
 
-    final Client c2 = createClient();
+    final CommunicationManager c2 = createCommunicationManager();
     c2.setAnnounceInterval(120);
     c2.start(InetAddress.getLocalHost());
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
@@ -322,13 +322,13 @@ public class TrackerTest {
     this.tracker.setAcceptForeignTorrents(true);
     assertEquals(0, this.tracker.getTrackedTorrents().size());
 
-    Client seeder = createClient();
+    CommunicationManager seeder = createCommunicationManager();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
     seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final File downloadDir = tempFiles.createTempDir();
-    Client leech = createClient();
+    CommunicationManager leech = createCommunicationManager();
     leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath());
 
     try {
@@ -361,17 +361,17 @@ public class TrackerTest {
 
   @AfterMethod
   protected void tearDown() throws Exception {
-    for (Client client : clientList) {
-      client.stop();
+    for (CommunicationManager communicationManager : communicationManagerList) {
+      communicationManager.stop();
     }
     stopTracker();
     tempFiles.cleanup();
   }
 
-  private Client createClient() {
-    final Client client = clientFactory.getClient("");
-    clientList.add(client);
-    return client;
+  private CommunicationManager createCommunicationManager() {
+    final CommunicationManager communicationManager = communicationManagerFactory.getClient("");
+    communicationManagerList.add(communicationManager);
+    return communicationManager;
   }
 
   private void waitForFileInDir(final File downloadDir, final String fileName) {

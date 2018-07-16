@@ -65,8 +65,8 @@ public class HandshakeReceiverTest {
     when(myContext.getPeersStorage()).thenReturn(peersStorage);
     when(myContext.getTorrentsStorage()).thenReturn(torrentsStorage);
     peersStorage.setSelf(new Peer("127.0.0.1", 54645, selfId));
-    Client client = mock(Client.class);
-    when(client.getConnectionManager()).thenReturn(mock(ConnectionManager.class));
+    CommunicationManager communicationManager = mock(CommunicationManager.class);
+    when(communicationManager.getConnectionManager()).thenReturn(mock(ConnectionManager.class));
     myHandshakeReceiver = new HandshakeReceiver(
             myContext,
             "127.0.0.1",

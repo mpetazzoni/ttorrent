@@ -15,10 +15,8 @@
  */
 package com.turn.ttorrent.cli;
 
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.CommunicationManager;
 import com.turn.ttorrent.client.SimpleClient;
-import com.turn.ttorrent.client.TorrentListenerWrapper;
-import com.turn.ttorrent.client.TorrentManager;
 import jargs.gnu.CmdLineParser;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -31,10 +29,9 @@ import java.io.PrintStream;
 import java.net.*;
 import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Enumeration;
-import java.util.concurrent.Semaphore;
 
 /**
- * Command-line entry-point for starting a {@link Client}
+ * Command-line entry-point for starting a {@link CommunicationManager}
  */
 public class ClientMain {
 
@@ -144,25 +141,16 @@ public class ClientMain {
       System.exit(1);
     }
 
-    Client c = new SimpleClient();
+    SimpleClient client = new SimpleClient();
     try {
       Inet4Address iPv4Address = getIPv4Address(ifaceValue);
       File torrentFile = new File(otherArgs[0]);
       File outputFile = new File(outputValue);
-      c.start(iPv4Address);
 
-      TorrentManager torrentManager = c.addTorrent(
+      client.downloadTorrent(
               torrentFile.getAbsolutePath(),
-              outputFile.getAbsolutePath());
-      final Semaphore semaphore = new Semaphore(0);
-      torrentManager.addListener(new TorrentListenerWrapper() {
-        @Override
-        public void downloadComplete() {
-          semaphore.release();
-        }
-      });
-      semaphore.acquire();
-
+              outputFile.getAbsolutePath(),
+              iPv4Address);
       if (seedTimeValue > 0) {
         Thread.sleep(seedTimeValue * 1000);
       }
@@ -171,7 +159,7 @@ public class ClientMain {
       logger.error("Fatal error: {}", e.getMessage(), e);
       System.exit(2);
     } finally {
-      c.stop();
+      client.stop();
     }
   }
 }

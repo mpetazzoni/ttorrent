@@ -1,20 +1,20 @@
 package com.turn.ttorrent;
 
-import com.turn.ttorrent.client.Client;
+import com.turn.ttorrent.client.CommunicationManager;
 import com.turn.ttorrent.common.LoggerUtils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class ClientFactory {
+public class CommunicationManagerFactory {
 
   public final static int DEFAULT_POOL_SIZE = 10;
 
-  public Client getClient(String name) {
+  public CommunicationManager getClient(String name) {
     final ExecutorService executorService = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     final ExecutorService pieceValidatorExecutor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
-    return new Client(executorService, pieceValidatorExecutor) {
+    return new CommunicationManager(executorService, pieceValidatorExecutor) {
       @Override
       public void stop() {
         super.stop();

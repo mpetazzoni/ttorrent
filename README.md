@@ -66,18 +66,17 @@ How to use
 
 ```java
 // First, instantiate the Client object.
-Client client = new SimpleClient();
+SimpleClient client = new SimpleClient();
 
 // This is the interface the client will listen on (you might need something
 // else than localhost here because other peers cannot connect to localhost).
 InetAddress address = InetAddress.getLocalHost();
-client.start(address);
 
 //Start download. Thread is blocked here
 try {
-  client.downloadUninterruptibly("/path/to/filed.torrent",
+  client.downloadTorrent("/path/to/filed.torrent",
           "/path/to/output/directory",
-          30);
+          address);
   //download finished
 } catch (Exception e) {
   //download failed, see exception for details
