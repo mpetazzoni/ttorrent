@@ -5,8 +5,12 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.client.storage.PieceStorageImpl;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentSerializer;
 import com.turn.ttorrent.network.ConnectionManager;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -103,8 +107,8 @@ public class HandshakeReceiverTest {
     final LoadedTorrent loadedTorrent = mock(LoadedTorrent.class);
     final SharedTorrent sharedTorrent =
             SharedTorrent.fromFile(torrentFile,
-                    PieceStorageImpl.createFromDirectoryAndMetadata(tempFile.getParentFile().getAbsolutePath(), torrent)
-                    , loadedTorrent.getTorrentStatistic());
+                    FairPieceStorageFactory.INSTANCE.createStorage(torrent, FileCollectionStorage.create(torrent, tempFile.getParentFile())),
+                    loadedTorrent.getTorrentStatistic());
 
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
     when(torrentsLoader.loadTorrent(loadedTorrent)).thenReturn(sharedTorrent);

@@ -1,18 +1,10 @@
 package com.turn.ttorrent.client.storage;
 
-import com.turn.ttorrent.Constants;
-import com.turn.ttorrent.common.TorrentFile;
-import com.turn.ttorrent.common.TorrentMetadata;
-import com.turn.ttorrent.common.TorrentUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -44,63 +36,6 @@ public class PieceStorageImpl implements PieceStorage {
       this.fileCollectionStorage.open(true);
     }
     isOpen = true;
-  }
-
-  public static PieceStorageImpl createFromDirectoryAndMetadata(String downloadDirPath, TorrentMetadata metadata) throws IOException {
-
-    File parent = new File(downloadDirPath);
-    if (!parent.isDirectory()) {
-      throw new IllegalArgumentException("Invalid parent directory!");
-    }
-
-    String parentPath = parent.getCanonicalPath();
-    List<FileStorage> files = new LinkedList<FileStorage>();
-    long offset = 0L;
-    long totalSize = 0;
-    boolean allFilesExists = true;
-    for (TorrentFile file : metadata.getFiles()) {
-      File actual = new File(parent, file.getRelativePathAsString());
-
-      if (!actual.getCanonicalPath().startsWith(parentPath)) {
-        throw new SecurityException("Torrent file path attempted " +
-                "to break directory jail!");
-      }
-
-      actual.getParentFile().mkdirs();
-      files.add(new FileStorage(actual, offset, file.size));
-      allFilesExists = allFilesExists && actual.exists();
-      offset += file.size;
-      totalSize += file.size;
-    }
-
-    FileCollectionStorage fileCollectionStorage = new FileCollectionStorage(files, totalSize);
-    fileCollectionStorage.open(allFilesExists);
-    BitSet availablePieces = new BitSet(metadata.getPiecesCount());
-    try {
-      int pieceLength = metadata.getPieceLength();
-      for (int i = 0; i < metadata.getPiecesCount(); i++) {
-        long position = (long) i * pieceLength;
-        int len = Math.min(
-                (int) (totalSize - position),
-                pieceLength);
-        ByteBuffer buffer = ByteBuffer.allocate(len);
-        fileCollectionStorage.read(buffer, position);
-        byte[] expectedHash = Arrays.copyOfRange(metadata.getPiecesHashes(), i * Constants.PIECE_HASH_SIZE, (i + 1) * Constants.PIECE_HASH_SIZE);
-        byte[] actualHash = TorrentUtils.calculateSha1Hash(buffer.array());
-        if (Arrays.equals(expectedHash, actualHash)) {
-          availablePieces.set(i);
-        }
-      }
-    } finally {
-      fileCollectionStorage.close();
-    }
-
-    return new PieceStorageImpl(
-            fileCollectionStorage,
-            availablePieces,
-            metadata.getPiecesCount(),
-            metadata.getPieceLength()
-    );
   }
 
   private void checkPieceIndex(int pieceIndex) {

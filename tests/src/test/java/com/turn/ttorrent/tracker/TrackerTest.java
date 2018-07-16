@@ -6,7 +6,8 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.WaitFor;
 import com.turn.ttorrent.client.Client;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.client.storage.PieceStorageImpl;
+import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.common.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
@@ -154,7 +155,7 @@ public class TrackerTest {
     Client seeder = createClient();
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    seeder.seedTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    seeder.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     try {
       seeder.start(InetAddress.getLocalHost());
@@ -281,7 +282,7 @@ public class TrackerTest {
     c2.start(InetAddress.getLocalHost());
     File torrentFile = new File(TEST_RESOURCES + "/torrents", "file1.jar.torrent");
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
-    c2.seedTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
+    c2.addTorrent(torrentFile.getAbsolutePath(), parentFiles.getAbsolutePath());
 
     final TrackedTorrent tt = tracker.getTrackedTorrent(torrent.getHexInfoHash());
     new WaitFor(10 * 1000) {
@@ -385,15 +386,17 @@ public class TrackerTest {
   private SharedTorrent completeTorrent(String name) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
     File parentFiles = new File(TEST_RESOURCES + "/parentFiles");
+    TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(torrentFile);
     return SharedTorrent.fromFile(torrentFile,
-            PieceStorageImpl.createFromDirectoryAndMetadata(parentFiles.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
+            FairPieceStorageFactory.INSTANCE.createStorage(torrentMetadata, FileCollectionStorage.create(torrentMetadata, parentFiles)),
             new TorrentStatistic());
   }
 
   private SharedTorrent incompleteTorrent(String name, File destDir) throws IOException {
     File torrentFile = new File(TEST_RESOURCES + "/torrents", name);
-      return SharedTorrent.fromFile(torrentFile,
-              PieceStorageImpl.createFromDirectoryAndMetadata(destDir.getAbsolutePath(), new TorrentParser().parseFromFile(torrentFile)),
+    TorrentMetadata torrentMetadata = new TorrentParser().parseFromFile(torrentFile);
+    return SharedTorrent.fromFile(torrentFile,
+              FairPieceStorageFactory.INSTANCE.createStorage(torrentMetadata, FileCollectionStorage.create(torrentMetadata, destDir)),
               new TorrentStatistic());
   }
 

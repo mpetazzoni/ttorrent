@@ -15,9 +15,12 @@
  */
 package com.turn.ttorrent.client.storage;
 
+import com.turn.ttorrent.common.TorrentFile;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
+import com.turn.ttorrent.common.TorrentMetadata;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -61,6 +64,31 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
     logger.debug("Initialized torrent byte storage on {} file(s) " +
             "({} total byte(s)).", files.size(), size);
+  }
+
+  public static FileCollectionStorage create(TorrentMetadata metadata, File parent) throws IOException {
+    if (!parent.isDirectory()) {
+      throw new IllegalArgumentException("Invalid parent directory!");
+    }
+    List<FileStorage> files = new LinkedList<FileStorage>();
+    long offset = 0L;
+    long totalSize = 0;
+    for (TorrentFile file : metadata.getFiles()) {
+      File actual = new File(parent, file.getRelativePathAsString());
+
+      if (!actual.getCanonicalPath().startsWith(parent.getCanonicalPath())) {
+        throw new SecurityException("Torrent file path attempted " +
+                "to break directory jail!");
+      }
+
+      if (!actual.getParentFile().exists() && !actual.getParentFile().mkdirs()) {
+        throw new IOException("Unable to create directories " + actual.getParent() + " for storing torrent file " + actual.getName());
+      }
+      files.add(new FileStorage(actual, offset, file.size));
+      offset += file.size;
+      totalSize += file.size;
+    }
+    return new FileCollectionStorage(files, totalSize);
   }
 
   public synchronized void open(final boolean seeder) throws IOException {

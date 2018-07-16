@@ -22,14 +22,17 @@ import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
 import com.turn.ttorrent.client.storage.PieceStorage;
-import com.turn.ttorrent.client.storage.PieceStorageImpl;
+import com.turn.ttorrent.client.storage.PieceStorageFactory;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.network.*;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -118,29 +121,41 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
    * @param dotTorrentFilePath path to torrent metadata file
    * @param downloadDirPath    path to directory where downloaded files are placed
    * @return {@link TorrentManager} instance for monitoring torrent state
-   * @throws IOException              if IO error occurs in reading metadata file
+   * @throws IOException if IO error occurs in reading metadata file
    */
   public TorrentManager addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, FairPieceStorageFactory.INSTANCE);
+  }
+
+  /**
+   * Adds torrent to storage with specified {@link PieceStorageFactory}.
+   * It can be used for skipping initial validation of data
+   *
+   * @param dotTorrentFilePath path to torrent metadata file
+   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @param pieceStorageFactory factory for creating {@link PieceStorage}.
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(String dotTorrentFilePath,
+                                   String downloadDirPath,
+                                   PieceStorageFactory pieceStorageFactory) throws IOException {
     FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
-    PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
+    TorrentMetadata metadata = metadataProvider.getTorrentMetadata();
+    FileCollectionStorage fileCollectionStorage = FileCollectionStorage.create(metadata, new File(downloadDirPath));
+    PieceStorage pieceStorage = pieceStorageFactory.createStorage(metadata, fileCollectionStorage);
     return addTorrent(metadataProvider, pieceStorage);
   }
 
   /**
-   * Adds torrent to storage and start seeding without validation
+   * Adds torrent to storage with any storage and metadata source
    *
-   * @param dotTorrentFilePath path to torrent metadata file
-   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @param metadataProvider specified metadata source
+   * @param pieceStorage     specified storage of pieces
    * @return {@link TorrentManager} instance for monitoring torrent state
-   * @throws IOException              if IO error occurs in reading metadata file
+   * @throws IOException if IO error occurs in reading metadata file
    */
-  public TorrentManager seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
-    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
-    PieceStorageImpl pieceStorage = PieceStorageImpl.createFromDirectoryAndMetadata(downloadDirPath, metadataProvider.getTorrentMetadata());
-    return addTorrent(metadataProvider, pieceStorage);
-  }
-
-  TorrentManager addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
+  public TorrentManager addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
     CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
@@ -148,6 +163,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
             pieceStorage,
             new EventDispatcher(listeners));
     this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
+
 
     if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
@@ -656,6 +672,9 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
   private void validatePieceAsync(final SharedTorrent torrent, final Piece piece, String torrentHash, SharingPeer peer) {
     try {
       synchronized (piece) {
+
+        if (piece.isValid()) return;
+
         piece.validate(torrent, piece);
         if (piece.isValid()) {
           piece.finish();
@@ -729,7 +748,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
       }
     } catch (Throwable e) {
       torrent.markUncompleted(piece);
-      LoggerUtils.warnWithMessageAndDebugDetails(logger, "unhandled exception in piece {} validation task", piece, e);
+      logger.warn("unhandled exception in piece {} validation task", e);
     }
   }
 
