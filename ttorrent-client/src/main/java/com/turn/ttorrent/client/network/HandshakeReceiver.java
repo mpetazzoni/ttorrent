@@ -82,14 +82,16 @@ public class HandshakeReceiver implements DataProcessor {
     final LoadedTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
 
     if (announceableTorrent == null) {
-      logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
+      logger.debug("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
     SharedTorrent torrent;
     try {
       torrent = myContext.getTorrentLoader().loadTorrent(announceableTorrent);
-    } catch (Exception e) {
+    } catch (IllegalStateException e) {
+      return new ShutdownProcessor().processAndGetNext(socketChannel);
+    } catch(Exception e) {
       LoggerUtils.warnWithMessageAndDebugDetails(logger, "cannot load torrent {}", hs.getHexInfoHash(), e);
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }

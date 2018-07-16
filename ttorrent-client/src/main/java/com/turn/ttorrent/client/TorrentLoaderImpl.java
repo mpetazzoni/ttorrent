@@ -2,10 +2,8 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
 import com.turn.ttorrent.common.TorrentMetadata;
-import com.turn.ttorrent.common.TorrentParser;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.File;
 import java.io.IOException;
 
 public class TorrentLoaderImpl implements TorrentLoader {
@@ -27,7 +25,13 @@ public class TorrentLoaderImpl implements TorrentLoader {
       return old;
     }
 
-    TorrentMetadata torrentMetadata = loadedTorrent.getMetadata();
+    TorrentMetadata torrentMetadata;
+    try {
+      torrentMetadata = loadedTorrent.getMetadata();
+    } catch (IllegalStateException e) {
+      myTorrentsStorage.remove(hexInfoHash);
+      throw e;
+    }
 
     final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getPieceStorage(),
             new RequestStrategyImplAnyInteresting(),
