@@ -162,8 +162,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
             metadataProvider,
             pieceStorage,
             new EventDispatcher(listeners));
-    this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
-
 
     if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
@@ -177,6 +175,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
+    this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
   }
 
