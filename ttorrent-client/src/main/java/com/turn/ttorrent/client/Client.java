@@ -175,7 +175,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
-    this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
+    this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
   }
 
@@ -561,7 +561,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
     if (torrent != null && torrent.isFinished()) return;
 
-    final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
+    final LoadedTorrent announceableTorrent = torrentsStorage.getLoadedTorrent(hexInfoHash);
     if (announceableTorrent == null) {
       logger.info("announceable torrent {} is not found in storage. Maybe it was removed", hexInfoHash);
       return;
@@ -720,7 +720,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, C
 
           if (isTorrentComplete) {
 
-            LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
+            LoadedTorrent announceableTorrent = torrentsStorage.getLoadedTorrent(torrentHash);
 
             if (announceableTorrent == null) return;
 

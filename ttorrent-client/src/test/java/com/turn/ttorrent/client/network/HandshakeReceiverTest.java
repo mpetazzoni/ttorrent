@@ -115,7 +115,7 @@ public class HandshakeReceiverTest {
     when(myContext.getTorrentLoader()).thenReturn(torrentsLoader);
     final ExecutorService executorService = Executors.newFixedThreadPool(1);
     when(myContext.getExecutor()).thenReturn(executorService);
-    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), loadedTorrent);
+    myContext.getTorrentsStorage().addTorrent(hs.getHexInfoHash(), loadedTorrent);
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 

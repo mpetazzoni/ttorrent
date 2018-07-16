@@ -79,7 +79,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    final LoadedTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
+    final LoadedTorrent announceableTorrent = myContext.getTorrentsStorage().getLoadedTorrent(hs.getHexInfoHash());
 
     if (announceableTorrent == null) {
       logger.debug("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
