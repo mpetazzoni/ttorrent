@@ -1,46 +1,37 @@
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentParser {
 
-  private final static int PIECE_HASH_LENGTH = 20;
-
-  public TorrentMultiFileMetadata parseFromFile(File torrentFile) throws IOException, NoSuchAlgorithmException {
-    final FileInputStream fileInputStream = new FileInputStream(torrentFile);
-    try {
-      byte[] fileContent = new byte[(int) torrentFile.length()];
-      fileInputStream.read(fileContent);
-      return parse(fileContent);
-    } finally {
-      fileInputStream.close();
-    }
+  public TorrentMetadata parseFromFile(File torrentFile) throws IOException {
+    byte[] fileContent = FileUtils.readFileToByteArray(torrentFile);
+    return parse(fileContent);
   }
 
   /**
    * @param metadata binary .torrent content
    * @return parsed metadata object. This parser also wraps single torrent as multi torrent with one file
    * @throws InvalidBEncodingException if metadata has incorrect BEP format or missing required fields
-   * @throws NoSuchAlgorithmException  if the SHA-1 algorithm is not available.
    * @throws RuntimeException          It's wrapped io exception from bep decoder.
    *                                   This exception doesn't must to throw io exception because reading from
    *                                   byte array input stream cannot throw the exception
    */
-  public TorrentMultiFileMetadata parse(byte[] metadata) throws InvalidBEncodingException, NoSuchAlgorithmException, RuntimeException {
+  public TorrentMetadata parse(byte[] metadata) throws InvalidBEncodingException, RuntimeException {
     final Map<String, BEValue> dictionaryMetadata;
     try {
       dictionaryMetadata = BDecoder.bdecode(new ByteArrayInputStream(metadata)).getMap();
@@ -68,10 +59,10 @@ public class TorrentParser {
 
     final List<TorrentFile> files = parseFiles(infoTable, torrentContainsManyFiles, dirName);
 
-    if (piecesHashes.length % PIECE_HASH_LENGTH != 0)
+    if (piecesHashes.length % Constants.PIECE_HASH_SIZE != 0)
       throw new InvalidBEncodingException("Incorrect size of pieces hashes");
 
-    final int piecesCount = piecesHashes.length / PIECE_HASH_LENGTH;
+    final int piecesCount = piecesHashes.length / Constants.PIECE_HASH_SIZE;
 
     byte[] infoTableBytes;
     try {
@@ -80,7 +71,7 @@ public class TorrentParser {
       throw new RuntimeException(e);
     }
 
-    return new TorrentMetadata(
+    return new TorrentMetadataImpl(
             TorrentUtils.calculateSha1Hash(infoTableBytes),
             trackers,
             announceUrl,
@@ -109,8 +100,11 @@ public class TorrentParser {
     for (BEValue file : infoTable.get(FILES).getList()) {
       Map<String, BEValue> fileInfo = file.getMap();
       List<String> path = new ArrayList<String>();
-      path.add(name);
-      for (BEValue pathElement : fileInfo.get(FILE_PATH).getList()) {
+      BEValue filePathList = fileInfo.get(FILE_PATH_UTF8);
+      if (filePathList == null) {
+        filePathList = fileInfo.get(FILE_PATH);
+      }
+      for (BEValue pathElement : filePathList.getList()) {
         path.add(pathElement.getString());
       }
       final BEValue md5Sum = infoTable.get(MD5_SUM);

@@ -1,15 +1,15 @@
 package com.turn.ttorrent.common;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.io.*;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,7 +28,7 @@ public class TorrentCreator {
   public static int HASHING_THREADS_COUNT = Runtime.getRuntime().availableProcessors();
   private static final ExecutorService HASHING_EXECUTOR = Executors.newFixedThreadPool(HASHING_THREADS_COUNT, new ThreadFactory() {
     @Override
-    public Thread newThread(final Runnable r) {
+    public Thread newThread(@NotNull final Runnable r) {
       final Thread thread = new Thread(r);
       thread.setDaemon(true);
       return thread;
@@ -36,11 +36,11 @@ public class TorrentCreator {
   });
 
   /**
-   * Create a {@link Torrent} object for a file.
+   * Create a {@link TorrentMetadata} object for a file.
    *
    * <p>
-   * Hash the given file to create the {@link Torrent} object representing
-   * the Torrent metainfo about this file, needed for announcing and/or
+   * Hash the given file to create the {@link TorrentMetadata} object representing
+   * the Torrent meta info about this file, needed for announcing and/or
    * sharing said file.
    * </p>
    *
@@ -49,16 +49,16 @@ public class TorrentCreator {
    * @param createdBy The creator's name, or any string identifying the
    *                  torrent's creator.
    */
-  public static Torrent create(File source, URI announce, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+  public static TorrentMetadata create(File source, URI announce, String createdBy)
+          throws InterruptedException, IOException {
     return create(source, null, announce, createdBy);
   }
 
   /**
-   * Create a {@link Torrent} object for a set of files.
+   * Create a {@link TorrentMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link Torrent} object
+   * Hash the given files to create the multi-file {@link TorrentMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -71,17 +71,16 @@ public class TorrentCreator {
    * @param createdBy The creator's name, or any string identifying the
    *                  torrent's creator.
    */
-  public static Torrent create(File parent, List<File> files, URI announce,
-                               String createdBy) throws NoSuchAlgorithmException,
-          InterruptedException, IOException {
+  public static TorrentMetadata create(File parent, List<File> files, URI announce,
+                                       String createdBy) throws InterruptedException, IOException {
     return create(parent, files, announce, null, createdBy);
   }
 
   /**
-   * Create a {@link Torrent} object for a file.
+   * Create a {@link TorrentMetadata} object for a file.
    *
    * <p>
-   * Hash the given file to create the {@link Torrent} object representing
+   * Hash the given file to create the {@link TorrentMetadata} object representing
    * the Torrent metainfo about this file, needed for announcing and/or
    * sharing said file.
    * </p>
@@ -92,17 +91,16 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static Torrent create(File source, List<List<URI>> announceList,
-                               String createdBy) throws NoSuchAlgorithmException,
-          InterruptedException, IOException {
+  public static TorrentMetadata create(File source, List<List<URI>> announceList,
+                                       String createdBy) throws InterruptedException, IOException {
     return create(source, null, null, announceList, createdBy);
   }
 
   /**
-   * Create a {@link Torrent} object for a set of files.
+   * Create a {@link TorrentMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link Torrent} object
+   * Hash the given files to create the multi-file {@link TorrentMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -116,17 +114,17 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static Torrent create(File source, List<File> files,
-                               List<List<URI>> announceList, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+  public static TorrentMetadata create(File source, List<File> files,
+                                       List<List<URI>> announceList, String createdBy)
+          throws InterruptedException, IOException {
     return create(source, files, null, announceList, createdBy);
   }
 
   /**
-   * Helper method to create a {@link Torrent} object for a set of files.
+   * Helper method to create a {@link TorrentMetadata} object for a set of files.
    *
    * <p>
-   * Hash the given files to create the multi-file {@link Torrent} object
+   * Hash the given files to create the multi-file {@link TorrentMetadata} object
    * representing the Torrent meta-info about them, needed for announcing
    * and/or sharing these files. Since we created the torrent, we're
    * considering we'll be a full initial seeder for it.
@@ -141,22 +139,22 @@ public class TorrentCreator {
    * @param createdBy    The creator's name, or any string identifying the
    *                     torrent's creator.
    */
-  public static Torrent create(File parent, List<File> files, URI announce, List<List<URI>> announceList, String createdBy)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+  public static TorrentMetadata create(File parent, List<File> files, URI announce, List<List<URI>> announceList, String createdBy)
+          throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, DEFAULT_PIECE_LENGTH);
   }
 
-  public static Torrent create(File parent, List<File> files, URI announce,
-                               List<List<URI>> announceList, String createdBy, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+  public static TorrentMetadata create(File parent, List<File> files, URI announce,
+                                       List<List<URI>> announceList, String createdBy, final int pieceSize)
+          throws InterruptedException, IOException {
     return create(parent, files, announce, announceList, createdBy, System.currentTimeMillis() / 1000, pieceSize);
   }
 
   //for tests
   /*package local*/
-  static Torrent create(File parent, List<File> files, URI announce,
-                        List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+  static TorrentMetadata create(File parent, List<File> files, URI announce,
+                                List<List<URI>> announceList, String createdBy, long creationTimeSecs, final int pieceSize)
+          throws InterruptedException, IOException {
     Map<String, BEValue> torrent = new HashMap<String, BEValue>();
 
     if (announce != null) {
@@ -183,7 +181,7 @@ public class TorrentCreator {
     if (files == null || files.isEmpty()) {
       info.put(FILE_LENGTH, new BEValue(parent.length()));
       info.put(PIECES, new BEValue(hashFile(parent, pieceSize),
-              Torrent.BYTE_ENCODING));
+              Constants.BYTE_ENCODING));
     } else {
       List<BEValue> fileInfo = new LinkedList<BEValue>();
       for (File file : files) {
@@ -205,13 +203,13 @@ public class TorrentCreator {
       }
       info.put(FILES, new BEValue(fileInfo));
       info.put(PIECES, new BEValue(hashFiles(files, pieceSize),
-              Torrent.BYTE_ENCODING));
+              Constants.BYTE_ENCODING));
     }
     torrent.put(INFO_TABLE, new BEValue(info));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     BEncoder.bencode(new BEValue(torrent), baos);
-    return new Torrent(baos.toByteArray(), true);
+    return new TorrentParser().parse(baos.toByteArray());
   }
 
   /**
@@ -230,12 +228,12 @@ public class TorrentCreator {
    * @param file The file to hash.
    */
   private static String hashFile(final File file, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
-    return hashFiles(Arrays.asList(new File[]{file}), pieceSize);
+          throws InterruptedException, IOException {
+    return hashFiles(Collections.singletonList(file), pieceSize);
   }
 
   private static String hashFiles(final List<File> files, final int pieceSize)
-          throws NoSuchAlgorithmException, InterruptedException, IOException {
+          throws InterruptedException, IOException {
     if (files.size() == 0) {
       return "";
     }
@@ -350,27 +348,16 @@ public class TorrentCreator {
    */
   private static class CallableChunkHasher implements Callable<String> {
 
-    private final MessageDigest md;
     private final ByteBuffer data;
 
-    CallableChunkHasher(final ByteBuffer data)
-            throws NoSuchAlgorithmException {
-      this.md = MessageDigest.getInstance("SHA-1");
+    CallableChunkHasher(final ByteBuffer data) {
       this.data = data;
-/*
-      this.data = ByteBuffer.allocate(buffer.remaining());
-			buffer.mark();
-			this.data.put(buffer);
-			this.data.clear();
-			buffer.reset();
-*/
     }
 
     @Override
     public String call() throws UnsupportedEncodingException {
-      this.md.reset();
-      this.md.update(this.data.array());
-      return new String(md.digest(), Torrent.BYTE_ENCODING);
+      byte[] sha1Hash = TorrentUtils.calculateSha1Hash(this.data.array());
+      return new String(sha1Hash, Constants.BYTE_ENCODING);
     }
   }
 

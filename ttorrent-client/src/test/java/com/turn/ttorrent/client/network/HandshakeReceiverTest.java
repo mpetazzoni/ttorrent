@@ -5,7 +5,12 @@ import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.client.*;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentCreator;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentSerializer;
 import com.turn.ttorrent.network.ConnectionManager;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
@@ -93,22 +98,24 @@ public class HandshakeReceiverTest {
     client.write(byteBuffer);
 
     final File tempFile = myTempFiles.createTempFile(1024 * 1024);
-    Torrent torrent = TorrentCreator.create(tempFile, URI.create(""), "test");
+    TorrentMetadata torrent = TorrentCreator.create(tempFile, URI.create(""), "test");
     File torrentFile = myTempFiles.createTempFile();
     FileOutputStream fos = new FileOutputStream(torrentFile);
     fos.write(new TorrentSerializer().serialize(torrent));
     fos.close();
 
-    final AnnounceableFileTorrent announceableFileTorrent = mock(AnnounceableFileTorrent.class);
+    final LoadedTorrent loadedTorrent = mock(LoadedTorrent.class);
     final SharedTorrent sharedTorrent =
-            SharedTorrent.fromFile(torrentFile, tempFile.getParentFile(), false, true, announceableFileTorrent);
+            SharedTorrent.fromFile(torrentFile,
+                    FairPieceStorageFactory.INSTANCE.createStorage(torrent, FileCollectionStorage.create(torrent, tempFile.getParentFile())),
+                    loadedTorrent.getTorrentStatistic());
 
     TorrentLoader torrentsLoader = mock(TorrentLoader.class);
-    when(torrentsLoader.loadTorrent(announceableFileTorrent)).thenReturn(sharedTorrent);
+    when(torrentsLoader.loadTorrent(loadedTorrent)).thenReturn(sharedTorrent);
     when(myContext.getTorrentLoader()).thenReturn(torrentsLoader);
     final ExecutorService executorService = Executors.newFixedThreadPool(1);
     when(myContext.getExecutor()).thenReturn(executorService);
-    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), announceableFileTorrent);
+    myContext.getTorrentsStorage().addAnnounceableTorrent(hs.getHexInfoHash(), loadedTorrent);
 
     final AtomicBoolean onConnectionEstablishedInvoker = new AtomicBoolean(false);
 
@@ -117,9 +124,11 @@ public class HandshakeReceiverTest {
             anyInt(),
             any(ByteBuffer.class),
             any(SharedTorrent.class),
-            any(ByteChannel.class)))
+            any(ByteChannel.class),
+            any(String.class),
+            anyInt()))
             .thenReturn(new SharingPeer("127.0.0.1", 6881, ByteBuffer.wrap(peerId), sharedTorrent, null,
-                    mock(PeerActivityListener.class), server) {
+                    mock(PeerActivityListener.class), server, "TO", 1234) {
               @Override
               public void onConnectionEstablished() {
                 onConnectionEstablishedInvoker.set(true);

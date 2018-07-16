@@ -1,11 +1,12 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
+import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentParser;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
 public class TorrentLoaderImpl implements TorrentLoader {
 
@@ -18,19 +19,19 @@ public class TorrentLoaderImpl implements TorrentLoader {
 
   @Override
   @NotNull
-  public SharedTorrent loadTorrent(@NotNull AnnounceableFileTorrent announceableFileTorrent) throws IOException, NoSuchAlgorithmException {
+  public SharedTorrent loadTorrent(@NotNull LoadedTorrent loadedTorrent) throws IOException {
 
-    final String hexInfoHash = announceableFileTorrent.getHexInfoHash();
+    final String hexInfoHash = loadedTorrent.getTorrentHash().getHexInfoHash();
     SharedTorrent old = myTorrentsStorage.getTorrent(hexInfoHash);
     if (old != null) {
       return old;
     }
 
-    final File dotTorrentFile = new File(announceableFileTorrent.getDotTorrentFilePath());
-    final File downloadDir = new File(announceableFileTorrent.getDownloadDirPath());
+    TorrentMetadata torrentMetadata = loadedTorrent.getMetadata();
 
-    final SharedTorrent sharedTorrent = SharedTorrent.fromFile(dotTorrentFile, downloadDir, false,
-            announceableFileTorrent.isSeeded(), announceableFileTorrent.isLeeched(), announceableFileTorrent);
+    final SharedTorrent sharedTorrent = new SharedTorrent(torrentMetadata, loadedTorrent.getPieceStorage(),
+            new RequestStrategyImplAnyInteresting(),
+            loadedTorrent.getTorrentStatistic(), loadedTorrent.getEventDispatcher());
 
     old = myTorrentsStorage.putIfAbsentActiveTorrent(hexInfoHash, sharedTorrent);
     if (old != null) {

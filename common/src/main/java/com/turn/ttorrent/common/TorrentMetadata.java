@@ -5,110 +5,72 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class TorrentMetadata implements TorrentMultiFileMetadata {
+/**
+ * Provided access to all stored info in .torrent file
+ *
+ * @see <a href="https://wiki.theory.org/index.php/BitTorrentSpecification#Metainfo_File_Structure"></a>
+ */
+public interface TorrentMetadata extends TorrentHash {
 
-  private final byte[] myInfoHash;
-  private final List<List<String>> myAnnounceList;
-  private final String myMainAnnounce;
-  private final long myCreationDate;
-  private final String myComment;
-  private final String myCreatedBy;
-  private final String myName;
-  private final List<TorrentFile> myFiles;
-  private final int myPieceCount;
-  private final int myPieceLength;
-  private final byte[] myPiecesHashes;
-  private final String myHexString;
-
-  TorrentMetadata(byte[] infoHash,
-                  List<List<String>> announceList,
-                  String mainAnnounce,
-                  long creationDate,
-                  String comment,
-                  String createdBy,
-                  String name,
-                  List<TorrentFile> files,
-                  int pieceCount,
-                  int pieceLength,
-                  byte[] piecesHashes) {
-    myInfoHash = infoHash;
-    myAnnounceList = announceList;
-    myMainAnnounce = mainAnnounce;
-    myCreationDate = creationDate;
-    myComment = comment;
-    myCreatedBy = createdBy;
-    myName = name;
-    myFiles = files;
-    myPieceCount = pieceCount;
-    myPieceLength = pieceLength;
-    myPiecesHashes = piecesHashes;
-    myHexString = TorrentUtils.byteArrayToHexString(myInfoHash);
-  }
-
-  @Override
-  public String getDirectoryName() {
-    return myName;
-  }
-
-  @Override
-  public List<TorrentFile> getFiles() {
-    return myFiles;
-  }
-
+  /**
+   * @return all tracker for announce
+   * @see <a href="http://bittorrent.org/beps/bep_0012.html"></a>
+   */
   @Nullable
-  @Override
-  public List<List<String>> getAnnounceList() {
-    return myAnnounceList;
-  }
+  List<List<String>> getAnnounceList();
 
+  /**
+   * @return main announce url for tracker
+   */
   @NotNull
-  @Override
-  public String getAnnounce() {
-    return myMainAnnounce;
-  }
+  String getAnnounce();
 
-  @Override
-  public Optional<Long> getCreationDate() {
-    return Optional.of(myCreationDate == -1 ? null : myCreationDate);
-  }
+  /**
+   * @return creation date of the torrent in unix format
+   */
+  Optional<Long> getCreationDate();
 
-  @Override
-  public Optional<String> getComment() {
-    return Optional.of(myComment);
-  }
+  /**
+   * @return free-form text comment of the author
+   */
+  Optional<String> getComment();
 
-  @Override
-  public Optional<String> getCreatedBy() {
-    return Optional.of(myCreatedBy);
-  }
+  /**
+   * @return name and version of the program used to create .torrent
+   */
+  Optional<String> getCreatedBy();
 
-  @Override
-  public int getPieceLength() {
-    return myPieceLength;
-  }
+  /**
+   * @return number of bytes in each piece
+   */
+  int getPieceLength();
 
-  @Override
-  public byte[] getPiecesHashes() {
-    return myPiecesHashes;
-  }
+  /**
+   * @return concatenation of all 20-byte SHA1 hash values, one per piece.
+   * So the length of this array must be a multiple of 20
+   */
+  byte[] getPiecesHashes();
 
-  @Override
-  public boolean isPrivate() {
-    return false;
-  }
+  /**
+   * @return true if it's private torrent. In this case client must get peers only from tracker and
+   * must initiate connections to peers returned from the tracker.
+   * @see <a href="http://bittorrent.org/beps/bep_0027.html"></a>
+   */
+  boolean isPrivate();
 
-  @Override
-  public int getPiecesCount() {
-    return myPieceCount;
-  }
+  /**
+   * @return count of pieces in torrent
+   */
+  int getPiecesCount();
 
-  @Override
-  public byte[] getInfoHash() {
-    return myInfoHash;
-  }
+  /**
+   * @return The filename of the directory in which to store all the files
+   */
+  String getDirectoryName();
 
-  @Override
-  public String getHexInfoHash() {
-    return myHexString;
-  }
+  /**
+   * @return list of files, stored in this torrent
+   */
+  List<TorrentFile> getFiles();
+
 }

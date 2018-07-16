@@ -47,15 +47,8 @@ public class MultiAnnounceRequestProcessor {
     if (responseMessages.isEmpty()) {
       ByteBuffer res;
       Status status;
-      try {
-        res = HTTPTrackerErrorMessage.craft("").getData();
-        status = Status.BAD_REQUEST;
-      } catch (TrackerMessage.MessageValidationException e) {
-        logger.warn("Could not craft tracker error message!", e);
-        status = Status.INTERNAL_SERVER_ERROR;
-        res = ByteBuffer.allocate(0);
-
-      }
+      res = HTTPTrackerErrorMessage.craft("").getData();
+      status = Status.BAD_REQUEST;
       requestHandler.serveResponse(status.getCode(), "", res);
       return;
     }

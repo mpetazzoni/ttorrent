@@ -22,6 +22,10 @@ import com.turn.ttorrent.client.network.OutgoingConnectionListener;
 import com.turn.ttorrent.client.network.StateChannelListener;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.client.storage.FairPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileCollectionStorage;
+import com.turn.ttorrent.client.storage.PieceStorage;
+import com.turn.ttorrent.client.storage.PieceStorageFactory;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.common.protocol.PeerMessage;
@@ -36,12 +40,8 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -67,29 +67,9 @@ import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEv
  *
  * @author mpetazzoni
  */
-public class Client implements AnnounceResponseListener, PeerActivityListener, TorrentStateListener, Context, ConnectionManagerContext {
+public class Client implements AnnounceResponseListener, PeerActivityListener, Context, ConnectionManagerContext {
 
   protected static final Logger logger = TorrentLoggerFactory.getLogger();
-
-  /**
-   * Peers unchoking frequency, in seconds. Current BitTorrent specification
-   * recommends 10 seconds to avoid choking fibrilation.
-   */
-  private static final int UNCHOKING_FREQUENCY = 3;
-
-  /**
-   * Optimistic unchokes are done every 2 loop iterations, i.e. every
-   * 2*UNCHOKING_FREQUENCY seconds.
-   */
-  private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
-
-  private static final int RATE_COMPUTATION_ITERATIONS = 2;
-  private static final int MAX_DOWNLOADERS_UNCHOKE = 10;
-
-  /**
-   * Default data output directory.
-   */
-  private static final String DEFAULT_OUTPUT_DIRECTORY = "/tmp";
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
@@ -97,7 +77,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   private Announce announce;
 
-  private Random random;
   private volatile boolean myStarted = false;
   private final TorrentLoader myTorrentLoader;
   private final TorrentsStorage torrentsStorage;
@@ -111,7 +90,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   private final ExecutorService myPieceValidatorExecutor;
 
   /**
-   * @param workingExecutor executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   * @param workingExecutor        executor service for run connection worker and process incoming data. Must have a pool size at least 2
    * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
    */
   public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor) {
@@ -119,12 +98,11 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   }
 
   /**
-   * @param workingExecutor executor service for run connection worker and process incoming data. Must have a pool size at least 2
+   * @param workingExecutor        executor service for run connection worker and process incoming data. Must have a pool size at least 2
    * @param pieceValidatorExecutor executor service for calculation sha1 hashes of downloaded pieces
-   * @param trackerClientFactory factory which creates instances for communication with tracker
+   * @param trackerClientFactory   factory which creates instances for communication with tracker
    */
   public Client(ExecutorService workingExecutor, ExecutorService pieceValidatorExecutor, TrackerClientFactory trackerClientFactory) {
-    this.random = new Random(System.currentTimeMillis());
     this.announce = new Announce(this, trackerClientFactory);
     this.torrentsStorage = new TorrentsStorage();
     this.peersStorage = new PeersStorage();
@@ -137,74 +115,101 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     myPieceValidatorExecutor = pieceValidatorExecutor;
   }
 
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, false, false);
+  /**
+   * Adds torrent to storage, validate downloaded files and start seeding and leeching the torrent
+   *
+   * @param dotTorrentFilePath path to torrent metadata file
+   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, FairPieceStorageFactory.INSTANCE);
   }
 
-  public String seedTorrent(String dotTorrentFilePath, String downloadDirPath) throws IOException, NoSuchAlgorithmException, InterruptedException {
-    return addTorrent(dotTorrentFilePath, downloadDirPath, true, false);
+  /**
+   * Adds torrent to storage with specified {@link PieceStorageFactory}.
+   * It can be used for skipping initial validation of data
+   *
+   * @param dotTorrentFilePath path to torrent metadata file
+   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @param pieceStorageFactory factory for creating {@link PieceStorage}.
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(String dotTorrentFilePath,
+                                   String downloadDirPath,
+                                   PieceStorageFactory pieceStorageFactory) throws IOException {
+    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
+    TorrentMetadata metadata = metadataProvider.getTorrentMetadata();
+    FileCollectionStorage fileCollectionStorage = FileCollectionStorage.create(metadata, new File(downloadDirPath));
+    PieceStorage pieceStorage = pieceStorageFactory.createStorage(metadata, fileCollectionStorage);
+    return addTorrent(metadataProvider, pieceStorage);
   }
 
-  public String addTorrent(String dotTorrentFilePath, String downloadDirPath, boolean seeder, boolean leecher) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    Torrent torrent = Torrent.load(new File(dotTorrentFilePath));
-    final AnnounceableTorrentImpl announceableTorrent = new AnnounceableTorrentImpl(
+  /**
+   * Adds torrent to storage with any storage and metadata source
+   *
+   * @param metadataProvider specified metadata source
+   * @param pieceStorage     specified storage of pieces
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
+    CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
+    final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
-            torrent.getHexInfoHash(),
-            torrent.getInfoHash(),
-            torrent.getAnnounceList(),
-            torrent.getAnnounce(),
-            downloadDirPath,
-            dotTorrentFilePath,
-            seeder,
-            leecher);
-    this.torrentsStorage.addAnnounceableTorrent(torrent.getHexInfoHash(), announceableTorrent);
+            metadataProvider,
+            pieceStorage,
+            new EventDispatcher(listeners));
+    this.torrentsStorage.addAnnounceableTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
 
-    if (seeder) {
-      announceableTorrent.getTorrentStatistic().setLeft(0);
+
+    if (pieceStorage.isFinished()) {
+      loadedTorrent.getTorrentStatistic().setLeft(0);
     } else {
-      announceableTorrent.getTorrentStatistic().setLeft(torrent.getSize());
+      long size = 0;
+      for (TorrentFile torrentFile : loadedTorrent.getMetadata().getFiles()) {
+        size += torrentFile.size;
+      }
+      loadedTorrent.getTorrentStatistic().setLeft(size);
     }
 
-    forceAnnounceAndLogError(announceableTorrent, seeder ? COMPLETED : STARTED, announceableTorrent.getDotTorrentFilePath());
-    logger.debug(String.format("Added torrent %s (%s)", torrent.getName(), torrent.getHexInfoHash()));
-    return torrent.getHexInfoHash();
+    forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
+    logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
+    return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
   }
 
-  private void forceAnnounceAndLogError(AnnounceableTorrent torrent, AnnounceRequestMessage.RequestEvent event,
-                                        String dotTorrentFilePath) {
+  private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
     try {
-      this.announce.forceAnnounce(torrent, this, event);
+      this.announce.forceAnnounce(torrent.createAnnounceableInformation(), this, event);
     } catch (IOException e) {
-      logger.warn("unable to force announce torrent {}. Dot torrent path is {}", torrent.getHexInfoHash(), dotTorrentFilePath);
+      logger.warn("unable to force announce torrent {}", torrent);
       logger.debug("", e);
     }
   }
 
-  public void removeTorrent(TorrentHash torrentHash) {
-    logger.debug("Stopping seeding " + torrentHash.getHexInfoHash());
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash.getHexInfoHash());
+  /**
+   * Removes specified torrent from storage.
+   *
+   * @param torrentHash specified torrent hash
+   */
+  public void removeTorrent(String torrentHash) {
+    logger.debug("Stopping seeding " + torrentHash);
+    final Pair<SharedTorrent, LoadedTorrent> torrents = torrentsStorage.remove(torrentHash);
 
     SharedTorrent torrent = torrents.first();
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
     } else {
-      logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash.getHexInfoHash()));
+      logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash));
     }
-    sendStopEvent(torrents.second(), torrentHash.getHexInfoHash());
+    sendStopEvent(torrents.second(), torrentHash);
   }
 
-  /**
-   * method tries to find seeded torrent by .torrent file and removes it
-   *
-   * @return removed torrent or {@code null} if this torrent was not found
-   */
-  public AnnounceableFileTorrent removeByTorrentFile(File seededFile) {
-    return torrentsStorage.removeByTorrentPath(seededFile.getAbsolutePath()).second();
-  }
-
-  public void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
-    final Pair<SharedTorrent, AnnounceableFileTorrent> torrents = torrentsStorage.remove(torrentHash);
+  private void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
+    final Pair<SharedTorrent, LoadedTorrent> torrents = torrentsStorage.remove(torrentHash);
     final SharedTorrent sharedTorrent = torrents.first() == null ? torrent : torrents.first();
     if (sharedTorrent != null) {
       sharedTorrent.setClientState(ClientState.DONE);
@@ -213,14 +218,19 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     sendStopEvent(torrents.second(), torrentHash);
   }
 
-  private void sendStopEvent(AnnounceableFileTorrent announceableFileTorrent, String torrentHash) {
-    if (announceableFileTorrent == null) {
+  private void sendStopEvent(LoadedTorrent loadedTorrent, String torrentHash) {
+    if (loadedTorrent == null) {
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);
       return;
     }
-    forceAnnounceAndLogError(announceableFileTorrent, STOPPED, announceableFileTorrent.getDotTorrentFilePath());
+    forceAnnounceAndLogError(loadedTorrent, STOPPED);
   }
 
+  /**
+   * set specified announce interval between requests to the tracker
+   *
+   * @param announceInterval announce interval in seconds
+   */
   public void setAnnounceInterval(final int announceInterval) {
     announce.setAnnounceInterval(announceInterval);
   }
@@ -232,21 +242,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return this.torrentsStorage.activeTorrents();
   }
 
-  public SharedTorrent getTorrentByFilePath(File file) {
-    String path = file.getAbsolutePath();
-    for (SharedTorrent torrent : torrentsStorage.activeTorrents()) {
-      File parentFile = torrent.getParentFile();
-      final List<String> filenames = TorrentUtils.getTorrentFileNames(torrent);
-      for (String filename : filenames) {
-        File seededFile = new File(parentFile, filename);
-        if (seededFile.getAbsolutePath().equals(path)) {
-          return torrent;
-        }
-      }
-    }
-    return null;
-  }
-
+  @SuppressWarnings("unused")
   public URI getDefaultTrackerURI() {
     return announce.getDefaultTrackerURI();
   }
@@ -286,10 +282,26 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.myOutConnectionAllower.setMyMaxConnectionCount(maxConnectionsCount);
   }
 
+  /**
+   * Runs client instance and starts announcing, seeding and downloading of all torrents from storage
+   *
+   * @param bindAddresses list of addresses which are used for sending to the tracker. Current client
+   *                      must be available for other peers on the addresses
+   * @throws IOException if any io error occurs
+   */
   public void start(final InetAddress... bindAddresses) throws IOException {
     start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, null, new SelectorFactoryImpl());
   }
 
+  /**
+   * Runs client instance and starts announcing, seeding and downloading of all torrents from storage
+   *
+   * @param bindAddresses     list of addresses which are used for sending to the tracker. Current client
+   *                          must be available for other peers on the addresses
+   * @param defaultTrackerURI default tracker address.
+   *                          All torrents will be announced not only on the trackers from metadata file but also to this tracker
+   * @throws IOException if any io error occurs
+   */
   public void start(final InetAddress[] bindAddresses, final URI defaultTrackerURI) throws IOException {
     start(bindAddresses, Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC, defaultTrackerURI, new SelectorFactoryImpl());
   }
@@ -311,7 +323,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
         peer.setPeerId(self.getPeerId());
       } else {
         final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-        byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+        byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
         peer.setPeerId(ByteBuffer.wrap(idBytes));
       }
       result[i] = peer;
@@ -319,6 +331,17 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return result;
   }
 
+  /**
+   * Runs client instance and starts announcing, seeding and downloading of all torrents from storage
+   *
+   * @param bindAddresses       list of addresses which are used for sending to the tracker. Current client
+   *                            must be available for other peers on the addresses
+   * @param announceIntervalSec default announce interval. This interval can be override by tracker
+   * @param defaultTrackerURI   default tracker address.
+   *                            All torrents will be announced not only on the trackers from metadata file but also to this tracker
+   * @param selectorFactory     factory for creating {@link java.nio.channels.Selector} instance.
+   * @throws IOException if any io error occurs
+   */
   public void start(final InetAddress[] bindAddresses,
                     final int announceIntervalSec,
                     final URI defaultTrackerURI,
@@ -340,7 +363,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       return;
     }
     final String id = Client.BITTORRENT_ID_PREFIX + UUID.randomUUID().toString().split("-")[4];
-    byte[] idBytes = id.getBytes(Torrent.BYTE_ENCODING);
+    byte[] idBytes = id.getBytes(Constants.BYTE_ENCODING);
     Peer self = new Peer(new InetSocketAddress(myConnectionManager.getBindPort()), ByteBuffer.wrap(idBytes));
     peersStorage.setSelf(self);
     logger.info("BitTorrent client [{}] started and " +
@@ -364,7 +387,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     this.stop(60, TimeUnit.SECONDS);
   }
 
-  public void stop(int timeout, TimeUnit timeUnit) {
+  void stop(int timeout, TimeUnit timeUnit) {
     boolean wasStopped = this.stop.getAndSet(true);
     if (wasStopped) return;
 
@@ -422,85 +445,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return t != null && t.isComplete();
   }
 
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long downloadTimeoutSeconds) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    downloadUninterruptibly(dotTorrentPath, downloadDirPath, downloadTimeoutSeconds, 1, new AtomicBoolean(false), 5000);
-  }
-
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long idleTimeoutSec,
-                                      final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    downloadUninterruptibly(dotTorrentPath, downloadDirPath, idleTimeoutSec, minSeedersCount, isInterrupted,
-            maxTimeForConnectMs, new DownloadProgressListener.NopeListener());
-  }
-
-  public void downloadUninterruptibly(final String dotTorrentPath,
-                                      final String downloadDirPath,
-                                      final long idleTimeoutSec,
-                                      final int minSeedersCount,
-                                      final AtomicBoolean isInterrupted,
-                                      final long maxTimeForConnectMs,
-                                      DownloadProgressListener listener) throws IOException, InterruptedException, NoSuchAlgorithmException {
-    String hash = addTorrent(dotTorrentPath, downloadDirPath, false, true);
-
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hash);
-    if (announceableTorrent == null) throw new IOException("Unable to download torrent completely - announceable torrent is not found");
-    SharedTorrent torrent = new TorrentLoaderImpl(torrentsStorage).loadTorrent(announceableTorrent);
-
-    long maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-      torrent.addDownloadProgressListener(listener);
-      final long startDownloadAt = System.currentTimeMillis();
-      long currentLeft = torrent.getLeft();
-
-      while (torrent.getClientState() != ClientState.SEEDING &&
-              torrent.getClientState() != ClientState.ERROR &&
-              (torrent.getSeedersCount() >= minSeedersCount || torrent.getLastAnnounceTime() < 0) &&
-              (System.currentTimeMillis() <= maxIdleTime)) {
-        if (torrent.isFinished()) break;
-        if (Thread.currentThread().isInterrupted() || isInterrupted.get())
-          throw new InterruptedException("Download of " + torrent.getDirectoryName() + " was interrupted");
-        if (currentLeft > torrent.getLeft()) {
-          currentLeft = torrent.getLeft();
-          maxIdleTime = System.currentTimeMillis() + idleTimeoutSec * 1000;
-        }
-        if (System.currentTimeMillis() - startDownloadAt > maxTimeForConnectMs) {
-          if (getPeersForTorrent(torrent.getHexInfoHash()).size() < minSeedersCount) {
-            break;
-          }
-        }
-        Thread.sleep(100);
-      }
-
-    if (!(torrent.isFinished() && torrent.getClientState() == ClientState.SEEDING)) {
-      removeAndDeleteTorrent(hash, torrent);
-
-      final List<SharingPeer> peersForTorrent = getPeersForTorrent(hash);
-      int connectedPeersForTorrent = peersForTorrent.size();
-      for (SharingPeer peer : peersForTorrent) {
-        peer.unbind(true);
-      }
-
-      final String errorMsg;
-      if (System.currentTimeMillis() > maxIdleTime) {
-        int completedPieces = torrent.getCompletedPieces().cardinality();
-        int totalPieces = torrent.getPieceCount();
-        errorMsg = String.format("No pieces has been downloaded in %d seconds. Downloaded pieces %d/%d, connected peers %d"
-                , idleTimeoutSec, completedPieces, totalPieces, connectedPeersForTorrent);
-      } else if (connectedPeersForTorrent < minSeedersCount) {
-        errorMsg = String.format("Not enough seeders. Required %d, found %d", minSeedersCount, connectedPeersForTorrent);
-      } else if (torrent.getClientState() == ClientState.ERROR) {
-        errorMsg = "Torrent state is ERROR";
-      } else {
-        errorMsg = "Unknown error";
-      }
-      throw new IOException("Unable to download torrent completely - " + errorMsg);
-    }
-  }
-
   public List<SharingPeer> getPeersForTorrent(String torrentHash) {
     if (torrentHash == null) return new ArrayList<SharingPeer>();
 
@@ -515,170 +459,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
   public boolean isRunning() {
     return myStarted;
-  }
-
-  /**
-   * Display information about the BitTorrent client state.
-   * <p/>
-   * <p>
-   * This emits an information line in the log about this client's state. It
-   * includes the number of choked peers, number of connected peers, number
-   * of known peers, information about the torrent availability and
-   * completion and current transmission rates.
-   * </p>
-   */
-  public synchronized void info() {
-    float dl = 0;
-    float ul = 0;
-    int numConnected = 0;
-    for (SharingPeer peer : getConnectedPeers()) {
-      dl += peer.getDLRate().get();
-      ul += peer.getULRate().get();
-      numConnected++;
-    }
-
-/*
-    for (SharedTorrent torrent : this.torrents.values()) {
-      logger.debug("[{}]{} {}/{} (Downloaded {} bytes) pieces ({}%) [{}/{}] with {}/{} peers at {}/{} kB/s.",
-        new Object[]{
-          Arrays.toString(torrent.getFilenames().toArray()),
-          torrent.getClientState().name(),
-          torrent.getCompletedPieces().cardinality(),
-          torrent.getPieceCount(),
-          torrent.getDownloaded(),
-          String.format("%.2f", torrent.getCompletion()),
-          torrent.getAvailablePieces().cardinality(),
-          torrent.getRequestedPieces().cardinality(),
-          numConnected,
-          this.peers.size(),
-          String.format("%.2f", dl / 1024.0),
-          String.format("%.2f", ul / 1024.0),
-        });
-    }
-*/
-//    logger.debug("Downloaded bytes: {}", PeerExchange.readBytes);
-
-  }
-
-  /**
-   * Reset peers download and upload rates.
-   * <p/>
-   * <p>
-   * This method is called every RATE_COMPUTATION_ITERATIONS to reset the
-   * download and upload rates of all peers. This contributes to making the
-   * download and upload rate computations rolling averages every
-   * UNCHOKING_FREQUENCY * RATE_COMPUTATION_ITERATIONS seconds (usually 20
-   * seconds).
-   * </p>
-   */
-  private synchronized void resetPeerRates() {
-    for (SharingPeer peer : getConnectedPeers()) {
-      peer.getDLRate().reset();
-      peer.getULRate().reset();
-    }
-  }
-
-  /**
-   * Retrieve a peer comparator.
-   * <p/>
-   * <p>
-   * Returns a peer comparator based on either the download rate or the
-   * upload rate of each peer depending on our state. While sharing, we rely
-   * on the download rate we get from each peer. When our download is
-   * complete and we're only seeding, we use the upload rate instead.
-   * </p>
-   *
-   * @return A SharingPeer comparator that can be used to sort peers based on
-   * the download or upload rate we get from them.
-   */
-  private Comparator<SharingPeer> getPeerRateComparator() {
-/*
-    if (this.seed == 0) {
-      return new SharingPeer.ULRateComparator();
-    }
-*/
-
-    return new SharingPeer.DLRateComparator();
-  }
-
-  /**
-   * Unchoke connected peers.
-   * <p/>
-   * <p>
-   * This is one of the "clever" places of the BitTorrent client. Every
-   * OPTIMISTIC_UNCHOKING_FREQUENCY seconds, we decide which peers should be
-   * unchocked and authorized to grab pieces from us.
-   * </p>
-   * <p/>
-   * <p>
-   * Reciprocation (tit-for-tat) and upload capping is implemented here by
-   * carefully choosing which peers we unchoke, and which peers we choke.
-   * </p>
-   * <p/>
-   * <p>
-   * The four peers with the best download rate and are interested in us get
-   * unchoked. This maximizes our download rate as we'll be able to get data
-   * from there four "best" peers quickly, while allowing these peers to
-   * download from us and thus reciprocate their generosity.
-   * </p>
-   * <p/>
-   * <p>
-   * Peers that have a better download rate than these four downloaders but
-   * are not interested get unchoked too, we want to be able to download from
-   * them to get more data more quickly. If one becomes interested, it takes
-   * a downloader's place as one of the four top downloaders (i.e. we choke
-   * the downloader with the worst upload rate).
-   * </p>
-   *
-   * @param optimistic Whether to perform an optimistic unchoke as well.
-   */
-  private synchronized void unchokePeers(boolean optimistic) {
-    // Build a set of all connected peers, we don't care about peers we're
-    // not connected to.
-    List<SharingPeer> bound = new ArrayList<SharingPeer>(peersStorage.getSharingPeers());
-    Collections.sort(bound, this.getPeerRateComparator());
-    Collections.reverse(bound);
-    if (bound.size() == 0) {
-      logger.trace("No connected peers, skipping unchoking.");
-      return;
-    } else {
-      logger.trace("Running unchokePeers() on {} connected peers. Client {}",
-              new Object[]{bound.size(), Thread.currentThread()});
-    }
-
-    int downloaders = 0;
-    Set<SharingPeer> choked = new HashSet<SharingPeer>();
-
-    // We're interested in the top downloaders first, so use a descending
-    // set.
-    for (SharingPeer peer : bound) {
-      if (downloaders < Client.MAX_DOWNLOADERS_UNCHOKE) {
-        // Unchoke up to MAX_DOWNLOADERS_UNCHOKE interested peers
-        if (peer.isInterested()) {
-          downloaders++;
-          peer.unchoke();
-        }
-        continue;
-      }
-      // Choke everybody else
-      choked.add(peer);
-    }
-
-    // Actually choke all chosen peers (if any), except the eventual
-    // optimistic unchoke.
-    if (choked.size() > 0) {
-      SharingPeer randomPeer = choked.toArray(
-              new SharingPeer[0])[this.random.nextInt(choked.size())];
-
-      for (SharingPeer peer : choked) {
-        if (optimistic && peer == randomPeer) {
-          logger.debug("Optimistic unchoke of {}.", peer);
-          continue;
-        }
-
-        peer.choke();
-      }
-    }
   }
 
   private Collection<SharingPeer> getConnectedPeers() {
@@ -697,6 +477,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return result;
   }
 
+  /**
+   * @param hash specified torrent hash
+   * @return true if storage contains specified torrent. False otherwise
+   * @see TorrentsStorage#hasTorrent
+   */
+  @SuppressWarnings("unused")
   public boolean containsTorrentWithHash(String hash) {
     return torrentsStorage.hasTorrent(hash);
   }
@@ -716,14 +502,24 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
     return myExecutorService;
   }
 
+  public ExecutorService getPieceValidatorExecutor() {
+    return myPieceValidatorExecutor;
+  }
+
   @Override
   public ConnectionListener newChannelListener() {
     return new StateChannelListener(this);
   }
 
   @Override
-  public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel) {
-    return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel);
+  public SharingPeer createSharingPeer(String host,
+                                       int port,
+                                       ByteBuffer peerId,
+                                       SharedTorrent torrent,
+                                       ByteChannel channel,
+                                       String clientIdentifier,
+                                       int clientVersion) {
+    return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel, clientIdentifier, clientVersion);
   }
 
   @Override
@@ -766,13 +562,13 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
     if (torrent != null && torrent.isFinished()) return;
 
-    final AnnounceableFileTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
+    final LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(hexInfoHash);
     if (announceableTorrent == null) {
       logger.info("announceable torrent {} is not found in storage. Maybe it was removed", hexInfoHash);
       return;
     }
 
-    if (announceableTorrent.isSeeded()) return;
+    if (announceableTorrent.getPieceStorage().isFinished()) return;
 
     logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
@@ -797,7 +593,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
       ConnectionListener connectionListener = new OutgoingConnectionListener(
               this,
-              announceableTorrent,
+              announceableTorrent.getTorrentHash(),
               peer.getIp(),
               peer.getPort());
 
@@ -876,8 +672,12 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   private void validatePieceAsync(final SharedTorrent torrent, final Piece piece, String torrentHash, SharingPeer peer) {
     try {
       synchronized (piece) {
+
+        if (piece.isValid()) return;
+
         piece.validate(torrent, piece);
         if (piece.isValid()) {
+          piece.finish();
           // Send a HAVE message to all connected peers, which don't have the piece
           PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
           for (SharingPeer remote : getConnectedPeers()) {
@@ -921,13 +721,16 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
 
           if (isTorrentComplete) {
 
-            AnnounceableTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
+            LoadedTorrent announceableTorrent = torrentsStorage.getAnnounceableTorrent(torrentHash);
 
             if (announceableTorrent == null) return;
 
+            AnnounceableInformation announceableInformation = announceableTorrent.createAnnounceableInformation();
+
+
             try {
-              announce.getCurrentTrackerClient(announceableTorrent)
-                      .announceAllInterfaces(COMPLETED, true, announceableTorrent);
+              announce.getCurrentTrackerClient(announceableInformation)
+                      .announceAllInterfaces(COMPLETED, true, announceableInformation);
             } catch (AnnounceException e) {
               logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
             }
@@ -945,7 +748,7 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
       }
     } catch (Throwable e) {
       torrent.markUncompleted(piece);
-      LoggerUtils.warnWithMessageAndDebugDetails(logger, "unhandled exception in piece {} validation task", piece, e);
+      logger.warn("unhandled exception in piece {} validation task", e);
     }
   }
 
@@ -978,13 +781,6 @@ public class Client implements AnnounceResponseListener, PeerActivityListener, T
   @Override
   public void handleNewPeerConnected(SharingPeer peer) {
     //do nothing
-  }
-
-  @Override
-  public void torrentStateChanged(ClientState newState, SharedTorrent torrent) {
-    if (newState.equals(ClientState.ERROR)) {
-      removeTorrent(torrent);
-    }
   }
 
   public ConnectionManager getConnectionManager() throws IllegalStateException {

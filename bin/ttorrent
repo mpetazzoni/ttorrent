@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# Copyright (C) 2012 Turn, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+EXECJAR="ttorrent-*-shaded.jar"
+
+real_path() {
+    case $1 in
+        /*)
+            SCRIPT="$1"
+            ;;
+        *)
+            PWD=`pwd`
+            SCRIPT="$PWD/$1"
+            ;;
+    esac
+    CHANGED=true
+    while [ "X$CHANGED" != "X" ] ; do
+        # Change spaces to ":" so the tokens can be parsed.
+        SAFESCRIPT=`echo $SCRIPT | sed -e 's; ;:;g'`
+        # Get the real path to this script, resolving any symbolic links
+        TOKENS=`echo $SAFESCRIPT | sed -e 's;/; ;g'`
+        REALPATH=
+        for C in $TOKENS; do
+            # Change any ":" in the token back to a space.
+            C=`echo $C | sed -e 's;:; ;g'`
+            REALPATH="$REALPATH/$C"
+            # If REALPATH is a sym link, resolve it.  Loop for nested links.
+            while [ -h "$REALPATH" ] ; do
+                LS="`ls -ld "$REALPATH"`"
+                LINK="`expr "$LS" : '.*-> \(.*\)$'`"
+                if expr "$LINK" : '/.*' > /dev/null; then
+                    # LINK is absolute.
+                    REALPATH="$LINK"
+                else
+                    # LINK is relative.
+                    REALPATH="`dirname "$REALPATH"`""/$LINK"
+                fi
+            done
+        done
+        if [ "$REALPATH" = "$SCRIPT" ] ; then
+            CHANGED=""
+        else
+            SCRIPT="$REALPATH"
+        fi
+    done
+    echo "$REALPATH"
+}
+
+base=$(dirname $(real_path $0))
+CPARG=$(find ${base}/../build -name "$EXECJAR" | tail -n 1)
+if [ -z "$CPARG" ] ; then
+    echo "Unable to find $EXECJAR"
+    exit 1
+fi
+if [ -z "$MAINCLASS" ] ; then
+    CPARG="-jar $CPARG"
+else
+    CPARG="-cp $CPARG $MAINCLASS"
+fi
+exec java $CPARG "$@"

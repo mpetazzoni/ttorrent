@@ -1,16 +1,21 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.common.TorrentMetadata;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
-import java.io.InputStream;
 
 public interface TorrentMetadataProvider {
 
   /**
-   * Provide access to data of .torrent file
+   * load and return new {@link TorrentMetadata} instance from any source
    *
-   * @return stream which contains .torrent file content
-   * @throws IOException if any io error occurs
+   * @return new torrent metadata instance
+   * @throws IOException               if any IO error occurs
+   * @throws InvalidBEncodingException if specified source has invalid BEP format or missed required fields
    */
-  InputStream getTorrentMetadata() throws IOException;
+  @NotNull
+  TorrentMetadata getTorrentMetadata() throws IOException;
 
 }

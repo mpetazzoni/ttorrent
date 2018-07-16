@@ -7,7 +7,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static org.testng.Assert.*;
@@ -18,11 +17,11 @@ public class TorrentParserTest {
   private TorrentParser myTorrentParser;
 
   @BeforeMethod
-  public void setUp() throws Exception {
+  public void setUp() {
     myTorrentParser = new TorrentParser();
   }
 
-  public void parseTest() throws IOException, NoSuchAlgorithmException {
+  public void parseTest() throws IOException {
     final Map<String, BEValue> metadata = new HashMap<String, BEValue>();
     final HashMap<String, BEValue> infoTable = new HashMap<String, BEValue>();
 
@@ -36,21 +35,21 @@ public class TorrentParserTest {
 
     metadata.put("info", new BEValue(infoTable));
 
-    final TorrentMultiFileMetadata torrentMultiFileMetadata = myTorrentParser.parse(BEncoder.bencode(metadata).array());
+    final TorrentMetadata torrentMetadata = myTorrentParser.parse(BEncoder.bencode(metadata).array());
 
-    assertEquals(torrentMultiFileMetadata.getPieceLength(), 4);
-    assertEquals(torrentMultiFileMetadata.getAnnounce(), "http://localhost/announce");
-    assertEquals(torrentMultiFileMetadata.getDirectoryName(), "test.file");
-    assertNull(torrentMultiFileMetadata.getAnnounceList());
+    assertEquals(torrentMetadata.getPieceLength(), 4);
+    assertEquals(torrentMetadata.getAnnounce(), "http://localhost/announce");
+    assertEquals(torrentMetadata.getDirectoryName(), "test.file");
+    assertNull(torrentMetadata.getAnnounceList());
 
     List<BEValue> announceList = new ArrayList<BEValue>();
     announceList.add(new BEValue(Collections.singletonList(new BEValue("http://localhost/announce"))));
     announceList.add(new BEValue(Collections.singletonList(new BEValue("http://second/announce"))));
     metadata.put("announce-list", new BEValue(announceList));
 
-    final TorrentMultiFileMetadata torrentMultiFileMetadataWithAnnounceList = myTorrentParser.parse(BEncoder.bencode(metadata).array());
+    final TorrentMetadata torrentMetadataWithAnnounceList = myTorrentParser.parse(BEncoder.bencode(metadata).array());
 
-    final List<List<String>> actualAnnounceList = torrentMultiFileMetadataWithAnnounceList.getAnnounceList();
+    final List<List<String>> actualAnnounceList = torrentMetadataWithAnnounceList.getAnnounceList();
     assertNotNull(actualAnnounceList);
     assertEquals(actualAnnounceList.get(0).get(0), "http://localhost/announce");
     assertEquals(actualAnnounceList.get(1).get(0), "http://second/announce");
@@ -63,8 +62,6 @@ public class TorrentParserTest {
       fail("This method must throw invalid bencoding exception");
     } catch (InvalidBEncodingException e) {
       //it's okay
-    } catch (NoSuchAlgorithmException e) {
-      fail("", e);
     }
   }
 
@@ -77,8 +74,6 @@ public class TorrentParserTest {
       fail("This method must throw invalid bencoding exception");
     } catch (InvalidBEncodingException e) {
       //it's okay
-    } catch (NoSuchAlgorithmException e) {
-      fail("", e);
     } catch (IOException e) {
       fail("", e);
     }

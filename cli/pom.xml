@@ -1,0 +1,71 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.turn</groupId>
+		<artifactId>ttorrent</artifactId>
+		<version>1.2</version>
+	</parent>
+
+	<name>Java BitTorrent library CLI</name>
+	<artifactId>ttorrent-cli</artifactId>
+	<packaging>jar</packaging>
+
+	<dependencies>
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-client</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.turn</groupId>
+            <artifactId>ttorrent-tracker</artifactId>
+            <version>1.2</version>
+        </dependency>
+	</dependencies>
+
+	<build>
+		<defaultGoal>package</defaultGoal>
+
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+						</manifest>
+					</archive>
+					<includes>
+						<include>**</include>
+					</includes>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.1</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<outputFile>${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar</outputFile>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<manifestEntries>
+										<Main-Class>com.turn.ttorrent.cli.ClientMain</Main-Class>
+									</manifestEntries>
+								</transformer>
+							</transformers>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

@@ -2,6 +2,7 @@ package com.turn.ttorrent.tracker;
 
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
+import org.apache.commons.io.IOUtils;
 import org.simpleframework.http.Request;
 import org.simpleframework.http.Response;
 import org.simpleframework.http.core.Container;
@@ -76,13 +77,7 @@ public class TrackerServiceContainer implements Container {
     } catch (Throwable t) {
       LoggerUtils.errorAndDebugDetails(logger, "error in processing request {}", request, t);
     } finally {
-      if (body != null) {
-        try {
-          body.close();
-        } catch (IOException ioe) {
-          // Ignore
-        }
-      }
+      IOUtils.closeQuietly(body);
     }
 
   }

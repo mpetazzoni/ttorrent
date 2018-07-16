@@ -28,6 +28,7 @@
         <module>common</module>
         <module>tests</module>
         <module>test-api</module>
+        <module>cli</module>
     </modules>
 
     <organization>
@@ -100,7 +101,7 @@
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
-            <version>1.4</version>
+            <version>1.11</version>
         </dependency>
 
         <dependency>

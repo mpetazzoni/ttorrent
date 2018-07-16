@@ -1,7 +1,6 @@
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Pair;
 
 import java.util.*;
@@ -12,12 +11,12 @@ public class TorrentsStorage {
 
   private final ReadWriteLock myReadWriteLock;
   private final Map<String, SharedTorrent> myActiveTorrents;
-  private final Map<String, AnnounceableFileTorrent> myAnnounceableTorrents;
+  private final Map<String, LoadedTorrent> myAnnounceableTorrents;
 
   public TorrentsStorage() {
     myReadWriteLock = new ReentrantReadWriteLock();
     myActiveTorrents = new HashMap<String, SharedTorrent>();
-    myAnnounceableTorrents = new HashMap<String, AnnounceableFileTorrent>();
+    myAnnounceableTorrents = new HashMap<String, LoadedTorrent>();
   }
 
   public boolean hasTorrent(String hash) {
@@ -29,7 +28,7 @@ public class TorrentsStorage {
     }
   }
 
-  public AnnounceableFileTorrent getAnnounceableTorrent(String hash) {
+  public LoadedTorrent getAnnounceableTorrent(String hash) {
     try {
       myReadWriteLock.readLock().lock();
       return myAnnounceableTorrents.get(hash);
@@ -46,7 +45,7 @@ public class TorrentsStorage {
       if (torrent == null) return;
 
       final ClientState clientState = torrent.getClientState();
-      boolean isTorrentFinished = clientState == ClientState.SEEDING || torrent.isSeeder();
+      boolean isTorrentFinished = torrent.isFinished();
       if (torrent.getDownloadersCount() == 0 && isTorrentFinished) {
         myActiveTorrents.remove(torrentHash);
       } else {
@@ -67,7 +66,7 @@ public class TorrentsStorage {
     }
   }
 
-  public void addAnnounceableTorrent(String hash, AnnounceableFileTorrent torrent) {
+  public void addAnnounceableTorrent(String hash, LoadedTorrent torrent) {
     try {
       myReadWriteLock.writeLock().lock();
       myAnnounceableTorrents.put(hash, torrent);
@@ -88,13 +87,13 @@ public class TorrentsStorage {
     }
   }
 
-  public Pair<SharedTorrent, AnnounceableFileTorrent> remove(String hash) {
-    final Pair<SharedTorrent, AnnounceableFileTorrent> result;
+  public Pair<SharedTorrent, LoadedTorrent> remove(String hash) {
+    final Pair<SharedTorrent, LoadedTorrent> result;
     try {
       myReadWriteLock.writeLock().lock();
       final SharedTorrent sharedTorrent = myActiveTorrents.remove(hash);
-      final AnnounceableFileTorrent announceableFileTorrent = myAnnounceableTorrents.remove(hash);
-      result = new Pair<SharedTorrent, AnnounceableFileTorrent>(sharedTorrent, announceableFileTorrent);
+      final LoadedTorrent loadedTorrent = myAnnounceableTorrents.remove(hash);
+      result = new Pair<SharedTorrent, LoadedTorrent>(sharedTorrent, loadedTorrent);
     } finally {
       myReadWriteLock.writeLock().unlock();
     }
@@ -113,10 +112,14 @@ public class TorrentsStorage {
     }
   }
 
-  public List<AnnounceableTorrent> announceableTorrents() {
+  public List<AnnounceableInformation> announceableTorrents() {
+    List<AnnounceableInformation> result = new ArrayList<AnnounceableInformation>();
     try {
       myReadWriteLock.readLock().lock();
-      return new ArrayList<AnnounceableTorrent>(myAnnounceableTorrents.values());
+      for (LoadedTorrent loadedTorrent : myAnnounceableTorrents.values()) {
+        result.add(loadedTorrent.createAnnounceableInformation());
+      }
+      return result;
     } finally {
       myReadWriteLock.readLock().unlock();
     }
@@ -135,24 +138,5 @@ public class TorrentsStorage {
     for (SharedTorrent sharedTorrent : sharedTorrents) {
       sharedTorrent.close();
     }
-  }
-
-  public Pair<SharedTorrent, AnnounceableFileTorrent> removeByTorrentPath(String absolutePath) {
-    String torrentHash = null;
-    try {
-      myReadWriteLock.writeLock().lock();
-      for (Map.Entry<String, AnnounceableFileTorrent> e : myAnnounceableTorrents.entrySet()) {
-        if (e.getValue().getDotTorrentFilePath().equals(absolutePath)) {
-          torrentHash = e.getKey();
-          break;
-        }
-      }
-    } finally {
-      myReadWriteLock.writeLock().unlock();
-    }
-    if (torrentHash != null) {
-      return remove(torrentHash);
-    }
-    return new Pair<SharedTorrent, AnnounceableFileTorrent>(null, null);
   }
 }

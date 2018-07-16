@@ -106,7 +106,8 @@ public class UDPAnnounceResponseMessage
     int complete = data.getInt();
 
     List<Peer> peers = new LinkedList<Peer>();
-    for (int i = 0; i < data.remaining() / 6; i++) {
+    int totalPeersInResponse = data.remaining() / 6;
+    for (int i = 0; i < totalPeersInResponse; i++) {
       try {
         byte[] ipBytes = new byte[4];
         data.get(ipBytes);

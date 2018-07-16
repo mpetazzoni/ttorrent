@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.common.Torrent;
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.common.TorrentHash;
 import com.turn.ttorrent.common.TorrentUtils;
 
@@ -81,7 +81,7 @@ public class Handshake implements TorrentHash {
     buffer.get(pstr);
 
     if (!Handshake.BITTORRENT_PROTOCOL_IDENTIFIER.equals(
-            new String(pstr, Torrent.BYTE_ENCODING))) {
+            new String(pstr, Constants.BYTE_ENCODING))) {
       throw new ParseException("Invalid protocol identifier!", 1);
     }
 
@@ -122,7 +122,7 @@ public class Handshake implements TorrentHash {
       buffer.put((byte) Handshake
               .BITTORRENT_PROTOCOL_IDENTIFIER.length());
       buffer.put(Handshake
-              .BITTORRENT_PROTOCOL_IDENTIFIER.getBytes(Torrent.BYTE_ENCODING));
+              .BITTORRENT_PROTOCOL_IDENTIFIER.getBytes(Constants.BYTE_ENCODING));
       buffer.put(reserved);
       buffer.put(infoHash);
       buffer.put(peerId);

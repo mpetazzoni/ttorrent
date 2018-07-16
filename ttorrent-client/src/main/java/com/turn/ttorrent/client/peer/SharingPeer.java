@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.client.peer;
 
+import com.turn.ttorrent.client.PeerInformation;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.common.*;
@@ -64,10 +65,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @author mpetazzoni
  */
-public class SharingPeer extends Peer implements MessageListener, SharingPeerInfo {
+public class SharingPeer extends Peer implements MessageListener, PeerInformation {
 
   private static final Logger logger = TorrentLoggerFactory.getLogger();
-  private static final int MAX_PIPELINED_REQUESTS = 100;
+  private static final int MAX_PIPELINED_REQUESTS = 400;
 
   private final Object availablePiecesLock;
   private volatile boolean choking;
@@ -93,13 +94,17 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
   private final ConnectionManager connectionManager;
   private final ByteChannel socketChannel;
 
+  private final String clientIdentifier;
+  private final int clientVersion;
+
   /**
    * Create a new sharing peer on a given torrent.
-   *
-   * @param ip      The peer's IP address.
+   *  @param ip      The peer's IP address.
    * @param port    The peer's port.
    * @param peerId  The byte-encoded peer ID.
    * @param torrent The torrent this peer exchanges with us on.
+   * @param clientIdentifier
+   * @param clientVersion
    */
   public SharingPeer(String ip,
                      int port,
@@ -107,10 +112,14 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
                      SharedTorrent torrent,
                      ConnectionManager connectionManager,
                      PeerActivityListener client,
-                     ByteChannel channel) {
+                     ByteChannel channel,
+                     String clientIdentifier,
+                     int clientVersion) {
     super(ip, port, peerId);
 
     this.torrent = torrent;
+    this.clientIdentifier = clientIdentifier;
+    this.clientVersion = clientVersion;
     this.listeners = Collections.unmodifiableSet(new HashSet<PeerActivityListener>(Arrays.asList(client, torrent)));
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
@@ -156,6 +165,21 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
       this.send(PeerMessage.ChokeMessage.craft());
       this.choking = true;
     }
+  }
+
+  @Override
+  public byte[] getId() {
+    return getPeerIdArray();
+  }
+
+  @Override
+  public String getClientIdentifier() {
+    return clientIdentifier;
+  }
+
+  @Override
+  public int getClientVersion() {
+    return clientVersion;
   }
 
   public synchronized void onConnectionEstablished() {
@@ -619,7 +643,7 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
             // downloaded. In this case, we have nothing to save, but
             // we should validate the piece.
             if (getRemainingRequestedPieces(p).size() == 0) {
-              torrent.savePieceAndValidate(p);
+//              torrent.savePieceAndValidate(p);
               this.firePieceCompleted(p);
               myRequestedPieces.remove(p);
               this.firePeerReady();
@@ -769,11 +793,6 @@ public class SharingPeer extends Peer implements MessageListener, SharingPeerInf
 
   public int getDownloadingPiecesCount() {
     return myRequestedPieces.size();
-  }
-
-  @Override
-  public TorrentHash getTorrentHash() {
-    return torrent;
   }
 
   /**

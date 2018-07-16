@@ -2,9 +2,9 @@ package com.turn.ttorrent.client.network;
 
 import com.turn.ttorrent.client.Context;
 import com.turn.ttorrent.client.Handshake;
+import com.turn.ttorrent.client.LoadedTorrent;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.AnnounceableFileTorrent;
 import com.turn.ttorrent.common.LoggerUtils;
 import com.turn.ttorrent.common.PeerUID;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
@@ -79,7 +79,7 @@ public class HandshakeReceiver implements DataProcessor {
       return new ShutdownProcessor().processAndGetNext(socketChannel);
     }
 
-    final AnnounceableFileTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
+    final LoadedTorrent announceableTorrent = myContext.getTorrentsStorage().getAnnounceableTorrent(hs.getHexInfoHash());
 
     if (announceableTorrent == null) {
       logger.info("Announceable torrent {} is not found in storage", hs.getHexInfoHash());
@@ -96,8 +96,20 @@ public class HandshakeReceiver implements DataProcessor {
 
     logger.trace("got handshake {} from {}", Arrays.toString(messageBytes.array()), socketChannel);
 
+    String clientTypeVersion = new String(Arrays.copyOf(hs.getPeerId(), 8));
+    String clientType = clientTypeVersion.substring(1, 3);
+    int clientVersion = 0;
+    try {
+      clientVersion = Integer.parseInt(clientTypeVersion.substring(3, 7));
+    } catch (NumberFormatException ignored) {}
     final SharingPeer sharingPeer =
-            myContext.createSharingPeer(myHostAddress, myPort, ByteBuffer.wrap(hs.getPeerId()), torrent, socketChannel);
+            myContext.createSharingPeer(myHostAddress,
+                    myPort,
+                    ByteBuffer.wrap(hs.getPeerId()),
+                    torrent,
+                    socketChannel,
+                    clientType,
+                    clientVersion);
     PeerUID peerUID = new PeerUID(sharingPeer.getAddress(), hs.getHexInfoHash());
 
     SharingPeer old = myContext.getPeersStorage().putIfAbsent(peerUID, sharingPeer);

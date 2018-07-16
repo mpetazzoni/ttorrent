@@ -15,6 +15,7 @@
  */
 package com.turn.ttorrent.tracker;
 
+import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.common.*;
 import org.slf4j.Logger;
@@ -203,7 +204,7 @@ public class TrackedPeer extends Peer {
     if (this.hasPeerId()) {
       peer.put("peer id", new BEValue(this.getPeerIdArray()));
     }
-    peer.put("ip", new BEValue(this.getIp(), Torrent.BYTE_ENCODING));
+    peer.put("ip", new BEValue(this.getIp(), Constants.BYTE_ENCODING));
     peer.put("port", new BEValue(this.getPort()));
     return new BEValue(peer);
   }

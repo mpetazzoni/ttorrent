@@ -16,8 +16,11 @@ public class ClientFactory {
     final ExecutorService pieceValidatorExecutor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     return new Client(executorService, pieceValidatorExecutor) {
       @Override
-      public void stop(int timeout, TimeUnit timeUnit) {
-        super.stop(timeout, timeUnit);
+      public void stop() {
+        super.stop();
+
+        int timeout = 60;
+        TimeUnit timeUnit = TimeUnit.SECONDS;
 
         executorService.shutdown();
         pieceValidatorExecutor.shutdown();

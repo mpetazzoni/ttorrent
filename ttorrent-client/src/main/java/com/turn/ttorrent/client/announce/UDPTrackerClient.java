@@ -15,7 +15,7 @@
  */
 package com.turn.ttorrent.client.announce;
 
-import com.turn.ttorrent.common.AnnounceableTorrent;
+import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
@@ -135,13 +135,13 @@ public class UDPTrackerClient extends TrackerClient {
   }
 
   @Override
-  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, List<? extends AnnounceableTorrent> torrents, List<Peer> peer) throws AnnounceException {
+  protected void multiAnnounce(AnnounceRequestMessage.RequestEvent event, boolean inhibitEvent, List<? extends AnnounceableInformation> torrents, List<Peer> peer) throws AnnounceException {
     throw new AnnounceException("Not implemented");
   }
 
   @Override
   public void announce(final AnnounceRequestMessage.RequestEvent event,
-                       boolean inhibitEvents, final AnnounceableTorrent torrent, final List<Peer> peers) throws AnnounceException {
+                       boolean inhibitEvents, final AnnounceableInformation torrent, final List<Peer> peers) throws AnnounceException {
     logAnnounceRequest(event, torrent);
 
     State state = State.CONNECT_REQUEST;
@@ -266,7 +266,7 @@ public class UDPTrackerClient extends TrackerClient {
   }
 
   private UDPAnnounceRequestMessage buildAnnounceRequest(
-          final AnnounceRequestMessage.RequestEvent event, final AnnounceableTorrent torrent, final Peer peer) {
+          final AnnounceRequestMessage.RequestEvent event, final AnnounceableInformation torrent, final Peer peer) {
     return UDPAnnounceRequestMessage.craft(
             this.connectionId,
             transactionId,

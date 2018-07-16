@@ -16,7 +16,7 @@ import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentSerializer {
 
-  public byte[] serialize(TorrentMultiFileMetadata metadata) throws IOException {
+  public byte[] serialize(TorrentMetadata metadata) throws IOException {
     Map<String, BEValue> mapMetadata = new HashMap<String, BEValue>();
     Map<String, BEValue> infoTable = new HashMap<String, BEValue>();
 
@@ -43,11 +43,13 @@ public class TorrentSerializer {
       infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
       putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
     } else {
-      Map<String, BEValue> files = new HashMap<String, BEValue>();
+      List<BEValue> files = new ArrayList<BEValue>();
       for (TorrentFile torrentFile : metadata.getFiles()) {
-        files.put(FILE_LENGTH, new BEValue(torrentFile.size));
-        putOptionalIfPresent(files, MD5_SUM, torrentFile.md5Hash);
-        files.put(FILE_PATH, new BEValue(mapStringListToBEValueList(torrentFile.relativePath)));
+        Map<String, BEValue> entry = new HashMap<String, BEValue>();
+        entry.put(FILE_LENGTH, new BEValue(torrentFile.size));
+        putOptionalIfPresent(entry, MD5_SUM, torrentFile.md5Hash);
+        entry.put(FILE_PATH, new BEValue(mapStringListToBEValueList(torrentFile.relativePath)));
+        files.add(new BEValue(entry));
       }
       infoTable.put(FILES, new BEValue(files));
     }

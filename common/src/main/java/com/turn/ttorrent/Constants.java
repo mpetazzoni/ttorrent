@@ -36,4 +36,8 @@ public class Constants {
   public static final int DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS = 10000;
   public static final int DEFAULT_CLEANUP_RUN_TIMEOUT_MILLIS = 120000;
 
+  public static final String BYTE_ENCODING = "ISO-8859-1";
+
+  public static final int PIECE_HASH_SIZE = 20;
+
 }

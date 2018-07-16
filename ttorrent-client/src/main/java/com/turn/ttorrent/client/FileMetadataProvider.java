@@ -1,6 +1,11 @@
 package com.turn.ttorrent.client;
 
-import java.io.*;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentParser;
+import org.jetbrains.annotations.NotNull;
+
+import java.io.File;
+import java.io.IOException;
 
 public class FileMetadataProvider implements TorrentMetadataProvider {
 
@@ -10,11 +15,10 @@ public class FileMetadataProvider implements TorrentMetadataProvider {
     this.filePath = filePath;
   }
 
+  @NotNull
   @Override
-  public InputStream getTorrentMetadata() throws IOException {
+  public TorrentMetadata getTorrentMetadata() throws IOException {
     File file = new File(filePath);
-    if (!file.isFile())
-      throw new IllegalArgumentException("File " + filePath + " is not exist or is not a regular file");
-    return new BufferedInputStream(new FileInputStream(file));
+    return new TorrentParser().parseFromFile(file);
   }
 }
