@@ -2,7 +2,6 @@ package com.turn.ttorrent.client.storage;
 
 import com.turn.ttorrent.common.TorrentMetadata;
 
-import java.io.IOException;
 import java.util.BitSet;
 
 public class EmptyPieceStorageFactory implements PieceStorageFactory {
@@ -13,7 +12,7 @@ public class EmptyPieceStorageFactory implements PieceStorageFactory {
   }
 
   @Override
-  public PieceStorage createStorage(TorrentMetadata metadata, TorrentByteStorage byteStorage) throws IOException {
+  public PieceStorage createStorage(TorrentMetadata metadata, TorrentByteStorage byteStorage) {
     return new PieceStorageImpl(
             byteStorage,
             new BitSet(metadata.getPiecesCount()),

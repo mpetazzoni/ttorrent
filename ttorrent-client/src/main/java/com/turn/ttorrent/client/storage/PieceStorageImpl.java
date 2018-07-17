@@ -23,7 +23,7 @@ public class PieceStorageImpl implements PieceStorage {
   public PieceStorageImpl(TorrentByteStorage fileCollectionStorage,
                           BitSet availablePieces,
                           int piecesCount,
-                          int pieceSize) throws IOException {
+                          int pieceSize) {
     this.fileCollectionStorage = fileCollectionStorage;
     this.readWriteLock = new ReentrantReadWriteLock();
     this.piecesCount = piecesCount;
@@ -32,11 +32,8 @@ public class PieceStorageImpl implements PieceStorage {
     bitSet.or(availablePieces);
     if (bitSet.cardinality() != piecesCount) {
       this.availablePieces = bitSet;
-      this.fileCollectionStorage.open(false);
-    } else {
-      this.fileCollectionStorage.open(true);
     }
-    isOpen = new AtomicBoolean(true);
+    isOpen = new AtomicBoolean(false);
   }
 
   private void checkPieceIndex(int pieceIndex) {
