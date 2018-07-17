@@ -173,9 +173,9 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
       loadedTorrent.getTorrentStatistic().setLeft(size);
     }
 
+    this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
-    this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
   }
 
