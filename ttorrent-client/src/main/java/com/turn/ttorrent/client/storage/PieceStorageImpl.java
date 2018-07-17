@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -17,7 +18,7 @@ public class PieceStorageImpl implements PieceStorage {
   private volatile BitSet availablePieces;
   private final int piecesCount;
   private final int pieceSize;
-  private volatile boolean isOpen;
+  private final AtomicBoolean isOpen;
 
   public PieceStorageImpl(TorrentByteStorage fileCollectionStorage,
                           BitSet availablePieces,
@@ -35,7 +36,7 @@ public class PieceStorageImpl implements PieceStorage {
     } else {
       this.fileCollectionStorage.open(true);
     }
-    isOpen = true;
+    isOpen = new AtomicBoolean(true);
   }
 
   private void checkPieceIndex(int pieceIndex) {
@@ -79,14 +80,8 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   private void openStorageIsNecessary(boolean onlyRead) throws IOException {
-    try {
-      readWriteLock.writeLock().lock();
-      if (!isOpen) {
-        fileCollectionStorage.open(onlyRead);
-        isOpen = true;
-      }
-    } finally {
-      readWriteLock.writeLock().unlock();
+    if (!isOpen.getAndSet(true)) {
+      fileCollectionStorage.open(onlyRead);
     }
   }
 
@@ -148,7 +143,7 @@ public class PieceStorageImpl implements PieceStorage {
     try {
       readWriteLock.writeLock().lock();
       fileCollectionStorage.close();
-      isOpen = false;
+      isOpen.set(false);
     } finally {
       readWriteLock.writeLock().unlock();
     }
