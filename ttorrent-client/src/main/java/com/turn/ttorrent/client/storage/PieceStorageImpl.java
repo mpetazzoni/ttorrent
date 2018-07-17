@@ -79,9 +79,14 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   private void openStorageIsNecessary(boolean onlyRead) throws IOException {
-    if (!isOpen) {
-      fileCollectionStorage.open(onlyRead);
-      isOpen = true;
+    try {
+      readWriteLock.writeLock().lock();
+      if (!isOpen) {
+        fileCollectionStorage.open(onlyRead);
+        isOpen = true;
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
     }
   }
 
