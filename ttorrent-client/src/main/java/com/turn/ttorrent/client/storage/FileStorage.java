@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -163,7 +164,10 @@ public class FileStorage implements TorrentByteStorage {
       if (!myIsOpen) return;
       logger.debug("Closing file channel to {}. Channel open: {}", current.getName(), channel.isOpen());
       if (this.channel.isOpen()) {
-        this.channel.force(true);
+        try {
+          this.channel.force(true);
+        } catch (ClosedByInterruptException ignored) {
+        }
       }
       this.raf.close();
       myIsOpen = false;
