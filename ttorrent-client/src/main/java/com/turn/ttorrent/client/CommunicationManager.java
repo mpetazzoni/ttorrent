@@ -663,7 +663,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
       });
       torrent.markCompletedAndAddValidationFuture(piece, validationFuture);
     } catch (RejectedExecutionException e) {
-      torrent.markUncompleted(piece);
+      torrent.markUncompleted(piece, peer);
       LoggerUtils.warnWithMessageAndDebugDetails(logger, "Unable to submit validation task for torrent {}", torrentHash, e);
     }
   }
@@ -687,7 +687,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
           final boolean isTorrentComplete;
           synchronized (torrent) {
-            torrent.removeValidationFuture(piece);
+            torrent.removeValidationFuture(piece, peer);
             // Make sure the piece is marked as completed in the torrent
             // Note: this is required because the order the
             // PeerActivityListeners are called is not defined, and we
@@ -740,13 +740,13 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
           }
         } else {
-          torrent.markUncompleted(piece);
+          torrent.markUncompleted(piece, peer);
           logger.info("Downloaded piece #{} from {} was not valid ;-(. Trying another peer", piece.getIndex(), peer);
           peer.getPoorlyAvailablePieces().set(piece.getIndex());
         }
       }
     } catch (Throwable e) {
-      torrent.markUncompleted(piece);
+      torrent.markUncompleted(piece, peer);
       logger.warn("unhandled exception in piece {} validation task", e);
     }
   }

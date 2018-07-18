@@ -408,17 +408,18 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     this.completedPieces.set(piece.getIndex());
   }
 
-  public synchronized void markUncompleted(Piece piece) {
+  public synchronized void markUncompleted(Piece piece, SharingPeer peer) {
     if (!this.completedPieces.get(piece.getIndex())) {
       return;
     }
 
-    removeValidationFuture(piece);
+    removeValidationFuture(piece, peer);
     myTorrentStatistic.addLeft(piece.size());
     this.completedPieces.clear(piece.getIndex());
   }
 
-  public synchronized void removeValidationFuture(Piece piece) {
+  public synchronized void removeValidationFuture(Piece piece, SharingPeer peer) {
+    eventDispatcher.notifyPieceDownloaded(piece, peer);
     myValidationFutures.remove(piece.getIndex());
   }
 
@@ -673,7 +674,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     for (DownloadProgressListener listener : myDownloadListeners) {
       listener.pieceLoaded(piece.getIndex(), (int) piece.size());
     }
-    eventDispatcher.notifyPieceDownloaded(piece, peer);
 
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
             new Object[]{
