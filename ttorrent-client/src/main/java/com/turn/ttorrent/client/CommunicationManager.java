@@ -201,8 +201,6 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
       torrent.close();
-    } else {
-      logger.warn(String.format("Torrent %s already removed from myTorrents", torrentHash));
     }
     sendStopEvent(torrents.second(), torrentHash);
   }
