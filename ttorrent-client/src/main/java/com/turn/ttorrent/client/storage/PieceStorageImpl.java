@@ -139,6 +139,7 @@ public class PieceStorageImpl implements PieceStorage {
   public void close() throws IOException {
     try {
       readWriteLock.writeLock().lock();
+      if (!isOpen.get()) return;
       fileCollectionStorage.close();
       isOpen.set(false);
     } finally {
