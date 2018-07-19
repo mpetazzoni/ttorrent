@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -1008,16 +1009,70 @@ public class CommunicationManagerTest {
     }
   }
 
-  public void torrentListenersTest() throws Exception {
+  public void torrentListenersPositiveTest() throws Exception {
     tracker.setAcceptForeignTorrents(true);
     CommunicationManager seeder = createClient();
-    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24 + 1);
     final TorrentMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
 
     final File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
     seeder.start(InetAddress.getLocalHost());
     seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent());
+    CommunicationManager leecher = createClient();
+    leecher.start(InetAddress.getLocalHost());
+    final AtomicInteger pieceLoadedInvocationCount = new AtomicInteger();
+    final AtomicInteger connectedInvocationCount = new AtomicInteger();
+    final Semaphore disconnectedLock = new Semaphore(0);
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    final AtomicLong totalDownloaded = new AtomicLong();
+    torrentManager.addListener(new TorrentListenerWrapper() {
+      @Override
+      public void pieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
+        totalDownloaded.addAndGet(pieceInformation.getSize());
+        pieceLoadedInvocationCount.incrementAndGet();
+      }
+
+      @Override
+      public void peerConnected(PeerInformation peerInformation) {
+        connectedInvocationCount.incrementAndGet();
+      }
+
+      @Override
+      public void peerDisconnected(PeerInformation peerInformation) {
+        disconnectedLock.release();
+      }
+    });
+    waitDownloadComplete(torrentManager, 5);
+    assertEquals(pieceLoadedInvocationCount.get(), torrent.getPiecesCount());
+    assertEquals(connectedInvocationCount.get(), 1);
+    assertEquals(totalDownloaded.get(), dwnlFile.length());
+    if (!disconnectedLock.tryAcquire(10, TimeUnit.SECONDS)) {
+      fail("connection with seeder must be closed after download");
+    }
+  }
+
+  public void testListenersWithBadSeeder() throws Exception {
+    tracker.setAcceptForeignTorrents(true);
+    CommunicationManager seeder = createClient();
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 240);
+    final TorrentMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+
+    final File torrentFile = tempFiles.createTempFile();
+    saveTorrent(torrent, torrentFile);
+    seeder.start(InetAddress.getLocalHost());
+    RandomAccessFile raf = new RandomAccessFile(dwnlFile, "rw");
+    //changing one byte in file. So one piece
+    try {
+      long pos = dwnlFile.length() / 2;
+      raf.seek(pos);
+      int oldByte = raf.read();
+      raf.seek(pos);
+      raf.write(oldByte + 1);
+    } finally {
+      raf.close();
+    }
+    seeder.addTorrent(torrentFile.getAbsolutePath(), dwnlFile.getParent(), FullyPieceStorageFactory.INSTANCE);
     CommunicationManager leecher = createClient();
     leecher.start(InetAddress.getLocalHost());
     final AtomicInteger pieceLoadedInvocationCount = new AtomicInteger();
@@ -1028,8 +1083,12 @@ public class CommunicationManagerTest {
         pieceLoadedInvocationCount.incrementAndGet();
       }
     });
-    waitDownloadComplete(torrentManager, 30);
-    assertEquals(pieceLoadedInvocationCount.get(), torrent.getPiecesCount());
+    try {
+      waitDownloadComplete(torrentManager, 2);
+      fail("Downloading must be failed because seeder doesn't have valid piece");
+    } catch (RuntimeException ignored) {
+    }
+    assertEquals(pieceLoadedInvocationCount.get(), torrent.getPiecesCount() - 1);
   }
 
   public void interrupt_download() throws IOException, InterruptedException {
