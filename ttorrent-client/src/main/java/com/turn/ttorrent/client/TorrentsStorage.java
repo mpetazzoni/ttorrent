@@ -2,8 +2,8 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Pair;
-import org.apache.commons.io.IOUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -98,7 +98,10 @@ public class TorrentsStorage {
       readWriteLock.writeLock().unlock();
     }
     if (result.second() != null) {
-      IOUtils.closeQuietly(result.second().getPieceStorage());
+      try {
+        result.second().getPieceStorage().close();
+      } catch (IOException ignored) {
+      }
     }
     if (result.first() != null) {
       result.first().close();
@@ -153,7 +156,10 @@ public class TorrentsStorage {
       sharedTorrent.close();
     }
     for (LoadedTorrent loadedTorrent : loadedTorrents) {
-      IOUtils.closeQuietly(loadedTorrent.getPieceStorage());
+      try {
+        loadedTorrent.getPieceStorage().close();
+      } catch (IOException ignored) {
+      }
     }
   }
 }
