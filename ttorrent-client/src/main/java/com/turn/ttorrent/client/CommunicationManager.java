@@ -202,6 +202,10 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
       torrent.setClientState(ClientState.DONE);
       torrent.close();
     }
+    List<SharingPeer> peers = getPeersForTorrent(torrentHash);
+    for (SharingPeer peer : peers) {
+      peer.unbind(true);
+    }
     sendStopEvent(torrents.second(), torrentHash);
   }
 
