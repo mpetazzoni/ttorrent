@@ -898,10 +898,22 @@ public class CommunicationManagerTest {
       waitDownloadComplete(torrentManager, 7);
       fail("Must fail, because file wasn't downloaded completely");
     } catch (RuntimeException ex) {
-      SharedTorrent sharedTorrent = leecher.getTorrentsStorage().getTorrent(torrentManager.getHexInfoHash());
-      sharedTorrent.delete();
+
+      LoadedTorrent loadedTorrent = leecher.getTorrentsStorage().getLoadedTorrent(torrentManager.getHexInfoHash());
+      loadedTorrent.getPieceStorage().close();
+
+      // delete .part file
+      File[] destDirFiles = destDir.listFiles();
+      assertNotNull(destDirFiles);
+      assertEquals(1, destDirFiles.length);
+      File targetFile = destDirFiles[0];
+      if (!targetFile.delete()) {
+        fail("Unable to remove file " + targetFile);
+      }
       // ensure .part was deleted:
-      assertEquals(0, destDir.list().length);
+      destDirFiles = destDir.listFiles();
+      assertNotNull(destDirFiles);
+      assertEquals(0, destDirFiles.length);
     }
 
   }

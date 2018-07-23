@@ -146,10 +146,4 @@ public class PieceStorageImpl implements PieceStorage {
       readWriteLock.writeLock().unlock();
     }
   }
-
-  @Override
-  public void delete() throws IOException {
-    close();
-    fileCollectionStorage.delete();
-  }
 }

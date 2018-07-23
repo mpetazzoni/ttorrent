@@ -205,16 +205,6 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     sendStopEvent(torrents.second(), torrentHash);
   }
 
-  private void removeAndDeleteTorrent(String torrentHash, SharedTorrent torrent) {
-    final Pair<SharedTorrent, LoadedTorrent> torrents = torrentsStorage.remove(torrentHash);
-    final SharedTorrent sharedTorrent = torrents.first() == null ? torrent : torrents.first();
-    if (sharedTorrent != null) {
-      sharedTorrent.setClientState(ClientState.DONE);
-      sharedTorrent.delete();
-    }
-    sendStopEvent(torrents.second(), torrentHash);
-  }
-
   private void sendStopEvent(LoadedTorrent loadedTorrent, String torrentHash) {
     if (loadedTorrent == null) {
       logger.info("Announceable torrent {} not found in storage after unsuccessful download attempt", torrentHash);

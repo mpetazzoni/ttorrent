@@ -281,16 +281,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     }
   }
 
-  public synchronized void delete() {
-    logger.trace("Closing and deleting torrent data", myTorrentMetadata.getDirectoryName());
-    try {
-      pieceStorage.delete();
-    } catch (IOException ioe) {
-      logger.error("Error deleting torrent byte storage: {}",
-              ioe.getMessage());
-    }
-  }
-
   /**
    * Retrieve a piece object by index.
    *
