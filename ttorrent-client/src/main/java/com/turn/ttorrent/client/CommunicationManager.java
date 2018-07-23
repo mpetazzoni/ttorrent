@@ -450,16 +450,10 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
   private Collection<SharingPeer> getConnectedPeers() {
     Set<SharingPeer> result = new HashSet<SharingPeer>();
-    Set<SharingPeer> toRemove = new HashSet<SharingPeer>();
     for (SharingPeer peer : this.peersStorage.getSharingPeers()) {
       if (peer.isConnected()) {
         result.add(peer);
-      } else {
-        toRemove.add(peer);
       }
-    }
-    for (SharingPeer peer : toRemove) {
-      this.peersStorage.removeSharingPeer(peer);
     }
     return result;
   }
@@ -751,6 +745,8 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
                     getConnectedPeers().size(),
                     this.peersStorage.getSharingPeers().size()
             });
+    PeerUID peerUID = new PeerUID(peer.getAddress(), peer.getHexInfoHash());
+    peersStorage.removeSharingPeer(peerUID);
   }
 
   @Override
