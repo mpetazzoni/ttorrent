@@ -3,7 +3,9 @@ package com.turn.ttorrent.client;
 import com.turn.ttorrent.*;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.EmptyPieceStorageFactory;
+import com.turn.ttorrent.client.storage.FileStorage;
 import com.turn.ttorrent.client.storage.FullyPieceStorageFactory;
+import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.tracker.TrackedPeer;
@@ -14,6 +16,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
+import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -1061,6 +1064,52 @@ public class CommunicationManagerTest {
     assertEquals(totalDownloaded.get(), dwnlFile.length());
     if (!disconnectedLock.tryAcquire(10, TimeUnit.SECONDS)) {
       fail("connection with seeder must be closed after download");
+    }
+  }
+
+  public void testClosingPieceStorageWhenDownloading() throws Exception {
+
+    tracker.setAcceptForeignTorrents(true);
+    final CommunicationManager seeder = createAndStartClient();
+    final File dwnlFile = tempFiles.createTempFile(513 * 1024 * 24);
+    final TorrentMetadata torrent = TorrentCreator.create(dwnlFile, null, tracker.getAnnounceURI(), "Test");
+    final PieceStorage seederStorage = FullyPieceStorageFactory.INSTANCE.createStorage(torrent, new FileStorage(dwnlFile, 0, dwnlFile.length()));
+    seeder.addTorrent(new TorrentMetadataProvider() {
+      @NotNull
+      @Override
+      public TorrentMetadata getTorrentMetadata() {
+        return torrent;
+      }
+    }, seederStorage);
+
+    CommunicationManager leecher = createAndStartClient();
+
+    final PieceStorage leecherStorage = EmptyPieceStorageFactory.INSTANCE.createStorage(torrent, new FileStorage(tempFiles.createTempFile(), 0, dwnlFile.length()));
+    TorrentManager torrentManager = leecher.addTorrent(new TorrentMetadataProvider() {
+      @NotNull
+      @Override
+      public TorrentMetadata getTorrentMetadata() {
+        return torrent;
+      }
+    }, leecherStorage);
+
+    final AtomicReference<Throwable> exceptionHolder = new AtomicReference<Throwable>();
+    torrentManager.addListener(new TorrentListenerWrapper() {
+      @Override
+      public void pieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
+        try {
+          seederStorage.close();
+          leecherStorage.close();
+        } catch (IOException e) {
+          exceptionHolder.set(e);
+        }
+      }
+    });
+
+    waitDownloadComplete(torrentManager, 10);
+    Throwable throwable = exceptionHolder.get();
+    if (throwable != null) {
+      fail("", throwable);
     }
   }
 
