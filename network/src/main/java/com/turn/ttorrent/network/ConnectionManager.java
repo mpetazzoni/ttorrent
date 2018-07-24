@@ -7,7 +7,6 @@ import com.turn.ttorrent.network.keyProcessors.*;
 import org.slf4j.Logger;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -24,9 +23,6 @@ import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS
 public class ConnectionManager {
 
   private static final Logger logger = TorrentLoggerFactory.getLogger();
-
-  public static final int PORT_RANGE_START = 6881;
-  public static final int PORT_RANGE_END = 6889;
 
   private final Selector selector;
   private final TimeService myTimeService;
@@ -58,7 +54,7 @@ public class ConnectionManager {
     this.myOutgoingConnectionAllower = newOutgoingConnectionAllower;
   }
 
-  public void initAndRunWorker() throws IOException {
+  public void initAndRunWorker(ServerChannelRegister serverChannelRegister) throws IOException {
 
     boolean wasInit = alreadyInit.getAndSet(true);
 
@@ -66,25 +62,9 @@ public class ConnectionManager {
       throw new IllegalStateException("connection manager was already initialized");
     }
 
-    myServerSocketChannel = selector.provider().openServerSocketChannel();
-    myServerSocketChannel.configureBlocking(false);
-    myBindPort = -1;
-    for (int port = PORT_RANGE_START; port < PORT_RANGE_END; port++) {
-      try {
-        InetSocketAddress tryAddress = new InetSocketAddress(port);
-        myServerSocketChannel.socket().bind(tryAddress);
-        myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(myContext));
-        myBindPort = tryAddress.getPort();
-        break;
-      } catch (IOException e) {
-        //try next port
-        myBindPort = -1;
-        logger.debug("Could not bind to port {}, trying next port...", port);
-      }
-    }
-    if (myBindPort == -1) {
-      throw new IOException("No available port for the BitTorrent client!");
-    }
+    myServerSocketChannel = serverChannelRegister.channelFor(selector);
+    myServerSocketChannel.register(selector, SelectionKey.OP_ACCEPT, new AcceptAttachmentImpl(myContext));
+    myBindPort = myServerSocketChannel.socket().getLocalPort();
     String serverName = myServerSocketChannel.socket().toString();
     myConnectionWorker = new ConnectionWorker(selector, Arrays.asList(
             new InvalidKeyProcessor(),

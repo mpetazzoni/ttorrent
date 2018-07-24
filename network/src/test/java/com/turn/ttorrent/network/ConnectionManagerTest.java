@@ -60,12 +60,12 @@ public class ConnectionManagerTest {
   @Test(expectedExceptions = IllegalStateException.class)
   public void testThatDoubleInitThrowException() {
     try {
-      myConnectionManager.initAndRunWorker();
+      myConnectionManager.initAndRunWorker(new FirstAvailableChannel(6881, 6889));
     } catch (IOException e) {
       fail("unable to init and run worker", e);
     }
     try {
-      myConnectionManager.initAndRunWorker();
+      myConnectionManager.initAndRunWorker(new FirstAvailableChannel(6881, 6889));
     } catch (IOException e) {
       fail("unable to init and run worker", e);
     }
@@ -106,7 +106,7 @@ public class ConnectionManagerTest {
 
     when(myContext.newChannelListener()).thenReturn(connectionListener);
 
-    myConnectionManager.initAndRunWorker();
+    myConnectionManager.initAndRunWorker(new FirstAvailableChannel(6881, 6889));
 
     assertEquals(acceptCount.get(), 0);
     assertEquals(readCount.get(), 0);

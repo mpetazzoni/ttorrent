@@ -337,6 +337,15 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
                     final int announceIntervalSec,
                     final URI defaultTrackerURI,
                     final SelectorFactory selectorFactory) throws IOException {
+    start(bindAddresses, announceIntervalSec, defaultTrackerURI, selectorFactory,
+            new FirstAvailableChannel(6881, 6889));
+  }
+
+  public void start(final InetAddress[] bindAddresses,
+                    final int announceIntervalSec,
+                    final URI defaultTrackerURI,
+                    final SelectorFactory selectorFactory,
+                    final ServerChannelRegister serverChannelRegister) throws IOException {
     this.myConnectionManager = new ConnectionManager(
             this,
             new SystemTimeService(),
@@ -347,7 +356,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
             myReceiveBufferSize);
     this.setSocketConnectionTimeout(DEFAULT_SOCKET_CONNECTION_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
     try {
-      this.myConnectionManager.initAndRunWorker();
+      this.myConnectionManager.initAndRunWorker(serverChannelRegister);
     } catch (IOException e) {
       LoggerUtils.errorAndDebugDetails(logger, "error in initialization server channel", e);
       this.stop();
