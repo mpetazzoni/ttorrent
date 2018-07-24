@@ -3,16 +3,17 @@ package com.turn.ttorrent;
 import com.turn.ttorrent.client.CommunicationManager;
 import com.turn.ttorrent.common.LoggerUtils;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class CommunicationManagerFactory {
 
   public final static int DEFAULT_POOL_SIZE = 10;
 
   public CommunicationManager getClient(String name) {
-    final ExecutorService executorService = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final ExecutorService executorService = new ThreadPoolExecutor(
+            DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(2000));
     final ExecutorService pieceValidatorExecutor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
     return new CommunicationManager(executorService, pieceValidatorExecutor) {
       @Override

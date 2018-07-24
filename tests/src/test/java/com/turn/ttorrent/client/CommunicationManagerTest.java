@@ -8,6 +8,8 @@ import com.turn.ttorrent.client.storage.FullyPieceStorageFactory;
 import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.common.*;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.network.FirstAvailableChannel;
+import com.turn.ttorrent.network.ServerChannelRegister;
 import com.turn.ttorrent.tracker.TrackedPeer;
 import com.turn.ttorrent.tracker.TrackedTorrent;
 import com.turn.ttorrent.tracker.Tracker;
@@ -1282,20 +1284,31 @@ public class CommunicationManagerTest {
   }
 
   public void testManySeeders() throws Exception {
-    File artifact = tempFiles.createTempFile(300 * 1024 * 1024);
-    int seedersCount = 4;
+    File artifact = tempFiles.createTempFile(1024 * 1024 * 1024);
+    int seedersCount = 30;
     TorrentMetadata torrent = TorrentCreator.create(artifact, this.tracker.getAnnounceURI(), "test");
     File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);
+    ServerChannelRegister serverChannelRegister = new FirstAvailableChannel(6881, 10000);
     for (int i = 0; i < seedersCount; i++) {
       CommunicationManager seeder = createClient();
-      seeder.addTorrent(torrentFile.getAbsolutePath(), artifact.getParent());
-      seeder.start(InetAddress.getLocalHost());
+      seeder.addTorrent(torrentFile.getAbsolutePath(), artifact.getParent(), FullyPieceStorageFactory.INSTANCE);
+      seeder.start(new InetAddress[]{InetAddress.getLocalHost()},
+              Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC,
+              null,
+              new SelectorFactoryImpl(),
+              serverChannelRegister);
     }
 
     CommunicationManager leecher = createClient();
-    leecher.start(InetAddress.getLocalHost());
-    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(), tempFiles.createTempDir().getAbsolutePath());
+    leecher.start(new InetAddress[]{InetAddress.getLocalHost()},
+            Constants.DEFAULT_ANNOUNCE_INTERVAL_SEC,
+            null,
+            new SelectorFactoryImpl(),
+            serverChannelRegister);
+    TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(),
+            tempFiles.createTempDir().getAbsolutePath(),
+            EmptyPieceStorageFactory.INSTANCE);
     waitDownloadComplete(torrentManager, 30);
   }
 
