@@ -3,7 +3,10 @@ package com.turn.ttorrent;
 import com.turn.ttorrent.client.CommunicationManager;
 import com.turn.ttorrent.common.LoggerUtils;
 
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class CommunicationManagerFactory {
 
@@ -14,7 +17,10 @@ public class CommunicationManagerFactory {
             DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE,
             0L, TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<Runnable>(2000));
-    final ExecutorService pieceValidatorExecutor = Executors.newFixedThreadPool(DEFAULT_POOL_SIZE);
+    final ExecutorService pieceValidatorExecutor = new ThreadPoolExecutor(
+            DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(400));
     return new CommunicationManager(executorService, pieceValidatorExecutor) {
       @Override
       public void stop() {
