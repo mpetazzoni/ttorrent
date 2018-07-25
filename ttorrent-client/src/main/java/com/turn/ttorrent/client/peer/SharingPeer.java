@@ -332,7 +332,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         }
       }), 1, TimeUnit.SECONDS);
     } else {
-      logger.info("Attempting to send a message to non-connected peer {}!", this);
+      logger.debug("Attempting to send a message to non-connected peer {}!", this);
       unbind(true);
     }
   }
