@@ -508,7 +508,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
                       this.requestedPieces.cardinality(),
                       this.requestedPieces
               });
-      peer.downloadPiece(chosen, endGameMode);
+      peer.downloadPiece(chosen);
       interesting.clear(chosen.getIndex());
     }
   }
