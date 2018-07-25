@@ -684,18 +684,6 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
           synchronized (torrent) {
             torrent.removeValidationFuture(piece);
             torrent.notifyPieceDownloaded(piece, peer);
-            // Make sure the piece is marked as completed in the torrent
-            // Note: this is required because the order the
-            // PeerActivityListeners are called is not defined, and we
-            // might be called before the torrent's piece completion
-            // handler is.
-            logger.trace("Completed download and validation of {} from {}, now has {}/{} pieces.",
-                    new Object[]{
-                            piece,
-                            peer,
-                            torrent.getCompletedPieces().cardinality(),
-                            torrent.getPieceCount()
-                    });
 
             boolean isCurrentPeerSeeder = peer.getAvailablePieces().cardinality() == torrent.getPieceCount();
             //if it's seeder we will send not interested message when we download full file
