@@ -181,7 +181,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     return clientVersion;
   }
 
-  public synchronized void onConnectionEstablished() {
+  public void onConnectionEstablished() {
     firePeerConnected();
     BitSet pieces = this.torrent.getCompletedPieces();
     if (pieces.cardinality() > 0) {
@@ -260,7 +260,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     }
   }
 
-  public synchronized void resetRates() {
+  public void resetRates() {
     this.download.reset();
     this.upload.reset();
   }
@@ -379,7 +379,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     }
   }
 
-  public synchronized boolean isDownloading() {
+  public boolean isDownloading() {
     return this.downloading;
   }
 
@@ -453,7 +453,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
    * @param msg The incoming, parsed message.
    */
   @Override
-  public synchronized void handleMessage(PeerMessage msg) {
+  public void handleMessage(PeerMessage msg) {
 //    logger.trace("Received msg {} from {}", msg.getType(), this);
     if (isStopped.get())
       return;
