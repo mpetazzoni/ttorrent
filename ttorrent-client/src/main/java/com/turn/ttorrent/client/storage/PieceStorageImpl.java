@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -14,11 +13,13 @@ public class PieceStorageImpl implements PieceStorage {
   private final TorrentByteStorage fileCollectionStorage;
   private final ReadWriteLock readWriteLock;
 
+  private final Object openStorageLock = new Object();
+
   @Nullable
   private volatile BitSet availablePieces;
   private final int piecesCount;
   private final int pieceSize;
-  private final AtomicBoolean isOpen;
+  private volatile boolean isOpen;
 
   public PieceStorageImpl(TorrentByteStorage fileCollectionStorage,
                           BitSet availablePieces,
@@ -33,7 +34,7 @@ public class PieceStorageImpl implements PieceStorage {
     if (bitSet.cardinality() != piecesCount) {
       this.availablePieces = bitSet;
     }
-    isOpen = new AtomicBoolean(false);
+    isOpen = false;
   }
 
   private void checkPieceIndex(int pieceIndex) {
@@ -77,8 +78,9 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   private void openStorageIsNecessary(boolean onlyRead) throws IOException {
-    if (!isOpen.getAndSet(true)) {
+    if (!isOpen) {
       fileCollectionStorage.open(onlyRead);
+      isOpen = true;
     }
   }
 
@@ -93,7 +95,9 @@ public class PieceStorageImpl implements PieceStorage {
         throw new IllegalArgumentException("trying reading part of not available piece");
       }
 
-      openStorageIsNecessary(availablePieces == null);
+      synchronized (openStorageLock) {
+        openStorageIsNecessary(availablePieces == null);
+      }
 
       ByteBuffer buffer = ByteBuffer.allocate(length);
       long pos = pieceIndex;
@@ -139,9 +143,9 @@ public class PieceStorageImpl implements PieceStorage {
   public void close() throws IOException {
     try {
       readWriteLock.writeLock().lock();
-      if (!isOpen.get()) return;
+      if (!isOpen) return;
       fileCollectionStorage.close();
-      isOpen.set(false);
+      isOpen = false;
     } finally {
       readWriteLock.writeLock().unlock();
     }
