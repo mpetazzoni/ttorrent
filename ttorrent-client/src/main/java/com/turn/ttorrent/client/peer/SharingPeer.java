@@ -18,7 +18,10 @@ package com.turn.ttorrent.client.peer;
 import com.turn.ttorrent.client.PeerInformation;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.LoggerUtils;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
+import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.PeerMessage;
 import com.turn.ttorrent.network.ConnectionManager;
 import com.turn.ttorrent.network.WriteListener;
@@ -613,8 +616,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         PeerMessage.PieceMessage piece = (PeerMessage.PieceMessage) msg;
         Piece p = this.torrent.getPiece(piece.getPiece());
 
-        logger.trace("Got piece for {} ({} {}@{}) from {}", new Object[]{
-                Arrays.toString(TorrentUtils.getTorrentFileNames(torrent).toArray()),
+        logger.trace("Got piece ({} {}@{}) from {}", new Object[]{
                 p.getIndex(),
                 p.size(),
                 piece.getOffset(),
