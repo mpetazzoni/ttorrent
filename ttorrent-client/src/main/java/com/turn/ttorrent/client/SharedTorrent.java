@@ -88,7 +88,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private boolean initialized;
   private Piece[] pieces;
-  private SortedSet<Piece> rarest;
+  private final SortedSet<Piece> rarest;
   private BitSet completedPieces;
   private final BitSet requestedPieces;
   private final RequestStrategy myRequestStrategy;
@@ -459,57 +459,38 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @param peer The peer that became ready.
    */
   @Override
-  public synchronized void handlePeerReady(SharingPeer peer) {
+  public void handlePeerReady(SharingPeer peer) {
     initIfNecessary(peer);
-    boolean endGameMode = false;
-    final BitSet interesting = peer.getAvailablePieces();
-    interesting.andNot(this.completedPieces);
-    interesting.andNot(this.requestedPieces);
-//    interesting.andNot(peer.getPoorlyAvailablePieces());
+    List<Piece> toRequest = new ArrayList<Piece>();
+    synchronized (this) {
+      final BitSet interesting = peer.getAvailablePieces();
+      interesting.andNot(this.completedPieces);
+      interesting.andNot(this.requestedPieces);
 
-    while (peer.getDownloadingPiecesCount() < Math.min(10, interesting.cardinality())) {
-      if (!peer.isConnected()) {
-        break;
-      }
-      logger.trace("Peer {} is ready and has {} interesting piece(s).",
-              peer, interesting.cardinality());
+      int maxRequestingPieces = Math.min(10, interesting.cardinality());
+      int currentlyDownloading = peer.getDownloadingPiecesCount();
+      while (currentlyDownloading < maxRequestingPieces) {
+        if (!peer.isConnected()) {
+          break;
+        }
 
-      logger.trace("Currently requested pieces from {} : {}", peer, requestedPieces);
-
-      // If we didn't find interesting pieces, we need to check if we're in
-      // an end-game situation. If yes, we request an already requested piece
-      // to try to speed up the end.
-      if (interesting.cardinality() == 0) {
-        interesting.or(this.requestedPieces);
         if (interesting.cardinality() == 0) {
-          logger.trace("No interesting piece from {}!", peer);
           return;
         }
 
-        if (this.completedPieces.cardinality() <
-                ENG_GAME_COMPLETION_RATIO * this.pieces.length) {
-          logger.trace("Not far along enough to warrant end-game mode.");
-          return;
+        Piece chosen = myRequestStrategy.choosePiece(rarest, interesting, pieces);
+        if (chosen == null) {
+          logger.info("chosen piece is null");
+          break;
         }
-        endGameMode = true;
-        logger.trace("Possible end-game, we're about to request a piece " +
-                "that was already requested from another peer.");
+        this.requestedPieces.set(chosen.getIndex());
+        currentlyDownloading++;
+        toRequest.add(chosen);
+        interesting.clear(chosen.getIndex());
       }
-
-      Piece chosen = myRequestStrategy.choosePiece(rarest, interesting, pieces);
-      if (chosen == null) {
-        logger.info("chosen piece is null");
-        continue;
-      }
-      this.requestedPieces.set(chosen.getIndex());
-      logger.trace("Requesting {} from {}, we now have {} " +
-                      " outstanding request(s): {}.",
-              new Object[]{chosen, peer,
-                      this.requestedPieces.cardinality(),
-                      this.requestedPieces
-              });
-      peer.downloadPiece(chosen);
-      interesting.clear(chosen.getIndex());
+    }
+    for (Piece piece : toRequest) {
+      peer.downloadPiece(piece);
     }
   }
 
