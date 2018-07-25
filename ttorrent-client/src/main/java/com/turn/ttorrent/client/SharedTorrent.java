@@ -88,7 +88,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private boolean initialized;
   private Piece[] pieces;
-  private final SortedSet<Piece> rarest;
   private BitSet completedPieces;
   private final BitSet requestedPieces;
   private final RequestStrategy myRequestStrategy;
@@ -130,7 +129,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
     this.initialized = false;
     this.pieces = new Piece[0];
-    this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
     this.completedPieces = new BitSet();
     this.requestedPieces = new BitSet();
   }
@@ -478,7 +476,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
           return;
         }
 
-        Piece chosen = myRequestStrategy.choosePiece(rarest, interesting, pieces);
+        Piece chosen = myRequestStrategy.choosePiece(interesting, pieces);
         if (chosen == null) {
           logger.info("chosen piece is null");
           break;
@@ -532,7 +530,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     }
 
     piece.seenAt(peer);
-    this.rarest.add(piece);
 
     logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
             new Object[]{
@@ -571,13 +568,11 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     synchronized (this) {
       interesting.andNot(this.completedPieces);
       interesting.andNot(this.requestedPieces);
-
-      // Record the peer has all the pieces it told us it had.
-      for (int i = availablePieces.nextSetBit(0); i >= 0;
-           i = availablePieces.nextSetBit(i + 1)) {
-        this.pieces[i].seenAt(peer);
-        this.rarest.add(this.pieces[i]);
-      }
+    }
+    // Record the peer has all the pieces it told us it had.
+    for (int i = availablePieces.nextSetBit(0); i >= 0;
+         i = availablePieces.nextSetBit(i + 1)) {
+      this.pieces[i].seenAt(peer);
     }
 
     if (interesting.cardinality() == 0) {
@@ -674,7 +669,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     for (int i = availablePieces.nextSetBit(0); i >= 0;
          i = availablePieces.nextSetBit(i + 1)) {
       this.pieces[i].noLongerAt(peer);
-      this.rarest.add(this.pieces[i]);
     }
 
     Set<Piece> requested = peer.getRequestedPieces();

@@ -24,7 +24,7 @@ public class RequestStrategyImplAnyInterestingTest {
 
   @Test
   public void choosePieceNoInterestingTest() {
-    Piece actual = myRequestStrategy.choosePiece(myRarest, new BitSet(), myPieces);
+    Piece actual = myRequestStrategy.choosePiece(new BitSet(), myPieces);
     Assert.assertNull(actual);
   }
 
@@ -35,7 +35,7 @@ public class RequestStrategyImplAnyInterestingTest {
       interesting.clear();
       interesting.set(i);
       Piece expected = myPieces[i];
-      Piece actual = myRequestStrategy.choosePiece(myRarest, interesting, myPieces);
+      Piece actual = myRequestStrategy.choosePiece(interesting, myPieces);
       Assert.assertEquals(expected, actual);
     }
   }
@@ -46,7 +46,7 @@ public class RequestStrategyImplAnyInterestingTest {
     int interestingFrom = 1;
     int interestingTo = 5;
     interesting.set(interestingFrom, interestingTo);
-    Piece actual = myRequestStrategy.choosePiece(myRarest, interesting, myPieces);
+    Piece actual = myRequestStrategy.choosePiece(interesting, myPieces);
     Assert.assertTrue(actual.getIndex() >= interestingFrom && actual.getIndex() <= interestingTo);
   }
 
