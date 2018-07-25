@@ -592,14 +592,13 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
                 this
         });
 
-
-        // Remove the corresponding request from the request queue to
-        //  make room for next block requests.
-        this.removeBlockRequest(p);
         this.download.add(piece.getBlock().capacity());
 
         try {
           synchronized (p) {
+            // Remove the corresponding request from the request queue to
+            //  make room for next block requests.
+            this.removeBlockRequest(p);
             if (p.isValid()) {
               this.cancelPendingRequests(p);
               this.firePeerReady();
