@@ -286,10 +286,6 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
   public void unbind(boolean force) {
     if (isStopped.getAndSet(true))
       return;
-    synchronized (requestsLock) {
-      this.downloading = myRequestedPieces.size() > 0;
-      myRequestedPieces.clear();
-    }
 
     try {
       connectionManager.closeChannel(socketChannel);
@@ -298,6 +294,12 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     }
 
     this.firePeerDisconnected();
+
+    synchronized (requestsLock) {
+      this.downloading = myRequestedPieces.size() > 0;
+      myRequestedPieces.clear();
+    }
+
     this.afterPeerDisconnected();
   }
 
