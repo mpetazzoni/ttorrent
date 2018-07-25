@@ -564,12 +564,21 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @param availablePieces The pieces availability bit field of the peer.
    */
   @Override
-  public synchronized void handleBitfieldAvailability(SharingPeer peer,
-                                                      BitSet availablePieces) {
+  public void handleBitfieldAvailability(SharingPeer peer,
+                                         BitSet availablePieces) {
     // Determine if the peer is interesting for us or not, and notify it.
     BitSet interesting = (BitSet) availablePieces.clone();
-    interesting.andNot(this.completedPieces);
-    interesting.andNot(this.requestedPieces);
+    synchronized (this) {
+      interesting.andNot(this.completedPieces);
+      interesting.andNot(this.requestedPieces);
+
+      // Record the peer has all the pieces it told us it had.
+      for (int i = availablePieces.nextSetBit(0); i >= 0;
+           i = availablePieces.nextSetBit(i + 1)) {
+        this.pieces[i].seenAt(peer);
+        this.rarest.add(this.pieces[i]);
+      }
+    }
 
     if (interesting.cardinality() == 0) {
       peer.notInteresting();
@@ -577,20 +586,11 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       peer.interesting();
     }
 
-    // Record the peer has all the pieces it told us it had.
-    for (int i = availablePieces.nextSetBit(0); i >= 0;
-         i = availablePieces.nextSetBit(i + 1)) {
-      this.pieces[i].seenAt(peer);
-      this.rarest.add(this.pieces[i]);
-    }
-
-    logger.trace("Peer {} contributes {} piece(s) [{}/{}/{}].",
+    logger.debug("Peer {} contributes {} piece(s), total pieces count: {}.",
             new Object[]{
                     peer,
                     availablePieces.cardinality(),
-                    this.completedPieces.cardinality(),
-                    this.getAvailablePieces().cardinality(),
-                    this.pieces.length
+                    myTorrentMetadata.getPiecesCount()
             });
   }
 
