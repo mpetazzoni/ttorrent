@@ -147,7 +147,7 @@ public class Piece implements Comparable<Piece>, PieceInformation {
    * storage, is valid, i.e. its SHA1 sum matches the one from the torrent
    * meta-info.
    */
-  public synchronized boolean validate(SharedTorrent torrent, Piece piece) throws IOException {
+  public boolean validate(SharedTorrent torrent, Piece piece) throws IOException {
 
     logger.trace("Validating {}...", this);
 
@@ -228,14 +228,10 @@ public class Piece implements Comparable<Piece>, PieceInformation {
   /**
    * Record the given block at the given offset in this piece.
    *
-   * <p>
-   * <b>Note:</b> this has synchronized access to the underlying byte storage.
-   * </p>
-   *
    * @param block  The ByteBuffer containing the block data.
    * @param offset The block offset in this piece.
    */
-  public synchronized void record(ByteBuffer block, int offset) {
+  public void record(ByteBuffer block, int offset) {
     if (this.data == null) {
       // TODO: remove cast to int when large ByteBuffer support is
       // implemented in Java.
@@ -248,7 +244,7 @@ public class Piece implements Comparable<Piece>, PieceInformation {
     block.position(pos);
   }
 
-  public synchronized void finish() throws IOException {
+  public void finish() throws IOException {
     this.data.rewind();
     logger.trace("Recording {}...", this);
     try {
