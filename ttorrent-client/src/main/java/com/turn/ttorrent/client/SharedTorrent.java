@@ -461,6 +461,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     initIfNecessary(peer);
     List<Piece> toRequest = new ArrayList<Piece>();
     synchronized (this) {
+      if (myValidationFutures.size() > 100) return;
       final BitSet interesting = peer.getAvailablePieces();
       interesting.andNot(this.completedPieces);
       interesting.andNot(this.requestedPieces);
