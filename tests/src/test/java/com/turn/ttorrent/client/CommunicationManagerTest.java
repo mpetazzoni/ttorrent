@@ -1284,8 +1284,8 @@ public class CommunicationManagerTest {
   }
 
   public void testManySeeders() throws Exception {
-    File artifact = tempFiles.createTempFile(1024 * 1024 * 1024);
-    int seedersCount = 30;
+    File artifact = tempFiles.createTempFile(256 * 1024 * 1024);
+    int seedersCount = 15;
     TorrentMetadata torrent = TorrentCreator.create(artifact, this.tracker.getAnnounceURI(), "test");
     File torrentFile = tempFiles.createTempFile();
     saveTorrent(torrent, torrentFile);

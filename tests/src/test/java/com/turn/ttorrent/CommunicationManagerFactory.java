@@ -16,7 +16,7 @@ public class CommunicationManagerFactory {
     final ExecutorService executorService = new ThreadPoolExecutor(
             DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE,
             0L, TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(2000));
+            new LinkedBlockingQueue<Runnable>(4000));
     final ExecutorService pieceValidatorExecutor = new ThreadPoolExecutor(
             DEFAULT_POOL_SIZE, DEFAULT_POOL_SIZE,
             0L, TimeUnit.MILLISECONDS,
