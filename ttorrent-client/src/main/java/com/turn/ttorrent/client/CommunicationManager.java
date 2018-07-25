@@ -733,6 +733,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
       torrent.markUncompleted(piece);
       logger.warn("unhandled exception in piece {} validation task", e);
     }
+    torrent.handlePeerReady(peer);
   }
 
   @Override
