@@ -1147,7 +1147,7 @@ public class CommunicationManagerTest {
       }
     });
     try {
-      waitDownloadComplete(torrentManager, 2);
+      waitDownloadComplete(torrentManager, 15);
       fail("Downloading must be failed because seeder doesn't have valid piece");
     } catch (RuntimeException ignored) {
     }
@@ -1309,7 +1309,7 @@ public class CommunicationManagerTest {
     TorrentManager torrentManager = leecher.addTorrent(torrentFile.getAbsolutePath(),
             tempFiles.createTempDir().getAbsolutePath(),
             EmptyPieceStorageFactory.INSTANCE);
-    waitDownloadComplete(torrentManager, 30);
+    waitDownloadComplete(torrentManager, 60);
   }
 
   private String createMultipleSeedersWithDifferentPieces(File baseFile, int piecesCount, int pieceSize, int numSeeders,
