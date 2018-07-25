@@ -595,6 +595,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         this.download.add(piece.getBlock().capacity());
 
         try {
+          boolean isPieceDownloaded = false;
           synchronized (p) {
             // Remove the corresponding request from the request queue to
             //  make room for next block requests.
@@ -614,8 +615,11 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
             // we should validate the piece.
             if (getRemainingRequestedPieces(p) == 0) {
               this.firePieceCompleted(p);
-              this.firePeerReady();
+              isPieceDownloaded = true;
             }
+          }
+          if (isPieceDownloaded) {
+            firePeerReady();
           }
         } catch (IOException ioe) {
           logger.error(ioe.getMessage(), ioe);
