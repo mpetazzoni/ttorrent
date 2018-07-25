@@ -465,6 +465,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       interesting.andNot(this.completedPieces);
       interesting.andNot(this.requestedPieces);
 
+      int maxRequestedPiecesTotal = 100;
+      if (this.requestedPieces.cardinality() > maxRequestedPiecesTotal) return;
       int maxRequestingPieces = Math.min(10, interesting.cardinality());
       int currentlyDownloading = peer.getDownloadingPiecesCount();
       while (currentlyDownloading < maxRequestingPieces) {
