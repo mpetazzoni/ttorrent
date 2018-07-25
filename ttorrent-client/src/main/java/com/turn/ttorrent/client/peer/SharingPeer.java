@@ -649,8 +649,6 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
               this.firePieceCompleted(p);
               myRequestedPieces.remove(p);
               this.firePeerReady();
-            } else {
-              this.requestNextBlocksForPiece(p);
             }
           }
         } catch (IOException ioe) {
