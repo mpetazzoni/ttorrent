@@ -382,7 +382,6 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
                 .craft(piece.getIndex(), lastRequestedOffset,
                         Math.min((int) (piece.size() - lastRequestedOffset),
                                 PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
-        removeBlockRequest(piece.getIndex(), lastRequestedOffset);
         try {
           boolean addedCorrectly = myRequests.offer(request, 1, TimeUnit.SECONDS);
           if (!addedCorrectly) {
