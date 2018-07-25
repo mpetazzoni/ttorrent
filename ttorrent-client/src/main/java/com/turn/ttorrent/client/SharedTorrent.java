@@ -96,6 +96,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
 
   private volatile ClientState clientState = ClientState.WAITING;
+  private static final int MAX_VALIDATION_TASK_COUNT = 200;
+  private static final int MAX_REQUESTED_PIECES_PER_TORRENT = 100;
 
   /**
    * Create a new shared torrent from meta-info
@@ -461,13 +463,12 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     initIfNecessary(peer);
     List<Piece> toRequest = new ArrayList<Piece>();
     synchronized (this) {
-      if (myValidationFutures.size() > 100) return;
+      if (myValidationFutures.size() > MAX_VALIDATION_TASK_COUNT) return;
       final BitSet interesting = peer.getAvailablePieces();
       interesting.andNot(this.completedPieces);
       interesting.andNot(this.requestedPieces);
 
-      int maxRequestedPiecesTotal = 100;
-      if (this.requestedPieces.cardinality() > maxRequestedPiecesTotal) return;
+      if (this.requestedPieces.cardinality() > MAX_REQUESTED_PIECES_PER_TORRENT) return;
       int maxRequestingPieces = Math.min(10, interesting.cardinality());
       int currentlyDownloading = peer.getDownloadingPiecesCount();
       while (currentlyDownloading < maxRequestingPieces) {
