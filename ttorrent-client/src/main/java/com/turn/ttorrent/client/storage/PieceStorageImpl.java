@@ -43,7 +43,7 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   @Override
-  public synchronized void savePiece(int pieceIndex, byte[] pieceData) throws IOException {
+  public void savePiece(int pieceIndex, byte[] pieceData) throws IOException {
     checkPieceIndex(pieceIndex);
     try {
       readWriteLock.writeLock().lock();
