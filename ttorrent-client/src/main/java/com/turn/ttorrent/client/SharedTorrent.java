@@ -621,10 +621,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     myTorrentStatistic.addUploaded(piece.size());
   }
 
-  public void addDownloadProgressListener(DownloadProgressListener listener) {
-    myDownloadListeners.add(listener);
-  }
-
   /**
    * Piece download completion handler.
    * <p/>
