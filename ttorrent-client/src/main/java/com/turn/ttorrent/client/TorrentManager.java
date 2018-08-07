@@ -2,6 +2,9 @@ package com.turn.ttorrent.client;
 
 import com.turn.ttorrent.common.TorrentHash;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 public interface TorrentManager extends TorrentHash {
 
   /**
@@ -20,4 +23,13 @@ public interface TorrentManager extends TorrentHash {
    */
   boolean removeListener(TorrentListener listener);
 
+  /**
+   * wait until download will be finished
+   *
+   * @param timeout  the maximum time to wait
+   * @param timeUnit the time unit of the timeout argument
+   * @throws InterruptedException if this thread was interrupted
+   * @throws TimeoutException     if timeout was elapsed
+   */
+  void awaitDownloadComplete(int timeout, TimeUnit timeUnit) throws InterruptedException, TimeoutException;
 }
