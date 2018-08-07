@@ -55,8 +55,7 @@ public class SimpleClient {
   }
 
   public void downloadTorrent(String torrentFile, String downloadDir, InetAddress iPv4Address) throws IOException, InterruptedException {
-    communicationManager.start(iPv4Address);
-    TorrentManager torrentManager = communicationManager.addTorrent(torrentFile, downloadDir);
+    TorrentManager torrentManager = startDownloading(torrentFile, downloadDir, iPv4Address);
     final Semaphore semaphore = new Semaphore(0);
     torrentManager.addListener(new TorrentListenerWrapper() {
       @Override
@@ -67,4 +66,14 @@ public class SimpleClient {
     semaphore.acquire();
   }
 
+  private TorrentManager startDownloading(String torrentFile, String downloadDir, InetAddress iPv4Address) throws IOException {
+    communicationManager.start(iPv4Address);
+    return communicationManager.addTorrent(torrentFile, downloadDir);
+  }
+
+  public TorrentManager downloadTorrentAsync(String torrentFile,
+                              String downloadDir,
+                              InetAddress iPv4Address) throws IOException {
+    return startDownloading(torrentFile, downloadDir, iPv4Address);
+  }
 }
