@@ -4,7 +4,6 @@ import com.turn.ttorrent.TempFiles;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.bcodec.BDecoder;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.common.protocol.TrackerMessage;
 import com.turn.ttorrent.common.protocol.http.HTTPAnnounceResponseMessage;
 import org.apache.log4j.BasicConfigurator;
@@ -35,13 +34,11 @@ public class MultiAnnounceRequestProcessorTest {
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
-    TorrentCreator.setHashingThreadsCount(1);
   }
 
   @BeforeMethod
   protected void setUp() throws Exception {
     tempFiles = new TempFiles();
-    TorrentCreator.setHashingThreadsCount(1);
     startTracker();
   }
 

@@ -3,7 +3,6 @@ package com.turn.ttorrent.client.announce;
 import com.turn.ttorrent.Utils;
 import com.turn.ttorrent.common.AnnounceableInformation;
 import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.TorrentCreator;
 import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.AnnounceRequestMessage;
 import com.turn.ttorrent.tracker.Tracker;
@@ -37,12 +36,10 @@ public class TrackerClientTest {
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
-    TorrentCreator.setHashingThreadsCount(1);
   }
 
   @BeforeMethod
   protected void setUp() throws Exception {
-    TorrentCreator.setHashingThreadsCount(1);
     startTracker();
   }
 

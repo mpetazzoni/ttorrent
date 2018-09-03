@@ -64,7 +64,6 @@ public class CommunicationManagerTest {
     if (Logger.getRootLogger().getAllAppenders().hasMoreElements())
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS} %t] %6p - %20.20c - %m %n")));
-    TorrentCreator.setHashingThreadsCount(1);
   }
 
   @BeforeMethod

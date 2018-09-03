@@ -26,6 +26,22 @@ public class TorrentCreator {
   public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
   private static final int HASHING_TIMEOUT_SEC = 15;
   public static int HASHING_THREADS_COUNT = Runtime.getRuntime().availableProcessors();
+
+  static {
+    String threads = System.getenv("TTORRENT_HASHING_THREADS");
+
+    if (threads != null) {
+      try {
+        int count = Integer.parseInt(threads);
+        if (count > 0) {
+          TorrentCreator.HASHING_THREADS_COUNT = count;
+        }
+      } catch (NumberFormatException nfe) {
+        // Pass
+      }
+    }
+  }
+
   private static final ExecutorService HASHING_EXECUTOR = Executors.newFixedThreadPool(HASHING_THREADS_COUNT, new ThreadFactory() {
     @Override
     public Thread newThread(@NotNull final Runnable r) {
@@ -333,15 +349,6 @@ public class TorrentCreator {
   }
 
   /**
-   * Sets max number of threads to use when hash for file is calculated.
-   *
-   * @param hashingThreadsCount number of concurrent threads for file hash calculation
-   */
-  public static void setHashingThreadsCount(int hashingThreadsCount) {
-    HASHING_THREADS_COUNT = hashingThreadsCount;
-  }
-
-  /**
    * A {@link Callable} to hash a data chunk.
    *
    * @author mpetazzoni
@@ -360,20 +367,4 @@ public class TorrentCreator {
       return new String(sha1Hash, Constants.BYTE_ENCODING);
     }
   }
-
-  static {
-    String threads = System.getenv("TTORRENT_HASHING_THREADS");
-
-    if (threads != null) {
-      try {
-        int count = Integer.parseInt(threads);
-        if (count > 0) {
-          TorrentCreator.HASHING_THREADS_COUNT = count;
-        }
-      } catch (NumberFormatException nfe) {
-        // Pass
-      }
-    }
-  }
-
 }

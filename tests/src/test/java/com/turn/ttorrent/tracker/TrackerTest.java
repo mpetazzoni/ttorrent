@@ -46,13 +46,11 @@ public class TrackerTest {
       return;
     BasicConfigurator.configure(new ConsoleAppender(new PatternLayout("[%d{MMdd HH:mm:ss,SSS}] %6p - %20.20c - %m %n")));
     Logger.getRootLogger().setLevel(Utils.getLogLevel());
-    TorrentCreator.setHashingThreadsCount(1);
   }
 
   @BeforeMethod
   protected void setUp() throws Exception {
     tempFiles = new TempFiles();
-    TorrentCreator.setHashingThreadsCount(1);
     startTracker();
   }
 
