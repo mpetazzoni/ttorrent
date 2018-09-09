@@ -34,9 +34,12 @@ public class FairPieceStorageFactory implements PieceStorageFactory {
       int pieceLength = metadata.getPieceLength();
       for (int i = 0; i < metadata.getPiecesCount(); i++) {
         long position = (long) i * pieceLength;
-        int len = Math.min(
-                (int) (totalSize - position),
-                pieceLength);
+        int len;
+        if (totalSize - position > pieceLength) {
+          len = pieceLength;
+        } else {
+          len = (int) (totalSize - position);
+        }
         ByteBuffer buffer = ByteBuffer.allocate(len);
         byteStorage.read(buffer, position);
         byte[] expectedHash = Arrays.copyOfRange(metadata.getPiecesHashes(), i * Constants.PIECE_HASH_SIZE, (i + 1) * Constants.PIECE_HASH_SIZE);
