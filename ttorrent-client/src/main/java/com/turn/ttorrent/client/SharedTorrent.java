@@ -332,9 +332,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       throw new IllegalStateException("Torrent not yet initialized!");
     }
 
-    synchronized (this.completedPieces) {
-      return (BitSet) this.completedPieces.clone();
-    }
+    return pieceStorage.getAvailablePieces();
   }
 
   /**
