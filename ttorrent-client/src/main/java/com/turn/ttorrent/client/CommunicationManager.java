@@ -679,6 +679,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
                     !remote.getAvailablePieces().get(piece.getIndex()))
               remote.send(have);
           }
+          peer.pieceDownloaded();
 
           final boolean isTorrentComplete;
           synchronized (torrent) {

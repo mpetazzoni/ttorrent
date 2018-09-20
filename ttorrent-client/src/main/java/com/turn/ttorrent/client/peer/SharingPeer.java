@@ -36,6 +36,7 @@ import java.nio.channels.ByteChannel;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -87,6 +88,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
 
   private final Rate download;
   private final Rate upload;
+  private final AtomicInteger downloadedPiecesCount;
   private final Set<PeerActivityListener> listeners;
 
   private final Object requestsLock;
@@ -140,6 +142,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     this.choked = true;
     this.interested = false;
     this.downloading = false;
+    this.downloadedPiecesCount = new AtomicInteger();
   }
 
   public Rate getDLRate() {
@@ -263,6 +266,14 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
   public void resetRates() {
     this.download.reset();
     this.upload.reset();
+  }
+
+  public void pieceDownloaded() {
+    downloadedPiecesCount.incrementAndGet();
+  }
+
+  public int getDownloadedPiecesCount() {
+    return downloadedPiecesCount.get();
   }
 
   /**
