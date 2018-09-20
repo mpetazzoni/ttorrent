@@ -339,7 +339,7 @@ public class CommunicationManagerTest {
     seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent(), FullyPieceStorageFactory.INSTANCE);
 
     List<Map.Entry<CommunicationManager, File>> leechers = new ArrayList<Map.Entry<CommunicationManager, File>>();
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 4; i++) {
       final File downloadDir = tempFiles.createTempDir();
       CommunicationManager leech = createClient();
       leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath(), EmptyPieceStorageFactory.INSTANCE);
