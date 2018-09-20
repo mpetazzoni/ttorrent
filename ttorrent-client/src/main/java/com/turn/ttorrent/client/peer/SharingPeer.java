@@ -80,7 +80,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
   private volatile boolean choked;
   private volatile boolean interested;
   private final SharedTorrent torrent;
-  private BitSet availablePieces;
+  private final BitSet availablePieces;
   private BitSet poorlyAvailablePieces;
   private final Map<Piece, Integer> myRequestedPieces;
 
@@ -89,7 +89,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
   private final Rate download;
   private final Rate upload;
   private final AtomicInteger downloadedPiecesCount;
-  private final Set<PeerActivityListener> listeners;
+  private final List<PeerActivityListener> listeners;
 
   private final Object requestsLock;
 
@@ -124,7 +124,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
     this.torrent = torrent;
     this.clientIdentifier = clientIdentifier;
     this.clientVersion = clientVersion;
-    this.listeners = Collections.unmodifiableSet(new HashSet<PeerActivityListener>(Arrays.asList(client, torrent)));
+    this.listeners = Arrays.asList(client, torrent);
     this.availablePieces = new BitSet(torrent.getPieceCount());
     this.poorlyAvailablePieces = new BitSet(torrent.getPieceCount());
 
