@@ -20,8 +20,7 @@ import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
 import com.turn.ttorrent.client.storage.PieceStorage;
 import com.turn.ttorrent.client.storage.TorrentByteStorage;
-import com.turn.ttorrent.client.strategy.RequestStrategy;
-import com.turn.ttorrent.client.strategy.RequestStrategyImplAnyInteresting;
+import com.turn.ttorrent.client.strategy.*;
 import com.turn.ttorrent.common.Optional;
 import com.turn.ttorrent.common.*;
 import org.apache.commons.io.FileUtils;
@@ -70,6 +69,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * </p>
    */
   private static final float ENG_GAME_COMPLETION_RATIO = 0.95f;
+  private static final int END_GAME_STATIC_PIECES_COUNT = 20;
+  private static final long END_GAME_INVOCATION_PERIOD_MS = 2000;
 
   private final TorrentStatistic myTorrentStatistic;
 
@@ -78,7 +79,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private final PieceStorage pieceStorage;
   private boolean isFileChannelOpen = false;
-  private final List<DownloadProgressListener> myDownloadListeners;
   private final Map<Integer, Future<?>> myValidationFutures;
   private final TorrentMetadata myTorrentMetadata;
   private final long myTorrentTotalSize;
@@ -88,12 +88,14 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
   private boolean initialized;
   private Piece[] pieces;
-  private BitSet completedPieces;
+  private final BitSet completedPieces;
   private final BitSet requestedPieces;
   private final RequestStrategy myRequestStrategy;
   private final EventDispatcher eventDispatcher;
 
-  private List<Peer> myDownloaders = new CopyOnWriteArrayList<Peer>();
+  private final List<SharingPeer> myDownloaders = new CopyOnWriteArrayList<SharingPeer>();
+  private final EndGameStrategy endGameStrategy = new EndGameStrategyImpl(2);
+  private volatile long endGameEnabledOn = -1;
 
   private volatile ClientState clientState = ClientState.WAITING;
   private static final int MAX_VALIDATION_TASK_COUNT = 200;
@@ -117,7 +119,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       totalSize += torrentFile.size;
     }
     myTorrentTotalSize = totalSize;
-    myDownloadListeners = new ArrayList<DownloadProgressListener>();
     this.myRequestStrategy = requestStrategy;
 
     this.pieceLength = myTorrentMetadata.getPieceLength();
@@ -131,7 +132,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
 
     this.initialized = false;
     this.pieces = new Piece[0];
-    this.completedPieces = new BitSet();
+    this.completedPieces = new BitSet(torrentMetadata.getPiecesCount());
     this.requestedPieces = new BitSet();
   }
 
@@ -235,7 +236,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     int nPieces = (int) (Math.ceil(
             (double) myTorrentTotalSize / this.pieceLength));
     this.pieces = new Piece[nPieces];
-    this.completedPieces = new BitSet(nPieces);
     this.piecesHashes.clear();
   }
 
@@ -332,9 +332,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       throw new IllegalStateException("Torrent not yet initialized!");
     }
 
-    synchronized (this.completedPieces) {
-      return (BitSet) this.completedPieces.clone();
-    }
+    return pieceStorage.getAvailablePieces();
   }
 
   /**
@@ -342,9 +340,8 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * available locally.
    */
   public synchronized boolean isComplete() {
-    return this.pieces.length > 0 &&
-            this.completedPieces.cardinality() == this.pieces.length &&
-            this.myValidationFutures.size() == 0;
+    return this.pieces.length > 0
+            && pieceStorage.getAvailablePieces().cardinality() == myTorrentMetadata.getPiecesCount();
   }
 
   /**
@@ -461,39 +458,58 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   @Override
   public void handlePeerReady(SharingPeer peer) {
     initIfNecessary(peer);
-    List<Piece> toRequest = new ArrayList<Piece>();
-    synchronized (this) {
-      if (myValidationFutures.size() > MAX_VALIDATION_TASK_COUNT) return;
-      final BitSet interesting = peer.getAvailablePieces();
-      interesting.andNot(this.completedPieces);
-      interesting.andNot(this.requestedPieces);
 
-      if (this.requestedPieces.cardinality() > MAX_REQUESTED_PIECES_PER_TORRENT) return;
-      int maxRequestingPieces = Math.min(10, interesting.cardinality());
-      int currentlyDownloading = peer.getDownloadingPiecesCount();
-      while (currentlyDownloading < maxRequestingPieces) {
-        if (!peer.isConnected()) {
-          break;
-        }
+    RequestsCollection requestsCollection = getRequestsCollection(peer);
+    requestsCollection.sendAllRequests();
+  }
 
-        if (interesting.cardinality() == 0) {
-          return;
-        }
+  @NotNull
+  private synchronized RequestsCollection getRequestsCollection(final SharingPeer peer) {
+    if (myValidationFutures.size() > MAX_VALIDATION_TASK_COUNT) return RequestsCollection.Empty.INSTANCE;
 
-        Piece chosen = myRequestStrategy.choosePiece(interesting, pieces);
-        if (chosen == null) {
-          logger.info("chosen piece is null");
-          break;
-        }
-        this.requestedPieces.set(chosen.getIndex());
-        currentlyDownloading++;
-        toRequest.add(chosen);
-        interesting.clear(chosen.getIndex());
+    if (this.requestedPieces.cardinality() > MAX_REQUESTED_PIECES_PER_TORRENT) return RequestsCollection.Empty.INSTANCE;
+
+    int completedAndValidated = pieceStorage.getAvailablePieces().cardinality();
+
+    boolean turnOnEndGame = completedAndValidated > getPiecesCount() * ENG_GAME_COMPLETION_RATIO ||
+            completedAndValidated > getPiecesCount() - END_GAME_STATIC_PIECES_COUNT;
+    if (turnOnEndGame) {
+      long now = System.currentTimeMillis();
+      if (now - END_GAME_INVOCATION_PERIOD_MS > endGameEnabledOn) {
+        endGameEnabledOn = now;
+        return endGameStrategy.collectRequests(pieces, myDownloaders);
       }
+      return RequestsCollection.Empty.INSTANCE;
     }
-    for (Piece piece : toRequest) {
-      peer.downloadPiece(piece);
+
+    final BitSet interesting = peer.getAvailablePieces();
+    interesting.andNot(this.completedPieces);
+    interesting.andNot(this.requestedPieces);
+
+    int maxRequestingPieces = Math.min(10, interesting.cardinality());
+    int currentlyDownloading = peer.getDownloadingPiecesCount();
+    Map<Piece, List<SharingPeer>> toRequest = new HashMap<Piece, List<SharingPeer>>();
+    while (currentlyDownloading < maxRequestingPieces) {
+      if (!peer.isConnected()) {
+        break;
+      }
+
+      if (interesting.cardinality() == 0) {
+        return RequestsCollection.Empty.INSTANCE;
+      }
+
+      Piece chosen = myRequestStrategy.choosePiece(interesting, pieces);
+      if (chosen == null) {
+        logger.info("chosen piece is null");
+        break;
+      }
+      this.requestedPieces.set(chosen.getIndex());
+      currentlyDownloading++;
+      toRequest.put(chosen, Collections.singletonList(peer));
+      interesting.clear(chosen.getIndex());
     }
+
+    return new RequestsCollectionImpl(toRequest);
   }
 
   public synchronized void initIfNecessary(SharingPeer peer) {
@@ -524,12 +540,10 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @param piece The piece that became available.
    */
   @Override
-  public synchronized void handlePieceAvailability(SharingPeer peer,
-                                                   Piece piece) {
-    // If we don't have this piece, tell the peer we're interested in
-    // getting it from him.
-    if (!this.completedPieces.get(piece.getIndex()) &&
-            !this.requestedPieces.get(piece.getIndex())) {
+  public void handlePieceAvailability(SharingPeer peer, Piece piece) {
+    boolean isPeerInteresting = !this.completedPieces.get(piece.getIndex()) &&
+            !this.requestedPieces.get(piece.getIndex());
+    if (isPeerInteresting) {
       peer.interesting();
     }
 
@@ -616,7 +630,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @param piece The piece in question.
    */
   @Override
-  public synchronized void handlePieceSent(SharingPeer peer, Piece piece) {
+  public void handlePieceSent(SharingPeer peer, Piece piece) {
     logger.trace("Completed upload of {} to {}.", piece, peer);
     myTorrentStatistic.addUploaded(piece.size());
   }
@@ -633,16 +647,12 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
    * @param piece The piece in question.
    */
   @Override
-  public synchronized void handlePieceCompleted(SharingPeer peer,
-                                                Piece piece) throws IOException {
+  public void handlePieceCompleted(SharingPeer peer,
+                                   Piece piece) throws IOException {
     // Regardless of validity, record the number of bytes downloaded and
     // mark the piece as not requested anymore
     myTorrentStatistic.addDownloaded(piece.size());
     this.requestedPieces.set(piece.getIndex(), false);
-
-    for (DownloadProgressListener listener : myDownloadListeners) {
-      listener.pieceLoaded(piece.getIndex(), (int) piece.size());
-    }
 
     logger.trace("We now have {} piece(s) and {} outstanding request(s): {}",
             new Object[]{
@@ -711,9 +721,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer) {
     initIfNecessary(peer);
-    if (clientState != ClientState.ERROR) {
-      myDownloaders.add(peer);
-    }
     eventDispatcher.notifyPeerConnected(peer);
   }
 
@@ -819,5 +826,9 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       if (myValidationFutures.get(piece.getIndex()) != null) return false;
     }
     return true;
+  }
+
+  public void addConnectedPeer(SharingPeer sharingPeer) {
+    myDownloaders.add(sharingPeer);
   }
 }

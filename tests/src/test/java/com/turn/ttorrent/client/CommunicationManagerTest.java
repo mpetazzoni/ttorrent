@@ -236,7 +236,62 @@ public class CommunicationManagerTest {
     return names;
   }
 
-  //  @Test(invocationCount = 50)
+  public void testHungSeeder() throws Exception {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    File tempFile = tempFiles.createTempFile(500 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+
+    TorrentMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    saveTorrent(torrent, torrentFile);
+
+    CommunicationManager goodSeeder = createClient();
+    goodSeeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent(), FullyPieceStorageFactory.INSTANCE);
+
+    final ExecutorService es = Executors.newFixedThreadPool(10);
+    final ExecutorService validatorES = Executors.newFixedThreadPool(4);
+    CommunicationManager hungSeeder = new CommunicationManager(es, validatorES) {
+      @Override
+      public void stop() {
+        super.stop();
+        es.shutdownNow();
+        validatorES.shutdownNow();
+      }
+
+      @Override
+      public SharingPeer createSharingPeer(String host, int port, ByteBuffer peerId, SharedTorrent torrent, ByteChannel channel, String clientIdentifier, int clientVersion) {
+        return new SharingPeer(host, port, peerId, torrent, getConnectionManager(), this, channel, clientIdentifier, clientVersion) {
+          @Override
+          public void handleMessage(PeerMessage msg) {
+            if (msg instanceof PeerMessage.RequestMessage) {
+              return;
+            }
+            super.handleMessage(msg);
+          }
+        };
+      }
+    };
+    hungSeeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent(), FullyPieceStorageFactory.INSTANCE);
+
+    final File downloadDir = tempFiles.createTempDir();
+    CommunicationManager leech = createClient();
+    leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath(), EmptyPieceStorageFactory.INSTANCE);
+
+    try {
+      hungSeeder.start(InetAddress.getLocalHost());
+      goodSeeder.start(InetAddress.getLocalHost());
+      leech.start(InetAddress.getLocalHost());
+
+      waitForFileInDir(downloadDir, tempFile.getName());
+      assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
+    } finally {
+      goodSeeder.stop();
+      leech.stop();
+    }
+  }
+
   public void large_file_download() throws IOException, URISyntaxException, InterruptedException {
     this.tracker.setAcceptForeignTorrents(true);
 
@@ -264,6 +319,48 @@ public class CommunicationManagerTest {
     } finally {
       seeder.stop();
       leech.stop();
+    }
+  }
+
+  @Test()
+  public void testManyLeechers() throws IOException, URISyntaxException, InterruptedException {
+    this.tracker.setAcceptForeignTorrents(true);
+
+    File tempFile = tempFiles.createTempFile(400 * 1025 * 1024);
+    URL announce = new URL("http://127.0.0.1:6969/announce");
+    URI announceURI = announce.toURI();
+
+    TorrentMetadata torrent = TorrentCreator.create(tempFile, announceURI, "Test");
+    File torrentFile = new File(tempFile.getParentFile(), tempFile.getName() + ".torrent");
+    saveTorrent(torrent, torrentFile);
+
+    CommunicationManager seeder = createClient();
+    seeder.addTorrent(torrentFile.getAbsolutePath(), tempFile.getParent(), FullyPieceStorageFactory.INSTANCE);
+
+    List<Map.Entry<CommunicationManager, File>> leechers = new ArrayList<Map.Entry<CommunicationManager, File>>();
+    for (int i = 0; i < 4; i++) {
+      final File downloadDir = tempFiles.createTempDir();
+      CommunicationManager leech = createClient();
+      leech.addTorrent(torrentFile.getAbsolutePath(), downloadDir.getAbsolutePath(), EmptyPieceStorageFactory.INSTANCE);
+      leechers.add(new AbstractMap.SimpleEntry<CommunicationManager, File>(leech, downloadDir));
+    }
+
+    try {
+      seeder.start(InetAddress.getLocalHost());
+      for (Map.Entry<CommunicationManager, File> entry : leechers) {
+        entry.getKey().start(InetAddress.getLocalHost());
+      }
+
+      for (Map.Entry<CommunicationManager, File> leecher : leechers) {
+        File downloadDir = leecher.getValue();
+        waitForFileInDir(downloadDir, tempFile.getName());
+        assertFilesEqual(tempFile, new File(downloadDir, tempFile.getName()));
+      }
+    } finally {
+      seeder.stop();
+      for (Map.Entry<CommunicationManager, File> e : leechers) {
+        e.getKey().stop();
+      }
     }
   }
 

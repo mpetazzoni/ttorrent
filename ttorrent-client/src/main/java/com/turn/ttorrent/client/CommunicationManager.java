@@ -671,6 +671,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
         piece.validate(torrent, piece);
         if (piece.isValid()) {
+          torrent.notifyPieceDownloaded(piece, peer);
           piece.finish();
           // Send a HAVE message to all connected peers, which don't have the piece
           PeerMessage have = PeerMessage.HaveMessage.craft(piece.getIndex());
@@ -679,11 +680,11 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
                     !remote.getAvailablePieces().get(piece.getIndex()))
               remote.send(have);
           }
+          peer.pieceDownloaded();
 
           final boolean isTorrentComplete;
           synchronized (torrent) {
             torrent.removeValidationFuture(piece);
-            torrent.notifyPieceDownloaded(piece, peer);
 
             boolean isCurrentPeerSeeder = peer.getAvailablePieces().cardinality() == torrent.getPieceCount();
             //if it's seeder we will send not interested message when we download full file
