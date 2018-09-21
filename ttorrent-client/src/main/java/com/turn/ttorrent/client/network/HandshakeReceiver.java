@@ -145,6 +145,7 @@ public class HandshakeReceiver implements DataProcessor {
           }
         }
       });
+      torrent.addConnectedPeer(sharingPeer);
     } catch (RejectedExecutionException e) {
       LoggerUtils.warnAndDebugDetails(logger, "task 'onConnectionEstablished' submit is failed. Reason: {}", e.getMessage(), e);
       return new ShutdownAndRemovePeerProcessor(peerUID, myContext).processAndGetNext(socketChannel);

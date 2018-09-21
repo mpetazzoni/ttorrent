@@ -721,9 +721,6 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer) {
     initIfNecessary(peer);
-    if (clientState != ClientState.ERROR) {
-      myDownloaders.add(peer);
-    }
     eventDispatcher.notifyPeerConnected(peer);
   }
 
@@ -829,5 +826,9 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       if (myValidationFutures.get(piece.getIndex()) != null) return false;
     }
     return true;
+  }
+
+  public void addConnectedPeer(SharingPeer sharingPeer) {
+    myDownloaders.add(sharingPeer);
   }
 }
