@@ -9,10 +9,7 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedSelectorException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -147,7 +144,11 @@ public class ConnectionWorker implements Runnable {
       WriteAttachment keyAttachment = (WriteAttachment) attachment;
       if (keyAttachment.getWriteTasks().offer(writeTask)) {
         iterator.remove();
-        key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+        try {
+          key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+        } catch (CancelledKeyException e) {
+          writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Key is cancelled"), null);
+        }
       }
     }
   }
