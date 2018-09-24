@@ -393,6 +393,9 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     // this torrent.
     myTorrentStatistic.addLeft(-piece.size());
     this.completedPieces.set(piece.getIndex());
+    if (completedPieces.cardinality() == getPiecesCount()) {
+      logger.info("all pieces are received for torrent {}. Validating...", this);
+    }
   }
 
   public synchronized void markUncompleted(Piece piece) {
