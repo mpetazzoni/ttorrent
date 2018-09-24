@@ -128,6 +128,19 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
   }
 
   /**
+   * Adds torrent to storage with specified listeners, validate downloaded files and start seeding and leeching the torrent
+   *
+   * @param dotTorrentFilePath path to torrent metadata file
+   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @param listeners          specified listeners
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(String dotTorrentFilePath, String downloadDirPath, List<TorrentListener> listeners) throws IOException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, FairPieceStorageFactory.INSTANCE, listeners);
+  }
+
+  /**
    * Adds torrent to storage with specified {@link PieceStorageFactory}.
    * It can be used for skipping initial validation of data
    *
@@ -140,11 +153,28 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
   public TorrentManager addTorrent(String dotTorrentFilePath,
                                    String downloadDirPath,
                                    PieceStorageFactory pieceStorageFactory) throws IOException {
+    return addTorrent(dotTorrentFilePath, downloadDirPath, pieceStorageFactory, Collections.<TorrentListener>emptyList());
+  }
+
+  /**
+   * Adds torrent to storage with specified {@link PieceStorageFactory}.
+   * It can be used for skipping initial validation of data
+   *
+   * @param dotTorrentFilePath path to torrent metadata file
+   * @param downloadDirPath    path to directory where downloaded files are placed
+   * @param pieceStorageFactory factory for creating {@link PieceStorage}.
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(String dotTorrentFilePath,
+                                   String downloadDirPath,
+                                   PieceStorageFactory pieceStorageFactory,
+                                   List<TorrentListener> listeners) throws IOException {
     FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
     TorrentMetadata metadata = metadataProvider.getTorrentMetadata();
     FileCollectionStorage fileCollectionStorage = FileCollectionStorage.create(metadata, new File(downloadDirPath));
     PieceStorage pieceStorage = pieceStorageFactory.createStorage(metadata, fileCollectionStorage);
-    return addTorrent(metadataProvider, pieceStorage);
+    return addTorrent(metadataProvider, pieceStorage, listeners);
   }
 
   /**
@@ -156,12 +186,27 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
    * @throws IOException if IO error occurs in reading metadata file
    */
   public TorrentManager addTorrent(TorrentMetadataProvider metadataProvider, PieceStorage pieceStorage) throws IOException {
-    CopyOnWriteArrayList<TorrentListener> listeners = new CopyOnWriteArrayList<TorrentListener>();
+    return addTorrent(metadataProvider, pieceStorage, Collections.<TorrentListener>emptyList());
+  }
+
+  /**
+   * Adds torrent to storage with any storage, metadata source and specified listeners
+   *
+   * @param metadataProvider specified metadata source
+   * @param pieceStorage     specified storage of pieces
+   * @param listeners        specified listeners
+   * @return {@link TorrentManager} instance for monitoring torrent state
+   * @throws IOException if IO error occurs in reading metadata file
+   */
+  public TorrentManager addTorrent(TorrentMetadataProvider metadataProvider,
+                                   PieceStorage pieceStorage,
+                                   List<TorrentListener> listeners) throws IOException {
+    CopyOnWriteArrayList<TorrentListener> cowListeners = new CopyOnWriteArrayList<TorrentListener>(listeners);
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
             metadataProvider,
             pieceStorage,
-            new EventDispatcher(listeners));
+            new EventDispatcher(cowListeners));
 
     if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
@@ -176,7 +221,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
-    return new TorrentManagerImpl(listeners, loadedTorrent.getTorrentHash());
+    return new TorrentManagerImpl(cowListeners, loadedTorrent.getTorrentHash());
   }
 
   private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
