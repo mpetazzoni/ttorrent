@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class KeyProcessorUtil {
 
-  private final static Logger logger = TorrentLoggerFactory.getLogger();
+  private final static Logger logger = TorrentLoggerFactory.getLogger(KeyProcessorUtil.class);
 
   public static TimeoutAttachment getAttachmentAsTimeoutOrNull(SelectionKey key) {
     Object attachment = key.attachment();

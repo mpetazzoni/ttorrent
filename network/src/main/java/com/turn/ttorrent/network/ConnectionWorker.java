@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 public class ConnectionWorker implements Runnable {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ConnectionWorker.class);
   private static final String SELECTOR_THREAD_NAME = "Torrent channels manager thread";
   private volatile boolean stop = false;
   private final Selector selector;

@@ -7,7 +7,6 @@ import com.turn.ttorrent.network.ConnectionListener;
 import com.turn.ttorrent.network.ReadWriteAttachment;
 import com.turn.ttorrent.network.TimeoutStorage;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -20,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConnectableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ConnectableKeyProcessor.class);
 
   private final Selector mySelector;
   private final TimeService myTimeService;

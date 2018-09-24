@@ -62,7 +62,7 @@ import java.util.Random;
 public class UDPTrackerClient extends TrackerClient {
 
   protected static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(UDPTrackerClient.class);
 
   /**
    * Back-off timeout uses 15 * 2 ^ n formula.

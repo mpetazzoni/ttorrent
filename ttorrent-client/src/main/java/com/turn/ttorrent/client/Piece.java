@@ -47,7 +47,7 @@ import java.util.Arrays;
 public class Piece implements Comparable<Piece>, PieceInformation {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(Piece.class);
 
   private final PieceStorage pieceStorage;
   private final int index;

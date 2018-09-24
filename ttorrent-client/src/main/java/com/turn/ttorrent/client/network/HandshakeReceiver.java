@@ -19,7 +19,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 public class HandshakeReceiver implements DataProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(HandshakeReceiver.class);
 
   private final Context myContext;
   private final String myHostAddress;

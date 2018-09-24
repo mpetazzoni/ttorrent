@@ -36,7 +36,7 @@ import java.nio.ByteBuffer;
  */
 public class Peer {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(Peer.class);
 
   private final InetSocketAddress address;
   private final String hostId;

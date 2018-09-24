@@ -13,7 +13,7 @@ import java.nio.channels.SocketChannel;
 
 public class WritableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(WritableKeyProcessor.class);
 
   @Override
   public void process(SelectionKey key) throws IOException {

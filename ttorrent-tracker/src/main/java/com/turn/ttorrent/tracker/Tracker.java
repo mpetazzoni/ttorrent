@@ -42,7 +42,7 @@ import java.util.List;
  */
 public class Tracker {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(Tracker.class);
 
   /**
    * Request path handled by the tracker announce request handler.

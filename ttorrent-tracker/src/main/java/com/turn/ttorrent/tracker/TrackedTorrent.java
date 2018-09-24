@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentMap;
 public class TrackedTorrent implements TorrentHash {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(TrackedTorrent.class);
 
   /**
    * Minimum announce interval requested from peers, in seconds.

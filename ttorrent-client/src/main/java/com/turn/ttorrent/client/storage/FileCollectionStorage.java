@@ -44,7 +44,7 @@ import java.util.List;
 public class FileCollectionStorage implements TorrentByteStorage {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(FileCollectionStorage.class);
 
   private final List<FileStorage> files;
   private final long size;

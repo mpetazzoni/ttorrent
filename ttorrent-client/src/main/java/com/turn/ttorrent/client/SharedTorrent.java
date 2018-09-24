@@ -54,7 +54,7 @@ import java.util.concurrent.Future;
 public class SharedTorrent implements PeerActivityListener, TorrentMetadata, TorrentInfo {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(SharedTorrent.class);
 
   private final static RequestStrategy DEFAULT_REQUEST_STRATEGY = new RequestStrategyImplAnyInteresting();
 

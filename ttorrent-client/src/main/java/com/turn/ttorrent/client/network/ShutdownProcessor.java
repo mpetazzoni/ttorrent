@@ -8,7 +8,7 @@ import java.nio.channels.ByteChannel;
 
 public class ShutdownProcessor implements DataProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ShutdownProcessor.class);
 
   @Override
   public DataProcessor processAndGetNext(ByteChannel socketChannel) throws IOException {

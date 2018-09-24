@@ -12,7 +12,7 @@ import java.nio.channels.ByteChannel;
 
 public class ShutdownAndRemovePeerProcessor implements DataProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ShutdownAndRemovePeerProcessor.class);
 
   private final PeerUID myPeerUID;
   private final Context myContext;

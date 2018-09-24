@@ -11,7 +11,7 @@ import java.nio.channels.ServerSocketChannel;
 
 public class FirstAvailableChannel implements ServerChannelRegister {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(FirstAvailableChannel.class);
 
   private final int firstTryPort;
   private final int lastTryPort;

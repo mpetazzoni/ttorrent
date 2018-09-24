@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class InvalidKeyProcessor implements KeyProcessor {
 
-  private final static Logger logger = TorrentLoggerFactory.getLogger();
+  private final static Logger logger = TorrentLoggerFactory.getLogger(InvalidKeyProcessor.class);
 
   @Override
   public void process(SelectionKey key) throws IOException {

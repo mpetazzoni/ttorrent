@@ -69,7 +69,7 @@ import static com.turn.ttorrent.common.protocol.AnnounceRequestMessage.RequestEv
  */
 public class CommunicationManager implements AnnounceResponseListener, PeerActivityListener, Context, ConnectionManagerContext {
 
-  protected static final Logger logger = TorrentLoggerFactory.getLogger();
+  protected static final Logger logger = TorrentLoggerFactory.getLogger(CommunicationManager.class);
 
   public static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 

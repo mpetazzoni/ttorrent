@@ -59,7 +59,7 @@ import java.util.Map;
 public class TrackerRequestProcessor {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(TrackerRequestProcessor.class);
 
   /**
    * The list of announce request URL fields that need to be interpreted as

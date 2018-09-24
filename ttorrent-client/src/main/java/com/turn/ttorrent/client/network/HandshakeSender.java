@@ -14,7 +14,7 @@ import java.util.Arrays;
 
 public class HandshakeSender implements DataProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(HandshakeSender.class);
 
   private final TorrentHash myTorrentHash;
   private final String myRemotePeerIp;

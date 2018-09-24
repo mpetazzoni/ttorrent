@@ -45,7 +45,7 @@ public class FileStorage implements TorrentByteStorage {
   private static final String PARTIAL_FILE_NAME_SUFFIX = ".part";
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(FileStorage.class);
 
   private final File target;
   private File partial;

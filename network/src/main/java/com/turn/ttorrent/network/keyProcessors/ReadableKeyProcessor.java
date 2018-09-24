@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class ReadableKeyProcessor implements KeyProcessor {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ReadableKeyProcessor.class);
 
   private final String myServerSocketLocalAddress;
 

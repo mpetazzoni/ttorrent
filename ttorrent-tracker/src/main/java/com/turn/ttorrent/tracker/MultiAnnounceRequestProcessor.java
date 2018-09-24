@@ -21,7 +21,7 @@ public class MultiAnnounceRequestProcessor {
   private final TrackerRequestProcessor myTrackerRequestProcessor;
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(MultiAnnounceRequestProcessor.class);
 
   public MultiAnnounceRequestProcessor(TrackerRequestProcessor trackerRequestProcessor) {
     myTrackerRequestProcessor = trackerRequestProcessor;

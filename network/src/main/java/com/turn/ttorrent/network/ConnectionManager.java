@@ -22,7 +22,7 @@ import static com.turn.ttorrent.Constants.DEFAULT_SELECTOR_SELECT_TIMEOUT_MILLIS
 
 public class ConnectionManager {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(ConnectionManager.class);
 
   private final Selector selector;
   private final TimeService myTimeService;

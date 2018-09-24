@@ -44,7 +44,7 @@ import java.util.List;
 public class HTTPTrackerClient extends TrackerClient {
 
   protected static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(HTTPTrackerClient.class);
 
   /**
    * Create a new HTTP announcer for the given torrent.

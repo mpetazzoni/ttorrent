@@ -34,7 +34,7 @@ import java.util.Set;
 public abstract class TrackerClient {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(TrackerClient.class);
 
 
   /**

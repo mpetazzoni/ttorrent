@@ -18,7 +18,7 @@ import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
 public class TorrentCreator {
 
-  private final static Logger logger = TorrentLoggerFactory.getLogger();
+  private final static Logger logger = TorrentLoggerFactory.getLogger(TorrentCreator.class);
 
   /**
    * Torrent file piece length (in bytes), we use 512 kB.

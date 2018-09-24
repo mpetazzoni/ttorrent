@@ -51,7 +51,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Announce implements Runnable {
 
   protected static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(Announce.class);
 
   private List<Peer> myPeers;
   private final TrackerClientFactory myTrackerClientFactory;

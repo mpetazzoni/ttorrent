@@ -23,7 +23,7 @@ import java.nio.channels.WritableByteChannel;
 public class TrackerServiceContainer implements Container {
 
   private static final Logger logger =
-          TorrentLoggerFactory.getLogger();
+          TorrentLoggerFactory.getLogger(TrackerServiceContainer.class);
 
   private TrackerRequestProcessor myRequestProcessor;
   private final MultiAnnounceRequestProcessor myMultiAnnounceRequestProcessor;

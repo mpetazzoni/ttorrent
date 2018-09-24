@@ -72,7 +72,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class SharingPeer extends Peer implements MessageListener, PeerInformation {
 
-  private static final Logger logger = TorrentLoggerFactory.getLogger();
+  private static final Logger logger = TorrentLoggerFactory.getLogger(SharingPeer.class);
 
   private final Object availablePiecesLock;
   private volatile boolean choking;

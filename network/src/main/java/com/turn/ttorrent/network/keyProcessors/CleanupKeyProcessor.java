@@ -12,7 +12,7 @@ import java.nio.channels.SocketChannel;
 
 public class CleanupKeyProcessor implements CleanupProcessor {
 
-  private final static Logger logger = TorrentLoggerFactory.getLogger();
+  private final static Logger logger = TorrentLoggerFactory.getLogger(CleanupKeyProcessor.class);
 
   private final TimeService myTimeService;
 
