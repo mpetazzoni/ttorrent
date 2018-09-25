@@ -345,7 +345,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         }
       }), 1, TimeUnit.SECONDS);
     } else {
-      logger.debug("Attempting to send a message to non-connected peer {}!", this);
+      logger.trace("Attempting to send a message to non-connected peer {}!", this);
       unbind(true);
     }
   }
@@ -616,7 +616,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
             if (p.isValid()) {
               this.cancelPendingRequests(p);
               this.firePeerReady();
-              logger.debug("Discarding block for already completed " + p);
+              logger.trace("Discarding block for already completed " + p);
               break;
             }
             //TODO add proper catch for IOException
