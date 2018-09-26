@@ -26,4 +26,9 @@ public class TorrentListenerWrapper implements TorrentListener {
   public void downloadFailed(Throwable cause) {
 
   }
+
+  @Override
+  public void pieceReceived(PieceInformation pieceInformation, PeerInformation peerInformation) {
+
+  }
 }

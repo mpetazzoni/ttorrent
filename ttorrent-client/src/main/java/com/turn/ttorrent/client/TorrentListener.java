@@ -29,6 +29,13 @@ public interface TorrentListener {
    */
   void downloadComplete();
 
+  /**
+   * invoked when piece is downloaded but not validated yet
+   *
+   * @param pieceInformation specified information about piece
+   * @param peerInformation  specified information about peer
+   */
+  void pieceReceived(PieceInformation pieceInformation, PeerInformation peerInformation);
 
   /**
    * Invoked when download was failed with any exception (e.g. some runtime exception or i/o exception in file operation).
