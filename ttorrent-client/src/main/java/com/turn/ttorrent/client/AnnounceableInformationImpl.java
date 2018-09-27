@@ -62,4 +62,9 @@ class AnnounceableInformationImpl implements AnnounceableInformation {
   public String getHexInfoHash() {
     return torrentHash.getHexInfoHash();
   }
+
+  @Override
+  public String toString() {
+    return "announceable torrent " + torrentHash.getHexInfoHash() + " for trackers " + announceUrls;
+  }
 }
