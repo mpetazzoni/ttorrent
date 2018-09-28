@@ -480,6 +480,9 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       long now = System.currentTimeMillis();
       if (now - END_GAME_INVOCATION_PERIOD_MS > endGameEnabledOn) {
         endGameEnabledOn = now;
+        logger.info("Running end-game mode, currently available {}/{} pieces",
+                pieceStorage.getAvailablePieces().cardinality(),
+                getPieceCount());
         return endGameStrategy.collectRequests(pieces, myDownloaders);
       }
       return RequestsCollection.Empty.INSTANCE;
