@@ -124,21 +124,21 @@ public class ConnectionWorker implements Runnable {
       SocketChannel socketChannel = (SocketChannel) writeTask.getSocketChannel();
       if (!socketChannel.isOpen()) {
         iterator.remove();
-        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), null);
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Channel is not open"), new ConnectionClosedException());
         continue;
       }
       SelectionKey key = socketChannel.keyFor(selector);
       if (key == null) {
         logger.warn("unable to find key for channel {}", socketChannel);
         iterator.remove();
-        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), null);
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Can not find key for the channel"), new ConnectionClosedException());
         continue;
       }
       Object attachment = key.attachment();
       if (!(attachment instanceof WriteAttachment)) {
         logger.error("incorrect attachment {} for channel {}", attachment, socketChannel);
         iterator.remove();
-        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), null);
+        writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Incorrect attachment instance for the key"), new ConnectionClosedException());
         continue;
       }
       WriteAttachment keyAttachment = (WriteAttachment) attachment;
@@ -147,7 +147,7 @@ public class ConnectionWorker implements Runnable {
         try {
           key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
         } catch (CancelledKeyException e) {
-          writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Key is cancelled"), null);
+          writeTask.getListener().onWriteFailed(getDefaultWriteErrorMessageWithSuffix(socketChannel, "Key is cancelled"), new ConnectionClosedException(e));
         }
       }
     }

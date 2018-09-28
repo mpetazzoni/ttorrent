@@ -1,6 +1,7 @@
 package com.turn.ttorrent.network.keyProcessors;
 
 import com.turn.ttorrent.common.TorrentLoggerFactory;
+import com.turn.ttorrent.network.ConnectionClosedException;
 import com.turn.ttorrent.network.WriteAttachment;
 import com.turn.ttorrent.network.WriteTask;
 import org.slf4j.Logger;
@@ -55,7 +56,7 @@ public class WritableKeyProcessor implements KeyProcessor {
       }
 
     } catch (IOException e) {
-      processedTask.getListener().onWriteFailed("I/O error occurs on write to channel " + socketChannel, e);
+      processedTask.getListener().onWriteFailed("I/O error occurs on write to channel " + socketChannel, new ConnectionClosedException(e));
       keyAttachment.getWriteTasks().clear();
       key.cancel();
     }

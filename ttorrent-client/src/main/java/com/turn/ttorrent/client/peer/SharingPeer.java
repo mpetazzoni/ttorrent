@@ -23,6 +23,7 @@ import com.turn.ttorrent.common.Peer;
 import com.turn.ttorrent.common.TorrentLoggerFactory;
 import com.turn.ttorrent.common.TorrentUtils;
 import com.turn.ttorrent.common.protocol.PeerMessage;
+import com.turn.ttorrent.network.ConnectionClosedException;
 import com.turn.ttorrent.network.ConnectionManager;
 import com.turn.ttorrent.network.WriteListener;
 import com.turn.ttorrent.network.WriteTask;
@@ -333,11 +334,14 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         @Override
         public void onWriteFailed(String message, Throwable e) {
           if (e == null) {
-            logger.debug(message);
-          } else {
+            logger.info(message);
+          } else if (e instanceof ConnectionClosedException){
             logger.debug(message, e);
+            unbind(true);
+          } else {
+            LoggerUtils.warnAndDebugDetails(logger, message, e);
           }
-          unbind(true);
+
         }
 
         @Override
@@ -373,7 +377,7 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
         //already requested
         return;
       }
-      int requestedPiecesCount = 0;
+      int requestedBlocksCount = 0;
       int lastRequestedOffset = 0;
       while (lastRequestedOffset < piece.size()) {
         PeerMessage.RequestMessage request = PeerMessage.RequestMessage
@@ -381,10 +385,10 @@ public class SharingPeer extends Peer implements MessageListener, PeerInformatio
                         Math.min((int) (piece.size() - lastRequestedOffset),
                                 PeerMessage.RequestMessage.DEFAULT_REQUEST_SIZE));
         toSend.add(request);
-        requestedPiecesCount++;
+        requestedBlocksCount++;
         lastRequestedOffset = request.getLength() + lastRequestedOffset;
       }
-      myRequestedPieces.put(piece, requestedPiecesCount);
+      myRequestedPieces.put(piece, requestedBlocksCount);
       this.downloading = myRequestedPieces.size() > 0;
     }
     for (PeerMessage.RequestMessage requestMessage : toSend) {
