@@ -52,7 +52,7 @@ public class ConnectionWorker implements Runnable {
     this.mySemaphore = new Semaphore(1);
     this.myConnectQueue = new LinkedBlockingQueue<ConnectTask>(100);
     this.myKeyProcessors = keyProcessors;
-    this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(100);
+    this.myWriteQueue = new LinkedBlockingQueue<WriteTask>(5000);
   }
 
   @Override
