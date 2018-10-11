@@ -12,7 +12,7 @@ public class PeerCollectorThread extends Thread {
 
   public static final int COLLECTION_FREQUENCY = 10;
   private final TorrentsRepository myTorrentsRepository;
-  private volatile int myTorrentExpireTimeoutSec = 60;
+  private volatile int myTorrentExpireTimeoutSec = 20 * 60;
 
   public PeerCollectorThread(TorrentsRepository torrentsRepository) {
     myTorrentsRepository = torrentsRepository;
