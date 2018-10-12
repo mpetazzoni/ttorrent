@@ -260,12 +260,9 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       );
       this.pieces[idx] = piece;
       piece.setValid(pieceStorage.getAvailablePieces().get(idx));
-    }
 
-    for (Piece piece : pieces) {
       if (piece.isValid()) {
         this.completedPieces.set(piece.getIndex());
-        myTorrentStatistic.addLeft(-piece.size());
       }
     }
   }

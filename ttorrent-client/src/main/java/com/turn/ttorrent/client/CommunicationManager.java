@@ -202,26 +202,44 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
                                    PieceStorage pieceStorage,
                                    List<TorrentListener> listeners) throws IOException {
     CopyOnWriteArrayList<TorrentListener> cowListeners = new CopyOnWriteArrayList<TorrentListener>(listeners);
+    TorrentMetadata torrentMetadata = metadataProvider.getTorrentMetadata();
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
             metadataProvider,
+            torrentMetadata,
             pieceStorage,
             new EventDispatcher(cowListeners));
 
     if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
     } else {
-      long size = 0;
-      for (TorrentFile torrentFile : loadedTorrent.getMetadata().getFiles()) {
-        size += torrentFile.size;
-      }
-      loadedTorrent.getTorrentStatistic().setLeft(size);
+      long left = calculateLeft(pieceStorage, torrentMetadata);
+      loadedTorrent.getTorrentStatistic().setLeft(left);
     }
 
     this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
     return new TorrentManagerImpl(cowListeners, loadedTorrent.getTorrentHash());
+  }
+
+  private long calculateLeft(PieceStorage pieceStorage, TorrentMetadata torrentMetadata) {
+
+    long size = 0;
+    for (TorrentFile torrentFile : torrentMetadata.getFiles()) {
+      size += torrentFile.size;
+    }
+
+    int pieceLength = torrentMetadata.getPieceLength();
+    long result = 0;
+    BitSet availablePieces = pieceStorage.getAvailablePieces();
+    for (int i = 0; i < torrentMetadata.getPiecesCount(); i++) {
+      if (availablePieces.get(i)) {
+        continue;
+      }
+      result += Math.min(pieceLength, size - i * pieceLength);
+    }
+    return result;
   }
 
   private void forceAnnounceAndLogError(LoadedTorrent torrent, AnnounceRequestMessage.RequestEvent event) {
@@ -609,7 +627,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
     if (announceableTorrent.getPieceStorage().isFinished()) return;
 
-    logger.info("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
+    logger.debug("Got {} peer(s) ({}) for {} in tracker response", new Object[]{peers.size(),
             Arrays.toString(peers.toArray()), hexInfoHash});
 
     Map<PeerUID, Peer> uniquePeers = new HashMap<PeerUID, Peer>();
@@ -742,7 +760,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
             isTorrentComplete = torrent.isComplete();
 
             if (isTorrentComplete) {
-              logger.debug("Download of {} complete.", torrent.getDirectoryName());
+              logger.info("Download of {} complete.", torrent.getDirectoryName());
 
               torrent.finish();
             }

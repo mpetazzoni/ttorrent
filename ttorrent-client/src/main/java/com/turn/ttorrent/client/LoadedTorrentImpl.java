@@ -20,11 +20,11 @@ public class LoadedTorrentImpl implements LoadedTorrent {
 
   LoadedTorrentImpl(TorrentStatistic torrentStatistic,
                     TorrentMetadataProvider metadataProvider,
+                    TorrentMetadata torrentMetadata,
                     PieceStorage pieceStorage,
-                    EventDispatcher eventDispatcher) throws IOException {
+                    EventDispatcher eventDispatcher) {
     this.torrentStatistic = torrentStatistic;
     this.metadataProvider = metadataProvider;
-    final TorrentMetadata torrentMetadata = metadataProvider.getTorrentMetadata();
     this.eventDispatcher = eventDispatcher;
     torrentHash = new ImmutableTorrentHash(torrentMetadata.getInfoHash());
     if (torrentMetadata.getAnnounceList() != null) {
