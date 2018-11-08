@@ -3,6 +3,7 @@ package com.turn.ttorrent.common;
 import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
+import com.turn.ttorrent.common.creation.MetadataBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -16,6 +17,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
+/**
+ * Old API for creating .torrent files, use {@link MetadataBuilder}
+ * @deprecated
+ */
+@Deprecated
 public class TorrentCreator {
 
   private final static Logger logger = TorrentLoggerFactory.getLogger(TorrentCreator.class);
