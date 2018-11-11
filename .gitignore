@@ -1,6 +1,16 @@
 # Git ignore patterns
 # Author: Maxime Petazzoni <mpetazzoni@turn.com>
 
+# Ignore idea files
+/.idea/*
+*.iml
+*.ipr
+*.iws
+
+#Ignore gradle files
+/.gradle/*
+/gradle/*
+
 # Ignore build output
 /build/*
 */build

@@ -1,0 +1,7 @@
+
+description = 'ttorrent/tracker'
+dependencies {
+  compile project(':ttorrent-common')
+  compile project(':ttorrent-bencoding')
+  testCompile project(':ttorrent-test-api')
+}

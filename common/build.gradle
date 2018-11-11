@@ -1,0 +1,5 @@
+
+description = 'ttorrent/common'
+dependencies {
+  compile project(':ttorrent-bencoding')
+}

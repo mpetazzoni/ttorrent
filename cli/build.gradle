@@ -1,0 +1,6 @@
+
+description = 'Java BitTorrent library CLI'
+dependencies {
+  compile project(':ttorrent-client')
+  compile project(':ttorrent-tracker')
+}

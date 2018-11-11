@@ -1,0 +1,6 @@
+
+description = 'ttorrent/network'
+dependencies {
+  compile project(':ttorrent-common')
+  testCompile project(':ttorrent-test-api')
+}

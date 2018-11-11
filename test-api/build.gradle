@@ -1,0 +1,5 @@
+
+description = 'ttorrent/test-api'
+dependencies {
+  compile project(':ttorrent-common')
+}

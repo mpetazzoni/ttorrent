@@ -1,0 +1,8 @@
+
+description = 'ttorrent/client'
+dependencies {
+  compile project(':ttorrent-bencoding')
+  compile project(':ttorrent-network')
+  compile project(':ttorrent-common')
+  testCompile project(':ttorrent-test-api')
+}

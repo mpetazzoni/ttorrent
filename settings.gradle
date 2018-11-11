@@ -1,0 +1,18 @@
+rootProject.name = 'ttorrent'
+include ':ttorrent-network'
+include ':ttorrent-bencoding'
+include ':ttorrent-tracker'
+include ':ttorrent-client'
+include ':ttorrent-common'
+include ':ttorrent-tests'
+include ':ttorrent-test-api'
+include ':ttorrent-cli'
+
+project(':ttorrent-network').projectDir = "$rootDir/network" as File
+project(':ttorrent-bencoding').projectDir = "$rootDir/bencoding" as File
+project(':ttorrent-tracker').projectDir = "$rootDir/ttorrent-tracker" as File
+project(':ttorrent-client').projectDir = "$rootDir/ttorrent-client" as File
+project(':ttorrent-common').projectDir = "$rootDir/common" as File
+project(':ttorrent-tests').projectDir = "$rootDir/tests" as File
+project(':ttorrent-test-api').projectDir = "$rootDir/test-api" as File
+project(':ttorrent-cli').projectDir = "$rootDir/cli" as File

@@ -153,7 +153,7 @@ public class HandshakeReceiverTest {
 
   // TODO: 11/15/17 bad tests (e.g. incorrect torrentID, incorrect handshake, etc
 
-  private static class ByteSourceChannel implements ByteChannel {
+  public static class ByteSourceChannel implements ByteChannel {
 
     private final Pipe.SourceChannel readChannel;
     private final Pipe.SinkChannel writeChannel;

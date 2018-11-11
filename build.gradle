@@ -1,0 +1,39 @@
+allprojects  {
+  apply plugin: 'maven'
+  apply plugin: 'idea'
+  group = 'com.turn'
+  version = '1.2'
+}
+
+subprojects {
+  apply plugin: 'java'
+  sourceCompatibility = JavaVersion.VERSION_1_10
+  targetCompatibility = JavaVersion.VERSION_1_10
+  tasks.withType(JavaCompile) {
+  	options.encoding = 'UTF-8'
+  }
+
+
+  repositories {
+    mavenLocal()
+
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
+    maven { url "http://repo.maven.apache.org/maven2" }
+  }
+
+  configurations.all {
+}
+  dependencies {
+    compile group: 'org.mockito', name: 'mockito-core', version:'2.23.0'
+    compile group: 'commons-io', name: 'commons-io', version:'2.1'
+    compile group: 'commons-codec', name: 'commons-codec', version:'1.11'
+    compile group: 'org.simpleframework', name: 'simple', version:'4.1.21'
+    compile group: 'org.slf4j', name: 'slf4j-log4j12', version:'1.6.4'
+    compile group: 'net.sf', name: 'jargs', version:'1.0'
+    compile group: 'org.jetbrains', name: 'annotations-java5', version:'16.0.3'
+    testCompile group: 'org.testng', name: 'testng', version:'6.8.8'
+}
+
+  test.useTestNG()
+
+}
