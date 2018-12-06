@@ -41,7 +41,10 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -219,6 +222,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
       long left = calculateLeft(pieceStorage, torrentMetadata);
       loadedTorrent.getTorrentStatistic().setLeft(left);
     }
+    eventDispatcher.multicaster().validationComplete(pieceStorage.getAvailablePieces().cardinality(), torrentMetadata.getPiecesCount());
 
     this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
