@@ -62,7 +62,7 @@ public class TorrentMetadataImpl implements TorrentMetadata {
     return myAnnounceList;
   }
 
-  @NotNull
+  @Nullable
   @Override
   public String getAnnounce() {
     return myMainAnnounce;

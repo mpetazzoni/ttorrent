@@ -48,7 +48,7 @@ public class TorrentParser {
 
     final String comment = getStringOrNull(dictionaryMetadata, COMMENT);
     final String createdBy = getStringOrNull(dictionaryMetadata, CREATED_BY);
-    final String announceUrl = getRequiredValueOrThrowException(dictionaryMetadata, ANNOUNCE).getString();
+    final String announceUrl = getStringOrNull(dictionaryMetadata, ANNOUNCE);
     final List<List<String>> trackers = getTrackers(dictionaryMetadata);
     final int pieceLength = getRequiredValueOrThrowException(infoTable, PIECE_LENGTH).getInt();
     final byte[] piecesHashes = getRequiredValueOrThrowException(infoTable, PIECES).getBytes();

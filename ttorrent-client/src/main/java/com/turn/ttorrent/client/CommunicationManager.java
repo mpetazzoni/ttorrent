@@ -774,12 +774,13 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
             AnnounceableInformation announceableInformation = announceableTorrent.createAnnounceableInformation();
 
-
-            try {
-              announce.getCurrentTrackerClient(announceableInformation)
-                      .announceAllInterfaces(COMPLETED, true, announceableInformation);
-            } catch (AnnounceException e) {
-              logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
+            if (!TorrentUtils.isTrackerLessInfo(announceableInformation)) {
+              try {
+                announce.getCurrentTrackerClient(announceableInformation)
+                        .announceAllInterfaces(COMPLETED, true, announceableInformation);
+              } catch (AnnounceException e) {
+                logger.debug("unable to announce torrent {} on tracker {}", torrent, torrent.getAnnounce());
+              }
             }
 
             for (SharingPeer remote : getPeersForTorrent(torrentHash)) {

@@ -21,6 +21,22 @@ public class TorrentParserTest {
     myTorrentParser = new TorrentParser();
   }
 
+  public void testParseNullAnnounce() throws IOException {
+    final Map<String, BEValue> metadataMap = new HashMap<String, BEValue>();
+    final HashMap<String, BEValue> infoTable = new HashMap<String, BEValue>();
+    infoTable.put(TorrentMetadataKeys.PIECES, new BEValue(new byte[20]));
+    infoTable.put(TorrentMetadataKeys.PIECE_LENGTH, new BEValue(512));
+
+    infoTable.put(TorrentMetadataKeys.FILE_LENGTH, new BEValue(10));
+    infoTable.put(TorrentMetadataKeys.NAME, new BEValue("file.txt"));
+
+    metadataMap.put(TorrentMetadataKeys.INFO_TABLE, new BEValue(infoTable));
+
+    TorrentMetadata metadata = new TorrentParser().parse(BEncoder.bencode(metadataMap).array());
+
+    assertNull(metadata.getAnnounce());
+  }
+
   public void parseTest() throws IOException {
     final Map<String, BEValue> metadata = new HashMap<String, BEValue>();
     final HashMap<String, BEValue> infoTable = new HashMap<String, BEValue>();

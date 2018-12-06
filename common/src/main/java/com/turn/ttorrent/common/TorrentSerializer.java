@@ -20,7 +20,9 @@ public class TorrentSerializer {
     Map<String, BEValue> mapMetadata = new HashMap<String, BEValue>();
     Map<String, BEValue> infoTable = new HashMap<String, BEValue>();
 
-    mapMetadata.put(ANNOUNCE, new BEValue(metadata.getAnnounce()));
+    String announce = metadata.getAnnounce();
+    if (announce != null) mapMetadata.put(ANNOUNCE, new BEValue(announce));
+
     putOptionalIfPresent(mapMetadata, COMMENT, metadata.getComment());
     putOptionalIfPresent(mapMetadata, CREATED_BY, metadata.getCreatedBy());
 

@@ -20,9 +20,9 @@ public interface TorrentMetadata extends TorrentHash {
   List<List<String>> getAnnounceList();
 
   /**
-   * @return main announce url for tracker
+   * @return main announce url for tracker or <code>null</code> if main announce is not specified
    */
-  @NotNull
+  @Nullable
   String getAnnounce();
 
   /**

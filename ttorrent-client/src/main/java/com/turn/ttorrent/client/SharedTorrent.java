@@ -750,7 +750,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     return myTorrentMetadata.getAnnounceList();
   }
 
-  @NotNull
+  @Nullable
   @Override
   public String getAnnounce() {
     return myTorrentMetadata.getAnnounce();

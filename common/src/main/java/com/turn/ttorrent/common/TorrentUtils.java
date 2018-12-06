@@ -33,6 +33,10 @@ public final class TorrentUtils {
     return new String(hexChars);
   }
 
+  public static boolean isTrackerLessInfo(AnnounceableInformation information) {
+    return information.getAnnounce() == null && information.getAnnounceList() == null;
+  }
+
   public static List<String> getTorrentFileNames(TorrentMetadata metadata) {
     List<String> result = new ArrayList<String>();
 
