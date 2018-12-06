@@ -9,22 +9,22 @@ import java.util.concurrent.TimeoutException;
 
 class TorrentManagerImpl implements TorrentManager {
 
-  private final List<TorrentListener> listeners;
+  private final EventDispatcher eventDispatcher;
   private final TorrentHash hash;
 
-  TorrentManagerImpl(List<TorrentListener> listeners, TorrentHash hash) {
-    this.listeners = listeners;
+  TorrentManagerImpl(EventDispatcher eventDispatcher, TorrentHash hash) {
+    this.eventDispatcher = eventDispatcher;
     this.hash = hash;
   }
 
   @Override
   public void addListener(TorrentListener listener) {
-    listeners.add(listener);
+    eventDispatcher.addListener(listener);
   }
 
   @Override
   public boolean removeListener(TorrentListener listener) {
-    return listeners.remove(listener);
+    return eventDispatcher.removeListener(listener);
   }
 
   @Override

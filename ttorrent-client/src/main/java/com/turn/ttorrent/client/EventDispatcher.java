@@ -1,43 +1,80 @@
 package com.turn.ttorrent.client;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EventDispatcher {
 
   private final List<TorrentListener> listeners;
+  private final TorrentListener notifyer;
 
-  public EventDispatcher(List<TorrentListener> listeners) {
-    this.listeners = listeners;
+  public EventDispatcher() {
+    this.listeners = new CopyOnWriteArrayList<TorrentListener>();
+    this.notifyer = createNotifyer();
   }
 
-  void notifyPeerConnected(PeerInformation peerInformation) {
-    for (TorrentListener listener : listeners) {
-      listener.peerConnected(peerInformation);
-    }
+  private TorrentListener createNotifyer() {
+    return new TorrentListener() {
+      @Override
+      public void peerConnected(PeerInformation peerInformation) {
+        for (TorrentListener listener : listeners) {
+          listener.peerConnected(peerInformation);
+        }
+      }
+
+      @Override
+      public void peerDisconnected(PeerInformation peerInformation) {
+        for (TorrentListener listener : listeners) {
+          listener.peerDisconnected(peerInformation);
+        }
+      }
+
+      @Override
+      public void pieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
+        for (TorrentListener listener : listeners) {
+          listener.pieceDownloaded(pieceInformation, peerInformation);
+        }
+      }
+
+      @Override
+      public void downloadComplete() {
+        for (TorrentListener listener : listeners) {
+          listener.downloadComplete();
+        }
+      }
+
+      @Override
+      public void pieceReceived(PieceInformation pieceInformation, PeerInformation peerInformation) {
+        for (TorrentListener listener : listeners) {
+          listener.pieceReceived(pieceInformation, peerInformation);
+        }
+      }
+
+      @Override
+      public void downloadFailed(Throwable cause) {
+        for (TorrentListener listener : listeners) {
+          listener.downloadFailed(cause);
+        }
+      }
+
+      @Override
+      public void validationComplete(int validpieces, int totalpieces) {
+        for (TorrentListener listener : listeners) {
+          listener.validationComplete(validpieces, totalpieces);
+        }
+      }
+    };
   }
 
-  void notifyPeerDisconnected(PeerInformation peerInformation) {
-    for (TorrentListener listener : listeners) {
-      listener.peerDisconnected(peerInformation);
-    }
+  TorrentListener multicaster() {
+    return notifyer;
   }
 
-  void notifyPieceDownloaded(PieceInformation pieceInformation, PeerInformation peerInformation) {
-    for (TorrentListener listener : listeners) {
-      listener.pieceDownloaded(pieceInformation, peerInformation);
-    }
+  public boolean removeListener(TorrentListener listener) {
+    return listeners.remove(listener);
   }
 
-  void notifyDownloadComplete() {
-    for (TorrentListener listener : listeners) {
-      listener.downloadComplete();
-    }
+  public void addListener(TorrentListener listener) {
+    listeners.add(listener);
   }
-
-  void notifyDownloadFailed(Throwable cause) {
-    for (TorrentListener listener : listeners) {
-      listener.downloadFailed(cause);
-    }
-  }
-
 }

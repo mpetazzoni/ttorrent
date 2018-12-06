@@ -140,7 +140,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
           throws IOException {
     byte[] data = FileUtils.readFileToByteArray(source);
     TorrentMetadata torrentMetadata = new TorrentParser().parse(data);
-    return new SharedTorrent(torrentMetadata, pieceStorage, DEFAULT_REQUEST_STRATEGY, torrentStatistic, new EventDispatcher(new ArrayList<TorrentListener>()));
+    return new SharedTorrent(torrentMetadata, pieceStorage, DEFAULT_REQUEST_STRATEGY, torrentStatistic, new EventDispatcher());
   }
 
   private synchronized void closeFileChannelIfNecessary() throws IOException {
@@ -361,7 +361,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
       throw new IllegalStateException("Torrent download is not complete!");
     }
 
-    eventDispatcher.notifyDownloadComplete();
+    eventDispatcher.multicaster().downloadComplete();
     setClientState(ClientState.SEEDING);
   }
 
@@ -410,7 +410,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   }
 
   public void notifyPieceDownloaded(Piece piece, SharingPeer peer) {
-    eventDispatcher.notifyPieceDownloaded(piece, peer);
+    eventDispatcher.multicaster().pieceDownloaded(piece, peer);
   }
 
   /** PeerActivityListener handler(s). *************************************/
@@ -712,19 +712,19 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
                     this.requestedPieces.cardinality(),
                     this.requestedPieces
             });
-    eventDispatcher.notifyPeerDisconnected(peer);
+    eventDispatcher.multicaster().peerDisconnected(peer);
   }
 
   @Override
   public synchronized void handleIOException(SharingPeer peer,
                                              IOException ioe) {
-    eventDispatcher.notifyDownloadFailed(ioe);
+    eventDispatcher.multicaster().downloadFailed(ioe);
   }
 
   @Override
   public synchronized void handleNewPeerConnected(SharingPeer peer) {
     initIfNecessary(peer);
-    eventDispatcher.notifyPeerConnected(peer);
+    eventDispatcher.multicaster().peerConnected(peer);
   }
 
   @Override

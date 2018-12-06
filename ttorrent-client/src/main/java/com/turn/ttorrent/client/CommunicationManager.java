@@ -201,14 +201,17 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
   public TorrentManager addTorrent(TorrentMetadataProvider metadataProvider,
                                    PieceStorage pieceStorage,
                                    List<TorrentListener> listeners) throws IOException {
-    CopyOnWriteArrayList<TorrentListener> cowListeners = new CopyOnWriteArrayList<TorrentListener>(listeners);
     TorrentMetadata torrentMetadata = metadataProvider.getTorrentMetadata();
+    EventDispatcher eventDispatcher = new EventDispatcher();
+    for (TorrentListener listener : listeners) {
+      eventDispatcher.addListener(listener);
+    }
     final LoadedTorrentImpl loadedTorrent = new LoadedTorrentImpl(
             new TorrentStatistic(),
             metadataProvider,
             torrentMetadata,
             pieceStorage,
-            new EventDispatcher(cowListeners));
+            eventDispatcher);
 
     if (pieceStorage.isFinished()) {
       loadedTorrent.getTorrentStatistic().setLeft(0);
@@ -220,7 +223,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     this.torrentsStorage.addTorrent(loadedTorrent.getTorrentHash().getHexInfoHash(), loadedTorrent);
     forceAnnounceAndLogError(loadedTorrent, pieceStorage.isFinished() ? COMPLETED : STARTED);
     logger.debug(String.format("Added torrent %s (%s)", loadedTorrent, loadedTorrent.getTorrentHash().getHexInfoHash()));
-    return new TorrentManagerImpl(cowListeners, loadedTorrent.getTorrentHash());
+    return new TorrentManagerImpl(eventDispatcher, loadedTorrent.getTorrentHash());
   }
 
   private long calculateLeft(PieceStorage pieceStorage, TorrentMetadata torrentMetadata) {
