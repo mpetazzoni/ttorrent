@@ -126,7 +126,6 @@ public class MetadataBuilder {
 
   /**
    * Set the creation time of the torrent in standard UNIX epoch format.
-   * By default will be used {@link TimeService#now()}/1000
    *
    * @param creationTime the seconds since January 1, 1970, 00:00:00 UTC.
    */
@@ -182,7 +181,7 @@ public class MetadataBuilder {
   }
 
   /**
-   * add custom source in torrent with custom path.
+   * add custom source in torrent with custom path. Path can be separated with any slash.
    *
    * @param closeAfterBuild if true then source stream will be closed after {@link #build()} invocation
    */
@@ -192,7 +191,7 @@ public class MetadataBuilder {
   }
 
   /**
-   * add custom source in torrent with custom path.
+   * add custom source in torrent with custom path. Path can be separated with any slash.
    */
   public MetadataBuilder addDataSource(@NotNull InputStream dataSource, String path) {
     addDataSource(dataSource, path, true);
@@ -201,7 +200,7 @@ public class MetadataBuilder {
 
   /**
    * add specified file in torrent with custom path. The file will be stored in .torrent
-   * by specified path. As separator is used {@link File#separator}. In case of single-file torrent
+   * by specified path. Path can be separated with any slash. In case of single-file torrent
    * this path will be used as name of source file
    */
   public MetadataBuilder addFile(@NotNull File source, @NotNull String path) {
@@ -279,12 +278,8 @@ public class MetadataBuilder {
   private BEValue doBuild() throws IOException {
     dropEmptyTiersFromAnnounce();
 
-    if (announce.isEmpty()) {
-      if (announceList.isEmpty()) {
-        throw new IllegalStateException("Main announce URL isn't set. " +
-                "Use setTracker() method for set main announce URL");
-      }
-      announce = announceList.get(0).get(0);
+    if (announce.isEmpty() && !announceList.isEmpty()) {
+        announce = announceList.get(0).get(0);
     }
     if (sources.size() == 0) {
       throw new IllegalStateException("Unable to create metadata without sources. Use addSource() method for adding sources");
@@ -302,14 +297,11 @@ public class MetadataBuilder {
     }
 
     Map<String, BEValue> torrent = new HashMap<String, BEValue>();
-    torrent.put(ANNOUNCE, new BEValue(announce));
-    if (!announceList.isEmpty()) {
-      torrent.put(ANNOUNCE_LIST, wrapAnnounceList());
+    if (!announce.isEmpty()) torrent.put(ANNOUNCE, new BEValue(announce));
+    if (!announceList.isEmpty()) torrent.put(ANNOUNCE_LIST, wrapAnnounceList());
+    if (creationDate > 0) {
+      torrent.put(CREATION_DATE_SEC, new BEValue(creationDate));
     }
-    if (creationDate == -1) {
-      creationDate = timeService.now() / 1000;
-    }
-    torrent.put(CREATION_DATE_SEC, new BEValue(creationDate));
 
     if (!comment.isEmpty()) torrent.put(COMMENT, new BEValue(comment));
     if (!createdBy.isEmpty()) torrent.put(CREATED_BY, new BEValue(createdBy));
@@ -340,7 +332,7 @@ public class MetadataBuilder {
       Long sourceSize = hashingResult.getSourceSizes().get(i);
       Source source = sources.get(i);
       List<BEValue> filePath = new ArrayList<BEValue>();
-      for (String path : source.getPath().split(File.separator)) {
+      for (String path : source.getPath().replace("\\", "/").split("/")) {
         filePath.add(new BEValue(path));
       }
       file.put(FILE_PATH, new BEValue(filePath));
