@@ -44,4 +44,14 @@ public interface TorrentListener {
    */
   void downloadFailed(Throwable cause);
 
+  /**
+   * Invoked when validation of torrent is done.
+   * If total pieces count and valid pieces count are equals it means that torrent is fully downloaded.
+   * {@link #downloadComplete()} listener will not be invoked in this case
+   *
+   * @param validpieces count of valid pieces. Must be not greater as #totalpieces
+   * @param totalpieces total pieces count in torrent
+   */
+  void validationComplete(int validpieces, int totalpieces);
+
 }

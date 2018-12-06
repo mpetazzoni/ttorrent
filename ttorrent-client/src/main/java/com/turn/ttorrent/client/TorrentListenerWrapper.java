@@ -31,4 +31,9 @@ public class TorrentListenerWrapper implements TorrentListener {
   public void pieceReceived(PieceInformation pieceInformation, PeerInformation peerInformation) {
 
   }
+
+  @Override
+  public void validationComplete(int validpieces, int totalpieces) {
+
+  }
 }
