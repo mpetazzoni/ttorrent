@@ -3,6 +3,8 @@ package com.turn.ttorrent.client;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -55,14 +57,23 @@ public class SimpleClient {
   }
 
   public void downloadTorrent(String torrentFile, String downloadDir, InetAddress iPv4Address) throws IOException, InterruptedException {
-    TorrentManager torrentManager = startDownloading(torrentFile, downloadDir, iPv4Address);
+    communicationManager.start(iPv4Address);
     final Semaphore semaphore = new Semaphore(0);
-    torrentManager.addListener(new TorrentListenerWrapper() {
-      @Override
-      public void downloadComplete() {
-        semaphore.release();
-      }
-    });
+    List<TorrentListener> listeners = Collections.<TorrentListener>singletonList(
+            new TorrentListenerWrapper() {
+
+              @Override
+              public void validationComplete(int validpieces, int totalpieces) {
+                if (validpieces == totalpieces) semaphore.release();
+              }
+
+              @Override
+              public void downloadComplete() {
+                semaphore.release();
+              }
+            }
+    );
+    TorrentManager torrentManager = communicationManager.addTorrent(torrentFile, downloadDir, listeners);
     semaphore.acquire();
   }
 
@@ -72,8 +83,8 @@ public class SimpleClient {
   }
 
   public TorrentManager downloadTorrentAsync(String torrentFile,
-                              String downloadDir,
-                              InetAddress iPv4Address) throws IOException {
+                                             String downloadDir,
+                                             InetAddress iPv4Address) throws IOException {
     return startDownloading(torrentFile, downloadDir, iPv4Address);
   }
 }
