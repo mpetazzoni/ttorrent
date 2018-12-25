@@ -284,7 +284,7 @@ public class MetadataBuilder {
     if (sources.size() == 0) {
       throw new IllegalStateException("Unable to create metadata without sources. Use addSource() method for adding sources");
     }
-    final boolean isSingleMode = sources.size() == 1;
+    final boolean isSingleMode = sources.size() == 1 && directoryName.isEmpty();
     final String name;
     if (!directoryName.isEmpty()) {
       name = directoryName;

@@ -18,13 +18,16 @@ package com.turn.ttorrent.common.creation;
 
 import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.BEncoder;
 import com.turn.ttorrent.common.TimeService;
 import org.mockito.Mockito;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +37,29 @@ import static org.testng.Assert.assertNull;
 
 @Test
 public class MetadataBuilderTest {
+
+  public void testMultiFileModeWithOneFile() throws IOException {
+    Map<String, BEValue> map = new MetadataBuilder()
+            .setDirectoryName("root")
+            .addDataSource(new ByteArrayInputStream(new byte[]{1, 2}), "path/some_file", true)
+            .buildBEP().getMap();
+    Map<String, BEValue> info = map.get(INFO_TABLE).getMap();
+    assertEquals(info.get(NAME).getString(), "root");
+    List<BEValue> files = info.get(FILES).getList();
+    assertEquals(files.size(), 1);
+    Map<String, BEValue> file = files.get(0).getMap();
+    assertEquals(file.get(FILE_LENGTH).getInt(), 2);
+
+    StringBuilder path = new StringBuilder();
+    Iterator<BEValue> iterator = file.get(FILE_PATH).getList().iterator();
+    if (iterator.hasNext()) {
+      path = new StringBuilder(iterator.next().getString());
+    }
+    while (iterator.hasNext()) {
+      path.append("/").append(iterator.next().getString());
+    }
+    assertEquals(path.toString(), "path/some_file");
+  }
 
   public void testSingleFile() throws IOException {
 
