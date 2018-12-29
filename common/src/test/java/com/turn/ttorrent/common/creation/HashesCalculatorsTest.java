@@ -58,6 +58,19 @@ public class HashesCalculatorsTest {
     executor.awaitTermination(10, TimeUnit.SECONDS);
   }
 
+  public void testEmptySource() throws IOException {
+    List<byte[]> sourceBytes = new ArrayList<byte[]>();
+    sourceBytes.add(new byte[]{1, 2});
+    sourceBytes.add(new byte[]{});
+    sourceBytes.add(new byte[]{3, 4});
+
+    HashingResult expected = new HashingResult(asList(
+            TorrentUtils.calculateSha1Hash(new byte[]{1, 2, 3, 4})),
+            asList(2L, 0L, 2L)
+    );
+    verifyImplementationsResults(sourceBytes, 512, expected);
+  }
+
   public void testStreamsAsPiece() throws IOException {
     List<byte[]> sourceBytes = new ArrayList<byte[]>();
     sourceBytes.add(new byte[]{1, 2, 3, 4});

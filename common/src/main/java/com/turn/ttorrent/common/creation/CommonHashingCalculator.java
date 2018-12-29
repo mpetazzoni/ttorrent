@@ -40,7 +40,6 @@ class CommonHashingCalculator {
         while (true) {
           int readFromStream = stream.read(buffer, read, buffer.length - read);
           if (readFromStream <= 0) {
-            read = 0;
             break;
           }
           streamSize += readFromStream;
