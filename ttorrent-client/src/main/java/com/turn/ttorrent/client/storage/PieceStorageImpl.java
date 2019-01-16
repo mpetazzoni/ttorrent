@@ -20,6 +20,7 @@ public class PieceStorageImpl implements PieceStorage {
   private final int piecesCount;
   private final int pieceSize;
   private volatile boolean isOpen;
+  private volatile boolean closedFully = false;
 
   public PieceStorageImpl(TorrentByteStorage fileCollectionStorage,
                           BitSet availablePieces,
@@ -48,6 +49,8 @@ public class PieceStorageImpl implements PieceStorage {
     checkPieceIndex(pieceIndex);
     try {
       readWriteLock.writeLock().lock();
+
+      if (closedFully) throw new IOException("Storage is closed");
 
       BitSet availablePieces = this.availablePieces;
 
@@ -90,6 +93,8 @@ public class PieceStorageImpl implements PieceStorage {
     try {
       readWriteLock.readLock().lock();
 
+      if (closedFully) throw new IOException("Storage is closed");
+
       BitSet availablePieces = this.availablePieces;
       if (availablePieces != null && !availablePieces.get(pieceIndex)) {
         throw new IllegalArgumentException("trying reading part of not available piece");
@@ -120,6 +125,17 @@ public class PieceStorageImpl implements PieceStorage {
   }
 
   @Override
+  public void closeFully() throws IOException {
+    try {
+      readWriteLock.writeLock().lock();
+      close0();
+      closedFully = true;
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
   public BitSet getAvailablePieces() {
     try {
       readWriteLock.readLock().lock();
@@ -143,11 +159,15 @@ public class PieceStorageImpl implements PieceStorage {
   public void close() throws IOException {
     try {
       readWriteLock.writeLock().lock();
-      if (!isOpen) return;
-      fileCollectionStorage.close();
-      isOpen = false;
+      close0();
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  private void close0() throws IOException {
+    if (!isOpen) return;
+    fileCollectionStorage.close();
+    isOpen = false;
   }
 }

@@ -14,4 +14,6 @@ public interface PieceStorage extends Closeable {
 
   boolean isFinished();
 
+  void closeFully() throws IOException;
+
 }
