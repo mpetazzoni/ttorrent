@@ -105,7 +105,7 @@ public class TorrentsStorage {
       }
     }
     if (result.first() != null) {
-      result.first().close();
+      result.first().closeFully();
     }
     return result;
   }
@@ -156,7 +156,7 @@ public class TorrentsStorage {
       readWriteLock.writeLock().unlock();
     }
     for (SharedTorrent sharedTorrent : sharedTorrents) {
-      sharedTorrent.close();
+      sharedTorrent.closeFully();
     }
     for (LoadedTorrent loadedTorrent : loadedTorrents) {
       try {

@@ -270,6 +270,17 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   public synchronized void close() {
     logger.trace("Closing torrent", myTorrentMetadata.getDirectoryName());
     try {
+      this.pieceStorage.close();
+      isFileChannelOpen = false;
+    } catch (IOException ioe) {
+      logger.error("Error closing torrent byte storage: {}",
+              ioe.getMessage());
+    }
+  }
+
+  public synchronized void closeFully() {
+    logger.trace("Closing torrent", myTorrentMetadata.getDirectoryName());
+    try {
       this.pieceStorage.closeFully();
       isFileChannelOpen = false;
     } catch (IOException ioe) {

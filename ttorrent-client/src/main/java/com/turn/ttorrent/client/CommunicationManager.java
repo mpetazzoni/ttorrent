@@ -270,7 +270,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     SharedTorrent torrent = torrents.first();
     if (torrent != null) {
       torrent.setClientState(ClientState.DONE);
-      torrent.close();
+      torrent.closeFully();
     }
     List<SharingPeer> peers = getPeersForTorrent(torrentHash);
     for (SharingPeer peer : peers) {
@@ -474,7 +474,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
 
     for (SharedTorrent torrent : this.torrentsStorage.activeTorrents()) {
       logger.trace("try close torrent {}", torrent);
-      torrent.close();
+      torrent.closeFully();
       if (torrent.isFinished()) {
         torrent.setClientState(ClientState.DONE);
       } else {
