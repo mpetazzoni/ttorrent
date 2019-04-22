@@ -18,5 +18,6 @@ public final class TorrentMetadataKeys {
   public final static String NAME = "name";
   public final static String INFO_TABLE = "info";
   public final static String ANNOUNCE_LIST = "announce-list";
+  public final static String URL_LIST = "url-list";
 
 }

@@ -45,6 +45,8 @@ public class MetadataBuilder {
   private String comment = "";
   @NotNull
   private String createdBy = DEFAULT_CREATED_BY;
+  @NotNull
+  private List<String> webSeedUrlList = new ArrayList<String>();
   //end root dictionary
 
   //info dictionary
@@ -123,6 +125,15 @@ public class MetadataBuilder {
     return this;
   }
 
+  /**
+   * Web Seeding Metadata.
+   * Web seeding url as defined by <a href='http://bittorrent.org/beps/bep_0019.html'>bep 0019</a>
+   * @param url URL to add for web seeding
+   */
+  public MetadataBuilder addWebSeedUrl(String url)  {
+    webSeedUrlList.add(url);
+    return this;
+  }
 
   /**
    * Set the creation time of the torrent in standard UNIX epoch format.
@@ -305,6 +316,7 @@ public class MetadataBuilder {
 
     if (!comment.isEmpty()) torrent.put(COMMENT, new BEValue(comment));
     if (!createdBy.isEmpty()) torrent.put(CREATED_BY, new BEValue(createdBy));
+    if (!webSeedUrlList.isEmpty()) torrent.put(URL_LIST, wrapStringList(webSeedUrlList));
 
     HashingResult hashingResult = piecesHashesCalculator.calculateHashes(mapSources(sources), pieceLength);
 
@@ -358,14 +370,18 @@ public class MetadataBuilder {
     return result;
   }
 
+  private BEValue wrapStringList(List<String> lst) throws UnsupportedEncodingException {
+    List<BEValue> result = new LinkedList<BEValue>();
+    for(String s : lst) {
+      result.add(new BEValue(s));
+    }
+    return new BEValue(result);
+  }
+
   private BEValue wrapAnnounceList() throws UnsupportedEncodingException {
     List<BEValue> result = new LinkedList<BEValue>();
     for (List<String> tier : announceList) {
-      List<BEValue> perTier = new LinkedList<BEValue>();
-      for (String trackerURI : tier) {
-        perTier.add(new BEValue(trackerURI));
-      }
-      result.add(new BEValue(perTier));
+      result.add(wrapStringList(tier));
     }
     return new BEValue(result);
   }
