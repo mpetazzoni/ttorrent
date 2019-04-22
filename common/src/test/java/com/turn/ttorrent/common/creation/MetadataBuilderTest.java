@@ -18,18 +18,12 @@ package com.turn.ttorrent.common.creation;
 
 import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.common.TimeService;
-import org.mockito.Mockito;
+import com.turn.ttorrent.common.TorrentUtils;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 import static org.testng.Assert.assertEquals;
@@ -61,14 +55,34 @@ public class MetadataBuilderTest {
     assertEquals(path.toString(), "path/some_file");
   }
 
+  public void testBuildWithSpecifiedHashes() throws IOException {
+    byte[] expectedHash = TorrentUtils.calculateSha1Hash(new byte[]{1, 2, 3});
+    Map<String, BEValue> metadata = new MetadataBuilder()
+            .setPiecesHashesCalculator(new PiecesHashesCalculator() {
+              @Override
+              public HashingResult calculateHashes(List<DataSourceHolder> sources, int pieceSize) {
+                throw new RuntimeException("should not be invoked");
+              }
+            })
+            .setFilesInfo(
+                    Collections.singletonList(expectedHash),
+                    Collections.singletonList("file"),
+                    Collections.singletonList(42L))
+            .setPieceLength(512)
+            .setTracker("http://localhost:12346")
+            .buildBEP().getMap();
+
+    assertEquals(metadata.get(ANNOUNCE).getString(), "http://localhost:12346");
+    Map<String, BEValue> info = metadata.get(INFO_TABLE).getMap();
+    assertEquals(info.get(PIECES).getBytes(), expectedHash);
+    assertEquals(info.get(NAME).getString(), "file");
+    assertEquals(info.get(FILE_LENGTH).getLong(), 42);
+  }
+
   public void testSingleFile() throws IOException {
 
-    TimeService timeService = Mockito.mock(TimeService.class);
-    long now = System.currentTimeMillis();
-    Mockito.when(timeService.now()).thenReturn(now);
-
     byte[] data = {1, 2, 12, 4, 5};
-    Map<String, BEValue> metadata = new MetadataBuilder(timeService)
+    Map<String, BEValue> metadata = new MetadataBuilder()
             .addDataSource(new ByteArrayInputStream(data), "singleFile.txt", true)
             .setTracker("http://localhost:12346")
             .buildBEP().getMap();
@@ -88,13 +102,9 @@ public class MetadataBuilderTest {
 
   public void testMultiFileWithOneFileValues() throws IOException {
 
-    TimeService timeService = Mockito.mock(TimeService.class);
-    long now = System.currentTimeMillis();
-    Mockito.when(timeService.now()).thenReturn(now);
-
     byte[] data = {34, 2, 12, 4, 5};
     List<String> paths = Arrays.asList("unix/path", "win\\path");
-    Map<String, BEValue> metadata = new MetadataBuilder(timeService)
+    Map<String, BEValue> metadata = new MetadataBuilder()
             .addDataSource(new ByteArrayInputStream(data), paths.get(0), true)
             .addDataSource(new ByteArrayInputStream(data), paths.get(1), true)
             .setDirectoryName("downloadDirName")
