@@ -39,22 +39,20 @@ class CommonHashingCalculator {
       try {
         while (true) {
           int readFromStream = stream.read(buffer, read, buffer.length - read);
-          if (readFromStream <= 0) {
+          if (readFromStream < 0) {
             break;
           }
           streamSize += readFromStream;
           read += readFromStream;
-
-          if (read != buffer.length) {
-            break;
+          if (read == buffer.length) {
+            processor.process(buffer);
+            read = 0;
           }
-          processor.process(buffer);
-          read = 0;
         }
       } finally {
         source.close();
+        sourcesSizes.add(streamSize);
       }
-      sourcesSizes.add(streamSize);
     }
     if (read > 0) {
       processor.process(Arrays.copyOf(buffer, read));
