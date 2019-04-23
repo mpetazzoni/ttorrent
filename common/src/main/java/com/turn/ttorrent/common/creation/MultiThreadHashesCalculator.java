@@ -43,7 +43,6 @@ public class MultiThreadHashesCalculator implements PiecesHashesCalculator {
     final List<Future<byte[]>> futures = new ArrayList<Future<byte[]>>();
     List<Long> sourcesSizes = CommonHashingCalculator.INSTANCE.processDataSources(
             sources,
-            hashes,
             pieceSize,
             new CommonHashingCalculator.Processor() {
               @Override

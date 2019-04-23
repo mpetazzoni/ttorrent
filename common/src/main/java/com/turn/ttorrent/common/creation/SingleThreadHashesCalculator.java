@@ -29,7 +29,6 @@ public class SingleThreadHashesCalculator implements PiecesHashesCalculator {
     final List<byte[]> hashes = new ArrayList<byte[]>();
     List<Long> sourcesSizes = CommonHashingCalculator.INSTANCE.processDataSources(
             sources,
-            hashes,
             pieceSize,
             new CommonHashingCalculator.Processor() {
               @Override

@@ -26,10 +26,9 @@ class CommonHashingCalculator {
 
   static final CommonHashingCalculator INSTANCE = new CommonHashingCalculator();
 
-  public List<Long> processDataSources(List<DataSourceHolder> sources,
-                                       List<byte[]> hashes,
-                                       int pieceSize,
-                                       Processor processor) throws IOException {
+  List<Long> processDataSources(List<DataSourceHolder> sources,
+                                int pieceSize,
+                                Processor processor) throws IOException {
     List<Long> sourcesSizes = new ArrayList<Long>();
     byte[] buffer = new byte[pieceSize];
     int read = 0;
