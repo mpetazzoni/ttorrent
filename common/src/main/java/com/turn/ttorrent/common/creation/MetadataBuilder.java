@@ -19,8 +19,11 @@ package com.turn.ttorrent.common.creation;
 import com.turn.ttorrent.Constants;
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.BEncoder;
-import com.turn.ttorrent.common.*;
+import com.turn.ttorrent.common.TorrentLoggerFactory;
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentParser;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -28,12 +31,11 @@ import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class MetadataBuilder {
 
   private final static Logger logger = TorrentLoggerFactory.getLogger(MetadataBuilder.class);
   private final static String DEFAULT_CREATED_BY = "ttorrent library";
-
-  private final TimeService timeService;
 
   //root dictionary
   @NotNull
@@ -53,7 +55,11 @@ public class MetadataBuilder {
   private int pieceLength = 512 * 1024;//512kb by default
   private boolean isPrivate = false;
   @NotNull
-  private List<Source> sources = new ArrayList<Source>();
+  private List<String> filesPaths = new ArrayList<String>();
+  @Nullable
+  private HashingResult hashingResult = null;
+  @NotNull
+  private List<DataSourceHolder> dataSources = new ArrayList<DataSourceHolder>();
   @NotNull
   private String directoryName = "";
   //end info dictionary
@@ -62,14 +68,6 @@ public class MetadataBuilder {
   @NotNull
   private PiecesHashesCalculator piecesHashesCalculator = new SingleThreadHashesCalculator();
   //end
-
-  public MetadataBuilder() {
-    this(new SystemTimeService());
-  }
-
-  public MetadataBuilder(TimeService timeService) {
-    this.timeService = timeService;
-  }
 
   /**
    * set main announce tracker URL if you use single tracker.
@@ -197,7 +195,9 @@ public class MetadataBuilder {
    * @param closeAfterBuild if true then source stream will be closed after {@link #build()} invocation
    */
   public MetadataBuilder addDataSource(@NotNull InputStream dataSource, String path, boolean closeAfterBuild) {
-    sources.add(new Source(dataSource, path, closeAfterBuild));
+    checkHashingResultIsNotSet();
+    filesPaths.add(path);
+    dataSources.add(new StreamBasedHolderImpl(dataSource, closeAfterBuild));
     return this;
   }
 
@@ -218,8 +218,16 @@ public class MetadataBuilder {
     if (!source.isFile()) {
       throw new IllegalArgumentException(source + " is not exist");
     }
-    sources.add(new Source(source, path));
+    checkHashingResultIsNotSet();
+    filesPaths.add(path);
+    dataSources.add(new FileSourceHolder(source));
     return this;
+  }
+
+  private void checkHashingResultIsNotSet() {
+    if (hashingResult != null) {
+      throw new IllegalStateException("Unable to add new source when hashes are set manually");
+    }
   }
 
   /**
@@ -227,7 +235,29 @@ public class MetadataBuilder {
    * {@link #directoryName}. In single-file torrent this file will be downloaded in download folder
    */
   public MetadataBuilder addFile(@NotNull File source) {
-    sources.add(new Source(source));
+    return addFile(source, source.getName());
+  }
+
+  /**
+   * allow to create information about files via speicified hashes, files paths and files lengths.
+   * Using of this method is not compatible with using source-based methods
+   * ({@link #addFile(File)}, {@link #addDataSource(InputStream, String, boolean)}, etc
+   * because it's not possible to calculate concat this hashes and calculated hashes.
+   * each byte array in hashes list should have {{@link Constants#PIECE_HASH_SIZE}} length
+   *
+   * @param hashes       list of files hashes in same order as files in files paths list
+   * @param filesPaths   list of files paths
+   * @param filesLengths list of files lengths in same order as files in files paths list
+   */
+  public MetadataBuilder setFilesInfo(@NotNull List<byte[]> hashes,
+                                      @NotNull List<String> filesPaths,
+                                      @NotNull List<Long> filesLengths) {
+    if (dataSources.size() != 0) {
+      throw new IllegalStateException("Unable to add hashes-based files info. Some data sources already added");
+    }
+    this.filesPaths.clear();
+    this.filesPaths.addAll(filesPaths);
+    this.hashingResult = new HashingResult(hashes, filesLengths);
     return this;
   }
 
@@ -264,9 +294,9 @@ public class MetadataBuilder {
    * @throws IllegalStateException if builder's state is incorrect (e.g. missing required fields)
    */
   public byte[] buildBinary() throws IOException {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    BEncoder.bencode(buildBEP(), baos);
-    return baos.toByteArray();
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    BEncoder.bencode(buildBEP(), out);
+    return out.toByteArray();
   }
 
   /**
@@ -292,16 +322,16 @@ public class MetadataBuilder {
     if (announce.isEmpty() && !announceList.isEmpty()) {
         announce = announceList.get(0).get(0);
     }
-    if (sources.size() == 0) {
+    if (filesPaths.size() == 0) {
       throw new IllegalStateException("Unable to create metadata without sources. Use addSource() method for adding sources");
     }
-    final boolean isSingleMode = sources.size() == 1 && directoryName.isEmpty();
+    final boolean isSingleMode = filesPaths.size() == 1 && directoryName.isEmpty();
     final String name;
     if (!directoryName.isEmpty()) {
       name = directoryName;
     } else {
       if (isSingleMode) {
-        name = sources.get(0).getPath();
+        name = filesPaths.get(0);
       } else {
         throw new IllegalStateException("Missing required field 'name'. Use setDirectoryName() method for specifying name of torrent");
       }
@@ -318,7 +348,9 @@ public class MetadataBuilder {
     if (!createdBy.isEmpty()) torrent.put(CREATED_BY, new BEValue(createdBy));
     if (!webSeedUrlList.isEmpty()) torrent.put(URL_LIST, wrapStringList(webSeedUrlList));
 
-    HashingResult hashingResult = piecesHashesCalculator.calculateHashes(mapSources(sources), pieceLength);
+    HashingResult hashingResult = this.hashingResult == null ?
+            piecesHashesCalculator.calculateHashes(dataSources, pieceLength) :
+            this.hashingResult;
 
     Map<String, BEValue> info = new HashMap<String, BEValue>();
     info.put(PIECE_LENGTH, new BEValue(pieceLength));
@@ -339,12 +371,12 @@ public class MetadataBuilder {
 
   private List<BEValue> getFilesList(HashingResult hashingResult) throws UnsupportedEncodingException {
     ArrayList<BEValue> result = new ArrayList<BEValue>();
-    for (int i = 0; i < sources.size(); i++) {
+    for (int i = 0; i < filesPaths.size(); i++) {
       Map<String, BEValue> file = new HashMap<String, BEValue>();
       Long sourceSize = hashingResult.getSourceSizes().get(i);
-      Source source = sources.get(i);
+      String fullPath = filesPaths.get(i);
       List<BEValue> filePath = new ArrayList<BEValue>();
-      for (String path : source.getPath().replace("\\", "/").split("/")) {
+      for (String path : fullPath.replace("\\", "/").split("/")) {
         filePath.add(new BEValue(path));
       }
       file.put(FILE_PATH, new BEValue(filePath));
@@ -360,14 +392,6 @@ public class MetadataBuilder {
       sb.append(new String(hash, Constants.BYTE_ENCODING));
     }
     return new BEValue(sb.toString(), Constants.BYTE_ENCODING);
-  }
-
-  private List<DataSourceHolder> mapSources(List<Source> sources) {
-    List<DataSourceHolder> result = new ArrayList<DataSourceHolder>();
-    for (Source source : sources) {
-      result.add(source.getSourceHolder());
-    }
-    return result;
   }
 
   private BEValue wrapStringList(List<String> lst) throws UnsupportedEncodingException {
@@ -397,8 +421,7 @@ public class MetadataBuilder {
   }
 
   private void closeAllSources() {
-    for (Source source : sources) {
-      DataSourceHolder sourceHolder = source.getSourceHolder();
+    for (DataSourceHolder sourceHolder : dataSources) {
       try {
         sourceHolder.close();
       } catch (Throwable e) {
@@ -410,6 +433,64 @@ public class MetadataBuilder {
   private void initFirstTier() {
     if (announceList.isEmpty()) {
       newTier();
+    }
+  }
+
+  private static class FileSourceHolder implements DataSourceHolder {
+    @Nullable
+    private FileInputStream fis;
+    @NotNull
+    private final File source;
+
+    public FileSourceHolder(@NotNull File source) {
+      this.source = source;
+    }
+
+    @Override
+    public InputStream getStream() throws IOException {
+      if (fis == null) {
+        fis = new FileInputStream(source);
+      }
+      return fis;
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (fis != null) {
+        fis.close();
+      }
+    }
+
+    @Override
+    public String toString() {
+      return "Data source for file stream " + fis;
+    }
+  }
+
+  private static class StreamBasedHolderImpl implements DataSourceHolder {
+    private final InputStream source;
+    private final boolean closeAfterBuild;
+
+    public StreamBasedHolderImpl(InputStream source, boolean closeAfterBuild) {
+      this.source = source;
+      this.closeAfterBuild = closeAfterBuild;
+    }
+
+    @Override
+    public InputStream getStream() {
+      return source;
+    }
+
+    @Override
+    public void close() throws IOException {
+      if (closeAfterBuild) {
+        source.close();
+      }
+    }
+
+    @Override
+    public String toString() {
+      return "Data source for user's stream " + source;
     }
   }
 
