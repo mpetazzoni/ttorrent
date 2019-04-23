@@ -64,7 +64,7 @@ public class HashesCalculatorsTest {
     sourceBytes.add(new byte[]{});
     sourceBytes.add(new byte[]{3, 4});
 
-    HashingResult expected = new HashingResult(asList(
+    HashingResult expected = new HashingResult(Collections.singletonList(
             TorrentUtils.calculateSha1Hash(new byte[]{1, 2, 3, 4})),
             asList(2L, 0L, 2L)
     );
@@ -82,6 +82,61 @@ public class HashesCalculatorsTest {
             asList(4L, 4L)
     );
     verifyImplementationsResults(sourceBytes, 4, expected);
+  }
+
+  public void testReadingNotFullyBuffer() throws IOException {
+    List<byte[]> sourceBytes = new ArrayList<byte[]>();
+    sourceBytes.add(new byte[]{1, 2, 3, 4, 5, 6, 7});
+    HashingResult expected = new HashingResult(asList(
+            TorrentUtils.calculateSha1Hash(new byte[]{1, 2, 3, 4, 5}),
+            TorrentUtils.calculateSha1Hash(new byte[]{6, 7})),
+            Collections.singletonList(7L)
+    );
+
+    final int maxToRead = 2;
+    List<HashingResult> hashingResults = new ArrayList<HashingResult>();
+    for (PiecesHashesCalculator implementation : implementations) {
+      List<DataSourceHolder> sources = new ArrayList<DataSourceHolder>();
+      for (byte[] sourceByte : sourceBytes) {
+        final InputStream is = new ByteArrayInputStream(sourceByte) {
+          @Override
+          public synchronized int read(byte[] b, int off, int len) {
+            if (len <= maxToRead) {
+              return super.read(b, off, len);
+            }
+            if (pos >= count) {
+              return -1;
+            }
+
+            int avail = count - pos;
+            if (len > avail) {
+              len = avail;
+            }
+            if (len <= 0) {
+              return 0;
+            }
+            System.arraycopy(buf, pos, b, off, maxToRead);
+            pos += maxToRead;
+            return maxToRead;
+          }
+        };
+        sources.add(new DataSourceHolder() {
+          @Override
+          public InputStream getStream() {
+            return is;
+          }
+
+          @Override
+          public void close() throws IOException {
+            is.close();
+          }
+        });
+      }
+      hashingResults.add(implementation.calculateHashes(sources, 5));
+    }
+    for (HashingResult actual : hashingResults) {
+      assertHashingResult(actual, expected);
+    }
   }
 
   public void testWithSmallSource() throws IOException {
