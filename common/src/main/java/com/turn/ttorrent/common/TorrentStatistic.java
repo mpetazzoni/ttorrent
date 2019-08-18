@@ -53,4 +53,14 @@ public class TorrentStatistic {
     myDownloadedBytes.set(value);
   }
 
+  public long getPercentageDownloaded(){
+    long downloadedBytes = getDownloadedBytes();
+    long totalBytes = getTotalBytes();
+    return (downloadedBytes * 100) / totalBytes;
+  }
+
+  public long getTotalBytes(){
+    return getDownloadedBytes() + getLeftBytes();
+  }
+
 }

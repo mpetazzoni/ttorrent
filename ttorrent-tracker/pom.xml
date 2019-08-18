@@ -5,27 +5,27 @@
     <parent>
         <groupId>com.turn</groupId>
         <artifactId>ttorrent</artifactId>
-        <version>1.2</version>
+        <version>1.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <name>ttorrent/tracker</name>
     <url>http://turn.github.com/ttorrent/</url>
     <artifactId>ttorrent-tracker</artifactId>
-    <version>1.2</version>
+    <version>1.3.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>com.turn</groupId>
             <artifactId>ttorrent-common</artifactId>
-            <version>1.2</version>
+            <version>1.3.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>com.turn</groupId>
             <artifactId>ttorrent-bencoding</artifactId>
-            <version>1.2</version>
+            <version>1.3.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
