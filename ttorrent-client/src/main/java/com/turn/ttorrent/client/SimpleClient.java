@@ -106,7 +106,7 @@ public class SimpleClient {
     TorrentMetadata metadata = metadataProvider.getTorrentMetadata();
     LoadedTorrent loadedTorrent = communicationManager.getTorrentsStorage().getLoadedTorrent(metadata.getHexInfoHash());
     if (loadedTorrent != null) {
-      return loadedTorrent.getTorrentStatistic();
+      return new TorrentStatistic(loadedTorrent.getTorrentStatistic());
     }
 
     throw new IllegalStateException("Torrent has not been loaded yet");
