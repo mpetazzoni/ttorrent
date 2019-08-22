@@ -1,6 +1,10 @@
 package com.turn.ttorrent.client;
 
+import com.turn.ttorrent.common.TorrentMetadata;
+import com.turn.ttorrent.common.TorrentStatistic;
+
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SimpleClient {
 
@@ -86,5 +91,30 @@ public class SimpleClient {
                                              String downloadDir,
                                              InetAddress iPv4Address) throws IOException {
     return startDownloading(torrentFile, downloadDir, iPv4Address);
+  }
+
+
+  /**
+   * Get statistics for a given torrent file
+   * @param dotTorrentFilePath
+   * @return
+   * @throws IOException If unable to get torrent metadata
+   * @throws IllegalStateException If the torrent has not been loaded
+   */
+  public TorrentStatistic getStatistics(String dotTorrentFilePath) throws IOException {
+    FileMetadataProvider metadataProvider = new FileMetadataProvider(dotTorrentFilePath);
+    TorrentMetadata metadata = metadataProvider.getTorrentMetadata();
+    LoadedTorrent loadedTorrent = communicationManager.getTorrentsStorage().getLoadedTorrent(metadata.getHexInfoHash());
+    if (loadedTorrent != null) {
+      return new TorrentStatistic(loadedTorrent.getTorrentStatistic());
+    }
+
+    throw new IllegalStateException("Torrent has not been loaded yet");
+
+  }
+
+
+  public boolean hasStop() {
+    return communicationManager.hasStop();
   }
 }

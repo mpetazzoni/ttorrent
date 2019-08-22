@@ -17,6 +17,12 @@ public class TorrentStatistic {
     myLeftBytes = new AtomicLong();
   }
 
+  public TorrentStatistic(TorrentStatistic torrentStatistic){
+    myDownloadedBytes = new AtomicLong(torrentStatistic.getDownloadedBytes());
+    myUploadedBytes = new AtomicLong(torrentStatistic.getUploadedBytes());
+    myLeftBytes = new AtomicLong(torrentStatistic.getLeftBytes());
+  }
+
   public long getUploadedBytes() {
     return myUploadedBytes.get();
   }
@@ -51,6 +57,16 @@ public class TorrentStatistic {
 
   public void setDownloaded(long value) {
     myDownloadedBytes.set(value);
+  }
+
+  public long getPercentageDownloaded(){
+    long downloadedBytes = getDownloadedBytes();
+    long totalBytes = getTotalBytes();
+    return (downloadedBytes * 100) / totalBytes;
+  }
+
+  public long getTotalBytes(){
+    return getDownloadedBytes() + getLeftBytes();
   }
 
 }

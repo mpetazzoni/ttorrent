@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.turn</groupId>
 		<artifactId>ttorrent</artifactId>
-		<version>1.2</version>
+		<version>1.3.0-SNAPSHOT</version>
 	</parent>
 
 	<name>Java BitTorrent library CLI</name>
@@ -15,12 +15,12 @@
         <dependency>
             <groupId>com.turn</groupId>
             <artifactId>ttorrent-client</artifactId>
-            <version>1.2</version>
+            <version>1.3.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.turn</groupId>
             <artifactId>ttorrent-tracker</artifactId>
-            <version>1.2</version>
+            <version>1.3.0-SNAPSHOT</version>
         </dependency>
 	</dependencies>
 

@@ -848,4 +848,8 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     }
     return connectionManager;
   }
+
+  public boolean hasStop(){
+    return stop.get();
+  }
 }
