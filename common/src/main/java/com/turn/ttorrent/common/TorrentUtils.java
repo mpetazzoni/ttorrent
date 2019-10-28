@@ -14,7 +14,7 @@ public final class TorrentUtils {
    * @return sha 1 hash of specified data
    */
   public static byte[] calculateSha1Hash(byte[] data) {
-    return DigestUtils.sha(data);
+    return DigestUtils.sha1(data);
   }
 
   /**
