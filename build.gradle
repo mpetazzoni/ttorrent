@@ -80,6 +80,10 @@ project(':ttorrent-tracker-client') {
 
 		testCompile project(':ttorrent-tracker-simple')
 	}
+
+	test {
+		maxHeapSize = "4096m"
+	}
 }
 
 project(':ttorrent-tracker') {
