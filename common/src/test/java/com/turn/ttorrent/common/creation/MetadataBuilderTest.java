@@ -155,7 +155,20 @@ public class MetadataBuilderTest {
     TorrentMetadata metadata = new TorrentParser().parse(binary);
     byte[] backToBinary = new TorrentSerializer().serialize(metadata);
     assertEquals(binary, backToBinary,
-            "\n Before:" + Hex.encodeHexString(binary) +
-                    " \n After :" + Hex.encodeHexString(backToBinary));
+                    "\n Before:" + printable(binary) +
+                    " \n After :" + printable(backToBinary) + "\n"
+    );
+  }
+
+  private static String printable(byte[] binary) {
+    StringBuilder buf = new StringBuilder();
+    for (byte b : binary) {
+      if ((' ' <= b) && (b <= 'z')) {
+        buf.append((char) b);
+      } else {
+        buf.append('.');
+      }
+    }
+    return buf.toString();
   }
 }
