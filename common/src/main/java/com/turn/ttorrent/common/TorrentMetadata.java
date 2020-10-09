@@ -64,7 +64,12 @@ public interface TorrentMetadata extends TorrentHash {
   int getPiecesCount();
 
   /**
-   * @return The filename of the directory in which to store all the files
+   * @return The filename of single file or the directory in which to store all the files
+   */
+  String getName();
+
+  /**
+   * @return The filename of the directory in which to store all the files, null if it is a single file
    */
   String getDirectoryName();
 

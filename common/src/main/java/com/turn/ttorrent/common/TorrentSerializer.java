@@ -36,18 +36,13 @@ public class TorrentSerializer {
       infoTable.put(PRIVATE, new BEValue(1));
     }
 
-    infoTable.put(NAME, new BEValue(metadata.getDirectoryName()));
-    boolean needsMultiFileMode;
-    if (metadata.getFiles().size() != 1) {
-      needsMultiFileMode = true;
-    } else {
-      // if the only file has a custom path (i.e. not at the root) we must keep that
-      TorrentFile onlyFile = metadata.getFiles().get(0);
-      List<String> filePathInSingleMode = Collections.singletonList(metadata.getDirectoryName());
-      needsMultiFileMode = !filePathInSingleMode.equals(onlyFile.relativePath);
-    }
+    infoTable.put(NAME, new BEValue(metadata.getName()));
 
-    if (needsMultiFileMode) {
+    if (metadata.getFiles().size() == 1 && metadata.getDirectoryName() == null) {
+      final TorrentFile torrentFile = metadata.getFiles().get(0);
+      infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
+      putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
+    } else {
       List<BEValue> files = new ArrayList<BEValue>();
       for (TorrentFile torrentFile : metadata.getFiles()) {
         Map<String, BEValue> entry = new HashMap<String, BEValue>();
@@ -57,10 +52,6 @@ public class TorrentSerializer {
         files.add(new BEValue(entry));
       }
       infoTable.put(FILES, new BEValue(files));
-    } else {
-      final TorrentFile torrentFile = metadata.getFiles().get(0);
-      infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
-      putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
     }
 
     mapMetadata.put(INFO_TABLE, new BEValue(infoTable));
