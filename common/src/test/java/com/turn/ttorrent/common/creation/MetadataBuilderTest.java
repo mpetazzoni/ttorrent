@@ -22,7 +22,6 @@ import com.turn.ttorrent.common.TorrentMetadata;
 import com.turn.ttorrent.common.TorrentParser;
 import com.turn.ttorrent.common.TorrentSerializer;
 import com.turn.ttorrent.common.TorrentUtils;
-import org.apache.commons.codec.binary.Hex;
 import org.testng.annotations.Test;
 
 import java.io.ByteArrayInputStream;
@@ -57,6 +56,32 @@ public class MetadataBuilderTest {
       path.append("/").append(iterator.next().getString());
     }
     assertEquals(path.toString(), "path/some_file");
+
+    assertConsistentWithSerializer(builder.buildBinary());
+    assertConsistentWithSerializer(builder.build());
+  }
+
+  public void testMultiFileModeWithOneFileSameName() throws IOException {
+    MetadataBuilder builder = new MetadataBuilder()
+            .setDirectoryName("abc")
+            .addDataSource(new ByteArrayInputStream(new byte[]{1, 2}), "abc", true);
+    Map<String, BEValue> map = builder.buildBEP().getMap();
+    Map<String, BEValue> info = map.get(INFO_TABLE).getMap();
+    assertEquals(info.get(NAME).getString(), "abc");
+    List<BEValue> files = info.get(FILES).getList();
+    assertEquals(files.size(), 1);
+    Map<String, BEValue> file = files.get(0).getMap();
+    assertEquals(file.get(FILE_LENGTH).getInt(), 2);
+
+    StringBuilder path = new StringBuilder();
+    Iterator<BEValue> iterator = file.get(FILE_PATH).getList().iterator();
+    if (iterator.hasNext()) {
+      path = new StringBuilder(iterator.next().getString());
+    }
+    while (iterator.hasNext()) {
+      path.append("/").append(iterator.next().getString());
+    }
+    assertEquals(path.toString(), "abc");
 
     assertConsistentWithSerializer(builder.buildBinary());
     assertConsistentWithSerializer(builder.build());
