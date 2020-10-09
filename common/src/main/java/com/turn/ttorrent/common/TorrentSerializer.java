@@ -7,10 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
@@ -40,11 +37,17 @@ public class TorrentSerializer {
     }
 
     infoTable.put(NAME, new BEValue(metadata.getDirectoryName()));
-    if (metadata.getFiles().size() == 1) {
-      final TorrentFile torrentFile = metadata.getFiles().get(0);
-      infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
-      putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
+    boolean needsMultiFileMode;
+    if (metadata.getFiles().size() != 1) {
+      needsMultiFileMode = true;
     } else {
+      // if the only file has a custom path (i.e. not at the root) we must keep that
+      TorrentFile onlyFile = metadata.getFiles().get(0);
+      List<String> filePathInSingleMode = Collections.singletonList(metadata.getDirectoryName());
+      needsMultiFileMode = !filePathInSingleMode.equals(onlyFile.relativePath);
+    }
+
+    if (needsMultiFileMode) {
       List<BEValue> files = new ArrayList<BEValue>();
       for (TorrentFile torrentFile : metadata.getFiles()) {
         Map<String, BEValue> entry = new HashMap<String, BEValue>();
@@ -54,6 +57,10 @@ public class TorrentSerializer {
         files.add(new BEValue(entry));
       }
       infoTable.put(FILES, new BEValue(files));
+    } else {
+      final TorrentFile torrentFile = metadata.getFiles().get(0);
+      infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
+      putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
     }
 
     mapMetadata.put(INFO_TABLE, new BEValue(infoTable));
