@@ -31,21 +31,25 @@ public class FairPieceStorageFactory implements PieceStorageFactory {
     byteStorage.open(false);
     BitSet availablePieces = new BitSet(metadata.getPiecesCount());
     try {
-      int pieceLength = metadata.getPieceLength();
-      for (int i = 0; i < metadata.getPiecesCount(); i++) {
-        long position = (long) i * pieceLength;
-        int len;
-        if (totalSize - position > pieceLength) {
-          len = pieceLength;
-        } else {
-          len = (int) (totalSize - position);
-        }
-        ByteBuffer buffer = ByteBuffer.allocate(len);
-        byteStorage.read(buffer, position);
-        byte[] expectedHash = Arrays.copyOfRange(metadata.getPiecesHashes(), i * Constants.PIECE_HASH_SIZE, (i + 1) * Constants.PIECE_HASH_SIZE);
-        byte[] actualHash = TorrentUtils.calculateSha1Hash(buffer.array());
-        if (Arrays.equals(expectedHash, actualHash)) {
-          availablePieces.set(i);
+      if (!byteStorage.isBlank()) {
+        int pieceLength = metadata.getPieceLength();
+        for (int i = 0; i < metadata.getPiecesCount(); i++) {
+          long position = (long) i * pieceLength;
+          int len;
+          if (totalSize - position > pieceLength) {
+            len = pieceLength;
+          } else {
+            len = (int) (totalSize - position);
+          }
+          if (!byteStorage.isBlank(position, len)) {
+            ByteBuffer buffer = ByteBuffer.allocate(len);
+            byteStorage.read(buffer, position);
+            byte[] expectedHash = Arrays.copyOfRange(metadata.getPiecesHashes(), i * Constants.PIECE_HASH_SIZE, (i + 1) * Constants.PIECE_HASH_SIZE);
+            byte[] actualHash = TorrentUtils.calculateSha1Hash(buffer.array());
+            if (Arrays.equals(expectedHash, actualHash)) {
+              availablePieces.set(i);
+            }
+          }
         }
       }
     } finally {
