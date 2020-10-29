@@ -71,6 +71,16 @@ public class FairPieceStorageFactoryTest {
       }
 
       @Override
+      public boolean isBlank(long position, long size) {
+        return false;
+      }
+
+      @Override
+      public boolean isBlank() {
+        return false;
+      }
+
+      @Override
       public void delete() {
         throw notImplemented();
       }

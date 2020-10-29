@@ -93,6 +93,19 @@ public interface TorrentByteStorage extends Closeable {
   boolean isFinished();
 
   /**
+   * @param position Position in the underlying byte storage to write the block at.
+   * @param size Size of region to check.
+   * @return true if the region starting with positions only contains zeros
+   */
+  boolean isBlank(long position, long size);
+
+  /**
+   *
+   * @return true if the enter storage only contains zeros
+   */
+  boolean isBlank();
+
+  /**
    * Delete byte storage information
    */
   void delete() throws IOException;

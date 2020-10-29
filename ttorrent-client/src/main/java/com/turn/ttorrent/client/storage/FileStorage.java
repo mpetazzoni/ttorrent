@@ -56,11 +56,11 @@ public class FileStorage implements TorrentByteStorage {
   private FileChannel channel;
   private File current;
   private boolean myIsOpen = false;
+  private boolean isBlank;
 
   private final ReadWriteLock myLock = new ReentrantReadWriteLock();
 
-  public FileStorage(File file, long offset, long size)
-          throws IOException {
+  public FileStorage(File file, long offset, long size) {
     this.target = file;
     this.offset = offset;
     this.size = size;
@@ -83,14 +83,17 @@ public class FileStorage implements TorrentByteStorage {
           logger.debug("Partial download found at {}. Continuing...",
                   this.partial.getAbsolutePath());
           this.current = this.partial;
+          this.isBlank = false;
         } else if (!this.target.exists()) {
           logger.debug("Downloading new file to {}...",
                   this.partial.getAbsolutePath());
           this.current = this.partial;
+          this.isBlank = true;
         } else {
           logger.debug("Using existing file {}.",
                   this.target.getAbsolutePath());
           this.current = this.target;
+          this.isBlank = false;
         }
         this.raf = new RandomAccessFile(this.current, "rw");
         this.raf.setLength(this.size);
@@ -146,6 +149,7 @@ public class FileStorage implements TorrentByteStorage {
     try {
       myLock.writeLock().lock();
       int requested = buffer.remaining();
+      this.isBlank = false;
 
       if (position + requested > this.size) {
         throw new IllegalArgumentException("Invalid storage write request!");
@@ -222,6 +226,21 @@ public class FileStorage implements TorrentByteStorage {
     try {
       myLock.readLock().lock();
       return myIsOpen;
+    } finally {
+      myLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public boolean isBlank(long position, long size) {
+      return isBlank();
+  }
+
+  @Override
+  public boolean isBlank() {
+    try {
+      myLock.readLock().lock();
+      return isBlank;
     } finally {
       myLock.readLock().unlock();
     }

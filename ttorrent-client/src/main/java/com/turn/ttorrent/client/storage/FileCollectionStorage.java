@@ -137,6 +137,26 @@ public class FileCollectionStorage implements TorrentByteStorage {
   }
 
   @Override
+  public boolean isBlank(long position, long size) {
+    for (FileOffset fo : this.select(position, size)) {
+      if (!fo.file.isBlank(fo.offset, fo.length)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean isBlank() {
+    for (FileStorage file : this.files) {
+      if (!file.isBlank()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public synchronized void close() throws IOException {
     for (FileStorage file : this.files) {
       file.close();

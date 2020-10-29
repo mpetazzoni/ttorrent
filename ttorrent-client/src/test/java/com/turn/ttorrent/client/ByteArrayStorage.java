@@ -9,9 +9,11 @@ public class ByteArrayStorage implements TorrentByteStorage {
 
   private final byte[] array;
   private boolean finished = false;
+  private boolean isBlank;
 
   public ByteArrayStorage(int maxSize) {
     array = new byte[maxSize];
+    isBlank = true;
   }
 
   @Override
@@ -41,6 +43,7 @@ public class ByteArrayStorage implements TorrentByteStorage {
     byte[] toWrite = new byte[bytesCount];
     block.get(toWrite);
     System.arraycopy(toWrite, 0, array, pos, toWrite.length);
+    isBlank = false;
     return bytesCount;
   }
 
@@ -52,6 +55,16 @@ public class ByteArrayStorage implements TorrentByteStorage {
   @Override
   public boolean isFinished() {
     return finished;
+  }
+
+  @Override
+  public boolean isBlank(long position, long size) {
+    return isBlank;
+  }
+
+  @Override
+  public boolean isBlank() {
+    return isBlank;
   }
 
   @Override
