@@ -243,7 +243,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     initPieces();
 
     logger.debug("Analyzing local data for {} with {} threads...",
-            myTorrentMetadata.getDirectoryName(), TorrentCreator.HASHING_THREADS_COUNT);
+            myTorrentMetadata.getName(), TorrentCreator.HASHING_THREADS_COUNT);
     for (int idx = 0; idx < this.pieces.length; idx++) {
       byte[] hash = new byte[Constants.PIECE_HASH_SIZE];
       this.piecesHashes.get(hash);
@@ -268,7 +268,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   }
 
   public synchronized void close() {
-    logger.trace("Closing torrent", myTorrentMetadata.getDirectoryName());
+    logger.trace("Closing torrent", myTorrentMetadata.getName());
     try {
       this.pieceStorage.close();
       isFileChannelOpen = false;
@@ -279,7 +279,7 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
   }
 
   public synchronized void closeFully() {
-    logger.trace("Closing torrent", myTorrentMetadata.getDirectoryName());
+    logger.trace("Closing torrent", myTorrentMetadata.getName());
     try {
       this.pieceStorage.closeFully();
       isFileChannelOpen = false;
@@ -743,6 +743,11 @@ public class SharedTorrent implements PeerActivityListener, TorrentMetadata, Tor
     return "SharedTorrent{" +
             Arrays.toString(TorrentUtils.getTorrentFileNames(myTorrentMetadata).toArray()) +
             "}";
+  }
+
+  @Override
+  public String getName() {
+    return myTorrentMetadata.getName();
   }
 
   @Override

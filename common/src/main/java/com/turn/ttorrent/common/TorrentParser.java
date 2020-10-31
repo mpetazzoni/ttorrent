@@ -55,9 +55,10 @@ public class TorrentParser {
 
     final boolean torrentContainsManyFiles = infoTable.get(FILES) != null;
 
-    final String dirName = getRequiredValueOrThrowException(infoTable, NAME).getString();
+    final String name = getRequiredValueOrThrowException(infoTable, NAME).getString();
+    final String dirName = torrentContainsManyFiles ? name : null;
 
-    final List<TorrentFile> files = parseFiles(infoTable, torrentContainsManyFiles, dirName);
+    final List<TorrentFile> files = parseFiles(infoTable, torrentContainsManyFiles, name);
 
     if (piecesHashes.length % Constants.PIECE_HASH_SIZE != 0)
       throw new InvalidBEncodingException("Incorrect size of pieces hashes");
@@ -78,6 +79,7 @@ public class TorrentParser {
             creationDate,
             comment,
             createdBy,
+            name,
             dirName,
             files,
             piecesCount,

@@ -355,7 +355,9 @@ public class MetadataBuilder {
     Map<String, BEValue> info = new HashMap<String, BEValue>();
     info.put(PIECE_LENGTH, new BEValue(pieceLength));
     info.put(PIECES, concatHashes(hashingResult.getHashes()));
-    info.put(PRIVATE, new BEValue(isPrivate ? 1 : 0));
+    if (isPrivate) {
+      info.put(PRIVATE, new BEValue(1));
+    }
     info.put(NAME, new BEValue(name));
     if (isSingleMode) {
       Long sourceSize = hashingResult.getSourceSizes().get(0);

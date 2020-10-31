@@ -7,10 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.turn.ttorrent.common.TorrentMetadataKeys.*;
 
@@ -39,8 +36,9 @@ public class TorrentSerializer {
       infoTable.put(PRIVATE, new BEValue(1));
     }
 
-    infoTable.put(NAME, new BEValue(metadata.getDirectoryName()));
-    if (metadata.getFiles().size() == 1) {
+    infoTable.put(NAME, new BEValue(metadata.getName()));
+
+    if (metadata.getFiles().size() == 1 && metadata.getDirectoryName() == null) {
       final TorrentFile torrentFile = metadata.getFiles().get(0);
       infoTable.put(FILE_LENGTH, new BEValue(torrentFile.size));
       putOptionalIfPresent(infoTable, MD5_SUM, torrentFile.md5Hash);
