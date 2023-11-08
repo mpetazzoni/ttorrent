@@ -1,7 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="Encoding" useUTFGuessing="true" native2AsciiForPropertiesFiles="false">
+  <component name="Encoding">
     <file url="file://$PROJECT_DIR$" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/bencoding/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/bencoding/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cli/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/cli/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/network/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/network/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/test-api/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/test-api/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/tests/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/tests/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ttorrent-client/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ttorrent-client/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ttorrent-tracker/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/ttorrent-tracker/src/main/resources" charset="UTF-8" />
   </component>
 </project>
-
