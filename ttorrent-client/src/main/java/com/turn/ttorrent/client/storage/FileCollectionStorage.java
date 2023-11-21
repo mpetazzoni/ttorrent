@@ -76,7 +76,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
     for (TorrentFile file : metadata.getFiles()) {
       File actual = new File(parent, file.getRelativePathAsString());
 
-      if (!actual.getCanonicalPath().startsWith(parent.getCanonicalPath())) {
+      if (!actual.getCanonicalFile().toPath().startsWith(parent.getCanonicalFile().toPath())) {
         throw new SecurityException("Torrent file path attempted " +
                 "to break directory jail!");
       }
