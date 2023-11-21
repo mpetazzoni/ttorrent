@@ -55,7 +55,7 @@ public class TorrentParserTest {
 
     assertEquals(torrentMetadata.getPieceLength(), 4);
     assertEquals(torrentMetadata.getAnnounce(), "http://localhost/announce");
-    assertEquals(torrentMetadata.getDirectoryName(), "test.file");
+    assertEquals(torrentMetadata.getName(), "test.file");
     assertNull(torrentMetadata.getAnnounceList());
 
     List<BEValue> announceList = new ArrayList<BEValue>();

@@ -1,6 +1,5 @@
 package com.turn.ttorrent.common;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -15,6 +14,7 @@ public class TorrentMetadataImpl implements TorrentMetadata {
   private final String myComment;
   private final String myCreatedBy;
   private final String myName;
+  private final String myDirName;
   private final List<TorrentFile> myFiles;
   private final int myPieceCount;
   private final int myPieceLength;
@@ -28,6 +28,7 @@ public class TorrentMetadataImpl implements TorrentMetadata {
                       String comment,
                       String createdBy,
                       String name,
+                      String dirName,
                       List<TorrentFile> files,
                       int pieceCount,
                       int pieceLength,
@@ -39,6 +40,7 @@ public class TorrentMetadataImpl implements TorrentMetadata {
     myComment = comment;
     myCreatedBy = createdBy;
     myName = name;
+    myDirName = dirName;
     myFiles = files;
     myPieceCount = pieceCount;
     myPieceLength = pieceLength;
@@ -47,9 +49,15 @@ public class TorrentMetadataImpl implements TorrentMetadata {
   }
 
   @Override
-  public String getDirectoryName() {
+  public String getName() {
     return myName;
   }
+
+  @Override
+  public String getDirectoryName() {
+    return myDirName;
+  }
+
 
   @Override
   public List<TorrentFile> getFiles() {

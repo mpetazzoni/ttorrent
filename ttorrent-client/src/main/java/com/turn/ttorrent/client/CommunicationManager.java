@@ -767,7 +767,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
             isTorrentComplete = torrent.isComplete();
 
             if (isTorrentComplete) {
-              logger.info("Download of {} complete.", torrent.getDirectoryName());
+              logger.info("Download of {} complete.", torrent.getName());
 
               torrent.finish();
             }
