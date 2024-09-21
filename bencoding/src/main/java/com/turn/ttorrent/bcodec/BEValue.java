@@ -160,8 +160,8 @@ public class BEValue {
    */
   @SuppressWarnings("unchecked")
   public List<BEValue> getList() throws InvalidBEncodingException {
-    if (this.value instanceof ArrayList) {
-      return (ArrayList<BEValue>) this.value;
+    if (this.value != null && List.class.isAssignableFrom(this.value.getClass())) {
+      return (List<BEValue>) this.value;
     } else {
       throw new InvalidBEncodingException("Excepted List<BEvalue> !");
     }
