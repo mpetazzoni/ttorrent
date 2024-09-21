@@ -73,4 +73,10 @@ public interface TorrentMetadata extends TorrentHash {
    */
   List<TorrentFile> getFiles();
 
+  /**
+   * @return list of web seeds (URLs) or <code>null</code> if web seeds are not specified
+   */
+  @Nullable
+  List<String> getWebSeeds();
+
 }

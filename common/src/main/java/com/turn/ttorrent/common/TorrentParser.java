@@ -54,6 +54,7 @@ public class TorrentParser {
     final byte[] piecesHashes = getRequiredValueOrThrowException(infoTable, PIECES).getBytes();
 
     final boolean torrentContainsManyFiles = infoTable.get(FILES) != null;
+    final List<String> webSeeds = getWebSeeds(dictionaryMetadata);
 
     final String dirName = getRequiredValueOrThrowException(infoTable, NAME).getString();
 
@@ -82,8 +83,20 @@ public class TorrentParser {
             files,
             piecesCount,
             pieceLength,
-            piecesHashes
+            piecesHashes,
+            webSeeds
     );
+  }
+
+  private List<String> getWebSeeds(Map<String, BEValue> dictionaryMetadata) throws InvalidBEncodingException {
+    List<String> result = new ArrayList<String>();
+    final BEValue list = dictionaryMetadata.get(URL_LIST);
+    if (list != null) {
+      for (BEValue url : list.getList()) {
+        result.add(url.getString());
+      }
+    }
+    return result;
   }
 
   private List<TorrentFile> parseFiles(Map<String, BEValue> infoTable, boolean torrentContainsManyFiles, String name) throws InvalidBEncodingException {
