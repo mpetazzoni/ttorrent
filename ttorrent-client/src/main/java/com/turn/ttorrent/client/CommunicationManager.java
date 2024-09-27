@@ -457,7 +457,7 @@ public class CommunicationManager implements AnnounceResponseListener, PeerActiv
     this.stop(60, TimeUnit.SECONDS);
   }
 
-  void stop(int timeout, TimeUnit timeUnit) {
+  public void stop(int timeout, TimeUnit timeUnit) {
     boolean wasStopped = this.stop.getAndSet(true);
     if (wasStopped) return;
 
