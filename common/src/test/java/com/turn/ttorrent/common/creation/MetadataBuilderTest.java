@@ -132,4 +132,18 @@ public class MetadataBuilderTest {
     }
 
   }
+
+  public void webSeedsTest() throws IOException {
+    Map<String, BEValue> metadata = new MetadataBuilder()
+            .addDataSource(new ByteArrayInputStream(new byte[]{1, 2}), "path/some_file", true)
+            .setDirectoryName("root")
+            .addWebSeedUrl("http://localhost:8080")
+            .addWebSeedUrl("http://localhost:8081")
+            .buildBEP().getMap();
+    List<BEValue> urlList = metadata.get(URL_LIST).getList();
+    assertEquals(urlList.size(), 2);
+    assertEquals(urlList.get(0).getString(), "http://localhost:8080");
+    assertEquals(urlList.get(1).getString(), "http://localhost:8081");
+  }
+
 }

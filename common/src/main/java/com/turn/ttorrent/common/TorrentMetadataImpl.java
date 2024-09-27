@@ -1,6 +1,5 @@
 package com.turn.ttorrent.common;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -20,6 +19,8 @@ public class TorrentMetadataImpl implements TorrentMetadata {
   private final int myPieceLength;
   private final byte[] myPiecesHashes;
   private final String myHexString;
+  @Nullable
+  private final List<String> myWebSeeds;
 
   TorrentMetadataImpl(byte[] infoHash,
                       @Nullable List<List<String>> announceList,
@@ -31,7 +32,9 @@ public class TorrentMetadataImpl implements TorrentMetadata {
                       List<TorrentFile> files,
                       int pieceCount,
                       int pieceLength,
-                      byte[] piecesHashes) {
+                      byte[] piecesHashes,
+                      @Nullable final List<String> webSeeds
+  ) {
     myInfoHash = infoHash;
     myAnnounceList = announceList;
     myMainAnnounce = mainAnnounce;
@@ -44,6 +47,7 @@ public class TorrentMetadataImpl implements TorrentMetadata {
     myPieceLength = pieceLength;
     myPiecesHashes = piecesHashes;
     myHexString = TorrentUtils.byteArrayToHexString(myInfoHash);
+    myWebSeeds = webSeeds;
   }
 
   @Override
@@ -54,6 +58,11 @@ public class TorrentMetadataImpl implements TorrentMetadata {
   @Override
   public List<TorrentFile> getFiles() {
     return myFiles;
+  }
+
+  @Override
+  public List<String> getWebSeeds() {
+    return myWebSeeds;
   }
 
   @Nullable

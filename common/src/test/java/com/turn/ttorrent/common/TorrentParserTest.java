@@ -94,4 +94,37 @@ public class TorrentParserTest {
       fail("", e);
     }
   }
+
+  public void webSeedsTest() throws IOException {
+    final Map<String, BEValue> metadata = new HashMap<String, BEValue>();
+    final HashMap<String, BEValue> infoTable = new HashMap<String, BEValue>();
+
+    metadata.put("announce", new BEValue("http://localhost/announce"));
+
+    infoTable.put("piece length", new BEValue(4));
+
+    infoTable.put("pieces", new BEValue(new byte[100]));
+    infoTable.put("name", new BEValue("test.file"));
+    infoTable.put("length", new BEValue(19));
+
+    List<BEValue> webSeeds = new ArrayList<BEValue>();
+    webSeeds.add(new BEValue("http://localhost/webseed"));
+    webSeeds.add(new BEValue("http://localhost/webseed2"));
+    metadata.put("url-list", new BEValue(webSeeds));
+
+    metadata.put("info", new BEValue(infoTable));
+
+    final TorrentMetadata torrentMetadata = myTorrentParser.parse(BEncoder.bencode(metadata).array());
+
+    assertEquals(torrentMetadata.getPieceLength(), 4);
+    assertEquals(torrentMetadata.getAnnounce(), "http://localhost/announce");
+    assertEquals(torrentMetadata.getDirectoryName(), "test.file");
+    assertNull(torrentMetadata.getAnnounceList());
+
+    List<String> actualWebSeeds = torrentMetadata.getWebSeeds();
+    assertNotNull(actualWebSeeds);
+    assertEquals(actualWebSeeds.get(0), "http://localhost/webseed");
+    assertEquals(actualWebSeeds.get(1), "http://localhost/webseed2");
+  }
+
 }

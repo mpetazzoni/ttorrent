@@ -55,6 +55,10 @@ public class TorrentSerializer {
       }
       infoTable.put(FILES, new BEValue(files));
     }
+    final List<String> webSeeds = metadata.getWebSeeds();
+    if (webSeeds != null && !webSeeds.isEmpty()) {
+      mapMetadata.put(URL_LIST, new BEValue(mapStringListToBEValueList(webSeeds)));
+    }
 
     mapMetadata.put(INFO_TABLE, new BEValue(infoTable));
 
